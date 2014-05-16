@@ -1,6 +1,13 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* prevent buffering of long print results in arangosh's and arangod's print
+  command
+
+  this change will emit buffered intermediate print results and discard the
+  output buffer to quickly deliver print results to the user, and to prevent
+  constructing very large buffers for large results
+
 * removed sorting of attribute names for use in a collection's shaper
 
   sorting attribute names was done on document insert to keep attributes 
