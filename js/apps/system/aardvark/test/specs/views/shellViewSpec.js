@@ -2,6 +2,7 @@
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global arangoHelper*/
 
+/*
 (function() {
   "use strict";
 
@@ -46,5 +47,5 @@
     });*/
 
 
-  });
-}());
+ // });
+//}()); 
