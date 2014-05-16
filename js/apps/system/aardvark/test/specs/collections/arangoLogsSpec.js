@@ -83,18 +83,18 @@
         it("url with upto", function() {
             col.initialize({upto : true, loglevel : 1});
             col.page = 1;
-            col.pagesize = 2;
+            col.pagesize = 1;
 
-            expect(col.url()).toEqual('/_admin/log?upto=1&size=2&offset=2');
+            expect(col.url()).toEqual('/_admin/log?upto=1&size=1&offset=0');
         });
 
         it("url with no upto", function() {
             col.initialize({upto : false, loglevel : 1});
             col.upto = false;
             col.page = 1;
-            col.pagesize = 2;
+            col.pagesize = 1;
 
-            expect(col.url()).toEqual('/_admin/log?level=1&size=2&offset=2');
+            expect(col.url()).toEqual('/_admin/log?level=1&size=1&offset=0');
         });
     });
 
