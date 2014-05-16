@@ -122,7 +122,7 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
   }
 
   return {
-    collection: "relationName",
+    collection: relationName,
     from: stringToArray(vertexCollections),
     to: stringToArray(vertexCollections)
   };
@@ -154,7 +154,7 @@ var _directedRelationDefinition = function (
   }
 
   return {
-    collection: "relationName",
+    collection: relationName,
     from: stringToArray(fromVertexCollections),
     to: stringToArray(toVertexCollections)
   };
@@ -212,7 +212,6 @@ var _create = function (graphName, edgeDefinitions) {
   if (graphAlreadyExists) {
     throw "graph " + graphName + " already exists.";
   }
-
   edgeDefinitions.forEach(function (e) {
     e.from.concat(e.to).forEach(function (v) {
       if (findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT)) {
