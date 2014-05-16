@@ -37,7 +37,6 @@
     url: function() {
       var type, rtnStr, offset, size;
       offset = this.page * this.pagesize;
-      //var inverseOffset = this.totalAmount - (this.totalAmount % this.pagesize) - (this.pagesize * this.page);
       var inverseOffset = this.totalAmount - ((this.page + 1) * this.pagesize);
       if (inverseOffset < 0 && this.page === (this.totalPages - 1)) {
         inverseOffset = 0;

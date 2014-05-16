@@ -69,9 +69,8 @@
     },
 
     invertArray: function (array) {
-      var rtnArr = [];
-      var counter = 0;
-      for (var i = array.length-1; i >= 0; i--) {
+      var rtnArr = [], counter = 0, i;
+      for (i = array.length-1; i >= 0; i--) {
         rtnArr[counter] = array[i];
         counter++;
       }
