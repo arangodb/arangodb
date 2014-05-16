@@ -124,7 +124,7 @@ namespace RandomHelper {
         char* ptr = reinterpret_cast<char*>(&buffer);
 
         while (0 < n) {
-          ssize_t r = TRI_READ(fd, ptr, n);
+          ssize_t r = TRI_READ(fd, ptr, (TRI_read_t) n);
 
           if (r == 0) {
             LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
@@ -202,7 +202,7 @@ namespace RandomHelper {
         char* ptr = reinterpret_cast<char*>(&buffer);
 
         while (0 < n) {
-          ssize_t r = TRI_READ(fd, ptr, n);
+          ssize_t r = TRI_READ(fd, ptr, (TRI_read_t) n);
 
           if (r == 0) {
             LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
@@ -280,7 +280,7 @@ namespace RandomHelper {
 
     private:
       void fillBuffer () {
-        size_t n = sizeof(buffer);
+        DWORD n = sizeof(buffer);
         BYTE* ptr = reinterpret_cast<BYTE*>(&buffer);
 
         // fill the buffer with random characters

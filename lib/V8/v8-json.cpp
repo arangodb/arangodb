@@ -2061,7 +2061,7 @@ static v8::Handle<v8::Value> ParseList (yyscan_t scanner) {
 
   v8::Handle<v8::Array> list = v8::Array::New();
   bool comma = false;
-  size_t pos = 0;
+  uint32_t pos = 0;
 
   int c = tri_v8_lex(scanner);
 
@@ -2166,7 +2166,7 @@ static v8::Handle<v8::Value> ParseArray (yyscan_t scanner) {
       return scope.Close(v8::Undefined());
     }
 
-    array->Set(v8::String::New(name, outLength), sub);
+    array->Set(v8::String::New(name, (int) outLength), sub);
 
     TRI_FreeString(yyextra._memoryZone, name);
 
@@ -2253,7 +2253,7 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
         }
       }
 
-      str = v8::String::New(ptr, outLength);
+      str = v8::String::New(ptr, (int) outLength);
 
       if (0 < outLength) {
         TRI_FreeString(yyextra._memoryZone, ptr);

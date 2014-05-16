@@ -83,8 +83,9 @@ bin_arangod_SOURCES = \
 	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
+	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
-	arangod/V8Server/V8PeriodicJob.cpp \
+	arangod/V8Server/V8TimerTask.cpp \
 	arangod/V8Server/v8-actions.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \

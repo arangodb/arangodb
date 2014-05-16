@@ -706,7 +706,7 @@ void ArangoServer::buildApplicationServer () {
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
-    _dispatcherThreads = 1;
+    // testing disables authentication
     _disableAuthentication = true;
   }
 

@@ -20,7 +20,6 @@
         });
       });
       this.totalAmount = response.totalAmount;
-      console.log("parseamount: "+this.totalAmount);
       return myResponse;
     },
 
@@ -36,8 +35,6 @@
     url: function() {
       var type, rtnStr, offset, size;
       offset = this.page * this.pagesize;
-      console.log("page: "+this.page);
-      console.log("amount: " + this.totalAmount);
       var inverseOffset = this.totalAmount % this.pagesize - (this.pagesize * this.page);
       if (inverseOffset < 0) {
         inverseOffset = 0;
@@ -50,7 +47,6 @@
       if (this.totalAmount === 0) {
         size = 1;
       }
-      console.log("offset: " + inverseOffset);
 
       if (this.upto) {
         type = 'upto';

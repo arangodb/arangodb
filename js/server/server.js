@@ -52,15 +52,13 @@ var Buffer = require("buffer").Buffer;
 (function () {
   var internal = require("internal");
 
-  if (internal.threadNumber === 0 && typeof internal.executeTask === "function") {
-    internal.executeTask({ 
+  if (internal.threadNumber === 0 && typeof internal.registerTask === "function") {
+    internal.registerTask({ 
       id: "statistics-collector", 
       name: "statistics-collector",
       offset: 1, 
       period: 10, 
-      module: "org/arangodb/statistics", 
-      funcname: "historian", 
-      parameter: "_statistics"
+      command: "require('org/arangodb/statistics').historian();"
     });
   }
 }());

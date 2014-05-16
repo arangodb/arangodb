@@ -1,4 +1,4 @@
-arango> var Graph = require("org/arangodb/graph").Graph;
+arango> var Graph = require("org/arangodb/graph-blueprint").Graph;
 
 arango> new Graph("graph", db.vertices, db.edges);
 Graph("graph")

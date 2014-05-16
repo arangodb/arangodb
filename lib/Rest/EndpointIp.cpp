@@ -124,17 +124,17 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   if (_type == ENDPOINT_SERVER) {
 
 #ifdef _WIN32
-	  int excl = 1;
-	  if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
-		  reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
-		  LOG_ERROR("setsockopt() failed with %d", WSAGetLastError());
+    int excl = 1;
+    if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+          reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+      LOG_ERROR("setsockopt() failed with %d", WSAGetLastError());
 
-		  TRI_CLOSE_SOCKET(listenSocket);
-		  TRI_invalidatesocket(&listenSocket);
-		  return listenSocket;
-	  }
+      TRI_CLOSE_SOCKET(listenSocket);
+      TRI_invalidatesocket(&listenSocket);
+      return listenSocket;
+    }
 #else
-	// try to reuse address
+    // try to reuse address
     if (_reuseAddress) {
       int opt = 1;
       if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
@@ -170,7 +170,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     if (result != 0) {
       // todo: get the correct error code using WSAGetLastError for windows
       LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
-      
+
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;

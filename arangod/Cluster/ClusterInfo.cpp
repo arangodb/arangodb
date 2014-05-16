@@ -628,11 +628,11 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       // steal the json
       (*it).second._json = 0;
 
-      TRI_shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
+      shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
       *shardKeys = collectionData->shardKeys();
       _shardKeys.insert(
-                    make_pair(collection, TRI_shared_ptr<vector<string> > (shardKeys)));
+                    make_pair(collection, shared_ptr<vector<string> > (shardKeys)));
       map<ShardID, ServerID> shardIDs = collectionData->shardIds();
       vector<string>* shards = new vector<string>;
       map<ShardID, ServerID>::iterator it3;
@@ -640,7 +640,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
         shards->push_back(it3->first);
       }
       _shards.insert(
-              make_pair(collection,TRI_shared_ptr<vector<string> >(shards)));
+              make_pair(collection,shared_ptr<vector<string> >(shards)));
         
       // insert the collection into the existing map
         
@@ -662,7 +662,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shared_ptr<CollectionInfo> ClusterInfo::getCollection 
+shared_ptr<CollectionInfo> ClusterInfo::getCollection 
                                           (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
   int tries = 0;
@@ -692,7 +692,7 @@ TRI_shared_ptr<CollectionInfo> ClusterInfo::getCollection
     loadPlannedCollections(true);
   }
 
-  return TRI_shared_ptr<CollectionInfo>(new CollectionInfo());
+  return shared_ptr<CollectionInfo>(new CollectionInfo());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -725,7 +725,7 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
 
 TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
                                                      CollectionID const& collectionID) {
-  TRI_shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
+  shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
   
   return getCollectionProperties(*ci);
 }
@@ -734,9 +734,9 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseI
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<TRI_shared_ptr<CollectionInfo> > ClusterInfo::getCollections 
+const std::vector<shared_ptr<CollectionInfo> > ClusterInfo::getCollections 
                          (DatabaseID const& databaseID) {
-  std::vector<TRI_shared_ptr<CollectionInfo> > result;
+  std::vector<shared_ptr<CollectionInfo> > result;
 
   // always reload
   loadPlannedCollections(true);
@@ -834,7 +834,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       DatabaseCollectionsCurrent::iterator it3;
       it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
-        TRI_shared_ptr<CollectionInfoCurrent> collectionDataCurrent
+        shared_ptr<CollectionInfoCurrent> collectionDataCurrent
                     (new CollectionInfoCurrent(shardID, json));
         it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
@@ -872,7 +872,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent 
+shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent 
            (DatabaseID const& databaseID,
             CollectionID const& collectionID) {
   int tries = 0;
@@ -902,7 +902,7 @@ TRI_shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
     loadCurrentCollections(true);
   }
 
-  return TRI_shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
+  return shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
 }
 
 
@@ -1449,7 +1449,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
       READ_LOCKER(_lock);
 
-      TRI_shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -1664,7 +1664,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 
       READ_LOCKER(_lock);
 
-      TRI_shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
 
       if (c->empty()) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
@@ -2045,20 +2045,20 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   }
 
   int tries = 0;
-  TRI_shared_ptr<vector<string> > shardKeysPtr;
+  shared_ptr<vector<string> > shardKeysPtr;
   char const** shardKeys = 0;
-  TRI_shared_ptr<vector<ShardID> > shards;
+  shared_ptr<vector<ShardID> > shards;
   bool found = false;
 
   while (++tries <= 2) {
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(_lock);
-      map<CollectionID, TRI_shared_ptr<vector<string> > >::iterator it 
+      map<CollectionID, shared_ptr<vector<string> > >::iterator it 
           = _shards.find(collectionID);
       if (it != _shards.end()) {
         shards = it->second;
-        map<CollectionID, TRI_shared_ptr<vector<string> > >::iterator it2 
+        map<CollectionID, shared_ptr<vector<string> > >::iterator it2 
             = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;

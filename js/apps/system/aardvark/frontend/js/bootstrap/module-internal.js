@@ -21,7 +21,7 @@
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-  SYS_EXECUTE_TASK, SYS_DELETE_TASK, SYS_GET_TASKS, SYS_TEST_PORT */
+  SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -752,30 +752,37 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executeTask
+/// @brief registerTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE_TASK !== "undefined") {
-    exports.executeTask = SYS_EXECUTE_TASK;
-    delete SYS_EXECUTE_TASK;
+  if (typeof SYS_REGISTER_TASK !== "undefined") {
+    exports.registerTask = SYS_REGISTER_TASK;
+    delete SYS_REGISTER_TASK;
+
+    // TODO: remove this in next release 
+    exports.definePeriodic = function (offset, period, module, funcname) {
+      require("console").warn("definePeriodic() is deprecated. please use registerTask() instead");
+      var command = "require('" + module + "')." + funcname + "();";
+      exports.registerTask({ offset: offset, period: period, command: command });
+    };
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deleteTask
+/// @brief unregisterTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DELETE_TASK !== "undefined") {
-    exports.deleteTask = SYS_DELETE_TASK;
-    delete SYS_DELETE_TASK;
+  if (typeof SYS_UNREGISTER_TASK !== "undefined") {
+    exports.unregisterTask = SYS_UNREGISTER_TASK;
+    delete SYS_UNREGISTER_TASK;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTasks
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GET_TASKS !== "undefined") {
-    exports.getTasks = SYS_GET_TASKS;
-    delete SYS_GET_TASKS;
+  if (typeof SYS_GET_TASK !== "undefined") {
+    exports.getTask = SYS_GET_TASK;
+    delete SYS_GET_TASK;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

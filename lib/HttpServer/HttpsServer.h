@@ -111,6 +111,22 @@ namespace triagens {
           GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >::handleConnected(socket, info);
         }
 
+        virtual Endpoint::EncryptionType getEncryption() const { 
+          return  GeneralSslServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::getEncryption();
+        }
+
+        virtual void shutdownHandlers() {
+          GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::shutdownHandlers();
+        }
+
+        bool handleRequest(HttpCommTask<HttpsServer> * task, HttpHandlerFactory::GeneralHandler* handler) {
+          return  GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::handleRequest(task, handler);
+        }
+
+        virtual void shutdownHandlerByTask(Task* task) {
+          GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::shutdownHandlerByTask(task);
+        }
+
     };
   }
 }

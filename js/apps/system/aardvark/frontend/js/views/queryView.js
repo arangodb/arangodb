@@ -92,6 +92,31 @@
         return;
       }
 
+      //check for invalid query names, if present change the box-shadoq to red
+      // and disable the save functionality
+
+      var dangerCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "border-color" : "rgba(234, 23, 23, 0.8)"
+      };
+
+      var normalCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "border-color" : "rgba(82, 168, 236, 0.8)"
+      };
+
+      if ( saveName.match(/[<>&'"]/g)){
+        $('#new-query-name').css(dangerCss);
+        $('#new-query-name').addClass('invalid');
+      } else {
+        $('#new-query-name').css(normalCss);
+        $('#new-query-name').removeClass('invalid');
+      }
+
       var boolTemp = false;
       this.customQueries.some(function(query){
         if( query.name === saveName ){
@@ -192,6 +217,7 @@
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
       inputEditor.setFontSize("16px");
+      inputEditor.setOptions({fontFamily: "Courier New"});
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
@@ -283,7 +309,6 @@
 
     addAQL: function () {
       //render options
-
       $('#new-query-name').val($('#querySelect').val());
       $('#new-aql-query').modal('show');
       setTimeout(function () {
@@ -340,12 +365,17 @@
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
-      var content = inputEditor.getValue();
 
-      if (saveName.trim() === '') {
-        //Heiko: Form-Validator - illegal query name
+      if ($('#new-query-name').hasClass('invalid')) {
         return;
       }
+
+      //Heiko: Form-Validator - illegal query name
+      if (saveName.trim() === '') {
+        return;
+      }
+
+      var content = inputEditor.getValue();
 
       //check for already existing entry
       var quit = false;
@@ -359,8 +389,8 @@
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
-      $('#new-aql-query').modal('hide');
-      $('#edit-aql-query').modal('hide');
+        $('#new-aql-query').modal('hide');
+        $('#edit-aql-query').modal('hide');
         return;
       }
 
@@ -374,6 +404,7 @@
 
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
+      $('#querySelect').val(saveName);
     },
 
     updateEditSelect: function () {

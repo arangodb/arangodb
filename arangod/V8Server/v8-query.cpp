@@ -149,12 +149,12 @@ static void ExtractSkipAndLimit (v8::Arguments const& argv,
   skip = TRI_QRY_NO_SKIP;
   limit = TRI_QRY_NO_LIMIT;
 
-  if (pos < (size_t) argv.Length() && ! argv[pos]->IsNull() && ! argv[pos]->IsUndefined()) {
-    skip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[pos]);
+  if (pos < (size_t) argv.Length() && ! argv[(int) pos]->IsNull() && ! argv[(int) pos]->IsUndefined()) {
+    skip = (TRI_voc_size_t) TRI_ObjectToDouble(argv[(int) pos]);
   }
 
-  if (pos + 1 < (size_t) argv.Length() && ! argv[pos + 1]->IsNull() && ! argv[pos + 1]->IsUndefined()) {
-    limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[pos + 1]);
+  if (pos + 1 < (size_t) argv.Length() && ! argv[(int) pos + 1]->IsNull() && ! argv[(int) pos + 1]->IsUndefined()) {
+    limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(argv[(int) pos + 1]);
   }
 }
 
@@ -264,7 +264,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const example,
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
-    v8::Handle<v8::Value> key = names->Get(i);
+    v8::Handle<v8::Value> key = names->Get((uint32_t) i);
     v8::Handle<v8::Value> val = example->Get(key);
 
     // property initialise the memory
@@ -337,7 +337,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
     for (uint32_t j = 0; j < values->Length(); ++j) {
       v8::Handle<v8::Value> fieldCondition = values->Get(j);
 
-      if (!fieldCondition->IsArray()) {
+      if (! fieldCondition->IsArray()) {
         // wrong data type for single condition
         goto MEM_ERROR;
       }
@@ -1792,7 +1792,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Handle<v8::Array> documents = v8::Array::New(n);
+  v8::Handle<v8::Array> documents = v8::Array::New((int) n);
   // reserve full capacity in one go
   result->Set(v8::String::New("documents"), documents);
 
@@ -1877,7 +1877,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Handle<v8::Array> documents = v8::Array::New(n);
+  v8::Handle<v8::Array> documents = v8::Array::New((int) n);
   // reserve full capacity in one go
   result->Set(v8::String::New("documents"), documents);
 
@@ -2085,8 +2085,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
             break;
           }
           else {
-            documents->Set(count, doc);
-            ++count;
+            documents->Set((uint32_t) count++, doc);
           }
 
         }
@@ -2106,8 +2105,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // outside a write transaction
   // .............................................................................
 
-  result->Set(v8::String::New("total"), v8::Integer::New(total));
-  result->Set(v8::String::New("count"), v8::Integer::New(count));
+  result->Set(v8::String::New("total"), v8::Integer::New((int32_t) total));
+  result->Set(v8::String::New("count"), v8::Integer::New((int32_t) count));
 
   CleanupExampleObject(shaper->_memoryZone, n, pids, values);
 
@@ -2214,8 +2213,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
             break;
           }
           else {
-            documents->Set(count, doc);
-            ++count;
+            documents->Set((uint32_t) count++, doc);
           }
         }
   
@@ -2230,7 +2228,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   TRI_DestroyIndexResult(&list);
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
-  result->Set(v8::String::New("count"), v8::Number::New(count));
+  result->Set(v8::String::New("count"), v8::Number::New((double) count));
         
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2487,7 +2485,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8::String::New("checksum"), v8::Number::New(helper._checksum));
-  result->Set(v8::String::New("revision"), v8::String::New(rid.c_str(), rid.size()));
+  result->Set(v8::String::New("revision"), v8::String::New(rid.c_str(), (int) rid.size()));
 
   return scope.Close(result);
 }
@@ -2600,7 +2598,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   }
 
   if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(n);
+    v8::Handle<v8::Array> result = v8::Array::New((int) n);
 
     uint32_t j = 0;
 
@@ -2874,7 +2872,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   }
 
   if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(n);
+    v8::Handle<v8::Array> result = v8::Array::New((int) n);
 
     uint32_t j = 0;
 

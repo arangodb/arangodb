@@ -288,13 +288,13 @@ static void FillDistribution (v8::Handle<v8::Object> list,
   v8::Handle<v8::Object> result = v8::Object::New();
 
   result->Set(TRI_V8_SYMBOL("sum"), v8::Number::New(dist._total));
-  result->Set(TRI_V8_SYMBOL("count"), v8::Number::New(dist._count));
+  result->Set(TRI_V8_SYMBOL("count"), v8::Number::New((double) dist._count));
 
   v8::Handle<v8::Array> counts = v8::Array::New((int) dist._counts.size());
   uint32_t pos = 0;
 
   for (vector<uint64_t>::const_iterator i = dist._counts.begin();  i != dist._counts.end();  ++i, ++pos) {
-    counts->Set(pos, v8::Number::New(*i));
+    counts->Set(pos, v8::Number::New((double) *i));
   }
 
   result->Set(TRI_V8_SYMBOL("counts"), counts);
@@ -1127,7 +1127,7 @@ static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
   }
   else {
-    res = v8::String::New(cwd.c_str(), cwd.size());
+    res = v8::String::New(cwd.c_str(), (int) cwd.size());
   }
 
   // return result
@@ -1720,7 +1720,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = TRI_WRITE(1, ptr, len);
+      ssize_t n = TRI_WRITE(1, ptr, (TRI_write_t) len);
 
       if (n < 0) {
         return v8::Undefined();
@@ -1780,7 +1780,7 @@ static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
   double rssp = 0;
 
   if (TRI_PhysicalMemory != 0) {
-    rssp = 100.0 * rss / TRI_PhysicalMemory;
+    rssp = rss / TRI_PhysicalMemory;
   }
 
   result->Set(v8::String::New("minorPageFaults"), v8::Number::New((double) info._minorPageFaults));
@@ -2152,7 +2152,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
           }
 
           bool e;
-          double f = TRI_ObjectToDouble(argv[p], e);
+          double f = TRI_ObjectToDouble(argv[(int) p], e);
 
           if (e) {
             string msg = StringUtils::itoa(p) + ".th argument must be a number in format '" + *format + "'";
@@ -2182,7 +2182,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
             TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
           }
 
-          TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[p]);
+          TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[(int) p]);
 
           if (*text == 0) {
             string msg = StringUtils::itoa(p) + ".th argument must be a string in format '" + *format + "'";
@@ -2208,7 +2208,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
   }
 
   for (size_t i = p;  i < len;  ++i) {
-    TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[i]);
+    TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[(int) i]);
 
     if (*text == 0) {
       string msg = StringUtils::itoa(i) + ".th argument must be a string in format '" + *format + "'";
@@ -2486,7 +2486,7 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
 
   TRI_FillConnectionStatistics(httpConnections, totalRequests, methodRequests, asyncRequests, connectionTime);
 
-  result->Set(v8::String::New("httpConnections"), v8::Number::New(httpConnections._count));
+  result->Set(v8::String::New("httpConnections"), v8::Number::New((double) httpConnections._count));
   FillDistribution(result, "connectionTime", connectionTime);
 
   StatisticsDistribution totalTime;
@@ -2524,16 +2524,16 @@ static v8::Handle<v8::Value> JS_HttpStatistics (v8::Arguments const& argv) {
   TRI_FillConnectionStatistics(httpConnections, totalRequests, methodRequests, asyncRequests, connectionTime);
 
   // request counters
-  result->Set(v8::String::New("requestsTotal"), v8::Number::New(totalRequests._count));
-  result->Set(v8::String::New("requestsAsync"), v8::Number::New(asyncRequests._count));
-  result->Set(v8::String::New("requestsGet"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_GET]._count));
-  result->Set(v8::String::New("requestsHead"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_HEAD]._count));
-  result->Set(v8::String::New("requestsPost"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_POST]._count));
-  result->Set(v8::String::New("requestsPut"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_PUT]._count));
-  result->Set(v8::String::New("requestsPatch"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_PATCH]._count));
-  result->Set(v8::String::New("requestsDelete"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_DELETE]._count));
-  result->Set(v8::String::New("requestsOptions"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_OPTIONS]._count));
-  result->Set(v8::String::New("requestsOther"), v8::Number::New(methodRequests[(int) HttpRequest::HTTP_REQUEST_ILLEGAL]._count));
+  result->Set(v8::String::New("requestsTotal"), v8::Number::New((double) totalRequests._count));
+  result->Set(v8::String::New("requestsAsync"), v8::Number::New((double) asyncRequests._count));
+  result->Set(v8::String::New("requestsGet"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_GET]._count));
+  result->Set(v8::String::New("requestsHead"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_HEAD]._count));
+  result->Set(v8::String::New("requestsPost"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_POST]._count));
+  result->Set(v8::String::New("requestsPut"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_PUT]._count));
+  result->Set(v8::String::New("requestsPatch"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_PATCH]._count));
+  result->Set(v8::String::New("requestsDelete"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_DELETE]._count));
+  result->Set(v8::String::New("requestsOptions"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_OPTIONS]._count));
+  result->Set(v8::String::New("requestsOther"), v8::Number::New((double) methodRequests[(int) HttpRequest::HTTP_REQUEST_ILLEGAL]._count));
 
   return scope.Close(result);
 }
@@ -2558,7 +2558,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   }
 
   char** arguments = 0;
-  size_t n = 0;
+  uint32_t n = 0;
 
   if (2 <= argv.Length()) {
     v8::Handle<v8::Value> a = argv[1];
@@ -2569,7 +2569,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
       n = arr->Length();
       arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
 
-      for (size_t i = 0;  i < n;  ++i) {
+      for (uint32_t i = 0;  i < n;  ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
 
         if (*arg == 0) {
@@ -2600,10 +2600,10 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (const char**) arguments, n, 
+  TRI_CreateExternalProcess(*name, (const char**) arguments, (size_t) n, 
                             usePipes, &external);
   if (arguments != 0) {
-    for (size_t i = 0;  i < n;  ++i) {
+    for (uint32_t i = 0;  i < n;  ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
     }
 
@@ -2632,14 +2632,14 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
     readPipe = TRI_EncodeHexString((const char *)external._readPipe, 
                                    sizeof(HANDLE), &readPipe_len);
     result->Set(v8::String::New("readPipe"), 
-                v8::String::New(readPipe, readPipe_len));
+                v8::String::New(readPipe, (int) readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
   if (0 != external._writePipe) {
     writePipe = TRI_EncodeHexString((const char *)external._writePipe, 
                                     sizeof(HANDLE), &writePipe_len);
     result->Set(v8::String::New("writePipe"), 
-                v8::String::New(writePipe, writePipe_len));
+                v8::String::New(writePipe, (int) writePipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
   }
 #endif
@@ -2662,11 +2662,15 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(argv[0]);
-  if (!obj->Has(pidname)) {
+
+  if (! obj->Has(pidname)) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_BAD_PARAMETER,
                              "statusExternal: pid must be given");
   }
+
   TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
 #else
@@ -2676,6 +2680,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   if (argv.Length() == 2) {
     wait = TRI_ObjectToBoolean(argv[1]);
   }
+
   TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2724,6 +2729,8 @@ static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
                              "statusExternal: pid must be given");
   }
   TRI_external_id_t pid;
+  memset(&pid, 0, sizeof(TRI_external_id_t));
+
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
 #else
@@ -3163,7 +3170,7 @@ v8::Handle<v8::Value> TRI_normalize_V8_Obj (v8::Handle<v8::Value> obj) {
       return scope.Close(v8::String::New(*str, (int) str_len));
     }
 
-    UnicodeString result = normalizer->normalize(UnicodeString((UChar*)(*str), str_len), errorCode);
+    UnicodeString result = normalizer->normalize(UnicodeString((UChar*) *str, (int32_t) str_len), errorCode);
 
     if (U_FAILURE(errorCode)) {
       return scope.Close(v8::String::New(*str, (int) str_len));
