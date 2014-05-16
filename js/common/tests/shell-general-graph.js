@@ -221,11 +221,15 @@ function GeneralGraphCreationSuite() {
 			  }
 		  ]);
 
-	  }
+	  },
 
 
-	  /*test_create : function () {
+	  test_create : function () {
+			try {
+		    arangodb.db._collection("_graphs").remove("_graphs/bla3")
+			} catch (err) {
 
+			}
 
 		  var a = graph._create(
 			  "bla3",
@@ -236,11 +240,13 @@ function GeneralGraphCreationSuite() {
 			    )
 		    )
 		  );
-		  assertTrue(true);
+		  require("console").log(JSON.stringify(a));
+
+		  assertEqual(a, "");
 
 
 
-	  }*/
+	  }
 
 
   }
