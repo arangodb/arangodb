@@ -154,29 +154,141 @@ var edgeDefinitions = function () {
 /// @brief load a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _graph = function() {
-  return new Graph();
-};
-
-
 var Graph = function() {
 
 };
 
+var _graph = function() {
+  return new Graph();
+};
+
+Graph.prototype.edgeCollections = function() {
+  //testdummy
+  return [require("internal").db.w3];
+};
+
+Graph.prototype.vertexCollections = function() {
+  //testdummy
+  return [require("internal").db.a, require("internal").db.b];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype.edges = function(vertexId) {
   var edgeCollections = this.edgeCollections();
+  var result = [];
+
 
   edgeCollections.forEach(
     function(edgeCollection) {
-      edgeCollection.documents().forEach(
-        function(document) {
+      //todo: test, if collection may point to vertex
+      result = result.concat(edgeCollection.edges(vertexId));
+    }
+  );
+  return result;
+};
 
-        }
-      );
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.inEdges = function(vertexId) {
+  var edgeCollections = this.edgeCollections();
+  var result = [];
+
+
+  edgeCollections.forEach(
+    function(edgeCollection) {
+      //todo: test, if collection may point to vertex
+      result = result.concat(edgeCollection.inEdges(vertexId));
+    }
+  );
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief outEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.outEdges = function(vertexId) {
+  var edgeCollections = this.edgeCollections();
+  var result = [];
+
+
+  edgeCollections.forEach(
+    function(edgeCollection) {
+      //todo: test, if collection may point to vertex
+      result = result.concat(edgeCollection.outEdges(vertexId));
+    }
+  );
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get ingoing vertex of an edge.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getInVertex = function(edgeId) {
+  var edgeCollection = this.getEdgeCollectionByName(edgeId.split("/")[0]);
+  var document = edgeCollection.document(edgeId);
+  if (document) {
+    var vertexId = document._from;
+    var vertexCollection = this.getVertexCollectionByName(vertexId.split("/")[0]);
+    return vertexCollection.document(vertexId);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get outgoing vertex of an edge .
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getOutVertex = function(edgeId) {
+  var edgeCollection = this.getEdgeCollectionByName(edgeId.split("/")[0]);
+  var document = edgeCollection.document(edgeId);
+  if (document) {
+    var vertexId = document._to;
+    var vertexCollection = this.getVertexCollectionByName(vertexId.split("/")[0]);
+    return vertexCollection.document(vertexId);
+  }
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get edge collection by name.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getEdgeCollectionByName = function(name) {
+  var edgeCollections = this.edgeCollections();
+  var results = edgeCollections.filter(
+    function(edgeCollection) {
+      return edgeCollection.name() === name;
     }
   );
 
+  if (results.length === 1) {
+    return results[0];
+  }
+  throw "Collection " + name + " does not exist in graph.";
+};
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get vertex collection by name.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype.getVertexCollectionByName = function(name) {
+  var vertexCollections = this.vertexCollections();
+  var results = vertexCollections.filter(
+    function(vertexCollection) {
+      return vertexCollection.name() === name;
+    }
+  );
+
+  if (results.length === 1) {
+    return results[0];
+  }
+  throw "Collection " + name + " does not exist in graph.";
 };
 
 // -----------------------------------------------------------------------------
