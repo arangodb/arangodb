@@ -572,7 +572,6 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        var wrapperDiv = divId + "Div";
         if ( element === switchId){
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
