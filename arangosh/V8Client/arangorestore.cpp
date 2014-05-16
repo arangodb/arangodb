@@ -376,13 +376,11 @@ static string GetArangoVersion () {
 
 static bool GetArangoIsCluster () {
   map<string, string> headers;
-  string command = "return ArangoServerState.role();";
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
-                                        "/_admin/execute?returnAsJSON=true",
-                                               command.c_str(), 
-                                               command.size(),  
-                                               headers); 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+                                        "/_admin/server/role",
+                                        "",
+                                        0,
+                                        headers); 
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -395,8 +393,16 @@ static bool GetArangoIsCluster () {
   string role = "UNDEFINED";
     
   if (response->getHttpReturnCode() == HttpResponse::OK) {
-    // default value
-    role.assign(response->getBody().c_str(), response->getBody().length());
+    // convert response body to json
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                      response->getBody().c_str());
+
+    if (json != 0) {
+      // look up "server" value
+      role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
+
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
   }
   else {
     if (response->wasHttpError()) {
@@ -408,7 +414,7 @@ static bool GetArangoIsCluster () {
 
   delete response;
 
-  return role == "\"COORDINATOR\"";
+  return role == "COORDINATOR";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
