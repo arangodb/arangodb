@@ -7,6 +7,7 @@
   window.ArangoLogs = window.PaginatedCollection.extend({
     upto: false,
     loglevel: 0,
+    totalPages: 0,
 
     parse: function(response) {
       var myResponse = [];
@@ -20,6 +21,7 @@
         });
       });
       this.totalAmount = response.totalAmount;
+      this.totalPages = Math.ceil(this.totalAmount / this.pagesize);
       return myResponse;
     },
 
@@ -35,8 +37,9 @@
     url: function() {
       var type, rtnStr, offset, size;
       offset = this.page * this.pagesize;
-      var inverseOffset = this.totalAmount % this.pagesize - (this.pagesize * this.page);
-      if (inverseOffset < 0) {
+      //var inverseOffset = this.totalAmount - (this.totalAmount % this.pagesize) - (this.pagesize * this.page);
+      var inverseOffset = this.totalAmount - ((this.page + 1) * this.pagesize);
+      if (inverseOffset < 0 && this.page === (this.totalPages - 1)) {
         inverseOffset = 0;
         size = (this.totalAmount % this.pagesize);
       }
@@ -44,6 +47,7 @@
         size = this.pagesize;
       }
 
+      //if totalAmount (first fetch) = 0, then set size to 1 (reduce traffic)
       if (this.totalAmount === 0) {
         size = 1;
       }
