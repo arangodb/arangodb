@@ -140,9 +140,34 @@ var _directedRelationDefinition = function (relationName, fromVertexCollections,
 	};
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _graph = function() {
+  return new Graph();
+};
 
 
+var Graph = function() {
 
+};
+
+Graph.prototype.edges = function(vertexId) {
+  var edgeCollections = this.edgeCollections();
+
+  edgeCollections.forEach(
+    function(edgeCollection) {
+      edgeCollection.documents().forEach(
+        function(document) {
+
+        }
+      );
+    }
+  );
+
+
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
@@ -150,7 +175,7 @@ var _directedRelationDefinition = function (relationName, fromVertexCollections,
 
 exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
-
+exports._graph = _graph;
 
 
 // -----------------------------------------------------------------------------
