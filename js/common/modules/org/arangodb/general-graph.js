@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, arguments */
+/*global require, exports, Graph, arguments */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -29,7 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var collection = require("org/arangodb/arango-collection");
+var arangodb = require("org/arangodb"),
+	ArangoCollection = arangodb.ArangoCollection,
+	db = arangodb.db;
 
 
 // -----------------------------------------------------------------------------
@@ -71,7 +73,26 @@ var isValidCollectionsParameter = function (x) {
 	return true;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create a collection by name
+////////////////////////////////////////////////////////////////////////////////
 
+var findOrCreateCollectionByName = function (name, type) {
+	var col = db._collection(name),res = false;
+	if (col === null) {
+		if (type === ArangoCollection.TYPE_DOCUMENT) {
+			col = db._create(name);
+		} else {
+			col = db._createEdgeCollection(name);
+		}
+		res = true;
+	} else if (!(col instanceof ArangoCollection) || col.type() !== type) {
+		throw "<" + name + "> must be a " +
+			(type === ArangoCollection.TYPE_DOCUMENT ? "document" : "edge")
+		+ " collection";
+	}
+	return res;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -146,9 +167,73 @@ var _directedRelationDefinition = function (
 
 var edgeDefinitions = function () {
 
-  return arguments;
+	var res = [], args = arguments;
+	Object.keys(args).forEach(function (x) {
+		res.push(args[x]);
+	});
+
+	return res;
 
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new graph
+////////////////////////////////////////////////////////////////////////////////
+
+
+var _create = function (graphName, edgeDefinitions) {
+
+	var gdb = db._collection("_graphs"),
+		g,
+		graphAlreadyExists = true,
+		createdCollections = []
+	;
+
+	if (gdb === null) {
+		throw "_graphs collection does not exist.";
+	}
+
+	if (!graphName) {
+		throw "a graph name is required to create a graph.";
+	}
+	if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
+		throw "at least one edge definition is required to create a graph.";
+	}
+
+	try {
+		g = gdb.document(graphName);
+	} catch (e) {
+		if (e.errorNum !== 1202) {
+			throw e;
+		}
+		graphAlreadyExists = false;
+	}
+
+	if (graphAlreadyExists) {
+		throw "graph " + graphName + " already exists.";
+	}
+
+	edgeDefinitions.forEach(function (e) {
+		e.from.concat(e.to).forEach(function (v) {
+			if (findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT)) {
+				createdCollections.push(v);
+			}
+		});
+		if (findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE)) {
+			createdCollections.push(e.collection);
+		}
+	});
+
+	gdb.save({
+		'edgeDefinitions' : edgeDefinitions,
+		'_key' : graphName
+	});
+
+	return new Graph(graphName, edgeDefinitions);
+
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load a graph.
@@ -159,7 +244,7 @@ var _graph = function() {
 };
 
 
-var Graph = function() {
+var Graph = function(graphName, edgeDefinitions) {
 
 };
 
@@ -187,6 +272,7 @@ exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
+exports._create = _create;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
