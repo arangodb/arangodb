@@ -1045,6 +1045,11 @@
 
         printRecursive(object[i], context);
 
+        if (context.emit && context.output.length) {
+          exports.output(context.output);
+          context.output = "";
+        }
+
         context.path = path;
         sep = ", ";
       }
@@ -1178,12 +1183,22 @@
       if (value instanceof Object) {
         if (customInspect && typeof value._PRINT === "function") {
           value._PRINT(context);
+
+          if (context.emit) {
+            exports.output(context.output);
+            context.output = "";
+          }
         }
         else if (value instanceof Array) {
           printArray(value, context);
         }
         else if (value.__proto__ === Object.prototype) {
           printObject(value, context);
+
+          if (context.emit) {
+            exports.output(context.output);
+            context.output = "";
+          }
         }
         else if (typeof value === "function") {
 
@@ -1374,7 +1389,8 @@
           useColor: useColor,
           customInspect: true,
           limitString: 80,
-          useToString: true
+          useToString: true,
+          emit: true
         };
 
         printRecursive(arguments[i], context);
