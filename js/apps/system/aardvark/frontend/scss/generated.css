@@ -4400,8 +4400,11 @@ pre.gv-object-view {
     height: 220px;
     width: 250px; }
 
+.showHotkeyHelp {
+  cursor: pointer; }
+
 .shortcuts {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 200; }
 
 .shortcuts b {
