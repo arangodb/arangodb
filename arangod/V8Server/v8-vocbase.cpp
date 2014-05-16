@@ -6991,7 +6991,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     v8::Handle<v8::Array> shardKeys = v8::Array::New();
     const vector<string> sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
-      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
+      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str(), (int) sks[i].size()));
     }
     result->Set(v8::String::New("shardKeys"), shardKeys);
     result->Set(v8::String::New("numberOfShards"), v8::Number::New((*c).numberOfShards()));
@@ -9889,9 +9889,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
                                                         const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
+  // sanity check
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
