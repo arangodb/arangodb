@@ -24,15 +24,16 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Florian Bartels
+/// @author Florian Bartels, Michael Hackstein
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
+
 var console = require("console");
-var graph = require("org/arangodb/general-graph")
+var graph = require("org/arangodb/general-graph");
 
 var print = arangodb.print;
 
@@ -76,8 +77,7 @@ function GeneralGraphCreationSuite() {
 			  r = graph._undirectedRelationDefinition("relationName", "vertexC1");
 		  }
 		  catch (err) {
-			  console.log("aaaaa", err);
-		  }
+			}
 
 		  assertEqual(r, {
 			  collection: "relationName",
@@ -223,10 +223,132 @@ function GeneralGraphCreationSuite() {
 
 	  }
 
+	  /*test_create : function () {
 
-  }
+
+		  var a = graph._create(
+			  "bla3",
+			  graph.edgeDefinitions(
+			    graph._undirectedRelationDefinition("relationName", "vertexC1"),
+			    graph._directedRelationDefinition("relationName",
+				  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+			    )
+		    )
+		  );
+		  assertTrue(true);
+
+
+
+	  }*/
+
+  };
 
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Simple Queries
+// -----------------------------------------------------------------------------
+
+function GeneralGraphSimpleQueriesSuite() {
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict construct on edges
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictOnEdges: function() {
+      // Creation of a graph content
+      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
+      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+      /*
+      var g = graph._create("graph", [inc, exc]);
+      var incEdge1 = g.included.save({
+        _from: "v1/1",
+        _to:"v2/1",
+        included: true
+      });
+      var incEdge2 = g.included.save({
+        _from: "v1/2",
+        _to:"v1/1",
+        included: true
+      });
+      var excEdge = g.excluded.save({
+        _from: "v1/1",
+        _to:"v3/1",
+        included: false
+      });
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 2);
+      assertNotEqual(result.indexOf(incEdge1), -1);
+      assertNotEqual(result.indexOf(incEdge2), -1);
+      assertEqual(result.indexOf(excEdge), -1);
+      */
+    },
+
+    test_restrictOnInEdges: function() {
+      // Creation of a graph content
+      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
+      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+      /*
+      var g = graph._create("graph", [inc, exc]);
+      var excEdge1 = g.included.save({
+        _from: "v1/1",
+        _to:"v2/1",
+        included: true
+      });
+      var incEdge = g.included.save({
+        _from: "v1/2",
+        _to:"v1/1",
+        included: true
+      });
+      var excEdge2 = g.excluded.save({
+        _from: "v1/1",
+        _to:"v3/1",
+        included: false
+      });
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 1);
+      assertEqual(result.indexOf(excEdge1), -1);
+      assertNotEqual(result.indexOf(incEdge), -1);
+      assertEqual(result.indexOf(excEdge2), -1);
+      */
+    },
+
+    test_restrictOnOutEdges: function() {
+      // Creation of a graph content
+      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
+      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+      /*
+      var g = graph._create("graph", [inc, exc]);
+      var incEdge = g.included.save({
+        _from: "v1/1",
+        _to:"v2/1",
+        included: true
+      });
+      var excEdge1 = g.included.save({
+        _from: "v1/2",
+        _to:"v1/1",
+        included: true
+      });
+      var excEdge2 = g.excluded.save({
+        _from: "v1/1",
+        _to:"v3/1",
+        included: false
+      });
+      var result = g.edges().restrict("v1");
+      assertEqual(result.length, 1);
+      assertNotEqual(result.indexOf(incEdge), -1);
+      assertEqual(result.indexOf(excEdge1), -1);
+      assertEqual(result.indexOf(excEdge2), -1);
+      */
+    }
+
+  };
+
+
+}
+
 
 
 // -----------------------------------------------------------------------------
@@ -238,6 +360,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GeneralGraphCreationSuite);
+jsunity.run(GeneralGraphSimpleQueriesSuite);
 
 return jsunity.done();
 
