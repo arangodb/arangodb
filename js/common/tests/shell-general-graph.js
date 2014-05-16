@@ -251,6 +251,18 @@ function GeneralGraphCreationSuite() {
 
 function GeneralGraphSimpleQueriesSuite() {
 
+  var dropInclExcl = function() {
+    require("internal").db._collection("_graphs").remove("graph");
+  };
+
+  var createInclExcl = function() {
+    dropInclExcl();
+    var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
+    var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+    var g = graph._create("graph", [inc, exc]);
+    return g;
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,11 +270,7 @@ function GeneralGraphSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_restrictOnEdges: function() {
-      // Creation of a graph content
-      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
-      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
-      /*
-      var g = graph._create("graph", [inc, exc]);
+      var g = createInclExcl();
       var incEdge1 = g.included.save({
         _from: "v1/1",
         _to:"v2/1",
@@ -278,71 +286,73 @@ function GeneralGraphSimpleQueriesSuite() {
         _to:"v3/1",
         included: false
       });
+      /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 2);
       assertNotEqual(result.indexOf(incEdge1), -1);
       assertNotEqual(result.indexOf(incEdge2), -1);
       assertEqual(result.indexOf(excEdge), -1);
       */
+      dropInclExcl();
     },
 
     test_restrictOnInEdges: function() {
-      // Creation of a graph content
-      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
-      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
-      /*
-      var g = graph._create("graph", [inc, exc]);
-      var excEdge1 = g.included.save({
+      var g = createInclExcl();
+      var incEdge1 = g.included.save({
         _from: "v1/1",
         _to:"v2/1",
-        included: true
+        included: false
       });
-      var incEdge = g.included.save({
+      var incEdge2 = g.included.save({
         _from: "v1/2",
         _to:"v1/1",
         included: true
       });
-      var excEdge2 = g.excluded.save({
+      var excEdge = g.excluded.save({
         _from: "v1/1",
         _to:"v3/1",
         included: false
       });
+      /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 1);
       assertEqual(result.indexOf(excEdge1), -1);
       assertNotEqual(result.indexOf(incEdge), -1);
       assertEqual(result.indexOf(excEdge2), -1);
       */
+      dropInclExcl();
     },
 
     test_restrictOnOutEdges: function() {
-      // Creation of a graph content
-      var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
-      var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
-      /*
-      var g = graph._create("graph", [inc, exc]);
-      var incEdge = g.included.save({
+      var g = createInclExcl();
+      var incEdge1 = g.included.save({
         _from: "v1/1",
         _to:"v2/1",
         included: true
       });
-      var excEdge1 = g.included.save({
+      var incEdge2 = g.included.save({
         _from: "v1/2",
         _to:"v1/1",
-        included: true
+        included: false
       });
-      var excEdge2 = g.excluded.save({
+      var excEdge = g.excluded.save({
         _from: "v1/1",
         _to:"v3/1",
         included: false
       });
+      /*
       var result = g.edges().restrict("v1");
       assertEqual(result.length, 1);
       assertNotEqual(result.indexOf(incEdge), -1);
       assertEqual(result.indexOf(excEdge1), -1);
       assertEqual(result.indexOf(excEdge2), -1);
       */
-    }
+      dropInclExcl();
+   },
+   
+   test_filterOnEdges: function() {
+
+   },
 
   };
 
