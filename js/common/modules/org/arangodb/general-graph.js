@@ -220,7 +220,7 @@ var _create = function (graphName, edgeDefinitions) {
       vertexCollections[v] = db[v];
     });
     findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
-    edgeCollections[e] = db[e];
+    edgeCollections[e.collection] = db[e.collection];
   });
 
   gdb.save({
@@ -238,9 +238,20 @@ var _create = function (graphName, edgeDefinitions) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
+  var self = this;
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
+
+
+  _.each(vertexCollections, function(obj, key) {
+    self[key] = obj;
+  });
+
+  _.each(edgeCollections, function(obj, key) {
+    self[key] = obj;
+  });
+
 };
 
 var _graph = function() {
