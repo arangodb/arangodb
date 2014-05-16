@@ -14,7 +14,6 @@
         rerender : function () {},
 
         jumpTo: function(page) {
-            var self = this;
             this.collection.setPage(page);
             this.rerender();
         },
