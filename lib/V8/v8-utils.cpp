@@ -1723,7 +1723,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
       ssize_t n = TRI_WRITE(1, ptr, (TRI_write_t) len);
 
       if (n < 0) {
-        return v8::Undefined();
+        break;
       }
 
       len -= n;
