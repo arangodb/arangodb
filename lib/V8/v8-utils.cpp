@@ -2219,7 +2219,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
     result += *text;
   }
 
-  return scope.Close(v8::String::New(result.c_str()));
+  return scope.Close(v8::String::New(result.c_str()), (int) result.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
