@@ -49,6 +49,8 @@ describe("Arango Helper", function () {
         it("check enabling keyboard hotkeys", function() {
           jQueryDummy = {
             on: function () {
+            },
+            keydown: function() {
             }
           };
           spyOn(jQueryDummy, "on");
