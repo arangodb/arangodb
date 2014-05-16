@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*global require, exports, arguments */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -46,8 +46,7 @@ var collection = require("org/arangodb/arango-collection");
 
 
 var stringToArray = function (x) {
-
-	if (typeof x === "String") {
+	if (typeof(x) === "string") {
 		return [x];
 	}
 	return x;
@@ -60,14 +59,13 @@ var stringToArray = function (x) {
 
 
 var isValidCollectionsParameter = function (x) {
-
 	if (!x) {
 		return false;
 	}
 	if (Array.isArray(x) && x.length === 0) {
 		return false;
 	}
-	if (typeof x !== "String" && !Array.isArray(x)) {
+	if (typeof(x) !== "string" && !Array.isArray(x)) {
 		return false;
 	}
 	return true;
@@ -90,7 +88,7 @@ var isValidCollectionsParameter = function (x) {
 
 var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
-	if (_undirectedRelationDefinition.arguments.length < 2) {
+	if (arguments.length < 2) {
 		throw "method _undirectedRelationDefinition expects 2 arguments";
 	}
 
@@ -115,9 +113,10 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _directedRelationDefinition = function (relationName, fromVertexCollections, toVertexCollections) {
+var _directedRelationDefinition = function (
+	relationName, fromVertexCollections, toVertexCollections) {
 
-	if (_directedRelationDefinition.arguments.length < 3) {
+	if (arguments.length < 3) {
 		throw "method _undirectedRelationDefinition expects 3 arguments";
 	}
 
@@ -138,6 +137,17 @@ var _directedRelationDefinition = function (relationName, fromVertexCollections,
 		from: stringToArray(fromVertexCollections),
 		to: stringToArray(toVertexCollections)
 	};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list of edge definitions
+////////////////////////////////////////////////////////////////////////////////
+
+
+var edgeDefinitions = function () {
+
+  return arguments;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +186,7 @@ Graph.prototype.edges = function(vertexId) {
 exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
-
+exports.edgeDefinitions = edgeDefinitions;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
