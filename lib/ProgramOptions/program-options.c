@@ -1532,7 +1532,6 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
   // used by routine getline()
   buffer = NULL;
-  len = 0;
 
   // current section
   section = TRI_DuplicateString("");

@@ -961,16 +961,22 @@ function routeRequest (req, res) {
     }
   };
 
-  next = function () {
+  next = function (restart) {
     action = exports.nextRouting(action);
-    execute();
+
+    if (restart) {
+      routeRequest(req, res);
+    }
+    else {
+      execute();
+    }
   };
 
   execute();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result of a query as documents
+/// @brief defines an http action handler
 ///
 /// @FUN{actions.defineHttp(@FA{options})}
 ///
@@ -1970,6 +1976,31 @@ function redirectRequest (req, res, options, next) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rewrites a request
+////////////////////////////////////////////////////////////////////////////////
+
+function rewriteRequest (req, res, options, next) {
+  'use strict';
+
+  var i = 0;
+  var suffix = options.destination.split("/");
+
+  for (i = 0;  i < suffix.length;  ++i) {
+    if (suffix[i] !== "") {
+      break;
+    }
+  }
+
+  if (0 < i) {
+    suffix = suffix.splice(i);
+  }
+
+  req.suffix = suffix;
+
+  next(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief redirects a request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2093,6 +2124,7 @@ exports.easyPostCallback         = easyPostCallback;
 exports.echoRequest              = echoRequest;
 exports.logRequest               = logRequest;
 exports.redirectRequest          = redirectRequest;
+exports.rewriteRequest           = rewriteRequest;
 exports.pathHandler              = pathHandler;
 
 // some useful constants

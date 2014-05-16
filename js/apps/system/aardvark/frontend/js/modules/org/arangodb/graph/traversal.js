@@ -29,7 +29,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("org/arangodb/graph");
+var graph = require("org/arangodb/graph-blueprint");
 var arangodb = require("org/arangodb");
 var BinaryHeap = require("org/arangodb/heap").BinaryHeap;
 var ArangoError = arangodb.ArangoError;

@@ -25,10 +25,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include <stdio.h>
-#include <iomanip>
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
@@ -50,7 +49,6 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
-
 
 using namespace std;
 using namespace triagens::basics;
@@ -78,7 +76,7 @@ ArangoClient BaseClient;
 /// @brief started counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static volatile int Started = 0;
+static atomic<int> Started;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for start counter
@@ -171,7 +169,6 @@ static string TestCase = "version";
 ////////////////////////////////////////////////////////////////////////////////
 
 static void UpdateStartCounter () {
-  MUTEX_LOCKER(StartMutex);
   ++Started;
 }
 
@@ -180,7 +177,6 @@ static void UpdateStartCounter () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStartCounter () {
-  MUTEX_LOCKER(StartMutex);
   return Started;
 }
 

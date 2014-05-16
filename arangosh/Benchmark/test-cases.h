@@ -930,7 +930,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 // -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
 // -----------------------------------------------------------------------------
-
+  
 struct CollectionCreationTest : public BenchmarkOperation {
   CollectionCreationTest ()
     : BenchmarkOperation (),
@@ -940,14 +940,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
   }
 
   ~CollectionCreationTest () {
-  }
-
-  BenchmarkCounter<uint64_t>* getSharedCounter () {
-    if (_counter == 0) {
-      _counter = new BenchmarkCounter<uint64_t>(0, 1024 * 1024);
-    }
-
-    return _counter;
   }
 
   bool setUp (SimpleHttpClient* client) {
@@ -966,18 +958,16 @@ struct CollectionCreationTest : public BenchmarkOperation {
   }
 
   const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
-    BenchmarkCounter<uint64_t>* ctr = getSharedCounter();
     TRI_string_buffer_t* buffer;
     char* data;
 
-    ctr->next(1);
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 64);
     if (buffer == 0) {
       return 0;
     }
     TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendUInt64StringBuffer(buffer, ctr->getValue());
+    TRI_AppendUInt64StringBuffer(buffer, ++_counter);
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
     *length = TRI_LengthStringBuffer(buffer);
@@ -990,10 +980,12 @@ struct CollectionCreationTest : public BenchmarkOperation {
     return (const char*) data;
   }
 
-  static BenchmarkCounter<uint64_t>* _counter;
+  static atomic<uint64_t> _counter;
 
   string _url;
 };
+
+atomic<uint64_t> CollectionCreationTest::_counter(0);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  transaction test
@@ -1228,12 +1220,6 @@ struct TransactionMultiTest : public BenchmarkOperation {
   string _c1;
   string _c2;
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-BenchmarkCounter<uint64_t>* CollectionCreationTest::_counter = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

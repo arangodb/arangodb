@@ -95,12 +95,22 @@
                     return d3ChartDummy;
                 },
 
+                forceY : function () {
+                    return d3ChartDummy;
+
+                },
+
                 yAxis: {
                     tickFormat: function (a) {
                         a();
+                        return d3ChartDummy.yAxis;
                     },
 
                     showMaxMin: function () {
+                        return d3ChartDummy.yAxis;
+                    },
+                    tickValues : function () {
+                        return d3ChartDummy.yAxis;
                     }
                 },
 
@@ -167,33 +177,42 @@
 
 
             expect(view.interval).toEqual(10000);
-            expect(view.defaultFrame).toEqual(20 * 60 * 1000);
+            expect(view.defaultTimeFrame).toEqual(20 * 60 * 1000);
             expect(view.defaultDetailFrame).toEqual(2 * 24 * 60 * 60 * 1000);
             expect(view.history).toEqual({});
             expect(view.graphs).toEqual({});
-            expect(view.alreadyCalledDetailChart).toEqual([]);
 
             expect(view.events).toEqual({
-                "click .dashboard-chart": jasmine.any(Function),
+                "click .dashboard-large-chart-menu": jasmine.any(Function),
                 "mousedown .dygraph-rangesel-zoomhandle": jasmine.any(Function),
                 "mouseup .dygraph-rangesel-zoomhandle": jasmine.any(Function)
             });
 
             expect(view.tendencies).toEqual({
-
-                asyncRequestsCurrent: ["asyncRequestsCurrent", "asyncRequestsCurrentPercentChange"],
-                asyncRequestsAverage: ["asyncPerSecond15M", "asyncPerSecondPercentChange15M"],
-                clientConnectionsCurrent: ["clientConnectionsCurrent",
-                    "clientConnectionsCurrentPercentChange"
+                asyncPerSecondCurrent: [
+                    "asyncPerSecondCurrent", "asyncPerSecondCurrentPercentChange"
+                ],
+                syncPerSecondCurrent: [
+                    "syncPerSecondCurrent", "syncPerSecondCurrentPercentChange"
+                ],
+                clientConnectionsCurrent: [
+                    "clientConnectionsCurrent", "clientConnectionsCurrentPercentChange"
                 ],
                 clientConnectionsAverage: [
                     "clientConnections15M", "clientConnectionsPercentChange15M"
                 ],
                 numberOfThreadsCurrent: [
-                    "numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"],
-                numberOfThreadsAverage: ["numberOfThreads15M", "numberOfThreadsPercentChange15M"],
-                virtualSizeCurrent: ["virtualSizeCurrent", "virtualSizePercentChange"],
-                virtualSizeAverage: ["virtualSize15M", "virtualSizePercentChange15M"]
+                    "numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"
+                ],
+                numberOfThreadsAverage: [
+                    "numberOfThreads15M", "numberOfThreadsPercentChange15M"
+                ],
+                virtualSizeCurrent: [
+                    "virtualSizeCurrent", "virtualSizePercentChange"
+                ],
+                virtualSizeAverage: [
+                    "virtualSize15M", "virtualSizePercentChange15M"
+                ]
             });
 
             expect(view.barCharts).toEqual({
@@ -206,8 +225,8 @@
 
 
             expect(view.barChartsElementNames).toEqual({
-                queueTimeDistributionPercent: "Queue Time",
-                requestTimeDistributionPercent: "Request Time",
+                queueTimeDistributionPercent: "Queue",
+                requestTimeDistributionPercent: "Computation",
                 bytesSentDistributionPercent: "Bytes sent",
                 bytesReceivedDistributionPercent: "Bytes received"
 
@@ -244,7 +263,7 @@
         });
 
 
-        it("showDetail", function () {
+       /* it("showDetail", function () {
             spyOn(view, "getDetailFigure").andReturn("requestsAsync");
             spyOn(view, "getStatistics");
             spyOn(modalDummy, "hide");
@@ -309,7 +328,7 @@
                     width: 84
                 });
 
-        });
+        });*/
 
         it("hidden", function () {
             view.detailGraph = {destroy: function () {
@@ -432,14 +451,14 @@
 
         it("updateTendencies", function () {
             var jQueryDummy = {
-                text: function () {
+                html: function () {
 
                 }
             };
             spyOn(window, "$").andReturn(
                 jQueryDummy
             );
-            spyOn(jQueryDummy, "text").andCallThrough();
+            spyOn(jQueryDummy, "html").andCallThrough();
 
             view.tendencies = {"a": 1, "b": 2, "c": 3};
             view.history = {
@@ -451,9 +470,16 @@
             expect(window.$).toHaveBeenCalledWith('#a');
             expect(window.$).toHaveBeenCalledWith('#b');
             expect(window.$).toHaveBeenCalledWith('#c');
-            expect(jQueryDummy.text).toHaveBeenCalledWith("1 (2 %)");
-            expect(jQueryDummy.text).toHaveBeenCalledWith("3 (4 %)");
-            expect(jQueryDummy.text).toHaveBeenCalledWith("5 (6 %)");
+            expect(jQueryDummy.html).toHaveBeenCalledWith(
+                '1<br/><span class="dashboard-figurePer" style="color: green;">2%</span>'
+            );
+            expect(jQueryDummy.html).toHaveBeenCalledWith(
+                '3<br/><span class="dashboard-figurePer" style="color: green;">4%</span>'
+            );
+
+            expect(jQueryDummy.html).toHaveBeenCalledWith(
+                '5<br/><span class="dashboard-figurePer" style="color: green;">6%</span>'
+            );
 
         });
 
@@ -596,8 +622,7 @@
 
             spyOn(view, "mergeDygraphHistory");
             spyOn(view, "mergeBarChartData");
-            view.mergeHistory(param, true);
-            expect(view.mergeBarChartData).not.toHaveBeenCalled();
+            view.mergeHistory(param);
             expect(view.mergeDygraphHistory).toHaveBeenCalledWith(param, 0);
             expect(view.mergeDygraphHistory).toHaveBeenCalledWith(param, 1);
 
@@ -630,11 +655,11 @@
                 {
                     b1: {
                         cuts: ["cuts"],
-                        values: [1, 2]
+                        values: [2, 1]
                     },
                     b2: {
                         cuts: ["cuts2"],
-                        values: [3, 4]
+                        values: [4, 3]
                     }
                 }
             )
@@ -667,7 +692,7 @@
             spyOn(view, "mergeHistory");
             spyOn($, "ajax").andCallFake(function (url, opt) {
                 expect(url).toEqual(
-                    "statistics/full?start=10000&serverEndpoint=abcde&DbServer=xyz"
+                    "abcde/_admin/aardvark/statistics/cluster?start=10000&DBserver=xyz"
                 );
                 expect(opt.async).toEqual(false);
                 return {
@@ -682,7 +707,7 @@
             view.getStatistics();
             expect(view.mergeHistory).toHaveBeenCalledWith({
                 times: [1, 2, 3]
-            }, false);
+            });
             expect(view.isUpdating).toEqual(true);
 
         });
@@ -712,95 +737,6 @@
             expect(view.isUpdating).toEqual(false);
         });
 
-        it("getStatistics with not loaded figure", function () {
-            view.nextStart = 10000;
-            view.server = {
-                endpoint: "abcde",
-                target: "xyz"
-            };
-            spyOn(view, "mergeHistory");
-            spyOn($, "ajax").andCallFake(function (url, opt) {
-                expect(opt.async).toEqual(false);
-                return {
-                    done: function (y) {
-                        y({
-                            times: [1, 2, 3]
-                        });
-                    }
-                };
-            });
-
-            view.getStatistics("abc");
-            expect(view.mergeHistory).toHaveBeenCalledWith({
-                times: [1, 2, 3]
-            }, true);
-            expect(view.isUpdating).toEqual(true);
-            expect(view.alreadyCalledDetailChart).toEqual(["abc"]);
-
-        });
-
-        it("getStatistics with already loaded figure", function () {
-            view.nextStart = 10000;
-            view.alreadyCalledDetailChart = ["abc"];
-            view.server = {
-                endpoint: "abcde",
-                target: "xyz"
-            };
-            spyOn(view, "mergeHistory");
-            spyOn($, "ajax");
-
-            view.getStatistics("abc");
-            expect(view.mergeHistory).not.toHaveBeenCalledWith({
-                times: [1, 2, 3]
-            }, true);
-            expect($.ajax).not.toHaveBeenCalled();
-            expect(view.alreadyCalledDetailChart).toEqual(["abc"]);
-
-        });
-
-        it("prepare ResidentSize", function () {
-            spyOn(nv, "addGraph").andCallFake(function (a, b) {
-                a();
-                b();
-            });
-            spyOn(nv.utils, "windowResize");
-            spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
-
-            spyOn(d3, "select").andReturn(d3ChartDummy);
-
-
-            spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
-
-            view.history = {residentSizeChart: [
-                {
-                    "key": "",
-                    "color": dyGraphConfigDummy.colors[1],
-                    "values": [
-                        {
-                            label: "used",
-                            value: 20
-                        }
-                    ]
-                },
-                {
-                    "key": "",
-                    "color": dyGraphConfigDummy.colors[0],
-                    "values": [
-                        {
-                            label: "used",
-                            value: 80
-                        }
-                    ]
-                }
-
-            ], virtualSizeCurrent: [10, 20]};
-            view.prepareResidentSize(true);
-
-            expect(view.getCurrentSize).toHaveBeenCalledWith('#residentSizeChartContainer');
-            expect(nv.models.multiBarHorizontalChart).toHaveBeenCalled();
-
-        });
-
 
         it("prepare D3Charts", function () {
             spyOn(nv, "addGraph").andCallFake(function (a, b) {
@@ -811,6 +747,7 @@
             spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
 
             spyOn(d3, "select").andReturn(d3ChartDummy);
+
 
 
             spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});

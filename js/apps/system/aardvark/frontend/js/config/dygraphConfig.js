@@ -30,15 +30,15 @@
             }
             var vals = {}, res;
             mergeAttribList.forEach(function (a) {
-                var valO1 = o1[a],
-                    valO2 = o2[a];
-                if (valO1 === undefined) {
-                    valO1 = {};
-                }
-                if (valO2 === undefined) {
-                    valO2 = {};
-                }
-                vals[a] = _.extend(valO1, valO2);
+              var valO1 = o1[a],
+                  valO2 = o2[a];
+              if (valO1 === undefined) {
+                valO1 = {};
+              }
+              if (valO2 === undefined) {
+                valO2 = {};
+              }
+              vals[a] = _.extend(valO1, valO2);
             });
             res = _.extend(o1, o2);
             Object.keys(vals).forEach(function (k) {
@@ -52,7 +52,7 @@
             residentSize : ["times", "residentSizePercent"],
             virtualSize : ["times", "virtualSize"],
             pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
-            systemUserTime : ["times", "cpuSystemTime", "cpuUserTime"],
+            systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
             httpConnections : ["times", "clientConnections"],
             totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
             dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
@@ -140,7 +140,7 @@
             totalTime: {
                 div: "totalTimeChart",
                 header: "Total Time",
-                labels: ["datetime", "Queue Time", "Request Time", "IO Time"],
+                labels: ["datetime", "Queue", "Computation", "I/O"],
                 labelsKMG2: false,
                 axes: {
                     y: {
@@ -189,12 +189,12 @@
         getDefaultConfig: function (figure) {
             var self = this;
             var result = {
-                digitsAfterDecimal: 2,
+                digitsAfterDecimal: 1,
                 drawGapPoints: true,
                 fillGraph: true,
                 showLabelsOnHighlight: false,
                 strokeWidth: 2,
-                strokeBorderWidth: 1,
+                strokeBorderWidth: 0.5,
                 includeZero: true,
                 highlightCircleSize: 0,
                 labelsSeparateLines : true,
@@ -202,13 +202,14 @@
                 interactionModel: {},
                 maxNumberWidth : 10,
                 colors: [this.colors[0]],
-                xAxisLabelWidth: "60",
-                rightGap: 10,
+                xAxisLabelWidth: "50",
+                rightGap: 15,
                 showRangeSelector: false,
-                rangeSelectorHeight: 40,
+                rangeSelectorHeight: 50,
                 rangeSelectorPlotStrokeColor: '#365300',
-                rangeSelectorPlotFillColor: '#414a4c',
-                pixelsPerLabel: 60,
+                rangeSelectorPlotFillColor: '',
+                // rangeSelectorPlotFillColor: '#414a4c',
+                pixelsPerLabel: 50,
                 labelsKMG2: true,
                 dateWindow: [
                     new Date().getTime() -
@@ -249,8 +250,9 @@
                     interactionModel: null,
                     showLabelsOnHighlight: true,
                     highlightCircleSize: 3,
-                    legend : "always",
-                    labelsDiv : document.getElementById("detailLegend")
+                    legend: "always", 
+                    labelsDiv: "div#detailLegend.dashboard-legend-inner"
+                    // labelsDiv: document.getElementById("detailLegend")
                 }
             );
             if (figure === "pageFaults") {

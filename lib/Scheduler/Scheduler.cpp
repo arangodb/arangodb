@@ -238,16 +238,11 @@ TRI_json_t* Scheduler::getUserTasks () {
       Task* task = (*i).first;
 
       if (task->isUserDefined()) {
-        TRI_json_t* obj = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+        TRI_json_t* obj = task->toJson(); 
 
         if (obj != 0) {
-          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, obj, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, task->id().c_str()));
-          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, obj, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, task->name().c_str()));
-
-          task->getDescription(obj);
+          TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
         }
-
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
       }
 
       ++i;
@@ -255,6 +250,27 @@ TRI_json_t* Scheduler::getUserTasks () {
   }
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a single user task
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Scheduler::getUserTask (string const& id) {
+  MUTEX_LOCKER(schedulerLock);
+
+  map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+  while (i != task2thread.end()) {
+    Task* task = (*i).first;
+
+    if (task->isUserDefined() && task->id() == id) {
+      return task->toJson(); 
+    }
+
+    ++i;
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

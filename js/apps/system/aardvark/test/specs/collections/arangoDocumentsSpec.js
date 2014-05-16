@@ -210,7 +210,7 @@
                 expect(opt.async).toEqual(false);
                 expect(opt.beforeSend).toNotBe(undefined);
                 expect(opt.data).toEqual(JSON.stringify(
-                        {startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]}));
+                        {figures: ["bytesSend, totalTime"]}));
                 opt.success({result: [
                     {bytesSend: 1, totalTime: 2, time: 4},
                     {bytesSend: 2, totalTime: 2, time: 4},
@@ -219,7 +219,7 @@
                 });
             });
             var result = col.getStatisticsHistory(
-                {startDate: 15000, endDate: 18000, figures: ["bytesSend, totalTime"]});
+                {figures: ["bytesSend, totalTime"]});
             expect(JSON.stringify(col.history)).toEqual(JSON.stringify([
                 {bytesSend: 1, totalTime: 2, time: 4},
                 {bytesSend: 2, totalTime: 2, time: 4},
@@ -236,7 +236,7 @@
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
                 expect(opt.beforeSend).toNotBe(undefined);
-                expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
+                expect(opt.data).toEqual(JSON.stringify({
                         figures: ["bytesSend, totalTime"]}));
                 opt.error();
             });
@@ -255,7 +255,7 @@
                 expect(opt.cache).toEqual(false);
                 expect(opt.async).toEqual(false);
                 expect(opt.beforeSend).toNotBe(undefined);
-                expect(opt.data).toEqual(JSON.stringify({startDate: 15000, endDate: 18000,
+                expect(opt.data).toEqual(JSON.stringify({
                         figures: ["bytesSend, totalTime"]}));
                 opt.error();
             });

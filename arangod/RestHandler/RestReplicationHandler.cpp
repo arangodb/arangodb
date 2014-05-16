@@ -2184,7 +2184,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
   if (! col->empty()) {
@@ -2193,12 +2193,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
                                               errorMsg, 0.0);
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
-
-        // instead, truncate them
-        // ...
-        // do a fanout to all shards and truncate them, use col and asyncreq.
-        // return res;
-        return res;
+        res = truncateCollectionOnCoordinator(dbName, name);
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate collection (dropping is forbidden): "+
+                     name;
+          return res;
+        }
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2218,16 +2218,12 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // now re-create the collection
   // dig out number of shards:
+  uint64_t numberOfShards = 1;
   TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, "shards");
-  if (0 == shards) {
-    errorMsg = "did not find \"shards\" attribute in parameters";
-    return TRI_ERROR_INTERNAL;
+  if (0 != shards && TRI_IsArrayJson(shards)) {
+    numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
   }
-  if (! TRI_IsArrayJson(shards)) {
-    errorMsg = "\"shards\" attribute in parameters is not an array";
-    return TRI_ERROR_INTERNAL;
-  }
-  uint64_t numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
+  // We take one shard if "shards" was not given
   
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
@@ -2261,7 +2257,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_json_t* type = TRI_LookupArrayJson(parameters, "type");
   TRI_col_type_e collectionType;
   if (TRI_IsNumberJson(type)) {
-    collectionType = (TRI_col_type_e) type->_value._number;
+    collectionType = (TRI_col_type_e) ((int) type->_value._number);
   }
   else {
     errorMsg = "collection type not given or wrong";
@@ -2458,7 +2454,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     errorMsg = "could not find collection '" + name + "'";
@@ -2844,7 +2840,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  TRI_shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -2902,7 +2898,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
       const char* key       = 0;
       TRI_json_t const* doc = 0;
-      TRI_replication_operation_e type;
+      TRI_replication_operation_e type = REPLICATION_INVALID;
 
       const size_t n = json->_value._objects._length;
 
@@ -3028,8 +3024,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     }
 
     // Now listen to the results:
-    int count;
-    int nrok = 0;
+    unsigned int count;
+    unsigned int nrok = 0;
     for (count = (int) shardIdsMap.size(); count > 0; count--) {
       result = cc->wait( "", coordTransactionID, 0, "", 0.0);
       if (result->status == CL_COMM_RECEIVED) {

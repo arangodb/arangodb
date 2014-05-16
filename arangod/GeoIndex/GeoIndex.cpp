@@ -730,7 +730,7 @@ void GeoMkDetail(GeoIx * gix, GeoDetailedPoint * gd, GeoCoordinate * c)
         z1=(gix->fixed.z)[i];
         snmd=(xx1-gd->x)*(xx1-gd->x)+(yy1-gd->y)*(yy1-gd->y)+
                           (z1-gd->z)*(z1-gd->z);
-        (gd->fixdist)[i] = asin(sqrt(snmd)/2.0)*ARCSINFIX;
+        (gd->fixdist)[i] = (GeoFix) (asin(sqrt(snmd)/2.0)*ARCSINFIX);
     }
 }
 /* =================================================== */
@@ -770,7 +770,7 @@ void GeoSetDistance(GeoDetailedPoint * gd, double snmd)
     GeoFix gf;
     int i;
     gd->snmd = snmd;
-    gf = asin(sqrt(snmd)/2.0)*ARCSINFIX;
+    gf = (GeoFix) (asin(sqrt(snmd)/2.0)*ARCSINFIX);
     gf++;
     for(i=0;i<GeoIndexFIXEDPOINTS;i++)
     {
@@ -2285,13 +2285,12 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
     gp = gix->pots + 1;
     if(gp->start !=0) return 15;
     if(gp->end != 0x1FFFFFFFFFFFFFll) return 16;
-    slot=0;
+    slot = 0;
     usage[1]++;
-    slot=(gix->gc[slot]).latitude;
-    while(slot!=0)
-    {
+    slot = (int) ((gix->gc[slot]).latitude);
+    while (slot!=0) {
         usage[1]++;
-        slot=(gix->gc[slot]).latitude;
+        slot = (int) ((gix->gc[slot]).latitude);
     }
     if(usage[1]!=gix->slotct) return 17;
     return 0;

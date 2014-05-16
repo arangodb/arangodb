@@ -385,7 +385,7 @@ static int CloneDocumentMarker (TRI_voc_tid_t tid,
   }
 
   // copy non-changed data (e.g. key(s)) from old marker into new marker
-  TRI_CloneMarker(&marker->base, original, baseLength, (TRI_voc_size_t) *totalSize);
+  TRI_CloneMarker(&marker->base, original, (TRI_voc_size_t) baseLength, (TRI_voc_size_t) *totalSize);
   assert(marker->_rid != 0);
   // the new revision must be greater than the old one
 
@@ -545,8 +545,8 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
     position += toSize;
     TRI_CopyString(position, (char*) edge->_fromKey, fromSize);
     
-    edgeMarker->_offsetToKey     = (uint16_t) markerSize + keySize;
-    edgeMarker->_offsetFromKey   = (uint16_t) markerSize + keySize + toSize;
+    edgeMarker->_offsetToKey     = (uint16_t) (markerSize + keySize);
+    edgeMarker->_offsetFromKey   = (uint16_t) (markerSize + keySize + toSize);
     edgeMarker->_fromCid         = edge->_fromCid;
     edgeMarker->_toCid           = edge->_toCid;
   }
@@ -1820,7 +1820,11 @@ static int BeginReadTimed (TRI_primary_collection_t* primary,
   uint64_t waited = 0;
 
   while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary)) {
-    usleep(sleepPeriod);
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
 
     waited += sleepPeriod;
 
@@ -1842,7 +1846,11 @@ static int BeginWriteTimed (TRI_primary_collection_t* primary,
   uint64_t waited = 0;
 
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary)) {
-    usleep(sleepPeriod);
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
 
     waited += sleepPeriod;
 
@@ -4039,12 +4047,13 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // undefined. Determine if this is the case.
   // ...........................................................................
 
-  supportUndef = false;
   supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
+
   if (supportUndefIndex == NULL || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if index supports undefined values", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
+
   supportUndef = supportUndefIndex->_value._boolean;
 
   // ...........................................................................
@@ -4146,16 +4155,14 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // determine if the hash index is unique or non-unique
-  unique = false;
   bv = TRI_LookupArrayJson(definition, "unique");
 
-  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
-    unique = bv->_value._boolean;
-  }
-  else {
+  if (bv == NULL || bv->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
+
+  unique = bv->_value._boolean;
 
   // Initialise the vector in which we store the fields on which the hashing
   // will be based.

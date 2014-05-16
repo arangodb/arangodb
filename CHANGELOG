@@ -1,16 +1,24 @@
 v2.1.0 (XXXX-XX-XX)
 -------------------
 
+* added server-side periodic task management functions:
+
+  - require("org/arangodb/tasks").register(): registers a periodic task
+  - require("org/arangodb/tasks").unregister(): unregisters and removes a 
+    periodic task
+  - require("org/arangodb/tasks").get(): retrieves a specific tasks or all
+    existing tasks
+
+  the previous undocumented function `internal.definePeriodic` is now
+  deprecated and will be removed in a future release.
+
 * decrease the size of some seldomly used system collections on creation. 
 
   This will make these collections use less disk space and mapped memory.
 
-* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
-  value when called the 2nd time after a .save to the edge collection
-
 * added AQL date functions
 
-* added AQL FLATTEN() and FLATTEN_RECURSIVE() list functions
+* added AQL FLATTEN() list function
 
 * added index memory statistics to `db.<collection>.figures()` function
 
@@ -108,6 +116,8 @@ v2.1.0 (XXXX-XX-XX)
 
 * export the sort attribute for graph traversals to the HTTP interface
 
+* add support for arangodump/arangorestore for clusters
+
 
 v2.0.8 (XXXX-XX-XX)
 -------------------
@@ -126,6 +136,9 @@ v2.0.8 (XXXX-XX-XX)
   ETCD was non-functional on 32 bit systems at all. The first call to the
   watch API crashed it. This was because atomic operations worked on data
   structures that were not properly aligned on 32 bit systems. 
+
+* fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
+  value when called the 2nd time after a .save to the edge collection
 
 
 v2.0.7 (2014-05-05)
@@ -473,6 +486,12 @@ v2.0.0-rc1 (2014-02-28)
 
 v1.4.16 (XXXX-XX-XX)
 --------------------
+
+* fixed too eager datafile deletion
+
+  this issue could have caused a crash when the compaction had marked datafiles as obsolete
+  and they were removed while "old" temporary query results still pointed to the old datafile
+  positions
 
 * fixed issue #826: Replication fails when a collection's configuration changes
 

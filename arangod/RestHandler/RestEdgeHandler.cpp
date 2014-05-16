@@ -149,7 +149,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// Create an edge and read it back:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgeCreateEdge}
-///     var Graph = require("org/arangodb/graph").Graph;
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     g.addVertex(1);
 ///     g.addVertex(2);

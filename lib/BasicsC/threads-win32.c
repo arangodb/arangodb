@@ -150,7 +150,7 @@ bool TRI_StartThread (TRI_thread_t* thread, TRI_tid_t* threadId, const char* nam
   d = (thread_data_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
 
   if (d == NULL) {
-	return false;
+    return false;
   }
 
   d->starter = starter;
