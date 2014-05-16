@@ -183,11 +183,9 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-	var gdb = db._collection("_graphs"),
+	var gdb = db["_graphs"],
 		g,
-		graphAlreadyExists = true,
-		createdCollections = []
-	;
+		graphAlreadyExists = true;
 
 	if (gdb === null) {
 		throw "_graphs collection does not exist.";
@@ -215,13 +213,9 @@ var _create = function (graphName, edgeDefinitions) {
 
 	edgeDefinitions.forEach(function (e) {
 		e.from.concat(e.to).forEach(function (v) {
-			if (findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT)) {
-				createdCollections.push(v);
-			}
+			findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
 		});
-		if (findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE)) {
-			createdCollections.push(e.collection);
-		}
+		findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
 	});
 
 	gdb.save({
@@ -234,17 +228,37 @@ var _create = function (graphName, edgeDefinitions) {
 };
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load a graph.
+/// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
 
 var Graph = function(graphName, edgeDefinitions) {
 
 };
 
-var _graph = function() {
-  return new Graph();
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _graph = function(graphName) {
+
+	var gdb = db["_graphs"],
+		g;
+
+	if (gdb === null) {
+		throw "_graphs collection does not exist.";
+	}
+
+	try {
+		g = gdb.document(graphName);
+	} catch (e) {
+		require("internal").print(e)
+		throw e;
+	}
+
+  return new Graph(graphName, g.edgeDefinitions);
 };
 
 Graph.prototype.edgeCollections = function() {
