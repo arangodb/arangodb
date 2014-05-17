@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -31,11 +31,14 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
+var db = arangodb.db;
 
 var console = require("console");
 var graph = require("org/arangodb/general-graph");
 
 var print = arangodb.print;
+
+var _ = require("underscore");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      graph module
@@ -252,12 +255,19 @@ function GeneralGraphCreationSuite() {
 function GeneralGraphSimpleQueriesSuite() {
 
   var dropInclExcl = function() {
-    var col = require("internal").db._collection("_graphs");
+    var col = db._collection("_graphs");
     try {
       col.remove("graph");
     } catch (e) {
       return;
     }
+    var colList = ["v1", "v2", "v3", "included", "excluded"];
+    _.each(colList, function(c) {
+      var colToClear = db._collection(c);
+      if (col) {
+        colToClear.truncate();
+      }
+    });
   };
 
   var createInclExcl = function() {
@@ -266,6 +276,12 @@ function GeneralGraphSimpleQueriesSuite() {
     var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
     var g = graph._create("graph", [inc, exc]);
     return g;
+  };
+
+  var findIdInResult = function(result, id) {
+    return _.some(result, function(i) {
+      return i._id === id; 
+    });
   };
 
   return {
@@ -282,28 +298,26 @@ function GeneralGraphSimpleQueriesSuite() {
         {
           included: true
         }
-      );
+      )._id;
       var incEdge2 = g.included.save(
         "v1/2",
         "v1/1",
         {
           included: true
         }
-      );
+      )._id;
       var excEdge = g.excluded.save(
         "v1/1",
         "v3/1",
         {
           included: false
         }
-      );
-      /*
-      var result = g.edges().restrict("v1");
+      )._id;
+      var result = g.edges("v1/1").restrict("included");
       assertEqual(result.length, 2);
-      assertNotEqual(result.indexOf(incEdge1), -1);
-      assertNotEqual(result.indexOf(incEdge2), -1);
-      assertEqual(result.indexOf(excEdge), -1);
-      */
+      assertTrue(findIdInResult(result, incEdge1));
+      assertTrue(findIdInResult(result, incEdge2));
+      assertFalse(findIdInResult(result, excEdge));
       dropInclExcl();
     },
 
@@ -319,28 +333,26 @@ function GeneralGraphSimpleQueriesSuite() {
         {
           included: false
         }
-      );
+      )._id;
       var incEdge = g.included.save(
         "v1/2",
         "v1/1",
         {
           included: true
         }
-      );
+      )._id;
       var excEdge2 = g.excluded.save(
         "v1/1",
         "v3/1",
         {
           included: false
         }
-      );
-      /*
-      var result = g.edges().restrict("v1");
+      )._id;
+      var result = g.inEdges("v1/1").restrict("included");
       assertEqual(result.length, 1);
-      assertEqual(result.indexOf(excEdge1), -1);
-      assertNotEqual(result.indexOf(incEdge), -1);
-      assertEqual(result.indexOf(excEdge2), -1);
-      */
+      assertTrue(findIdInResult(result, incEdge));
+      assertFalse(findIdInResult(result, excEdge1));
+      assertFalse(findIdInResult(result, excEdge2));
       dropInclExcl();
     },
 
@@ -356,28 +368,26 @@ function GeneralGraphSimpleQueriesSuite() {
         {
           included: true
         }
-      );
+      )._id;
       var excEdge1 = g.included.save(
         "v1/2",
         "v1/1",
         {
           included: false
         }
-      );
+      )._id;
       var excEdge2 = g.excluded.save(
         "v1/1",
         "v3/1",
         {
           included: false
         }
-      );
-      /*
-      var result = g.edges().restrict("v1");
+      )._id;
+      var result = g.outEdges("v1/1").restrict("included");
       assertEqual(result.length, 1);
-      assertNotEqual(result.indexOf(incEdge), -1);
-      assertEqual(result.indexOf(excEdge1), -1);
-      assertEqual(result.indexOf(excEdge2), -1);
-      */
+      assertTrue(findIdInResult(result, incEdge));
+      assertFalse(findIdInResult(result, excEdge1));
+      assertFalse(findIdInResult(result, excEdge2));
       dropInclExcl();
    },
 
