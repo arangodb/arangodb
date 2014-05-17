@@ -456,6 +456,10 @@ TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
+  if (sid >= TRI_FirstCustomShapeIdShaper() || sid == 0) {
+    return NULL;
+  }
+
   if (sid == BasicShapes._sidNull) {
     return &BasicShapes._shapeNull;
   }
@@ -503,14 +507,6 @@ TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const* shape) {
   }
 
   return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the first id for user-defined shapes
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_sid_t TRI_FirstCustomShapeIdShaper () {
-  return 7;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
