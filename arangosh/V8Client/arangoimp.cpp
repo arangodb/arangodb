@@ -434,6 +434,8 @@ int main (int argc, char* argv[]) {
     cerr << "error message:    " << ih.getErrorMessage() << endl;
   }
 
+  delete ClientConnection;
+
   TRIAGENS_REST_SHUTDOWN;
 
   arangoimpExitFunction(ret, NULL);

@@ -2209,14 +2209,21 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // cleanup
   // .............................................................................
+      
+  v8::V8::LowMemoryNotification();
+  while (! v8::V8::IdleNotification()) {
+  }
 
   context->Exit();
   context.Dispose(isolate);
+  isolate->Exit();
+  isolate->Dispose();
 
   BaseClient.closeLog();
-
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
+ 
+  if (ClientConnection != 0) {
+    delete ClientConnection;
+  }
 
   TRIAGENS_REST_SHUTDOWN;
 
