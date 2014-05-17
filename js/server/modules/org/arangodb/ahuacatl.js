@@ -299,7 +299,7 @@ function FIX_VALUE (value) {
     return value;
   }
 
-  var type = typeof(value), i;
+  var type = typeof(value);
 
   if (value === undefined || 
       value === null || 
@@ -312,7 +312,8 @@ function FIX_VALUE (value) {
   }
 
   if (Array.isArray(value)) {
-    for (i = 0; i < value.length; ++i) {
+    var i, n = value.length;
+    for (i = 0; i < n; ++i) {
       value[i] = FIX_VALUE(value[i]);
     }
 
@@ -341,27 +342,25 @@ function FIX_VALUE (value) {
 function TYPEWEIGHT (value) {
   "use strict";
 
-  if (value === undefined || value === null) {
-    return TYPEWEIGHT_NULL;
-  }
+  if (value !== undefined && value !== null) {
+    if (Array.isArray(value)) {
+      return TYPEWEIGHT_LIST;
+    }
 
-  if (Array.isArray(value)) {
-    return TYPEWEIGHT_LIST;
-  }
-
-  switch (typeof(value)) {
-    case 'boolean':
-      return TYPEWEIGHT_BOOL;
-    case 'number':
-      if (isNaN(value) || ! isFinite(value)) {
-        // not a number => undefined
-        return TYPEWEIGHT_NULL; 
-      }
-      return TYPEWEIGHT_NUMBER;
-    case 'string':
-      return TYPEWEIGHT_STRING;
-    case 'object':
-      return TYPEWEIGHT_DOCUMENT;
+    switch (typeof(value)) {
+      case 'boolean':
+        return TYPEWEIGHT_BOOL;
+      case 'number':
+        if (isNaN(value) || ! isFinite(value)) {
+          // not a number => undefined
+          return TYPEWEIGHT_NULL; 
+        } 
+        return TYPEWEIGHT_NUMBER;
+      case 'string':
+        return TYPEWEIGHT_STRING;
+      case 'object':
+        return TYPEWEIGHT_DOCUMENT;
+    }
   }
 
   return TYPEWEIGHT_NULL;
@@ -687,10 +686,6 @@ function NORMALIZE (value) {
 
 function DOCUMENT_MEMBER (value, attributeName) {
   "use strict";
-
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
-    return null;
-  }
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     return null;
