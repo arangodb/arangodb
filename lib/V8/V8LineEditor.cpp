@@ -185,6 +185,99 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
 
   return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  computes all strings which begins with the given text
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Completer::getAlternatives(char const * text, vector<string> & result) {
+    // locate global object or sub-object
+    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+    string path;
+    char* prefix;
+
+    if (*text != '\0') {
+      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+
+      if (1 < splitted._length) {
+        for (size_t i = 0;  i < splitted._length - 1;  ++i) {
+          v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
+
+          if (! current->Has(name)) {
+            TRI_DestroyVectorString(&splitted);
+            return;
+          }
+
+          v8::Handle<v8::Value> val = current->Get(name);
+
+          if (! val->IsObject()) {
+            TRI_DestroyVectorString(&splitted);
+            return;
+          }
+
+          current = val->ToObject();
+          path = path + splitted._buffer[i] + ".";
+        }
+
+        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
+      }
+      else {
+        prefix = TRI_DuplicateString(text);
+      }
+
+      TRI_DestroyVectorString(&splitted);
+    }
+    else {
+      prefix = TRI_DuplicateString(text);
+    }
+
+    v8::HandleScope scope;
+
+    // compute all possible completions
+    v8::Handle<v8::Array> properties;
+    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
+
+    if (current->HasOwnProperty(cpl)) {
+      v8::Handle<v8::Value> funcVal = current->Get(cpl);
+
+      if (funcVal->IsFunction()) {
+        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
+        v8::Handle<v8::Value> args;
+        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+
+        if (cpls->IsArray()) {
+          properties = v8::Handle<v8::Array>::Cast(cpls);
+        }
+      }
+    }
+    else {
+      properties = current->GetPropertyNames();
+    }
+
+    // locate
+    if (! properties.IsEmpty()) {
+      const uint32_t n = properties->Length();
+
+      for (uint32_t i = 0;  i < n;  ++i) {
+        v8::Handle<v8::Value> v = properties->Get(i);
+
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+        char const* s = *str;
+
+        if (s != 0 && *s) {
+          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+          string name = path + s + suffix;
+
+          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+            result.push_back(name);
+          }
+        }
+      }
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor
 // -----------------------------------------------------------------------------
