@@ -169,7 +169,9 @@ TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
 /// @brief returns the first id for user-defined shapes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void);
+static inline TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void) {
+  return 7;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises global basic shape types
