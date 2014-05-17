@@ -55,6 +55,8 @@ class V8Completer : public Completer {
   state;
 
   virtual bool isComplete(std::string const&, size_t lineno, size_t column);
+
+  virtual void getAlternatives(char const *, vector<string> &);
 };
 
 // -----------------------------------------------------------------------------
