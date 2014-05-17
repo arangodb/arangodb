@@ -39,11 +39,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a byte-code sequence
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -244,15 +239,12 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   }
 
   accessor->_shape = shape;
-  accessor->_code = static_cast<void const**>(TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false));
 
-  if (accessor->_code == NULL) {
-    LOG_ERROR("out of memory");
-    TRI_DestroyVectorPointer(&ops);
-    return false;
-  }
+  // steal buffer from ops vector so we don't need to copy it
+  accessor->_code = const_cast<void const**>(ops._buffer);
 
-  memcpy(CONST_CAST(accessor->_code), ops._buffer, ops._length * sizeof(void*));
+  // inform the vector that we took over ownership
+  ops._buffer = NULL; 
 
   TRI_DestroyVectorPointer(&ops);
   return true;
@@ -278,7 +270,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 
   while (true) {
     TRI_shape_ac_bc_e op = *(TRI_shape_ac_bc_e*) ops;
-    ops++;
+    ++ops;
 
     switch (op) {
       case TRI_SHAPE_AC_DONE:
@@ -311,18 +303,9 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a shape accessor
@@ -374,16 +357,10 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
 bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
                                TRI_shaped_json_t const* shaped,
                                TRI_shaped_json_t* result) {
-  void* begin;
-  void* end;
-  bool ok;
+  void* begin = shaped->_data.data;
+  void* end   = ((char*) begin) + shaped->_data.length;
 
-  begin = shaped->_data.data;
-  end   = ((char*) begin) + shaped->_data.length;
-
-  ok = ExecuteBytecodeShapeAccessor(accessor, &begin, &end);
-
-  if (! ok) {
+  if (! ExecuteBytecodeShapeAccessor(accessor, &begin, &end)) {
     return false;
   }
 
@@ -446,10 +423,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
