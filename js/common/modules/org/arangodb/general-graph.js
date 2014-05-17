@@ -100,6 +100,28 @@ var findOrCreateCollectionByName = function (name, type) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                             Fluent AQL bindins
+// -----------------------------------------------------------------------------
+
+var bindFluentAQLFunctionsToArray = function(arr) {
+  var filter = arr.filter.bind(arr);
+  arr.restrict = function(collections) {
+    if (typeof collections === "string") {
+      collections = [collections];
+    }
+    if (!Array.isArray(collections)) {
+      throw "Restrict requires either one collection name, or a list of them."
+    }
+    var res = filter(function(i) {
+      var colName = i._id.split("/")[0];
+      return _.contains(collections, colName);
+    });
+    return res;
+  };
+};
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 public functions
 // -----------------------------------------------------------------------------
 
@@ -289,6 +311,7 @@ Graph.prototype.edges = function(vertexId) {
       result = result.concat(edgeCollection.edges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
@@ -307,6 +330,7 @@ Graph.prototype.inEdges = function(vertexId) {
       result = result.concat(edgeCollection.inEdges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
@@ -325,6 +349,7 @@ Graph.prototype.outEdges = function(vertexId) {
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
