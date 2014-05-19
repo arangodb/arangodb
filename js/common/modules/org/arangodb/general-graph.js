@@ -159,8 +159,8 @@ AQLGenerator.prototype.edges = function(startVertex, direction) {
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertex_"
-    + this.stack.length + ","
-    + direction + ")";
+    + this.stack.length + ',"'
+    + direction + '")';
   this.bindVars["startVertex_" + this.stack.length] = startVertex;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
@@ -228,11 +228,14 @@ AQLGenerator.prototype.printQuery = function() {
 };
 
 AQLGenerator.prototype.execute = function() {
-  //TODO Implement -> db._query().execute()
+  var query = this.printQuery();
+  var bindVars = this.bindVars;
+  query += " RETURN " + this.getLastEdgeVar();
+  return db._query(query, bindVars);
 };
 
 AQLGenerator.prototype.toArray = function() {
-  return this.exectue().toArray();
+  return this.execute().toArray();
 };
 
 // -----------------------------------------------------------------------------
