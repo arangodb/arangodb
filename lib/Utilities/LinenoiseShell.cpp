@@ -26,7 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LinenoiseShell.h"
-#include "Completer.h"
+#include "Utilities/Completer.h"
+#include "Utilities/LineEditor.h"
 
 #include "V8/v8-utils.h"
 
@@ -48,8 +49,11 @@ namespace {
 
   static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions * lc) {
     vector<string> alternatives;
-    if(COMPLETER) {
+
+    if (COMPLETER) {
       COMPLETER->getAlternatives(text, alternatives);
+      LineEditor::sortAlternatives(alternatives);
+
       for(vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); i++) {
         linenoiseAddCompletion(lc, (*i).c_str());
       }

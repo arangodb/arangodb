@@ -43,7 +43,7 @@ namespace triagens {
   /// @brief constructs a new editor
   ////////////////////////////////////////////////////////////////////////////////
 
-  ShellImplementation::ShellImplementation(string const& history, Completer * completer)
+  ShellImplementation::ShellImplementation (string const& history, Completer * completer)
     : _current(),
     _historyFilename(history),
     _state(STATE_NONE),
@@ -55,7 +55,7 @@ namespace triagens {
   /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////////
 
-  ShellImplementation::~ShellImplementation() {
+  ShellImplementation::~ShellImplementation () {
   }
 
   // -----------------------------------------------------------------------------
@@ -66,7 +66,7 @@ namespace triagens {
   /// @brief line editor prompt
   ////////////////////////////////////////////////////////////////////////////////
 
-  char* ShellImplementation::prompt(char const* the_prompt) {
+  char* ShellImplementation::prompt (char const* the_prompt) {
     string dotdot;
     char const* p = the_prompt;
     size_t len1 = strlen(the_prompt);

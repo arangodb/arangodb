@@ -27,14 +27,14 @@
 
 
 #include "ReadlineShell.h"
-#include "Completer.h"
+#include "Utilities/Completer.h"
+#include "Utilities/LineEditor.h"
 
 #include <iostream>
 #include <readline/readline.h>
 #include <readline/history.h>
 
 #include "BasicsC/tri-strings.h"
-
 
 #include <vector>
 
@@ -63,6 +63,7 @@ namespace {
     // compute the possible completion
     if(state == 0) {
       COMPLETER->getAlternatives(text, result);
+      LineEditor::sortAlternatives(result);
     }
 
     if (currentIndex < result.size()) {
