@@ -285,6 +285,21 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(edgeCollections, function(obj, key) {
     self[key] = obj;
+    var old_save = obj.save.bind(obj);
+    obj.save = function(from, to, data) {
+      edgeDefinitions.forEach(
+        function(edgeDefinition) {
+          if (edgeDefinition.collection === key) {
+            var fromCollection = from.split("/")[0];
+            var toCollection = to.split("/")[0];
+            if (! _.contains(edgeDefinition.from, fromCollection) || ! _.contains(edgeDefinition.to, toCollection)) {
+              throw "Edge is not allowed between " + from + " and " + to + ".";
+            }
+          }
+        }
+      );
+      return old_save(from, to, data);
+    }
   });
 };
 
