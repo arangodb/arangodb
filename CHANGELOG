@@ -24,6 +24,10 @@ v2.1.0 (XXXX-XX-XX)
 
 * fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 
+
+v2.1.0-rc1 (XXXX-XX-XX)
+-----------------------
+
 * added server-side periodic task management functions:
 
   - require("org/arangodb/tasks").register(): registers a periodic task
