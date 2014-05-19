@@ -11,7 +11,6 @@
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
     initialize: function () {
-      var self = this;
       this.collectionsView = this.options.collectionsView;
     },
     events: {
@@ -93,7 +92,6 @@
         }
       }
 
-      var collid = this.model.get('id');
       var status = this.model.get('status');
 
       if (status === 'loaded') {

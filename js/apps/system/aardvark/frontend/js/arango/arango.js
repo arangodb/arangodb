@@ -81,12 +81,82 @@
       return returnVal;
     },
 
+    allHotkeys: {
+      global: {
+        name: "Site wide",
+        content: [{
+          label: "scroll up",
+          letter: "j"
+        },{
+          label: "scroll down",
+          letter: "k"
+        },{
+          label: "shortcuts help",
+          letter: "?"
+        }]
+      },
+      jsoneditor: {
+        name: "AQL editor",
+        content: [{
+          label: "Submit",
+          letter: "Ctrl/Cmd + Return"
+        },{
+          label: "Toggle comments",
+          letter: "Ctrl/Cmd + Shift + C"
+        },{
+          label: "Undo",
+          letter: "Ctrl/Cmd + Z"
+        },{
+          label: "Redo",
+          letter: "Ctrl/Cmd + Shift + Z"
+        }]
+      },
+      doceditor: {
+        name: "Document editor",
+        content: [{
+          label: "Insert",
+          letter: "Ctrl + Insert"
+        },{
+          label: "Append",
+          letter: "Ctrl + Shift + Insert"
+        },{
+          label: "Duplicate",
+          letter: "Ctrl + D"
+        },{
+          label: "Remove",
+          letter: "Ctrl + Delete"
+        }]
+      },
+      modals: {
+        name: "Modal",
+        content: [{
+          label: "Submit",
+          letter: "Return"
+        },{
+          label: "Close",
+          letter: "Esc"
+        },{
+          label: "Navigate buttons",
+          letter: "Arrow keys"
+        },{
+          label: "Navigate content",
+          letter: "Tab"
+        }]
+      }
+    },
+
     hotkeysFunctions: {
       scrollDown: function () {
         window.scrollBy(0,180);
       },
       scrollUp: function () {
         window.scrollBy(0,-180);
+      },
+      showHotkeysModal: function () {
+        var buttons = [],
+        content = window.arangoHelper.allHotkeys;
+
+        window.modalView.show("modalHotkeys.ejs", "Keyboard Shortcuts", buttons, content);
       }
     },
 
@@ -95,13 +165,20 @@
       if (enable === true) {
         $(document).on('keydown', null, 'j', hotkeys.scrollDown);
         $(document).on('keydown', null, 'k', hotkeys.scrollUp);
-      }
+        $(document).keydown(function(e) {
+          if (e.shiftKey){
+            if (e.which === 191) {
+              hotkeys.showHotkeysModal();
+            }
+          }
+        });
 
+      }
     },
 
     databaseAllowed: function () {
       var currentDB = this.currentDatabase(),
-        returnVal = false;
+      returnVal = false;
       $.ajax({
         type: "GET",
         cache: false,
@@ -144,26 +221,26 @@
       // code would load ALL collections when the web interface
       // is called
       /*
-      var returnVal = false;
-      $.ajax({
-        type: "GET",
-        url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function(data) {
-          returnVal = data.isSystem;
-        },
-        error: function(data) {
-          returnVal = false;
-        }
-      });
-      return returnVal;
-      */
+         var returnVal = false;
+         $.ajax({
+type: "GET",
+url: "/_api/collection/" + encodeURIComponent(val) + "/properties",
+contentType: "application/json",
+processData: false,
+async: false,
+success: function(data) {
+returnVal = data.isSystem;
+},
+error: function(data) {
+returnVal = false;
+}
+});
+return returnVal;
+*/
     },
 
     setDocumentStore : function (a) {
-        this.arangoDocumentStore = a;
+      this.arangoDocumentStore = a;
     },
 
     collectionApiType: function (identifier, refresh) {
@@ -184,7 +261,7 @@
       }
       var type;
       if (val.type === 2) {
-          type = "document";
+        type = "document";
       }
       else if (val.type === 3) {
         type = "edge";
@@ -216,10 +293,10 @@
     escapeHtml: function (val) {
       // HTML-escape a string
       return String(val).replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#39;');
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
     }
 
   };

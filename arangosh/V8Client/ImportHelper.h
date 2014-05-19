@@ -93,16 +93,16 @@ namespace triagens {
 /// @brief imports a delimited file
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool importDelimited (const string& collectionName,
-                            const string& fileName,
-                            const DelimitedImportType typeImport);
+      bool importDelimited (std::string const& collectionName,
+                            std::string const& fileName,
+                            DelimitedImportType typeImport);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a file with JSON objects
 /// each line must contain a complete JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool importJson (const string& collectionName, const string& fileName);
+      bool importJson (std::string const& collectionName, std::string const& fileName);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the quote character
@@ -128,15 +128,23 @@ namespace triagens {
 /// @param bool value                create the collection if it does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setCreateCollection (const bool value) {
+      void setCreateCollection (bool value) {
         _createCollection = value;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to overwrite existing data in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+      void setOverwrite (bool value) {
+        _overwrite = value;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the progress indicator
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setProgress (const bool value) {
+      void setProgress (bool value) {
         _progress = value;
       }
 
@@ -193,9 +201,9 @@ namespace triagens {
       static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
       static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
 
-      void reportProgress (const int64_t, const int64_t, double&);
+      void reportProgress (int64_t, int64_t, double&);
 
-      string getCollectionUrlPart ();
+      std::string getCollectionUrlPart ();
       void beginLine (size_t row);
       void addField (char const* field, size_t row, size_t column, bool escaped);
       void addLastField (char const* field, size_t row, size_t column, bool escaped);
@@ -208,11 +216,13 @@ namespace triagens {
       httpclient::SimpleHttpClient* _client;
       uint64_t _maxUploadSize;
 
-      string _separator;
-      string _quote;
+      std::string _separator;
+      std::string _quote;
 
       bool _createCollection;
+      bool _overwrite;
       bool _progress;
+      bool _firstChunk;
 
       size_t _numberLines;
       size_t _numberOk;
@@ -221,16 +231,16 @@ namespace triagens {
       size_t _rowsRead;
       size_t _rowOffset;
 
-      string _collectionName;
+      std::string _collectionName;
       triagens::basics::StringBuffer _lineBuffer;
       triagens::basics::StringBuffer _outputBuffer;
-      string _firstLine;
+      std::string _firstLine;
 
       regex_t _doubleRegex;
       regex_t _intRegex;
 
       bool _hasError;
-      string _errorMessage;
+      std::string _errorMessage;
 
       static const double ProgressStep;
     };

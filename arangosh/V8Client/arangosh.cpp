@@ -648,6 +648,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   string const oldPassword     = BaseClient.password();
 
   delete connection;
+  ClientConnection = 0;
 
   BaseClient.setEndpointString(definition);
   BaseClient.setDatabaseName(databaseName);
@@ -656,6 +657,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   // re-connect using new options
   BaseClient.createEndpoint();
+
   if (BaseClient.endpointServer() == 0) {
     BaseClient.setEndpointString(oldDefinition);
     BaseClient.setDatabaseName(oldDatabaseName);
@@ -2209,14 +2211,21 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // cleanup
   // .............................................................................
+      
+  v8::V8::LowMemoryNotification();
+  while (! v8::V8::IdleNotification()) {
+  }
 
   context->Exit();
   context.Dispose(isolate);
+  isolate->Exit();
+  isolate->Dispose();
 
   BaseClient.closeLog();
-
-  // calling dispose in V8 3.10.x causes a segfault. the v8 docs says its not necessary to call it upon program termination
-  // v8::V8::Dispose();
+ 
+  if (ClientConnection != 0) {
+    delete ClientConnection;
+  }
 
   TRIAGENS_REST_SHUTDOWN;
 
