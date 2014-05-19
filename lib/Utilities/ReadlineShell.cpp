@@ -69,6 +69,7 @@ namespace {
       return TRI_SystemDuplicateString(result[currentIndex++].c_str());
     }
     else {
+      currentIndex = 0;
       result.clear();
       return 0;
     }
