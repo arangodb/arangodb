@@ -192,7 +192,7 @@ AQLGenerator.prototype.filter = function(example) {
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
     if (Object.prototype.toString.call(example) !== "[object Object]") {
-      throw "The example has to be an Object, or an Array"
+      throw "The example has to be an Object, or an Array";
     }
     ex = [example];
   } else {
