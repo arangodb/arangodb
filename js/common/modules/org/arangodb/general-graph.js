@@ -101,20 +101,20 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
-	var vertexCollections = {},
-	edgeCollections = {};
-	edgeDefinitions.forEach(function (e) {
-		e.from.concat(e.to).forEach(function (v) {
-			findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
-			vertexCollections[v] = db[v];
-		});
-		findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
-		edgeCollections[e.collection] = db[e.collection];
-	});
-	return [
-		vertexCollections,
-		edgeCollections
-	];
+  var vertexCollections = {},
+  edgeCollections = {};
+  edgeDefinitions.forEach(function (e) {
+    e.from.concat(e.to).forEach(function (v) {
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      vertexCollections[v] = db[v];
+    });
+    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
+    edgeCollections[e.collection] = db[e.collection];
+  });
+  return [
+    vertexCollections,
+    edgeCollections
+  ];
 };
 
 
@@ -316,7 +316,7 @@ var _create = function (graphName, edgeDefinitions) {
   var gdb = db._graphs,
     g,
     graphAlreadyExists = true,
-	  collections;
+    collections;
 
   if (gdb === null) {
     throw "_graphs collection does not exist.";
@@ -340,7 +340,7 @@ var _create = function (graphName, edgeDefinitions) {
     throw "graph " + graphName + " already exists.";
   }
 
-	collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
+  collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
 
   gdb.save({
     'edgeDefinitions' : edgeDefinitions,
@@ -370,6 +370,22 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(edgeCollections, function(obj, key) {
     self[key] = obj;
+    var old_save = obj.save.bind(obj);
+    obj.save = function(from, to, data) {
+      edgeDefinitions.forEach(
+        function(edgeDefinition) {
+          if (edgeDefinition.collection === key) {
+            var fromCollection = from.split("/")[0];
+            var toCollection = to.split("/")[0];
+            if (! _.contains(edgeDefinition.from, fromCollection)
+              || ! _.contains(edgeDefinition.to, toCollection)) {
+              throw "Edge is not allowed between " + from + " and " + to + ".";
+            }
+          }
+        }
+      );
+      return old_save(from, to, data);
+    };
   });
 };
 
@@ -382,7 +398,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 var _graph = function(graphName) {
 
   var gdb = db._graphs,
-	  g, collections;
+    g, collections;
 
   if (gdb === null) {
     throw "_graphs collection does not exist.";
@@ -391,15 +407,15 @@ var _graph = function(graphName) {
   try {
     g = gdb.document(graphName);
   } catch (e) {
-	  if (e.errorNum !== 1202) {
-		  throw e;
-	  }
-	  throw "graph " + graphName + " does not exists.";
-	}
+    if (e.errorNum !== 1202) {
+      throw e;
+    }
+    throw "graph " + graphName + " does not exists.";
+  }
 
-	collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+  collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
 
-	return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
+  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
