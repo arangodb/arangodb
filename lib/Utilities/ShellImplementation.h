@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract line editor
-///
+/// @brief a basis class for concrete implementations for a shell
+///       
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,84 +21,58 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Esteban Lombeyda
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILITIES_LINE_EDITOR_H
-#define TRIAGENS_UTILITIES_LINE_EDITOR_H 1
+#ifndef TRIAGENS_UTILITIES_SHELL_IMPLEMENTATION_H
+#define TRIAGENS_UTILITIES_SHELL_IMPLEMENTATION_H 1
 
-#include "Basics/Common.h"
-#include "LineEditor.h"
+#include <string>
+
 #include "Completer.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor
-////////////////////////////////////////////////////////////////////////////////
 namespace triagens {
-  class ShellImplementation;
- 
-  class LineEditor {
-    LineEditor(LineEditor const&);
-    LineEditor& operator= (LineEditor const&);
+  using namespace std;
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                  public constants
-    // -----------------------------------------------------------------------------
+  class ShellImplementation {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief state of the console                                  protected types
+    ////////////////////////////////////////////////////////////////////////////////
+  protected:
+    typedef enum {
+      STATE_NONE = 0,
+      STATE_OPENED,
+      STATE_CLOSED
+    }
+    console_state_e;
 
   public:
-
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief number of history entries
-    ////////////////////////////////////////////////////////////////////////////////
-
-    static const int MAX_HISTORY_ENTRIES = 1000;
-
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                      constructors and destructors
-    // -----------------------------------------------------------------------------
-
-  public:
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief constructor
+    ///                                               public constructor, destructor
     ////////////////////////////////////////////////////////////////////////////////
 
-    LineEditor (std::string const& history);
+    ShellImplementation (std::string const& history, Completer *);
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief destructor
-    ////////////////////////////////////////////////////////////////////////////////
-
-    virtual ~LineEditor ();
-
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                    public methods
-    // -----------------------------------------------------------------------------
-
-  public:
+    virtual ~ShellImplementation ();
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief line editor open
     ////////////////////////////////////////////////////////////////////////////////
 
-    bool open (bool autoComplete);
+    virtual bool open (bool autoComplete)  = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief line editor shutdown
     ////////////////////////////////////////////////////////////////////////////////
 
-    bool close ();
+    virtual bool close () = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief line editor prompt
     ////////////////////////////////////////////////////////////////////////////////
 
-    char* prompt (char const*);
+    virtual char* prompt (char const* prompt);
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief get the history file path
@@ -107,67 +81,60 @@ namespace triagens {
     /// the local file _historyFilename.
     ////////////////////////////////////////////////////////////////////////////////
 
-    std::string historyPath ();
+    virtual std::string historyPath () = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief add to history
     ////////////////////////////////////////////////////////////////////////////////
 
-    void addHistory (const char*);
+    virtual void addHistory (const char*) = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief save the history
     ////////////////////////////////////////////////////////////////////////////////
 
-    bool writeHistory ();
+    virtual bool writeHistory () = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief sort the alternatives results vector
+    /// @brief todo!!
     ////////////////////////////////////////////////////////////////////////////////
 
-    static void sortAlternatives (std::vector<std::string>&);
+    virtual char * getLine (const char*) = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @}
     ////////////////////////////////////////////////////////////////////////////////
 
     // -----------------------------------------------------------------------------
-    // --SECTION--                                                 protected methods
-    // -----------------------------------------------------------------------------
-  
-  protected:
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief      arranges for the correct creation of the the ShellImplementation
-    ////////////////////////////////////////////////////////////////////////////////
-
-    void prepareShell ();
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief      creates a concrete Shell with the correct parameter (Completer!!)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    virtual void initializeShell () = 0;
-
-  protected:
-
-    // -----------------------------------------------------------------------------
     // --SECTION--                                               protected variables
     // -----------------------------------------------------------------------------
 
-    ShellImplementation * _shellImpl;
+  protected:
 
-    std::string _history;
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief current text
+    ////////////////////////////////////////////////////////////////////////////////
+
+    std::string _current;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief history filename
+    ////////////////////////////////////////////////////////////////////////////////
+
+    std::string _historyFilename;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief current console state
+    ////////////////////////////////////////////////////////////////////////////////
+
+    console_state_e _state;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief object which defines when the input is finished
+    ////////////////////////////////////////////////////////////////////////////////
+
+    Completer * _completer;
+
   };
 }
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
-
