@@ -313,7 +313,7 @@ function GeneralGraphSimpleQueriesSuite() {
           included: false
         }
       )._id;
-      var result = g.edges("v1/1").restrict("included");
+      var result = g._edges("v1/1").restrict("included");
       assertEqual(result.length, 2);
       assertTrue(findIdInResult(result, incEdge1));
       assertTrue(findIdInResult(result, incEdge2));
@@ -348,7 +348,7 @@ function GeneralGraphSimpleQueriesSuite() {
           included: false
         }
       )._id;
-      var result = g.inEdges("v1/1").restrict("included");
+      var result = g._inEdges("v1/1").restrict("included");
       assertEqual(result.length, 1);
       assertTrue(findIdInResult(result, incEdge));
       assertFalse(findIdInResult(result, excEdge1));
@@ -383,7 +383,7 @@ function GeneralGraphSimpleQueriesSuite() {
           included: false
         }
       )._id;
-      var result = g.outEdges("v1/1").restrict("included");
+      var result = g._outEdges("v1/1").restrict("included");
       assertEqual(result.length, 1);
       assertTrue(findIdInResult(result, incEdge));
       assertFalse(findIdInResult(result, excEdge1));
