@@ -184,7 +184,8 @@ function FILTER (list, examples) {
 
   var result = [ ], i;
 
-  if (examples === undefined || examples === null) {
+  if (examples === undefined || examples === null ||
+	  (Array.isArray(examples) && examples.length === 0)) {
     return list;
   }
 
@@ -4116,6 +4117,85 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
   return result;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, maxLength) {
+	"use strict";
+
+	/*var searchDirection;
+	direction      = direction || "outbound";
+	followCycles   = followCycles || false;
+	minLength      = minLength || 0;
+	maxLength      = maxLength !== undefined ? maxLength : 10;
+
+
+	var graph = DOCUMENT_HANDLE("_graph" + graphname);
+	if (!graph) {
+		THROW(INTERNAL.errors.ERROR_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+	}
+
+	var vertexCollections = [];
+
+	// validate arguments
+	if (direction === "outbound") {
+		searchDirection = 1;
+		graph.__edgeDefinitions.forEach(function (def) {
+			vertexCollections.concat(def.from);
+		});
+	}
+	else if (direction === "inbound") {
+		graph.__edgeDefinitions.forEach(function (def) {
+			vertexCollections.concat(def.to);
+		});
+		searchDirection = 2;
+	}
+	else if (direction === "any") {
+		graph.__edgeDefinitions.forEach(function (def) {
+			vertexCollections.concat(def.to);
+			vertexCollections.concat(def.from);
+		});
+		searchDirection = 3;
+	}
+	else {
+		THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+	}
+
+	if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
+		THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+	}
+
+
+
+	var searchAttributes = {
+		//edgeCollection : COLLECTION(edgeCollection),
+		minLength : minLength,
+		maxLength : maxLength,
+		direction : searchDirection,
+		followCycles : followCycles
+	};
+
+	var result = [ ];
+	var n = vertices.length, i, j;
+	for (i = 0; i < n; ++i) {
+		var vertex = vertices[i];
+		var visited = { };
+
+		visited[vertex._id] = true;
+		//GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
+		var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+		for (j = 0; j < connected.length; ++j) {
+			result.push(connected[j]);
+		}
+	}
+
+	return result;*/
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -4474,7 +4554,97 @@ function GRAPH_EDGES (edgeCollection,
   }
 
   return FILTER(result, examples);
-} 
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected edges
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_EDGES (graphname,
+                              startvertex,
+                              direction,
+                              edgeexamples,
+                              collectionRestrictions) {
+	"use strict";
+
+
+	//check graph exists and load edgeDefintions
+	var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
+	if (!graph) {
+		THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "EDGES");
+	}
+
+	//check startvertex exists and parse identifier
+	var start = DOCUMENT_HANDLE(startvertex);
+	if (!start) {
+		THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "EDGES");
+	}
+	var startCollection = startvertex.split("/")[0];
+
+	var edgeCollections = [];
+
+	// validate direction and create edgeCollection array.
+	if (direction === "outbound") {
+		graph.edgeDefinitions.forEach(function (def) {
+			if (def.from.indexOf(startCollection) !== -1 &&
+					edgeCollections.indexOf(def.collection) === -1) {
+				edgeCollections.push(def.collection);
+			}
+		});
+	}
+	else if (direction === "inbound") {
+		graph.edgeDefinitions.forEach(function (def) {
+			if (def.to.indexOf(startCollection) !== -1  &&
+				edgeCollections.indexOf(def.collection) === -1) {
+				edgeCollections.push(def.collection);
+			}
+		});
+	}
+	else if (direction === "any") {
+		graph.edgeDefinitions.forEach(function (def) {
+			if ((def.from.indexOf(startCollection) !== -1 ||
+					def.to.indexOf(startCollection) !== -1)  &&
+				edgeCollections.indexOf(def.collection) === -1) {
+				edgeCollections.push(def.collection);
+			}
+		});
+	}
+	else {
+		THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
+	}
+
+	if (collectionRestrictions) {
+		if (typeof collectionRestrictions === "string") {
+			collectionRestrictions = [collectionRestrictions];
+		}
+		edgeCollections.forEach(function (e) {
+			if (collectionRestrictions.indexOf(e) === -1) {
+				edgeCollections.splice(edgeCollections.indexOf(e));
+			}
+		});
+	}
+
+	//Now get the result.
+
+	var result = [];
+
+	edgeCollections.forEach(function (c) {
+		c = COLLECTION(c);
+		if (direction === "outbound") {
+			result = result.concat(c.outEdges(startvertex));
+		}
+		else if (direction === "inbound") {
+			result = result.concat(c.inEdges(startvertex));
+		}
+		else if (direction === "any") {
+			result = result.concat(c.edges(startvertex));
+		}
+	});
+
+	return FILTER(result, edgeexamples);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
@@ -4639,6 +4809,7 @@ exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;
+exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
 exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
