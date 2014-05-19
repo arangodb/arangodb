@@ -32,6 +32,7 @@
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
   db = arangodb.db,
+  errors = arangodb.errors,
   _ = require("underscore");
 
 
@@ -325,7 +326,7 @@ var _create = function (graphName, edgeDefinitions) {
     graphAlreadyExists = true,
     collections;
 
-  if (gdb === null) {
+  if (gdb === null || gdb === undefined) {
     throw "_graphs collection does not exist.";
   }
   if (!graphName) {
@@ -337,7 +338,7 @@ var _create = function (graphName, edgeDefinitions) {
   try {
     g = gdb.document(graphName);
   } catch (e) {
-    if (e.errorNum !== 1202) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     graphAlreadyExists = false;
@@ -407,14 +408,15 @@ var _graph = function(graphName) {
   var gdb = db._graphs,
     g, collections;
 
-  if (gdb === null) {
+  if (gdb === null || gdb === undefined) {
     throw "_graphs collection does not exist.";
   }
 
   try {
     g = gdb.document(graphName);
-  } catch (e) {
-    if (e.errorNum !== 1202) {
+  } 
+  catch (e) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     throw "graph " + graphName + " does not exists.";

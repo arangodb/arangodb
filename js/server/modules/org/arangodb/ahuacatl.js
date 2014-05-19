@@ -4556,34 +4556,32 @@ function GRAPH_EDGES (edgeCollection,
   return FILTER(result, examples);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected edges
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_EDGES(
+function GENERAL_GRAPH_EDGES (
   graphname, startvertex, direction, edgeexamples, collectionRestrictions) {
   "use strict";
 
-
-  //check  graph  exists  and  load  edgeDefintions
+  // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
   if (!graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "EDGES");
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
-  //check  startvertex  exists  and  parse  identifier
+  // check startvertex exists and parse identifier
   var start = DOCUMENT_HANDLE(startvertex);
   if (!start) {
-    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "EDGES");
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "GRAPH_EDGES");
   }
   var startCollection = startvertex.split("/")[0];
 
-  var edgeCollections = [];
+  var edgeCollections = [], func;
 
-  //  validate  direction  and  create  edgeCollection  array.
+  // validate direction and create edgeCollection array.
   if (direction === "outbound") {
+    func = "outEdges";
     graph.edgeDefinitions.forEach(function (def) {
       if (def.from.indexOf(startCollection) !== -1 &&
         edgeCollections.indexOf(def.collection) === -1) {
@@ -4592,6 +4590,7 @@ function GENERAL_GRAPH_EDGES(
     });
   }
   else if (direction === "inbound") {
+    func = "inEdges";
     graph.edgeDefinitions.forEach(function (def) {
       if (def.to.indexOf(startCollection) !== -1 &&
         edgeCollections.indexOf(def.collection) === -1) {
@@ -4600,6 +4599,7 @@ function GENERAL_GRAPH_EDGES(
     });
   }
   else if (direction === "any") {
+    func = "edges";
     graph.edgeDefinitions.forEach(function (def) {
       if ((def.from.indexOf(startCollection) !== -1 ||
         def.to.indexOf(startCollection) !== -1) &&
@@ -4609,39 +4609,32 @@ function GENERAL_GRAPH_EDGES(
     });
   }
   else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
   }
+
   if (collectionRestrictions) {
-    if (typeof  collectionRestrictions === "string") {
+    if (typeof collectionRestrictions === "string") {
       collectionRestrictions = [collectionRestrictions];
     }
-    var isInRestrictionArray = function (element) {
-      return collectionRestrictions.indexOf(element) !== -1;
-    };
 
-    edgeCollections = edgeCollections.filter(isInRestrictionArray);
+    if (Array.isArray(collectionRestrictions)) {
+      edgeCollections = edgeCollections.filter(function (element) {
+        return collectionRestrictions.indexOf(element) !== -1;
+      });
+    }
   }
 
-  //Now  get  the  result.
+  // Now get the result.
 
   var result = [];
 
   edgeCollections.forEach(function (c) {
     c = COLLECTION(c);
-    if (direction === "outbound") {
-      result = result.concat(c.outEdges(startvertex));
-    }
-    else if (direction === "inbound") {
-      result = result.concat(c.inEdges(startvertex));
-    }
-    else if (direction === "any") {
-      result = result.concat(c.edges(startvertex));
-    }
+    result = result.concat(c[func](startvertex));
   });
 
-  return  FILTER(result, edgeexamples);
+  return FILTER(result, edgeexamples);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
