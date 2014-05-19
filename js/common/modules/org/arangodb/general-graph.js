@@ -153,17 +153,27 @@ var AQLGenerator = function(graphName) {
   this.bindVars = {
     "graphName": graphName
   };
+  this.lastEdgeVar = "";
 };
 
 AQLGenerator.prototype.edges = function(startVertex, direction) {
-  var query = "FOR edges_" + this.stack.length
+  var edgeName = "edges_" + this.stack.length;
+  var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertex_"
     + this.stack.length + ","
     + direction + ")";
   this.bindVars["startVertex_" + this.stack.length] = startVertex;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
+  this.lastEdgeVar = edgeName;
   return this;
+};
+
+AQLGenerator.prototype.getLastEdgeVar = function() {
+  if (this.lastEdgeVar === "") {
+    return false;
+  }
+  return this.lastEdgeVar;
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
@@ -180,7 +190,10 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 AQLGenerator.prototype.filter = function(condition) {
-  
+  var con = condition.replace("e.", this.getLastEdgeVar() + "."); 
+  var query = "FILTER " + con;
+  this.stack.push(new AQLStatement(query));
+  return this;
 };
 
 AQLGenerator.prototype.printQuery = function() {
