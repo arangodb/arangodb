@@ -31,7 +31,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
-#include "V8Server/V8PeriodicJob.h"
+#include "V8Server/V8Job.h"
 #include "VocBase/server.h"
 
 using namespace std;
@@ -57,12 +57,13 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
                                 string const& command,
                                 TRI_json_t* parameters)
   : Task(id, name),
-    PeriodicTask(offset, period),
+    PeriodicTask(id, offset, period),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _dispatcher(dispatcher),
     _command(command),
-    _parameters(parameters) {
+    _parameters(parameters),
+    _created(TRI_microtime()) {
 
   assert(vocbase != 0);
 
@@ -94,6 +95,9 @@ V8PeriodicTask::~V8PeriodicTask () {
 void V8PeriodicTask::getDescription (TRI_json_t* json) {
   PeriodicTask::getDescription(json);
 
+  TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
+
   TRI_json_t* cmd = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
 
@@ -106,7 +110,7 @@ void V8PeriodicTask::getDescription (TRI_json_t* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8PeriodicTask::handlePeriod () {
-  V8PeriodicJob* job = new V8PeriodicJob(
+  V8Job* job = new V8Job(
     _vocbase,
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",

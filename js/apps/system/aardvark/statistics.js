@@ -39,7 +39,7 @@ var FoxxController = require("org/arangodb/foxx").Controller;
 var controller = new FoxxController(applicationContext);
 var db = require("org/arangodb").db;
 
-var STATISTICS_INTERVALL = 10;
+var STATISTICS_INTERVAL = 10;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -157,7 +157,7 @@ function computeStatisticsRaw (start, dbServer) {
       +    serverFilter
       + "  SORT s.time "
       + "  return s",
-      { start: start - 2 * STATISTICS_INTERVALL, server: dbServer });
+      { start: start - 2 * STATISTICS_INTERVAL, server: dbServer });
 
     hasStart = true;
   }
@@ -175,9 +175,9 @@ function computeStatisticsRaw (start, dbServer) {
     var t = raw.time;
 
     if (lastTime !== null && (! hasStart || t >= start)) {
-      if (lastTime + STATISTICS_INTERVALL * 1.5 < t || raw.server.uptime < lastRaw.server.uptime) {
-        while (lastTime + STATISTICS_INTERVALL * 1.1 < t) {
-          lastTime += STATISTICS_INTERVALL;
+      if (lastTime + STATISTICS_INTERVAL * 1.5 < t || raw.server.uptime < lastRaw.server.uptime) {
+        while (lastTime + STATISTICS_INTERVAL * 1.1 < t) {
+          lastTime += STATISTICS_INTERVAL;
 
           times.push(lastTime);
           series.push({});
@@ -649,7 +649,7 @@ function computeStatisticsSeries (start, attrs, dbServer) {
   var raw = computeStatisticsRaw(start, dbServer);
 
   result.nextStart = raw.next;
-  result.waitFor = (raw.next + STATISTICS_INTERVALL) - internal.time();
+  result.waitFor = (raw.next + STATISTICS_INTERVAL) - internal.time();
   result.times = raw.times;
 
   if (result.waitFor < 1) {

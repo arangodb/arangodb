@@ -271,7 +271,7 @@ function CLONE (obj) {
     return obj;
   }
  
-  var copy, a; 
+  var copy; 
   if (Array.isArray(obj)) {
     copy = [ ];
     obj.forEach(function (i) {
@@ -280,11 +280,9 @@ function CLONE (obj) {
   }
   else if (obj instanceof Object) {
     copy = { };
-    for (a in obj) {
-      if (obj.hasOwnProperty(a)) {
-        copy[a] = CLONE(obj[a]);
-      }
-    }
+    Object.keys(obj).forEach(function(k) {
+      copy[k] = CLONE(obj[k]);
+    });
   }
 
   return copy;
@@ -301,7 +299,7 @@ function FIX_VALUE (value) {
     return value;
   }
 
-  var type = typeof(value), i;
+  var type = typeof(value);
 
   if (value === undefined || 
       value === null || 
@@ -314,7 +312,8 @@ function FIX_VALUE (value) {
   }
 
   if (Array.isArray(value)) {
-    for (i = 0; i < value.length; ++i) {
+    var i, n = value.length;
+    for (i = 0; i < n; ++i) {
       value[i] = FIX_VALUE(value[i]);
     }
 
@@ -323,14 +322,12 @@ function FIX_VALUE (value) {
 
   if (type === 'object') {
     var result = { };
-    for (i in value) {
-      if (value.hasOwnProperty(i)) {
-        if (typeof value[i] === 'function') {
-          continue;
-        }
-        result[i] = FIX_VALUE(value[i]);
+
+    Object.keys(value).forEach(function(k) {
+      if (typeof value[k] !== 'function') {
+        result[k] = FIX_VALUE(value[k]);
       }
-    }
+    });
 
     return result;
   }
@@ -345,27 +342,25 @@ function FIX_VALUE (value) {
 function TYPEWEIGHT (value) {
   "use strict";
 
-  if (value === undefined || value === null) {
-    return TYPEWEIGHT_NULL;
-  }
+  if (value !== undefined && value !== null) {
+    if (Array.isArray(value)) {
+      return TYPEWEIGHT_LIST;
+    }
 
-  if (Array.isArray(value)) {
-    return TYPEWEIGHT_LIST;
-  }
-
-  switch (typeof(value)) {
-    case 'boolean':
-      return TYPEWEIGHT_BOOL;
-    case 'number':
-      if (isNaN(value) || ! isFinite(value)) {
-        // not a number => undefined
-        return TYPEWEIGHT_NULL; 
-      }
-      return TYPEWEIGHT_NUMBER;
-    case 'string':
-      return TYPEWEIGHT_STRING;
-    case 'object':
-      return TYPEWEIGHT_DOCUMENT;
+    switch (typeof(value)) {
+      case 'boolean':
+        return TYPEWEIGHT_BOOL;
+      case 'number':
+        if (isNaN(value) || ! isFinite(value)) {
+          // not a number => undefined
+          return TYPEWEIGHT_NULL; 
+        } 
+        return TYPEWEIGHT_NUMBER;
+      case 'string':
+        return TYPEWEIGHT_STRING;
+      case 'object':
+        return TYPEWEIGHT_DOCUMENT;
+    }
   }
 
   return TYPEWEIGHT_NULL;
@@ -520,13 +515,11 @@ function FIX (value) {
 function VALUES (value) {
   "use strict";
 
-  var values = [ ], a;
-  
-  for (a in value) {
-    if (value.hasOwnProperty(a)) {
-      values.push(value[a]);
-    }
-  }
+  var values = [ ];
+ 
+  Object.keys(value).forEach(function(k) {
+    values.push(value[k]);
+  });
 
   return values;
 }
@@ -693,10 +686,6 @@ function NORMALIZE (value) {
 
 function DOCUMENT_MEMBER (value, attributeName) {
   "use strict";
-
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
-    return null;
-  }
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
     return null;
@@ -993,7 +982,7 @@ function GET_DOCUMENTS_EDGE (collection, att, id) {
 function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
   "use strict";
 
-  var docs = { }, result = [ ], c, a;
+  var docs = { }, result = [ ], c;
 
   c = COLLECTION(collection);
 
@@ -1015,11 +1004,9 @@ function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
     }
   });
 
-  for (a in docs) {
-    if (docs.hasOwnProperty(a)) {
-      result.push(docs[a]);
-    }
-  }
+  Object.keys(docs).forEach(function(k) {
+    result.push(docs[k]);
+  });
 
   return result;
 }
@@ -2644,7 +2631,7 @@ function REVERSE (value) {
 
   LIST(value);
 
-  return value.reverse();
+  return CLONE(value).reverse();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2703,7 +2690,7 @@ function UNIQUE (values) {
 
   LIST(values);
 
-  var keys = { }, result = [ ], a;
+  var keys = { }, result = [ ];
 
   values.forEach(function (value) {
     var normalized = NORMALIZE(value);
@@ -2714,11 +2701,9 @@ function UNIQUE (values) {
     }
   });
 
-  for (a in keys) {
-    if (keys.hasOwnProperty(a)) {
-      result.push(keys[a]);
-    }
-  }
+  Object.keys(keys).forEach(function(k) {
+    result.push(keys[k]);
+  });
 
   return result;
 }
@@ -2782,11 +2767,9 @@ function UNION_DISTINCT () {
   }
 
   var result = [ ];
-  for (i in keys) {
-    if (keys.hasOwnProperty(i)) {
-      result.push(keys[i]);
-    }
-  }
+  Object.keys(keys).forEach(function(k) {
+    result.push(keys[k]);
+  });
 
   return result; 
 }
@@ -2860,11 +2843,9 @@ function MINUS () {
   }
 
   var result = [ ];
-  for (i in keys) {
-    if (keys.hasOwnProperty(i)) {
-      result.push(keys[i]);
-    }
-  }
+  Object.keys(keys).forEach(function(k) {
+    result.push(keys[k]);
+  });
 
   return result; 
 }
@@ -2912,11 +2893,9 @@ function INTERSECTION () {
     }
   }
 
-  for (i in keys) {
-    if (keys.hasOwnProperty(i)) {
-      result.push(keys[i]);
-    }
-  }
+  Object.keys(keys).forEach(function(k) {
+    result.push(keys[k]);
+  });
 
   return result; 
 }
@@ -3495,15 +3474,13 @@ function ATTRIBUTES (element, removeInternal, sort) {
   }
 
   if (removeInternal) {  
-    var a, result = [ ];
-
-    for (a in element) {
-      if (element.hasOwnProperty(a)) {
-        if (a.substring(0, 1) !== '_') {
-          result.push(a);
-        }
+    var result = [ ];
+    
+    Object.keys(element).forEach(function(k) {
+      if (k.substring(0, 1) !== '_') {
+        result.push(k);
       }
-    }
+    });
   
     if (sort) {
       result.sort();
@@ -3526,15 +3503,14 @@ function UNSET (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNSET");
   }
 
-  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET"), i;
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
   // copy over all that is left
-  for (i in value) {
-    if (value.hasOwnProperty(i)) {
-      if (keys[i] !== true) {
-        result[i] = CLONE(value[i]);
-      }
+    
+  Object.keys(value).forEach(function(k) {
+    if (keys[k] !== true) {
+      result[k] = CLONE(value[k]);
     }
-  }
+  });
 
   return result;
 }
@@ -3550,17 +3526,14 @@ function KEEP (value) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "KEEP");
   }
 
-  var keys = EXTRACT_KEYS(arguments, 1, "KEEP"), i;
+  var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
 
   // copy over all that is left
-  var result = { };
-  for (i in keys) {
-    if (keys.hasOwnProperty(i)) {
-      if (value.hasOwnProperty(i)) {
-        result[i] = CLONE(value[i]);
-      }
+  Object.keys(keys).forEach(function(k) {
+    if (value.hasOwnProperty(k)) {
+      result[k] = CLONE(value[k]);
     }
-  }
+  });
 
   return result;
 }
@@ -3572,7 +3545,13 @@ function KEEP (value) {
 function MERGE () {
   "use strict";
 
-  var result = { }, i, a;
+  var result = { }, i;
+
+  var add = function (element) {      
+    Object.keys(element).forEach(function(k) {
+      result[k] = element[k];
+    });
+  };
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -3582,11 +3561,8 @@ function MERGE () {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
       }
 
-      for (a in element) {
-        if (element.hasOwnProperty(a)) {
-          result[a] = element[a];
-        }
-      }
+      add(element);
+
     }
   }
 
@@ -3603,18 +3579,17 @@ function MERGE_RECURSIVE () {
   var result = { }, i, recurse;
       
   recurse = function (old, element) {
-    var r = CLONE(old), a;
+    var r = CLONE(old);
 
-    for (a in element) {
-      if (element.hasOwnProperty(a)) {
-        if (r.hasOwnProperty(a) && TYPEWEIGHT(element[a]) === TYPEWEIGHT_DOCUMENT) {
-          r[a] = recurse(r[a], element[a]);
-        }
-        else {
-          r[a] = element[a];
-        }
+    Object.keys(element).forEach(function(k) {
+      if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_DOCUMENT) {
+        r[k] = recurse(r[k], element[k]);
       }
-    }
+      else {
+        r[k] = element[k];
+      }
+    });
+
     return r;
   };
 

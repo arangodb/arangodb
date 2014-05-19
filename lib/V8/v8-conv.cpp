@@ -231,7 +231,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      * ((TRI_shape_length_short_string_t*) ptr) = size + 1;
+      * ((TRI_shape_length_short_string_t*) ptr) = (TRI_shape_length_short_string_t) size + 1;
       memcpy(ptr + sizeof(TRI_shape_length_short_string_t), *str, size + 1);
     }
     else {
@@ -245,7 +245,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      * ((TRI_shape_length_long_string_t*) ptr) = size + 1;
+      * ((TRI_shape_length_long_string_t*) ptr) = (TRI_shape_length_long_string_t) size + 1;
       memcpy(ptr + sizeof(TRI_shape_length_long_string_t), *str, size + 1);
     }
   }
@@ -264,7 +264,6 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create,
                                bool isLocked) {
-  size_t i, n;
   size_t total;
 
   TRI_shape_value_t* values;
@@ -285,7 +284,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
   char* ptr;
 
   // check for special case "empty list"
-  n = json->Length();
+  uint32_t n = json->Length();
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
@@ -314,7 +313,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
   total = 0;
   e = values + n;
 
-  for (i = 0;  i < n;  ++i, ++p) {
+  for (uint32_t i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> el = json->Get(i);
     int res = FillShapeValueJson(shaper, p, el, seenHashes, seenObjects, create, isLocked);
 
@@ -417,7 +416,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (TRI_shape_length_list_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     for (p = values;  p < e;  ++p) {
@@ -495,7 +494,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (TRI_shape_length_list_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     offsets = (TRI_shape_size_t*) ptr;
@@ -538,7 +537,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = n;
+    * (TRI_shape_length_list_t*) ptr = (TRI_shape_length_list_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     TRI_shape_sid_t* sids = (TRI_shape_sid_t*) ptr;
@@ -582,7 +581,6 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
                                 vector< v8::Handle<v8::Object> >& seenObjects,
                                 bool create,
                                 bool isLocked) {
-  size_t i, n;
   size_t total;
 
   size_t f;
@@ -606,7 +604,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
 
   // number of attributes
   v8::Handle<v8::Array> names = json->GetOwnPropertyNames();
-  n = names->Length();
+  uint32_t n = names->Length();
 
   // convert into TRI_shape_value_t array
   p = (values = (TRI_shape_value_t*) TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t), true));
@@ -619,10 +617,9 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
   f = 0;
   v = 0;
   
-  for (i = 0;  i < n;  ++i, ++p) {
+  for (uint32_t i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = json->Get(key);
-    int res;
 
     // first find an identifier for the name
     TRI_Utf8ValueNFC keyStr(TRI_UNKNOWN_MEM_ZONE, key);
@@ -643,6 +640,8 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
     else {
       p->_aid = shaper->lookupAttributeByName(shaper, *keyStr);
     }
+
+    int res;
 
     // convert value
     if (p->_aid == 0) {
@@ -680,14 +679,14 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
   }
 
   // adjust n
-  n = f + v;
+  n = (uint32_t) (f + v);
 
   // add variable offset table size
   total += (v + 1) * sizeof(TRI_shape_size_t);
 
   // now sort the shape entries
   if (n > 1) {
-    TRI_SortShapeValues(values, n);
+    TRI_SortShapeValues(values, (size_t) n);
   }
 
 #ifdef DEBUG_JSON_SHAPER
@@ -700,13 +699,13 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
 #endif
 
   // generate shape structure
-  i =
+  size_t const totalSize =
     sizeof(TRI_array_shape_t)
     + n * sizeof(TRI_shape_sid_t)
     + n * sizeof(TRI_shape_aid_t)
     + (f + 1) * sizeof(TRI_shape_size_t);
 
-  a = (TRI_array_shape_t*) (ptr = (char*) TRI_Allocate(shaper->_memoryZone, i, true));
+  a = (TRI_array_shape_t*) (ptr = (char*) TRI_Allocate(shaper->_memoryZone, totalSize, true));
 
   if (ptr == NULL) {
     e = values + n;
@@ -723,7 +722,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
   }
 
   a->base._type = TRI_SHAPE_ARRAY;
-  a->base._size = i;
+  a->base._size = (TRI_shape_size_t) totalSize;
   a->base._dataSize = (v == 0) ? total : TRI_SHAPE_SIZE_VARIABLE;
 
   a->_fixedEntries = f;
@@ -1357,11 +1356,11 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
-  const size_t n = json->_value._objects._length;
+  uint32_t const n = (uint32_t) json->_value._objects._length;
   
-  v8::Handle<v8::Array> object = v8::Array::New(n);
+  v8::Handle<v8::Array> object = v8::Array::New((int) n);
 
-  for (size_t i = 0;  i < n;  ++i) {
+  for (uint32_t i = 0;  i < n;  ++i) {
     TRI_json_t const* j = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
@@ -1479,7 +1478,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
   }
 
   shaped->_sid = dst._sid;
-  shaped->_data.length = dst._size;
+  shaped->_data.length = (uint32_t) dst._size;
   shaped->_data.data = dst._value;
 
   return shaped;
@@ -1508,7 +1507,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
   }
 
   result->_sid = dst._sid;
-  result->_data.length = dst._size;
+  result->_data.length = (uint32_t) dst._size;
   result->_data.data = dst._value;
 
   return TRI_ERROR_NO_ERROR;

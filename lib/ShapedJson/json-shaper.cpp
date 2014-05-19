@@ -456,6 +456,10 @@ TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
+  if (sid >= TRI_FirstCustomShapeIdShaper() || sid == 0) {
+    return NULL;
+  }
+
   if (sid == BasicShapes._sidNull) {
     return &BasicShapes._shapeNull;
   }
@@ -555,6 +559,8 @@ void TRI_InitialiseShaper () {
   shape->_type = TRI_SHAPE_LIST;
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
   shape->_sid = BasicShapes._sidList = 6;
+
+  assert(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

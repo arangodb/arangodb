@@ -57,6 +57,15 @@ collections.
 
     unix> arangoimp --file "data.json" --type json --collection "users" --create-collection true
 
+When importing data into an existing collection it is often convenient to first
+remove all data from the collection and then start the import. This can be achieved
+by passing the `--overwrite` parameter to _arangoimp_. If it is set to `true`,
+any existing data in the collection will be removed prior to the import. Note
+that any existing index definitions for the collection will be preserved even if 
+`--overwrite` is set to true.
+    
+    unix> arangoimp --file "data.json" --type json --collection "users" --overwrite true
+
 As the import file already contains the data in JSON format, attribute names and
 data types are fully preserved. As can be seen in the example data, there is no
 need for all data records to have the same attribute names or types. Records can

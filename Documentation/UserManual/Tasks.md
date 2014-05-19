@@ -7,16 +7,19 @@ Task Management {#Tasks}
 Introduction to Task Management in ArangoDB {#TasksIntroduction}
 ================================================================
 
-ArangoDB can execute user-defined JavaScript functions as periodic
-tasks. This functionality can be used to implement recurring jobs
-in the database.
+ArangoDB can execute user-defined JavaScript functions as one-shot
+or periodic tasks. This functionality can be used to implement timed
+or recurring jobs in the database.
 
 Tasks in ArangoDB consist of a JavaScript snippet or function that is
-executed each time the task is scheduled. Tasks can have optional
+executed when the task is scheduled. A task can be a one-shot task
+(meaning it is run once and not repeated) or a periodic task (meaning
+that it is re-scheduled after each execution). Tasks can have optional
 parameters, which are defined at task setup time. The parameters
 specified at task setup time will be passed as arguments to the
-task whenever it gets executed. Tasks have an execution frequency that
-needs to be defined when the task is set up.
+task whenever it gets executed. Perdioic Tasks have an execution 
+frequency that needs to be specified when the task is set up. One-shot
+tasks have a configurable delay after which they'll get executed.
 
 Tasks will be executed on the server they have been set up on. 
 Tasks will not be shipped around in a cluster. A task will be 
@@ -28,7 +31,7 @@ database.
 
 Tasks registered in ArangoDB will be executed until the server
 gets shut down or restarted. After a restart of the server, any 
-user-defined periodic tasks will be lost. 
+user-defined one-shot or periodic tasks will be lost. 
 
 Commands for Working with Tasks {#TasksCommands}
 ================================================
@@ -54,7 +57,8 @@ task later. Task names are informational only. They can be used to make
 a task distinguishable from other tasks also running on the server.
 
 The following server-side commands register a task. The command to be
-executed is a JavaScript string snippet:
+executed is a JavaScript string snippet which prints a message to the 
+server's logfile: 
 
     var tasks = require("org/arangodb/tasks");
     tasks.register({
@@ -104,6 +108,21 @@ into a task):
       params: { greeting: "hi", data: "how are you?" }
     });
 
+Registering a one-shot task works the same way, except that the 
+`period` attribute must be omitted. If `period` is omitted, then the
+task will be executed just once. The task invocation delay can optionally
+be specified with the `offset` attribute:
+    
+    var tasks = require("org/arangodb/tasks");
+    tasks.register({
+      id: "mytask-once",
+      name: "this is a one-shot task",
+      offset: 10,
+      command: function (params) {
+        require('console').log('you will see me just once!');
+      }
+    });
+
 Unregister a task {#TasksUnregister}
 ------------------------------------
 
@@ -124,9 +143,12 @@ return a list of all tasks:
     var tasks = require("org/arangodb/tasks");
     tasks.get();
 
-If called with a task id argument, it will return information about this
-particular task:
+If `get` is called with a task id argument, it will return information 
+about this particular task:
 
     var tasks = require("org/arangodb/tasks");
     tasks.get("mytask-3");
+
+The `created` attribute of a task reveals when a task was created. It is
+returned as a Unix timestamp. 
 

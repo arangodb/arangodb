@@ -645,24 +645,21 @@ actions.defineHttp({
     var DBserver = req.parameters.DBserver;
 
     //build query
-    var startDate = body.startDate;
-    var endDate = body.endDate;
     var figures = body.figures;
-    var filterString = "";
-    if (startDate) {
-      filterString += " filter u.time > " + startDate;
-    } else {
-      endDate = startDate;
-    }
-    if (endDate) {
-      filterString += " filter u.time < " + endDate;
-    }
+    var filterString = " filter u.time > @startDate";
+    var bind = {
+      startDate: (new Date().getTime() / 1000) - 20 * 60
+    };
+
     if (cluster.isCoordinator() && !req.parameters.hasOwnProperty("DBserver")) {
-      filterString += " filter u.clusterId == '" + cluster.coordinatorId() +"'";
+      filterString += " filter u.clusterId == @serverId";
+      bind.serverId = cluster.coordinatorId();
     }
+
     var returnValue = " return u";
     if (figures) {
-      returnValue = " return {time : u.time, server : {uptime : u.server.uptime} ";
+      returnValue = " return { time : u.time, server : {uptime : u.server.uptime} ";
+
       var groups = {};
       figures.forEach(function(f) {
           var g = f.split(".")[0];
@@ -676,13 +673,12 @@ actions.defineHttp({
       });
       returnValue += "}";
     }
-    var myQueryVal = "FOR u in _statistics "+ filterString + " sort u.time" + returnValue;
+    // allow at most ((60 / 10) * 20) * 2 documents to prevent total chaos
+    var myQueryVal = "FOR u in _statistics " + filterString + " LIMIT 240 SORT u.time" + returnValue;
 
     if (!req.parameters.hasOwnProperty("DBserver")) {
-        var cursor = internal.AQL_QUERY(myQueryVal,
-            {},
-            {batchSize: 100000}
-        );
+        // query the local statistics collection
+        var cursor = internal.AQL_QUERY(myQueryVal, bind);
         res.contentType = "application/json; charset=utf-8";
         if (cursor instanceof Error) {
             res.responseCode = actions.HTTP_BAD;
@@ -690,12 +686,14 @@ actions.defineHttp({
                 "errorMessage": "an error occured"});
         }
         res.responseCode = actions.HTTP_OK;
-        res.body =  JSON.stringify({result : cursor.docs});
-    } else {
+        res.body = JSON.stringify({result : cursor.docs});
+    } 
+    else {
+        // query a remote statistics collection
         var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
         var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
         var op = ArangoClusterComm.asyncRequest("POST","server:"+DBserver,"_system",
-            "/_api/cursor",JSON.stringify({query: myQueryVal, batchSize: 100000}),{},options);
+            "/_api/cursor",JSON.stringify({query: myQueryVal, bindVars: bind}),{},options);
         var r = ArangoClusterComm.wait(op);
         res.contentType = "application/json; charset=utf-8";
         if (r.status === "RECEIVED") {

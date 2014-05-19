@@ -40,7 +40,7 @@ var arangodb = require("org/arangodb"),
   Iterator = common.Iterator;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       module "org/arangodb/graph"
+// --SECTION--                             module "org/arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -739,6 +739,7 @@ exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
 require("org/arangodb/graph/algorithms-common");
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

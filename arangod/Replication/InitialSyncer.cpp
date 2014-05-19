@@ -161,8 +161,6 @@ int InitialSyncer::run (string& errorMsg) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
 
-  res = TRI_ERROR_NO_ERROR;
-  
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
     

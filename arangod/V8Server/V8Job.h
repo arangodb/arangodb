@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief periodic V8 job
+/// @brief V8 job
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8SERVER_V8PERIODIC_JOB_H
-#define TRIAGENS_V8SERVER_V8PERIODIC_JOB_H 1
+#ifndef TRIAGENS_V8SERVER_V8_JOB_H
+#define TRIAGENS_V8SERVER_V8_JOB_H 1
 
 #include "Dispatcher/Job.h"
 #include "BasicsC/json.h"
@@ -36,17 +36,17 @@ extern "C" {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class V8PeriodicJob
+// --SECTION--                                                       class V8Job
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace arango {
     class ApplicationV8;
 
-    class V8PeriodicJob : public rest::Job {
+    class V8Job : public rest::Job {
       private:
-        V8PeriodicJob (V8PeriodicJob const&);
-        V8PeriodicJob& operator= (V8PeriodicJob const&);
+        V8Job (V8Job const&) = delete;
+        V8Job& operator= (V8Job const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -58,10 +58,10 @@ namespace triagens {
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicJob (struct TRI_vocbase_s*,
-                       ApplicationV8*,
-                       std::string const&,
-                       TRI_json_t const*);
+        V8Job (struct TRI_vocbase_s*,
+               ApplicationV8*,
+               std::string const&,
+               TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods

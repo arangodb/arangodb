@@ -105,7 +105,7 @@ void TestThread::run () {
         p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, s, true);
         TRI_doc_begin_transaction_marker_t* marker = static_cast<TRI_doc_begin_transaction_marker_t*>(p);
       
-        TRI_InitMarker((char*) p, TRI_DOC_MARKER_BEGIN_TRANSACTION, s);
+        TRI_InitMarker(static_cast<char*>(p), TRI_DOC_MARKER_BEGIN_TRANSACTION, static_cast<TRI_voc_size_t>(s));
         marker->_tid = i;
         marker->_numCollections = 0;
       }
@@ -115,7 +115,7 @@ void TestThread::run () {
         p = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, s, true);
         TRI_doc_commit_transaction_marker_t* marker = static_cast<TRI_doc_commit_transaction_marker_t*>(p);
       
-        TRI_InitMarker((char*) p, TRI_DOC_MARKER_COMMIT_TRANSACTION, s);
+        TRI_InitMarker(static_cast<char*>(p), TRI_DOC_MARKER_COMMIT_TRANSACTION, static_cast<TRI_voc_size_t>(s));
         marker->_tid = i - 1;
       }
 

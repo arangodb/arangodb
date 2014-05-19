@@ -604,7 +604,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[74] =
 
 #define YY_EXTRA_TYPE TRI_aql_context_t*
 
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = yycolumn + yyleng - 1; yycolumn += yyleng; yyextra->_parser->_offset += yyleng;
+#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->_parser->_offset += yyleng;
 
 #define YY_NO_INPUT 1
 
@@ -948,7 +948,7 @@ yy_find_action:
 		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
 			{
 			int yyl;
-			for ( yyl = 0; yyl < yyleng; ++yyl )
+			for ( yyl = 0; yyl < (int) yyleng; ++yyl )
 				if ( yytext[yyl] == '\n' )
 					   
     do{ yylineno++;
@@ -2223,7 +2223,7 @@ YY_BUFFER_STATE Ahuacatl_scan_bytes  (yyconst char * yybytes, yy_size_t  _yybyte
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in Ahuacatl_scan_bytes()" );
 
-	for ( i = 0; i < _yybytes_len; ++i )
+	for ( i = 0; i < (int) _yybytes_len; ++i )
 		buf[i] = yybytes[i];
 
 	buf[_yybytes_len] = buf[_yybytes_len+1] = YY_END_OF_BUFFER_CHAR;

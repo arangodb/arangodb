@@ -283,7 +283,7 @@ functionality.
 Application Context
 ===================
 
-JavaScript modules with a Foxx application can access the application using 
+JavaScript modules within a Foxx application can access the application using 
 the variable `applicationContext`. The applicationContext provides the following
 methods
 

@@ -32,15 +32,17 @@
 #include "BasicsC/logging.h"
 #include "Scheduler/Scheduler.h"
 
+using namespace std;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PeriodicTask::PeriodicTask (double offset, 
+PeriodicTask::PeriodicTask (string const& id,
+                            double offset, 
                             double interval)
-  : Task("", "PeriodicTask"),
+  : Task(id, "PeriodicTask"),
     watcher(0),
     offset(offset),
     interval(interval) {
