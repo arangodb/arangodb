@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using getline
+/// @brief implementation of basis class LineEditor
 ///
 /// @file
 ///
@@ -26,11 +26,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LineEditor.h"
+#include "ShellImplementation.h"
+#include "Completer.h"
 
 #include "BasicsC/tri-strings.h"
-#include "BasicsC/files.h"
 
 using namespace std;
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -44,19 +46,20 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
-  : _current(),
-    _historyFilename(history),
-    _state(STATE_NONE) {
+LineEditor::LineEditor(std::string const& history): _history(history) {
+  _shellImpl = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
-  close();
-}
+LineEditor::~LineEditor() {
+  if (_shellImpl) {
+    close();
+    delete _shellImpl;
+  }
+ }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -66,115 +69,60 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
-  _state = STATE_OPENED;
-  return true;
+bool LineEditor::open(bool autoComplete) {
+  prepareShell();
+  return _shellImpl->open(autoComplete);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
-  _state = STATE_CLOSED;
-  return true;
+bool LineEditor::close() {
+  prepareShell();
+  return _shellImpl->close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
-  return "";
+string LineEditor::historyPath() {
+  prepareShell();
+  return _shellImpl->historyPath();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
+void LineEditor::addHistory(char const* str) {
+  prepareShell();
+  return _shellImpl->addHistory(str);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
-  return true;
+bool LineEditor::writeHistory() {
+  prepareShell();
+  return _shellImpl->writeHistory();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    fprintf(stdout, "%s", p);
-    fflush(stdout);
-
-    string line;
-    getline(cin, line);
-
-    p = dotdot.c_str();
-
-    if (cin.eof()) {
-        return 0;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any prompt at the beginning of the line
-    char* result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, line.c_str());
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = isComplete(_current, lineno, strlen(result));
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-  _current.clear();
-
-  return line;
+char* LineEditor::prompt(char const* prompt) {
+  return _shellImpl->prompt(prompt);
 }
-
+void LineEditor::prepareShell() {
+  if (!_shellImpl) {
+    initializeShell();
+  //  assert _shellImpl != 0;
+  }
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

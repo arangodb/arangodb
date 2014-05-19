@@ -25,7 +25,7 @@ if (MSVC)
       BasicsC/terminal-utils-win32.c
       BasicsC/threads-win32.c
       BasicsC/win-utils.c
-      Utilities/LineEditor-linenoise.cpp
+      Utilities/LinenoiseShell.cpp
       Zip/iowin32.c
   )
 else ()
@@ -35,7 +35,8 @@ else ()
       BasicsC/terminal-utils-posix.c
       BasicsC/threads-posix.c
       Rest/EndpointUnixDomain.cpp
-      Utilities/LineEditor-readline.cpp
+      Utilities/LinenoiseShell.cpp
+      Utilities/ReadlineShell.cpp
   )
 endif ()
 
@@ -121,6 +122,10 @@ add_library(
     ShapedJson/shaped-json.cpp
     Statistics/statistics.cpp
     Utilities/ScriptLoader.cpp
+    Utilities/ShellImplementation.cpp
+    Utilities/LineEditor.cpp
+    Utilities/ShellImplementation.cpp
+    Utilities/ShellImplFactory.cpp
     Zip/ioapi.c
     Zip/unzip.c
     Zip/zip.c
