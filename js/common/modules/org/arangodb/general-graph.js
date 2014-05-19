@@ -156,7 +156,8 @@ var AQLGenerator = function(graphName) {
 };
 
 AQLGenerator.prototype.edges = function(startVertex, direction) {
-  var query = "GRAPH_EDGES(@graphName,@startVertex_"
+  var query = "FOR edges_" + this.stack.length
+    + " IN GRAPH_EDGES(@graphName,@startVertex_"
     + this.stack.length + ","
     + direction + ")";
   this.bindVars["startVertex_" + this.stack.length] = startVertex;
@@ -176,6 +177,10 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
   this.stack.push(lastQuery);
   return this;
+};
+
+AQLGenerator.prototype.filter = function(condition) {
+  
 };
 
 AQLGenerator.prototype.printQuery = function() {
