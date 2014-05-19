@@ -45,6 +45,7 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
+#include "Wal/Marker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -1506,6 +1507,32 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a shaped-json document into the WAL
+/// note: key might be NULL. in this case, a key is auto-generated
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
+                                     const TRI_voc_key_t key,
+                                     TRI_voc_rid_t rid,
+                                     TRI_doc_mptr_t* mptr,
+                                     TRI_shaped_json_t const* shaped,
+                                     bool lock,
+                                     bool forceSync,
+                                     bool isRestore) {
+
+  TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+
+  triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
+                                       primary->base._info._cid,
+                                       TRI_GetMarkerIdTransaction(trxCollection->_transaction),
+                                       std::string(key),
+                                       rid,
+                                       shaped);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shaped-json document into the collection
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
@@ -1553,7 +1580,7 @@ static int InsertShapedJson (TRI_transaction_collection_t* trxCollection,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-          
+
   TRI_ASSERT_MAINTAINER(marker != NULL);
   TRI_ASSERT_MAINTAINER(keyBody != NULL);
   TRI_ASSERT_MAINTAINER(totalSize > 0);
