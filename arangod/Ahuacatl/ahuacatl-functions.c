@@ -708,7 +708,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s|a", NULL);
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s|l", NULL);
-  REGISTER_FUNCTION("GRAPH_EDGES", "GENERAL_GRAPH_EDGES", false, false, "s,s,s|lz,lzs", NULL);
+  REGISTER_FUNCTION("GRAPH_EDGES", "GENERAL_GRAPH_EDGES", false, false, "s,s,s|lza,ls", NULL);
   REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
   
   // date functions
