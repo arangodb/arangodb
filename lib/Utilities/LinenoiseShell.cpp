@@ -25,19 +25,46 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LineEditor.h"
+#include "LinenoiseShell.h"
+#include "Completer.h"
+
+#include "V8/v8-utils.h"
 
 extern "C" {
 #include <linenoise.h>
 }
 
+#include <vector>
+#include <string>
+
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
 
 using namespace std;
+using namespace triagens;
+
+namespace {
+  static Completer * COMPLETER;
+
+  static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions * lc) {
+    vector<string> alternatives;
+    if(COMPLETER) {
+      COMPLETER->getAlternatives(text, alternatives);
+      for(vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); i++) {
+        linenoiseAddCompletion(lc, (*i).c_str());
+      }
+    }
+    lc->multiLine = 1;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup Shell
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
+// --SECTION--                                              class LinenoiseShell
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -48,18 +75,14 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
-  : _current(),
-    _historyFilename(history),
-    _state(STATE_NONE) {
+LinenoiseShell::LinenoiseShell(std::string const& history, Completer * completer)
+: ShellImplementation(history, completer) {
+  COMPLETER = completer;
+  linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-LineEditor::~LineEditor () {
-  close();
+LinenoiseShell::~LinenoiseShell() {
+  COMPLETER = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -70,7 +93,7 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
+bool LinenoiseShell::open(bool) {
   linenoiseHistoryLoad(historyPath().c_str());
 
   _state = STATE_OPENED;
@@ -82,7 +105,7 @@ bool LineEditor::open (bool) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
+bool LinenoiseShell::close() {
   if (_state != STATE_OPENED) {
     // avoid duplicate saving of history
     return true;
@@ -97,7 +120,7 @@ bool LineEditor::close () {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
+string LinenoiseShell::historyPath() {
   string path;
 
   // get home directory
@@ -107,7 +130,7 @@ string LineEditor::historyPath () {
     path.append(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
 
-    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
       path.push_back(TRI_DIR_SEPARATOR_CHAR);
     }
   }
@@ -121,7 +144,7 @@ string LineEditor::historyPath () {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
+void LinenoiseShell::addHistory(char const* str) {
   if (*str == '\0') {
     return;
   }
@@ -133,90 +156,19 @@ void LineEditor::addHistory (char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
+bool LinenoiseShell::writeHistory() {
   linenoiseHistorySave(historyPath().c_str());
 
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-char* LineEditor::prompt (char const* prompt) {
-  string dotdot;
-  char const* p = prompt;
-  size_t len1 = strlen(prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    char* result = linenoise(p);
-
-    p = dotdot.c_str();
-
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
-        return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any prompt at the beginning of the line
-    char* originalLine = result;
-    bool c1 = strncmp(result, prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call readline
-    TRI_SystemFree(originalLine);
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-  _current.clear();
-
-  return line;
+char * LinenoiseShell::getLine(char const * input) {
+  return linenoise(input);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
