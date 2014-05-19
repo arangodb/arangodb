@@ -479,7 +479,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._edges("v1/1");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,any)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
@@ -518,7 +518,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._outEdges("v1/1");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,outbound)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
@@ -557,7 +557,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._inEdges("v1/1");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,inbound)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
@@ -596,7 +596,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._edges("v1/1").restrict("included");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,any,{},@restrictions_0)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
@@ -640,7 +640,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._inEdges("v1/1").restrict("included");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,inbound,{},@restrictions_0)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
@@ -684,7 +684,7 @@ function GeneralGraphAQLQueriesSuite() {
         }
       )._id;
       var query = g._outEdges("v1/1").restrict("included");
-      assertEqual(query.printQuery(), "GRAPH_EDGES("
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,outbound,{},@restrictions_0)");
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
