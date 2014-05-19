@@ -435,11 +435,41 @@ function GeneralGraphAQLQueriesSuite() {
     });
   };
 
+  var e1, e2, e3;
+
   var createInclExcl = function() {
     dropInclExcl();
-    var inc = graph._directedRelationDefinition("included", ["v1"], ["v1", "v2"]);
-    var exc = graph._directedRelationDefinition("excluded", ["v1"], ["v3"]);
+    var inc = graph._directedRelationDefinition(
+      "included", ["v1"], ["v1", "v2"]
+    );
+    var exc = graph._directedRelationDefinition(
+      "excluded", ["v1"], ["v3"]
+    );
     var g = graph._create("graph", [inc, exc]);
+    e1 = g.included.save(
+      "v1/1",
+      "v2/1",
+      {
+        _key: "e1",
+        val: true
+      }
+    )._id;
+    e2 = g.included.save(
+      "v1/2",
+      "v1/1",
+      {
+        _key: "e2",
+        val: false
+      }
+    )._id;
+    e3 = g.excluded.save(
+      "v1/1",
+      "v3/1",
+      {
+        _key: "e3",
+        val: false
+      }
+    )._id;
     return g;
   };
 
@@ -457,27 +487,6 @@ function GeneralGraphAQLQueriesSuite() {
 
     test_edges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: true
-        }
-      )._id;
-      var incEdge2 = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: true
-        }
-      )._id;
-      var incEdge3 = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: true
-        }
-      )._id;
       var query = g._edges("v1/1");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,any)");
@@ -487,36 +496,15 @@ function GeneralGraphAQLQueriesSuite() {
       /*
       var result = query.toArray();
       assertEqual(result.length, 3);
-      assertTrue(findIdInResult(result, incEdge1));
-      assertTrue(findIdInResult(result, incEdge2));
-      assertTrue(findIdInResult(result, incEdge3));
+      assertTrue(findIdInResult(result, e1));
+      assertTrue(findIdInResult(result, e2));
+      assertTrue(findIdInResult(result, e3));
       */
       dropInclExcl();
     },
 
     test_outEdges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: true
-        }
-      )._id;
-      var excEdge1 = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: false
-        }
-      )._id;
-      var incEdge2 = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: true
-        }
-      )._id;
       var query = g._outEdges("v1/1");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,outbound)");
@@ -526,36 +514,15 @@ function GeneralGraphAQLQueriesSuite() {
       /*
       var result = query.toArray();
       assertEqual(result.length, 3);
-      assertTrue(findIdInResult(result, incEdge1));
-      assertTrue(findIdInResult(result, incEdge2));
-      assertFalse(findIdInResult(result, excEdge1));
+      assertTrue(findIdInResult(result, e1));
+      assertTrue(findIdInResult(result, e3));
+      assertFalse(findIdInResult(result, e2));
       */
       dropInclExcl();
     },
 
     test_inEdges: function() {
       var g = createInclExcl();
-      var excEdge1 = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: false
-        }
-      )._id;
-      var incEdge1 = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: true
-        }
-      )._id;
-      var excEdge2 = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: true
-        }
-      )._id;
       var query = g._inEdges("v1/1");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,inbound)");
@@ -565,36 +532,15 @@ function GeneralGraphAQLQueriesSuite() {
       /*
       var result = query.toArray();
       assertEqual(result.length, 3);
-      assertTrue(findIdInResult(result, incEdge1));
-      assertFalse(findIdInResult(result, excEdge1));
-      assertFalse(findIdInResult(result, excEdge2));
+      assertTrue(findIdInResult(result, e2));
+      assertFalse(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e3));
       */
       dropInclExcl();
     },
 
     test_restrictOnEdges: function() {
       var g = createInclExcl();
-      var incEdge1 = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: true
-        }
-      )._id;
-      var incEdge2 = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: true
-        }
-      )._id;
-      var excEdge = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: false
-        }
-      )._id;
       var query = g._edges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,any,{},@restrictions_0)");
@@ -605,9 +551,9 @@ function GeneralGraphAQLQueriesSuite() {
 
       /*
       assertEqual(result.length, 2);
-      assertTrue(findIdInResult(result, incEdge1));
-      assertTrue(findIdInResult(result, incEdge2));
-      assertFalse(findIdInResult(result, excEdge));
+      assertTrue(findIdInResult(result, e1));
+      assertTrue(findIdInResult(result, e2));
+      assertFalse(findIdInResult(result, e3));
       */
       dropInclExcl();
     },
@@ -618,27 +564,6 @@ function GeneralGraphAQLQueriesSuite() {
 
     test_restrictOnInEdges: function() {
       var g = createInclExcl();
-      var excEdge1 = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: false
-        }
-      )._id;
-      var incEdge = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: true
-        }
-      )._id;
-      var excEdge2 = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: false
-        }
-      )._id;
       var query = g._inEdges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,inbound,{},@restrictions_0)");
@@ -649,9 +574,9 @@ function GeneralGraphAQLQueriesSuite() {
       /*
       var result = query.toArray();
       assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, incEdge));
-      assertFalse(findIdInResult(result, excEdge1));
-      assertFalse(findIdInResult(result, excEdge2));
+      assertTrue(findIdInResult(result, e2));
+      assertFalse(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e3));
       */
       dropInclExcl();
     },
@@ -662,27 +587,6 @@ function GeneralGraphAQLQueriesSuite() {
 
     test_restrictOnOutEdges: function() {
       var g = createInclExcl();
-      var incEdge = g.included.save(
-        "v1/1",
-        "v2/1",
-        {
-          included: true
-        }
-      )._id;
-      var excEdge1 = g.included.save(
-        "v1/2",
-        "v1/1",
-        {
-          included: false
-        }
-      )._id;
-      var excEdge2 = g.excluded.save(
-        "v1/1",
-        "v3/1",
-        {
-          included: false
-        }
-      )._id;
       var query = g._outEdges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,outbound,{},@restrictions_0)");
@@ -693,9 +597,9 @@ function GeneralGraphAQLQueriesSuite() {
       /*
       var result = query.toArray();
       assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, incEdge));
-      assertFalse(findIdInResult(result, excEdge1));
-      assertFalse(findIdInResult(result, excEdge2));
+      assertTrue(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e2));
+      assertFalse(findIdInResult(result, e3));
       */
       dropInclExcl();
    },
@@ -705,7 +609,66 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnEdges: function() {
+      var g = createInclExcl();
+      var query = g._edges("v1/1").filter("e.val = true");
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
+        + "@graphName,@startVertex_0,any) FILTER edges_0.val = true");
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, "graph");
+      assertEqual(bindVars.startVertex_0, "v1/1");
+      /*
+      var result = query.toArray();
+      assertEqual(result.length, 2);
+      assertTrue(findIdInResult(result, e2));
+      assertTrue(findIdInResult(result, e3));
+      assertFalse(findIdInResult(result, e1));
+      */
+      dropInclExcl();
 
+   },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: filter construct on InEdges
+////////////////////////////////////////////////////////////////////////////////
+   
+   test_filterOnInEdges: function() {
+      var g = createInclExcl();
+      var query = g._inEdges("v1/1").filter("e.val = true");
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
+        + "@graphName,@startVertex_0,inbound) FILTER edges_0.val = true");
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, "graph");
+      assertEqual(bindVars.startVertex_0, "v1/1");
+      /*
+      var result = query.toArray();
+      assertEqual(result.length, 3);
+      assertFalse(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e2));
+      assertFalse(findIdInResult(result, e3));
+      */
+      dropInclExcl();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: filter construct on OutEdges
+////////////////////////////////////////////////////////////////////////////////
+   
+   test_filterOnOutEdges: function() {
+      var g = createInclExcl();
+      var query = g._outEdges("v1/1").filter("e.val = true");
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
+        + "@graphName,@startVertex_0,outbound) FILTER edges_0.val = true");
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, "graph");
+      assertEqual(bindVars.startVertex_0, "v1/1");
+      /*
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result, e3));
+      assertFalse(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e2));
+      */
+      dropInclExcl();
    }
 
   };
