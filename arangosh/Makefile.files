@@ -13,7 +13,6 @@ bin_arangob_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangob_LDADD = \
-	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
@@ -32,7 +31,6 @@ bin_arangodump_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangodump_LDADD = \
-	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \
@@ -72,7 +70,6 @@ bin_arangorestore_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 bin_arangorestore_LDADD = \
-	lib/libarango_v8.a \
 	lib/libarango_client.a \
 	lib/libarango.a \
 	$(LIBS) \

@@ -1723,7 +1723,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
       ssize_t n = TRI_WRITE(1, ptr, (TRI_write_t) len);
 
       if (n < 0) {
-        return v8::Undefined();
+        break;
       }
 
       len -= n;
@@ -2219,7 +2219,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
     result += *text;
   }
 
-  return scope.Close(v8::String::New(result.c_str()));
+  return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

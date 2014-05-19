@@ -38,7 +38,8 @@
             expect(view.colid).toEqual(0);
             expect(view.events).toEqual({
                 "click #saveDocumentButton": "saveDocument",
-                "dblclick #documentEditor tr" : "addProperty"
+                "dblclick #documentEditor tr" : "addProperty",
+                "click #tableDiv .showHotkeyHelp" : "shortcutModal"
             });
         });
 

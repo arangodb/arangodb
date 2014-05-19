@@ -120,6 +120,12 @@ static string TypeImport = "json";
 static bool CreateCollection = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to overwrite existing data in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Overwrite = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief progress
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -157,6 +163,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
+    ("overwrite", &Overwrite, "overwrite collection if it exist (WARNING: this will remove any data from the collection)")
     ("quote", &Quote, "quote character(s)")
     ("separator", &Separator, "separator")
     ("progress", &Progress, "show progress")
@@ -339,6 +346,8 @@ int main (int argc, char* argv[]) {
     ih.setCreateCollection(true);
   }
 
+  ih.setOverwrite(Overwrite);
+
   // quote
   if (Quote.length() <= 1) {
     ih.setQuote(Quote);
@@ -424,6 +433,8 @@ int main (int argc, char* argv[]) {
   else {
     cerr << "error message:    " << ih.getErrorMessage() << endl;
   }
+
+  delete ClientConnection;
 
   TRIAGENS_REST_SHUTDOWN;
 

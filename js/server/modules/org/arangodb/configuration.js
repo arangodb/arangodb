@@ -98,7 +98,6 @@ exports.notifications.versions = function () {
 
 exports.notifications.setVersions = function (data) {
   var n = "notifications";
-  var v = "versions";
   var d;
 
   try {

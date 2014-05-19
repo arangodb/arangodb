@@ -569,6 +569,8 @@ namespace triagens {
           }
           
           if (primary->_primaryIndex._nrUsed > 0) {
+            ids.reserve(primary->_primaryIndex._nrUsed);
+
             void** ptr = primary->_primaryIndex._table;
             void** end = ptr + primary->_primaryIndex._nrAlloc;
 

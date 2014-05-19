@@ -33,7 +33,7 @@ var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollectio
 
 var arangodb = require("org/arangodb");
 
-var ArangoError = arangodb.ArrangoError;
+var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
 var db = arangodb.db;
 
@@ -528,29 +528,42 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a geo index selection
 ///
-/// @FUN{@FA{collection}.geo(@FA{location})}
-////////////////////////////////////////////
+/// @FUN{@FA{collection}.geo(@FA{location-attribute})}
+//////////////////////////////////////////////////////
 ///
-/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
-/// index.
+/// Looks up a geo index defined on attribute @FA{location-attribute}.
 ///
-/// @FUN{@FA{collection}.geo(@FA{location}, @LIT{true})}
-////////////////////////////////////////////////////////
+/// Returns a geo index object if an index was found. The @FN{near} or 
+/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// this particular index.
 ///
-/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
-/// index.
+/// This is useful for collections with multiple defined geo indexes.
 ///
-/// @FUN{@FA{collection}.geo(@FA{latitude}, @FA{longitude})}
-////////////////////////////////////////////////////////////
+/// @FUN{@FA{collection}.geo(@FA{location-attribute}, @LIT{true})}
+//////////////////////////////////////////////////////////////////
 ///
-/// The next @FN{near} or @FN{within} operator will use the specific geo-spatial
-/// index.
+/// Looks up a geo index on a compound attribute @FA{location-attribute}.
+///
+/// Returns a geo index object if an index was found. The @FN{near} or 
+/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// this particular index.
+///
+/// @FUN{@FA{collection}.geo(@FA{latitude-attribute}, @FA{longitude-attribute})}
+////////////////////////////////////////////////////////////////////////////////
+///
+/// Looks up a geo index defined on the two attributes @FA{latitude-attribute}
+/// and @FA{longitude-attribute}.
+///
+/// Returns a geo index object if an index was found. The @FN{near} or 
+/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// this particular index.
 ///
 /// @EXAMPLES
 ///
 /// Assume you have a location stored as list in the attribute @LIT{home}
-/// and a destination stored in the attribute @LIT{work}. Than you can use the
-/// @FN{geo} operator to select, which coordinates to use in a near query.
+/// and a destination stored in the attribute @LIT{work}. Then you can use the
+/// @FN{geo} operator to select which geo-spatial attributes (and thus which
+/// index) to use in a near query.
 ///
 /// @TINYEXAMPLE{simple-query-geo,use a specific index}
 ////////////////////////////////////////////////////////////////////////////////

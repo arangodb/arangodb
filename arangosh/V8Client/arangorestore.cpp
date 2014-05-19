@@ -1015,6 +1015,10 @@ int main (int argc, char* argv[]) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
   }
+  
+  if (Client != 0) {
+    delete Client;
+  }
 
   TRIAGENS_REST_SHUTDOWN;
 
