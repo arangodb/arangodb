@@ -177,30 +177,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesExceptions: function () {
-      var actual;
+      assertQueryError(errors.ERROR_GRAPH_INVALID_GRAPH.code, "FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') RETURN e.what");
 
-      try {
-        getQueryResults("FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') SORT e.what RETURN e.what");
-      } catch (err) {
-        actual = err
-      }
-      assertEqual(actual, {"error":true,"errorNum":1901,"errorMessage":"invalid graph"});
-
-      try {
-        getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'NotExistingVertex', 'outbound') SORT e.what RETURN e.what");
-      } catch (err) {
-        actual = err
-      }
-      assertEqual(actual, {"error":true,"errorNum":1202,"errorMessage":"document not found"});
-
-
-      try {
-        getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') SORT e.what RETURN e.what");
-      } catch (err) {
-        actual = err
-      }
-      assertEqual(actual, {"error":true,"errorNum":1542,"errorMessage":"invalid argument type used in call to function 'EDGES()'"});
-
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR e IN GRAPH_EDGES('bla3', 'NotExistingVertex', 'outbound') RETURN e.what");
+        
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') RETURN e.what");
     }
 
   }
