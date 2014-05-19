@@ -111,15 +111,6 @@ add_executable(
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
     SkipLists/skiplistIndex.cpp
-    Transaction/Collection.cpp
-    Transaction/Context.cpp
-    Transaction/Helper.cpp
-    Transaction/IdGenerator.cpp
-    Transaction/Manager.cpp
-    Transaction/Operations.cpp
-    Transaction/State.cpp
-    Transaction/Transaction.cpp
-    Transaction/WorkUnit.cpp
     Utils/DocumentHelper.cpp
     Utils/Exception.cpp
     V8Server/ApplicationV8.cpp
