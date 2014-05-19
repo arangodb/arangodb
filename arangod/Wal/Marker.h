@@ -29,10 +29,13 @@
 #define TRIAGENS_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
+#include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
 
 namespace triagens {
   namespace wal {
+
+    static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
     struct Marker {
       Marker (TRI_df_marker_type_e type,
@@ -54,6 +57,10 @@ namespace triagens {
         if (buffer != nullptr) {
           delete buffer;
         }
+      }
+      
+      inline size_t alignedSize (size_t size) const {
+        return TRI_DF_ALIGN_BLOCK(size);
       }
 
       inline TRI_df_marker_t* header () const {
@@ -77,7 +84,7 @@ namespace triagens {
         memcpy(ptr, src, length);
         advance(ptr, length);
       }
-      
+
       char*          buffer;
       uint32_t const size;
     };
@@ -129,37 +136,68 @@ namespace triagens {
       }
 
     };
-/*
+
     struct DocumentMarker : public Marker {
       DocumentMarker (TRI_voc_tick_t databaseId,
                       TRI_voc_cid_t collectionId,
                       TRI_voc_tid_t transactionId,
                       std::string const& key,
-                      TRI_voc_tick_t revision,
-                      triagens::basics::Bson const& document)
+                      TRI_voc_rid_t revision,
+                      TRI_shaped_json_t const* shapedJson) 
         : Marker(TRI_WAL_MARKER_DOCUMENT, 
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + sizeof(TRI_voc_tick_t) + key.size() + 2 + document.getSize()) {
+                 fixedSize() + alignedSize(key.size() + 2) + shapedJson->_data.length) {
 
         char* p = data();
         store<TRI_voc_tick_t>(p, databaseId);
         store<TRI_voc_cid_t>(p, collectionId);
         store<TRI_voc_tid_t>(p, transactionId);
-        store<TRI_voc_tick_t>(p, revision);
+        store<TRI_voc_rid_t>(p, revision);
+               
+        // sid
+        store<TRI_shape_sid_t>(p, shapedJson->_sid);
+
+        // offset to key
+        uint16_t offsetKey = static_cast<uint16_t>(sizeof(TRI_df_marker_t) + fixedSize());
+        store<uint16_t>(p, offsetKey);
+
+        // offset to legend
+        uint16_t offsetLegend = offsetKey + alignedSize(key.size() + 2);
+        store<uint16_t>(p, offsetLegend);
+
+        // offset to shapedJson
+        uint32_t offsetShapedJson = offsetLegend + 8; // TODO
+        store<uint32_t>(p, offsetShapedJson);
 
         // store key
-        store<uint8_t>(p, (uint8_t) key.size()); 
-        store(p, key.c_str(), key.size());
-        store<unsigned char>(p, '\0');
+        size_t const n = key.size();
+        store<uint8_t>(p, (uint8_t) n); // length of key
+        store(p, key.c_str(), n);
 
-        // store bson
-        store(p, (char const*) document.getBuffer(), static_cast<size_t>(document.getSize()));
+        // pad key with \0
+        for (size_t i = n + 1; i < 8 + ((n + 1) / 8) * 8; ++i) {
+          store<unsigned char>(p, '\0');
+        }
+
+        // store shaped json
+        store(p, (char const*) shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
       }
 
       ~DocumentMarker () {
       }
 
+      size_t fixedSize () const {
+        return sizeof(TRI_voc_tick_t) + 
+               sizeof(TRI_voc_cid_t) + 
+               sizeof(TRI_voc_tid_t) + 
+               sizeof(TRI_voc_rid_t) + 
+               sizeof(TRI_shape_sid_t) + 
+               sizeof(uint16_t) +
+               sizeof(uint16_t) +
+               sizeof(uint32_t);
+      }
+
     };
-    
+   /* 
     struct RemoveMarker : public Marker {
       RemoveMarker (TRI_voc_tick_t databaseId,
                     TRI_voc_cid_t collectionId,
