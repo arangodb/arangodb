@@ -126,7 +126,6 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
@@ -189,12 +188,38 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   return this;
 };
 
+AQLGenerator.prototype.filter = function(example) {
+  var ex = [];
+  if (Object.prototype.toString.call(example) !== "[object Array]") {
+    if (Object.prototype.toString.call(example) !== "[object Object]") {
+      throw "The example has to be an Object, or an Array";
+    }
+    ex = [example];
+  } else {
+    ex = example;
+  }
+  var query = "FILTER MATCHES(" + this.getLastEdgeVar() + "," + JSON.stringify(ex) + ")";
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+
+/* Old Filter version, string replacements broxen
 AQLGenerator.prototype.filter = function(condition) {
   var con = condition.replace("e.", this.getLastEdgeVar() + "."); 
   var query = "FILTER " + con;
   this.stack.push(new AQLStatement(query));
   return this;
 };
+*/
+
+/* Old LET version, string replacements broxen
+AQLGenerator.prototype.let = function(assignment) {
+  var asg = assignment.replace("e.", this.getLastEdgeVar() + "."); 
+  var query = "LET " + asg;
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+*/
 
 AQLGenerator.prototype.printQuery = function() {
   return this.stack.map(function(stmt) {
@@ -209,24 +234,6 @@ AQLGenerator.prototype.execute = function() {
 AQLGenerator.prototype.toArray = function() {
   return this.exectue().toArray();
 };
-
-var bindFluentAQLFunctionsToArray = function(arr) {
-  var filter = arr.filter.bind(arr);
-  arr.restrict = function(collections) {
-    if (typeof collections === "string") {
-      collections = [collections];
-    }
-    if (!Array.isArray(collections)) {
-      throw "Restrict requires either one collection name, or a list of them.";
-    }
-    var res = filter(function(i) {
-      var colName = i._id.split("/")[0];
-      return _.contains(collections, colName);
-    });
-    return res;
-  };
-};
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 public functions
@@ -486,7 +493,6 @@ Graph.prototype._outEdges = function(vertexId) {
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
-  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
