@@ -37,6 +37,7 @@
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
 
 #define LOG_TRX(trx, level, format, ...) \
   LOG_TRACE("trx #%llu.%d (%s): " format, (unsigned long long) trx->_id, (int) level, StatusTransaction(trx->_status), __VA_ARGS__)
@@ -50,9 +51,20 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief whether or not a transaction consists of a single operation
 ////////////////////////////////////////////////////////////////////////////////
+
+static triagens::wal::LogfileManager* GetLogfileManager () {
+  return triagens::wal::LogfileManager::instance();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
+  return ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares two transaction ids
@@ -1098,11 +1110,53 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief write WAL begin marker
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteBeginMarker (TRI_transaction_t* trx) {    
+  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+
+  return GetLogfileManager()->writeMarker(marker, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write WAL abort marker
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteAbortMarker (TRI_transaction_t* trx) {    
+  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+
+  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write WAL commit marker
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteCommitMarker (TRI_transaction_t* trx) {    
+  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+
+  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief update the status of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UpdateTransactionStatus (TRI_transaction_t* const trx,
-                                    const TRI_transaction_status_e status) {
+                                    TRI_transaction_status_e status) {
   assert(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_status == TRI_TRANSACTION_CREATED) {
@@ -1112,9 +1166,32 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
     assert(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
   }
 
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (status == TRI_TRANSACTION_RUNNING) {
+    // write a begin marker
+    res = WriteBeginMarker(trx);
+  }
+  else if (status == TRI_TRANSACTION_COMMITTED) {
+    res = WriteCommitMarker(trx);
+  }
+
+  // an error might have happened until now. if yes, then we'll abort the transaction
+  if (res != TRI_ERROR_NO_ERROR) {
+    status = TRI_TRANSACTION_FAILED;
+
+    // reset the error, because we have set status "failed" already
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  // if the transaction has failed or was aborted, we'll write an abort marker
+  if (status == TRI_TRANSACTION_ABORTED || status == TRI_TRANSACTION_FAILED) {
+    res = WriteAbortMarker(trx);
+  }
+
   trx->_status = status;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1125,18 +1202,9 @@ template<typename T> static T* CreateMarker () {
   return static_cast<T*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(T), false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new transaction container
@@ -1209,18 +1277,9 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection from a transaction
@@ -1545,7 +1604,7 @@ int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t* trxColl
 /// @brief get a transaction's id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tid_t TRI_GetIdTransaction (const TRI_transaction_t* trx) {
+TRI_voc_tid_t TRI_GetIdTransaction (TRI_transaction_t const* trx) {
   return trx->_id;
 }
 
@@ -1554,7 +1613,7 @@ TRI_voc_tid_t TRI_GetIdTransaction (const TRI_transaction_t* trx) {
 /// this will return 0 if the operation is standalone
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tid_t TRI_GetMarkerIdTransaction (const TRI_transaction_t* trx) {
+TRI_voc_tid_t TRI_GetMarkerIdTransaction (TRI_transaction_t const* trx) {
   if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
     return 0;
   }
@@ -1566,9 +1625,9 @@ TRI_voc_tid_t TRI_GetMarkerIdTransaction (const TRI_transaction_t* trx) {
 /// @brief start a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_BeginTransaction (TRI_transaction_t* const trx, 
+int TRI_BeginTransaction (TRI_transaction_t* trx, 
                           TRI_transaction_hint_t hints,
-                          const int nestingLevel) {
+                          int nestingLevel) {
   int res;
 
   LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
@@ -1591,13 +1650,16 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
+      res = UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
     }
   }
   else {
     // something is wrong
     if (nestingLevel == 0) {
       UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+
+      // res contains an error anyway, so we don't need the return value of UpdateTransactionStatus
+      assert(res != TRI_ERROR_NO_ERROR);
     }
 
     // free what we have got so far
@@ -1611,8 +1673,8 @@ int TRI_BeginTransaction (TRI_transaction_t* const trx,
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CommitTransaction (TRI_transaction_t* const trx,
-                           const int nestingLevel) {
+int TRI_CommitTransaction (TRI_transaction_t* trx,
+                           int nestingLevel) {
   int res;
 
   LOG_TRX(trx, nestingLevel, "%s transaction", "committing");
@@ -1628,7 +1690,11 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx,
 
     if (res != TRI_ERROR_NO_ERROR) {
       // writing markers has failed
-      res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+      
+      UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+
+      // res contains an error anyway, so we don't need the return value of UpdateTransactionStatus
+      assert(res != TRI_ERROR_NO_ERROR);
     }
     else {
       res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
@@ -1648,8 +1714,8 @@ int TRI_CommitTransaction (TRI_transaction_t* const trx,
 /// @brief abort and rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AbortTransaction (TRI_transaction_t* const trx,
-                          const int nestingLevel) {
+int TRI_AbortTransaction (TRI_transaction_t* trx,
+                          int nestingLevel) {
   int res;
 
   LOG_TRX(trx, nestingLevel, "%s transaction", "aborting");
@@ -1660,8 +1726,9 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx,
     if (trx->_hasOperations) {
       RollbackOperations(trx);
     }
-
+      
     res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+
     if (trx->_hasOperations) {
       FreeOperations(trx);
     }
@@ -1675,18 +1742,9 @@ int TRI_AbortTransaction (TRI_transaction_t* const trx,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               TRANSACTION HELPERS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a single operation wrapped in a transaction
@@ -1756,10 +1814,6 @@ int TRI_ExecuteSingleOperationTransaction (TRI_vocbase_t* vocbase,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               TRANSACTION MARKERS
 // -----------------------------------------------------------------------------
@@ -1767,11 +1821,6 @@ int TRI_ExecuteSingleOperationTransaction (TRI_vocbase_t* vocbase,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a "begin" marker
@@ -1858,10 +1907,6 @@ int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t* trx,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

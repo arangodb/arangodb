@@ -33,6 +33,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Wal/Logfile.h"
+#include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
 #include <regex.h>
@@ -214,6 +215,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void finalise (SlotInfo&, bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write a marker into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise
+////////////////////////////////////////////////////////////////////////////////
+
+        int writeMarker (Marker&, 
+                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
