@@ -210,8 +210,8 @@ static SignalTask* localSignalTask;
   class SchedulerReporterTask : public PeriodicTask {
     public:
       SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
-        : Task("Scheduler-Reporter"), 
-          PeriodicTask(1.0, _reportInterval), 
+        : Task("Scheduler-Reporter"),
+          PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval), 
           _scheduler(scheduler) {
       }
 
@@ -380,6 +380,7 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
   }
 
+  assert(_scheduler != 0);
   _scheduler->registerTask(task);
 }
 
@@ -561,6 +562,8 @@ void ApplicationScheduler::buildSchedulerReporter () {
   if (_scheduler == 0) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
+  
+  assert(_scheduler != 0);
 
   if (0.0 < _reportInterval) {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
@@ -578,6 +581,8 @@ void ApplicationScheduler::buildControlCHandler () {
   if (_scheduler == 0) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
+  
+  assert(_scheduler != 0);
 
   // control C handler
   Task* controlC = new ControlCTask(_applicationServer);

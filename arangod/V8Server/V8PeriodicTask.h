@@ -61,8 +61,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8PeriodicTask (string const&,
-                        string const&,
+        V8PeriodicTask (std::string const&,
+                        std::string const&,
                         TRI_vocbase_t*,
                         ApplicationV8*,
                         rest::Scheduler*,
@@ -146,6 +146,11 @@ namespace triagens {
 
         struct TRI_json_s* _parameters;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creation timestamp
+////////////////////////////////////////////////////////////////////////////////
+
+        double _created;
     };
   }
 }

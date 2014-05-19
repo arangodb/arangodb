@@ -67,8 +67,8 @@
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
-
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
+      'click #queryDiv .showHotkeyHelp': 'shortcutModal'
     },
 
     initTabArray: function() {
@@ -90,6 +90,31 @@
       if ( saveName === "Insert Query"){
         $('#new-query-name').val('');
         return;
+      }
+
+      //check for invalid query names, if present change the box-shadoq to red
+      // and disable the save functionality
+
+      var dangerCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
+      "border-color" : "rgba(234, 23, 23, 0.8)"
+      };
+
+      var normalCss = {
+      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
+      "border-color" : "rgba(82, 168, 236, 0.8)"
+      };
+
+      if ( saveName.match(/[<>&'"]/g)){
+        $('#new-query-name').css(dangerCss);
+        $('#new-query-name').addClass('invalid');
+      } else {
+        $('#new-query-name').css(normalCss);
+        $('#new-query-name').removeClass('invalid');
       }
 
       var boolTemp = false;
@@ -192,6 +217,7 @@
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
       inputEditor.setFontSize("16px");
+      inputEditor.setOptions({fontFamily: "Courier New"});
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
@@ -339,12 +365,17 @@
     saveAQL: function (e) {
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
-      var content = inputEditor.getValue();
 
-      if (saveName.trim() === '') {
-        //Heiko: Form-Validator - illegal query name
+      if ($('#new-query-name').hasClass('invalid')) {
         return;
       }
+
+      //Heiko: Form-Validator - illegal query name
+      if (saveName.trim() === '') {
+        return;
+      }
+
+      var content = inputEditor.getValue();
 
       //check for already existing entry
       var quit = false;
@@ -523,6 +554,10 @@
 
     },
 
+    shortcutModal: function() {
+      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
+    },
+
     // This function changes the focus onto the tab that has been clicked
     // it can be given an event-object or the id of the tab to switch to
     //    e.g. switchTab("result-switch");
@@ -537,7 +572,6 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        var wrapperDiv = divId + "Div";
         if ( element === switchId){
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");

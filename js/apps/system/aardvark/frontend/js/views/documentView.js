@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, forin: true */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
-/*global document */
+/*global document, _ */
 
 (function() {
   "use strict";
@@ -12,7 +12,9 @@
     template: templateEngine.createTemplate("documentView.ejs"),
 
     events: {
-      "click #saveDocumentButton" : "saveDocument"
+      "click #saveDocumentButton" : "saveDocument",
+      "dblclick #documentEditor tr" : "addProperty",
+      "click #tableDiv .showHotkeyHelp" : "shortcutModal"
     },
 
     editor: 0,
@@ -49,6 +51,42 @@
       this.editor = new window.jsoneditor.JSONEditor(container, options);
 
       return this;
+    },
+
+    addProperty: function (e) {
+      var node, searchResult;
+      try {
+        node = e.currentTarget.cells[2].childNodes[0].
+          childNodes[0].childNodes[0].childNodes[1].
+          childNodes[0].textContent;
+      } catch (ex) {
+
+      }
+      if (node) {
+        if (node === "object") {
+          if (_.isEmpty(this.editor.get())) {
+            this.editor.set({
+              "": ""
+            });
+            this.editor.node.childs[0].focus("field");
+          } else {
+            this.editor.node.childs[0]._onInsertBefore(undefined, undefined, "auto");
+          }
+          return;
+        }
+        searchResult = this.editor.node.search(node);
+        var breakLoop = false;
+        searchResult.forEach(function (s) {
+          if (breakLoop) {
+            return;
+          }
+          if (s.elem === "field" ) {
+            s.node._onInsertAfter(undefined, undefined, "auto");
+            breakLoop = true;
+          }
+        });
+
+      }
     },
 
     removeReadonlyKeys: function (object) {
@@ -97,6 +135,10 @@
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
+    },
+
+    shortcutModal: function() {
+      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     escaped: function (value) {

@@ -192,11 +192,7 @@ namespace triagens {
               assert(res != Z_STREAM_ERROR);  
 
               switch (res) {
-                case Z_NEED_DICT: {
-                  res = Z_DATA_ERROR;     
-                }
-                // fall-through intentional
-
+                case Z_NEED_DICT: 
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR: {
                   (void) inflateEnd(&strm);
@@ -266,11 +262,7 @@ namespace triagens {
               assert(res != Z_STREAM_ERROR);  
 
               switch (res) {
-                case Z_NEED_DICT: {
-                  res = Z_DATA_ERROR;     
-                }
-                // fall-through intentional
-
+                case Z_NEED_DICT: 
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR: {
                   (void) inflateEnd(&strm);

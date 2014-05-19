@@ -4400,8 +4400,11 @@ pre.gv-object-view {
     height: 220px;
     width: 250px; }
 
+.showHotkeyHelp {
+  cursor: pointer; }
+
 .shortcuts {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 200; }
 
 .shortcuts b {
@@ -5266,6 +5269,32 @@ input.gv-radio-button {
 @media (min-width: 1042px) and (max-width: 1284px) {
   .arango-collection-ul a {
     font-size: 13px; } }
+.hotkeysList .hotkeysLabel {
+  color: #000;
+  clear: both;
+  font-size: 16px;
+  font-weight: 400; }
+.hotkeysList .hotkeysContent {
+  padding-left: 10px; }
+.hotkeysList li {
+  line-height: 25px; }
+  .hotkeysList li .hotkeysDiv {
+    float: left; }
+.hotkeysList .hotkeysicons {
+  background-color: #686766;
+  border: 1px solid #000;
+  border-radius: 2px;
+  color: #fff;
+  display: inline;
+  height: 19px;
+  margin-left: 10px;
+  text-align: center;
+  width: 19px; }
+
+.hotkeysContentLabel {
+  width: 30%;
+  float: left; }
+
 .arango-table {
   border-top: 1px solid #000;
   width: 100%; }

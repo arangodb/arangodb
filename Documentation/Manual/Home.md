@@ -21,11 +21,11 @@ sometimes called drivers) for various languages including the Big-P
 Please contact @S_EXTREF_S{http://www.arangodb.org/community,us} if
 you have any questions.
 
-Upgrading to ArangoDB 2.0 {#ArangoDBUpgrading20}
+Upgrading to ArangoDB 2.1 {#ArangoDBUpgrading21}
 ================================================
 
-- @BOOK_REF{NewFeatures20}
-- @BOOK_REF{Upgrading20}
+- @BOOK_REF{NewFeatures21}
+- @BOOK_REF{Upgrading21}
 
 See @ref Upgrading from older releases.
 

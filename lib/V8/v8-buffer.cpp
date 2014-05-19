@@ -202,14 +202,14 @@ static v8::Local<v8::Value> Encode (const void *buf,
       twobytebuf[i] = cbuf[i];
     }
 
-    v8::Local<v8::String> chunk = v8::String::New(twobytebuf, len);
+    v8::Local<v8::String> chunk = v8::String::New(twobytebuf, (int) len);
     delete [] twobytebuf; // TODO use ExternalTwoByteString?
 
     return scope.Close(chunk);
   }
 
   // utf8 or ascii enc
-  v8::Local<v8::String> chunk = v8::String::New((const char*) buf, len);
+  v8::Local<v8::String> chunk = v8::String::New((const char*) buf, (int) len);
   return scope.Close(chunk);
 }
 
@@ -235,10 +235,10 @@ v8::Handle<v8::Value> FromConstructorTemplate (v8::Persistent<v8::FunctionTempla
   }
 
   for (size_t i = 0;  i < argc;  ++i) {
-    argv[i] = args[i];
+    argv[i] = args[(int) i];
   }
 
-  return scope.Close(t->GetFunction()->NewInstance(argc, argv));
+  return scope.Close(t->GetFunction()->NewInstance((int) argc, argv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +409,7 @@ static ssize_t DecodeWrite (char *buf,
     size_t size = V8Buffer::length(val.As<v8::Object>());
     size_t len = size < buflen ? size : buflen;
     memcpy(buf, data, len);
-    return len;
+    return (ssize_t) len;
   }
 
   v8::Local<v8::String> str;
@@ -426,16 +426,16 @@ static ssize_t DecodeWrite (char *buf,
   }
 
   if (encoding == UTF8) {
-    str->WriteUtf8(buf, buflen, NULL, v8::String::HINT_MANY_WRITES_EXPECTED);
-    return buflen;
+    str->WriteUtf8(buf, (int) buflen, NULL, v8::String::HINT_MANY_WRITES_EXPECTED);
+    return (ssize_t) buflen;
   }
 
   if (encoding == ASCII) {
     str->WriteOneByte(reinterpret_cast<uint8_t*>(buf),
                       0,
-                      buflen,
+                      (int) buflen,
                       v8::String::HINT_MANY_WRITES_EXPECTED);
-    return buflen;
+    return (ssize_t) buflen;
   }
 
   // THIS IS AWFUL!!! FIXME
@@ -443,7 +443,7 @@ static ssize_t DecodeWrite (char *buf,
 
   uint16_t * twobytebuf = new uint16_t[buflen];
 
-  str->Write(twobytebuf, 0, buflen, v8::String::HINT_MANY_WRITES_EXPECTED);
+  str->Write(twobytebuf, 0, (int) buflen, v8::String::HINT_MANY_WRITES_EXPECTED);
 
   for (size_t i = 0; i < buflen; i++) {
     unsigned char *b = reinterpret_cast<unsigned char*>(&twobytebuf[i]);
@@ -452,7 +452,7 @@ static ssize_t DecodeWrite (char *buf,
 
   delete [] twobytebuf;
 
-  return buflen;
+  return (ssize_t) buflen;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -703,7 +703,7 @@ v8::Handle<v8::Object> V8Buffer::New (v8::Handle<v8::String> string) {
 V8Buffer* V8Buffer::New (size_t length) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(length, isolate);
+  v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned((uint32_t) length, isolate);
   v8::Local<v8::Object> b = v8g->BufferTempl->GetFunction()->NewInstance(1, &arg);
 
   if (b.IsEmpty()) {
@@ -846,9 +846,9 @@ void V8Buffer::replace (char* data,
 
   _handle->SetIndexedPropertiesToExternalArrayData(_data,
                                                    v8::kExternalUnsignedByteArray,
-                                                   _length);
+                                                   (int) _length);
 
-  _handle->Set(v8g->LengthKey, v8::Integer::NewFromUnsigned(_length, isolate));
+  _handle->Set(v8g->LengthKey, v8::Integer::NewFromUnsigned((uint32_t) _length, isolate));
 }
 
 // -----------------------------------------------------------------------------
@@ -886,12 +886,12 @@ static v8::Handle<v8::Value> JS_AsciiSlice (const v8::Arguments& args) {
   if (ContainsNonAscii(data, len)) {
     char* out = new char[len];
     ForceAscii(data, out, len);
-    v8::Local<v8::String> rc = v8::String::New(out, len);
+    v8::Local<v8::String> rc = v8::String::New(out, (int) len);
     delete[] out;
     return scope.Close(rc);
   }
 
-  return scope.Close(v8::String::New(data, len));
+  return scope.Close(v8::String::New(data, (int) len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1102,7 +1102,7 @@ static v8::Handle<v8::Value> JS_Copy (const v8::Arguments& args) {
           (const void*)(source->_data + source_start),
           to_copy);
 
-  return scope.Close(v8::Integer::New(to_copy));
+  return scope.Close(v8::Integer::New((int32_t) to_copy));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1140,7 +1140,7 @@ static v8::Handle<v8::Value> JS_Utf8Write(const v8::Arguments& args) {
   int char_written;
 
   int written = s->WriteUtf8(p,
-                             max_length,
+                             (int) max_length,
                              &char_written,
                              (v8::String::HINT_MANY_WRITES_EXPECTED
                             | v8::String::NO_NULL_TERMINATION));
@@ -1178,7 +1178,7 @@ static v8::Handle<v8::Value> JS_Ucs2Write (const v8::Arguments& args) {
 
   int written = s->Write(p,
                          0,
-                         max_length,
+                         (int) max_length,
                          (v8::String::HINT_MANY_WRITES_EXPECTED
                         | v8::String::NO_NULL_TERMINATION));
 
@@ -1215,8 +1215,8 @@ static v8::Handle<v8::Value> JS_HexWrite (const v8::Arguments& args) {
 
   // overflow + bounds check.
   if (end < start || end > parent->_length) {
-    end = parent->_length;
-    size = parent->_length - start;
+    end = (uint32_t) parent->_length;
+    size = (uint32_t) (parent->_length - start);
   }
 
   if (size == 0) {
@@ -1278,7 +1278,7 @@ static v8::Handle<v8::Value> JS_AsciiWrite (const v8::Arguments& args) {
 
   int written = s->WriteOneByte(reinterpret_cast<uint8_t*>(p),
                                 0,
-                                max_length,
+                                (int) max_length,
                                 (v8::String::HINT_MANY_WRITES_EXPECTED
                                | v8::String::NO_NULL_TERMINATION));
 
@@ -1319,7 +1319,7 @@ static v8::Handle<v8::Value> JS_Base64Write (const v8::Arguments& args) {
   const char* const srcEnd = src + s.length();
 
   while (src < srcEnd && dst < dstEnd) {
-    int remaining = srcEnd - src;
+    int remaining = (int) (srcEnd - src);
 
     while (unbase64(*src) < 0 && src < srcEnd) { src++, remaining--; }
     if (remaining == 0 || *src == '=') break;
@@ -1346,7 +1346,7 @@ static v8::Handle<v8::Value> JS_Base64Write (const v8::Arguments& args) {
     *dst++ = ((c & 0x03) << 6) | (d & 0x3F);
   }
 
-  return scope.Close(v8::Integer::New(dst - start));
+  return scope.Close(v8::Integer::New((int32_t) (dst - start)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1543,7 +1543,7 @@ static v8::Handle<v8::Value> JS_ByteLength (const v8::Arguments &args) {
   v8::Local<v8::String> s = args[0]->ToString();
   TRI_V8_encoding_t e = ParseEncoding(args[1], UTF8);
 
-  return scope.Close(v8::Integer::New(ByteLengthString(s, e)));
+  return scope.Close(v8::Integer::New((int32_t) ByteLengthString(s, e)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

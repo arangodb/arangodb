@@ -26,7 +26,7 @@
 
     setCollectionId : function (colid, pageid) {
         this.collection.setCollection(colid);
-        var type = arangoHelper.collectionApiType(colid), self = this;
+        var type = arangoHelper.collectionApiType(colid);
         this.pageid = pageid;
         this.type = type;
         this.collection.getDocuments(colid, pageid);
@@ -622,7 +622,6 @@
     createIndex: function () {
       //e.preventDefault();
       var self = this;
-      var collection = this.collectionName;
       var indexType = $('#newIndexType').val();
       var result;
       var postParameter = {};

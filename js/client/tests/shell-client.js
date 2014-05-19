@@ -183,6 +183,7 @@ function clientTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare_Skiplist_Sorting : function () {
+      db._drop("ICU_SORTED");
       db._create("ICU_SORTED");
       db.ICU_SORTED.ensureSkiplist("test");
       db.ICU_SORTED.save({ test : "äää" });

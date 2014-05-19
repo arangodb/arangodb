@@ -381,7 +381,7 @@ static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
 
-  return v8::String::New((const char*) buffer, len);
+  return v8::String::New((const char*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +392,7 @@ static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
-  return v8::String::New((const char*) buffer, len);
+  return v8::String::New((const char*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +403,7 @@ static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
-  return v8::String::New((const char*) buffer, len);
+  return v8::String::New((const char*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,7 +414,7 @@ static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
                                                   const string& key) {
   const string id = DocumentHelper::assembleDocumentId(collectionName, key);
 
-  return v8::String::New(id.c_str(), id.size());
+  return v8::String::New(id.c_str(), (int) id.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -872,7 +872,7 @@ static v8::Handle<v8::Value> IndexRep (string const& collectionName,
 
   string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
   const string id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
-  rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), id.size()));
+  rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), (int) id.size()));
 
   return scope.Close(rep);
 }
@@ -1204,8 +1204,8 @@ static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const obj,
     return TRI_ERROR_BAD_PARAMETER;
   }
   
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, count));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, byteSize));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) count));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) byteSize));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3319,7 +3319,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
   assert(codeLength > 0);
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), 
-                                                             v8::String::New(code, codeLength), 
+                                                             v8::String::New(code, (int) codeLength), 
                                                              TRI_V8_SYMBOL("query"), 
                                                              false);
 
@@ -3672,7 +3672,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     // Invoke Function constructor to create function with the given body and no arguments
     string body = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("action"))->ToString());
     body = "return (" + body + ")(params);";
-    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(body.c_str(), body.size()) };
+    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(body.c_str(), (int) body.size()) };
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     action = v8::Local<v8::Function>::Cast(function);
@@ -3815,7 +3815,7 @@ static v8::Handle<v8::Value> JS_getIcuLocales (v8::Arguments const& argv) {
       const Locale* l = locales + i;      
       const char* str = l->getBaseName();
       
-      result->Set(i, v8::String::New(str, strlen(str)));    
+      result->Set(i, v8::String::New(str, (int) strlen(str)));    
     }
   }
   
@@ -3870,14 +3870,14 @@ static v8::Handle<v8::Value> JS_formatDatetime (v8::Arguments const& argv) {
   DateFormatSymbols* ds = new DateFormatSymbols(locale, status);
   SimpleDateFormat* s = new SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
-  s->format(datetime * 1000, formattedString);
+  s->format((UDate) (datetime * 1000), formattedString);
     
   string resultString;
   formattedString.toUTF8String(resultString);
   delete s;
   delete tz;
   
-  return scope.Close(v8::String::New(resultString.c_str(), resultString.length()));
+  return scope.Close(v8::String::New(resultString.c_str(), (int) resultString.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4299,7 +4299,7 @@ static v8::Handle<v8::Value> JS_GetBatchSizeGeneralCursor (v8::Arguments const& 
     TRI_UnlockGeneralCursor(cursor);
     TRI_ReleaseGeneralCursor(cursor);
 
-    return scope.Close(v8::Number::New((size_t) max));
+    return scope.Close(v8::Number::New((double) max));
   }
 
   TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
@@ -4765,8 +4765,8 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
       const string cidString = StringUtils::itoa((*it).first);
 
       v8::Handle<v8::Object> ci = v8::Object::New();
-      ci->Set(TRI_V8_SYMBOL("id"), v8::String::New(cidString.c_str(), cidString.size()));
-      ci->Set(TRI_V8_SYMBOL("name"), v8::String::New((*it).second.c_str(), (*it).second.size()));
+      ci->Set(TRI_V8_SYMBOL("id"), v8::String::New(cidString.c_str(), (int) cidString.size()));
+      ci->Set(TRI_V8_SYMBOL("name"), v8::String::New((*it).second.c_str(), (int) (*it).second.size()));
 
       collections->Set(j++, ci);
     }
@@ -4791,7 +4791,7 @@ static v8::Handle<v8::Value> JS_ServerIdReplication (v8::Arguments const& argv) 
   v8::HandleScope scope;
 
   const string serverId = StringUtils::itoa(TRI_GetIdServer());
-  return scope.Close(v8::String::New(serverId.c_str(), serverId.size()));
+  return scope.Close(v8::String::New(serverId.c_str(), (int) serverId.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5649,7 +5649,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             memset(&newMarker, 0, newMarkerSize);
 
             sprintf(didBuffer,"%llu", (unsigned long long) oldMarker->_did);
-            keySize = strlen(didBuffer) + 1;
+            keySize = (TRI_voc_size_t) (strlen(didBuffer) + 1);
             keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);
@@ -5707,7 +5707,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             toSize = strlen(toDidBuffer) + 1;
             fromSize = strlen(fromDidBuffer) + 1;
 
-            keyBodySize = TRI_DF_ALIGN_BLOCK(keySize + toSize + fromSize);
+            keyBodySize = (TRI_voc_size_t) (TRI_DF_ALIGN_BLOCK(keySize + toSize + fromSize));
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
 
             TRI_CopyString(keyBody,                    didBuffer,     keySize);
@@ -5720,8 +5720,8 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             newMarker.base._offsetKey = newMarkerSize;
             newMarker.base._offsetJson = newMarkerSize + keyBodySize;
 
-            newMarker._offsetToKey = newMarkerSize + keySize;
-            newMarker._offsetFromKey = newMarkerSize + keySize + toSize;
+            newMarker._offsetToKey = (uint16_t) (newMarkerSize + keySize);
+            newMarker._offsetFromKey = (uint16_t) (newMarkerSize + keySize + toSize);
             newMarker._toCid = oldMarker->_toCid;
             newMarker._fromCid = oldMarker->_fromCid;
 
@@ -5758,7 +5758,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
             memset(&newMarker, 0, newMarkerSize);
 
             sprintf(didBuffer,"%llu", (unsigned long long) oldMarker->_did);
-            keySize = strlen(didBuffer) + 1;
+            keySize = (TRI_voc_size_t) (strlen(didBuffer) + 1);
             keyBodySize = TRI_DF_ALIGN_BLOCK(keySize);
             keyBody = (char*) TRI_Allocate(TRI_CORE_MEM_ZONE, keyBodySize, true);
             TRI_CopyString(keyBody, didBuffer, keySize);
@@ -5823,7 +5823,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
       }
 
       if (writtenSize < fileSize) {
-        writeResult = TRI_WRITE(fdout, b, fileSize - writtenSize);
+        writeResult = TRI_WRITE(fdout, b, (TRI_write_t) (fileSize - writtenSize));
         (void) writeResult;
       }
     }
@@ -5929,7 +5929,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
     o->Set(v8::String::New("type"), v8::Number::New((int) entry->_type));
     o->Set(v8::String::New("status"), v8::Number::New((int) entry->_status));
 
-    entries->Set(i, o);
+    entries->Set((uint32_t) i, o);
   }
 
   TRI_DestroyDatafileScan(&scan);
@@ -6044,7 +6044,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION(scope, error);
     }
 
-    return scope.Close(v8::Number::New(count));
+    return scope.Close(v8::Number::New((double) count));
   }
 #endif  
 
@@ -6110,7 +6110,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   result->Set(v8::String::New("journals"), journals);
 
   for (size_t i = 0;  i < structure._journals._length;  ++i) {
-    journals->Set(i, v8::String::New(structure._journals._buffer[i]));
+    journals->Set((uint32_t) i, v8::String::New(structure._journals._buffer[i]));
   }
 
   // compactors
@@ -6118,7 +6118,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   result->Set(v8::String::New("compactors"), compactors);
 
   for (size_t i = 0;  i < structure._compactors._length;  ++i) {
-    compactors->Set(i, v8::String::New(structure._compactors._buffer[i]));
+    compactors->Set((uint32_t) i, v8::String::New(structure._compactors._buffer[i]));
   }
 
   // datafiles
@@ -6126,7 +6126,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
   result->Set(v8::String::New("datafiles"), datafiles);
 
   for (size_t i = 0;  i < structure._datafiles._length;  ++i) {
-    datafiles->Set(i, v8::String::New(structure._datafiles._buffer[i]));
+    datafiles->Set((uint32_t) i, v8::String::New(structure._datafiles._buffer[i]));
   }
 
   // free result
@@ -6581,46 +6581,46 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> dfs = v8::Object::New();
 
   result->Set(v8::String::New("datafiles"), dfs);
-  dfs->Set(v8::String::New("count"), v8::Number::New(info->_numberDatafiles));
-  dfs->Set(v8::String::New("fileSize"), v8::Number::New(info->_datafileSize));
+  dfs->Set(v8::String::New("count"), v8::Number::New((double) info->_numberDatafiles));
+  dfs->Set(v8::String::New("fileSize"), v8::Number::New((double) info->_datafileSize));
 
   // journal info
   v8::Handle<v8::Object> js = v8::Object::New();
 
   result->Set(v8::String::New("journals"), js);
-  js->Set(v8::String::New("count"), v8::Number::New(info->_numberJournalfiles));
-  js->Set(v8::String::New("fileSize"), v8::Number::New(info->_journalfileSize));
+  js->Set(v8::String::New("count"), v8::Number::New((double) info->_numberJournalfiles));
+  js->Set(v8::String::New("fileSize"), v8::Number::New((double) info->_journalfileSize));
   
   // compactors info
   v8::Handle<v8::Object> cs = v8::Object::New();
 
   result->Set(v8::String::New("compactors"), cs);
-  cs->Set(v8::String::New("count"), v8::Number::New(info->_numberCompactorfiles));
-  cs->Set(v8::String::New("fileSize"), v8::Number::New(info->_compactorfileSize));
+  cs->Set(v8::String::New("count"), v8::Number::New((double) info->_numberCompactorfiles));
+  cs->Set(v8::String::New("fileSize"), v8::Number::New((double) info->_compactorfileSize));
   
   // shapefiles info
   v8::Handle<v8::Object> sf = v8::Object::New();
 
   result->Set(v8::String::New("shapefiles"), sf);
-  sf->Set(v8::String::New("count"), v8::Number::New(info->_numberShapefiles));
-  sf->Set(v8::String::New("fileSize"), v8::Number::New(info->_shapefileSize));
+  sf->Set(v8::String::New("count"), v8::Number::New((double) info->_numberShapefiles));
+  sf->Set(v8::String::New("fileSize"), v8::Number::New((double) info->_shapefileSize));
 
   // shape info
   v8::Handle<v8::Object> shapes = v8::Object::New();
   result->Set(v8::String::New("shapes"), shapes);
-  shapes->Set(v8::String::New("count"), v8::Number::New(info->_numberShapes));
-  shapes->Set(v8::String::New("size"), v8::Number::New(info->_sizeShapes));
+  shapes->Set(v8::String::New("count"), v8::Number::New((double) info->_numberShapes));
+  shapes->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeShapes));
   
   // attributes info
   v8::Handle<v8::Object> attributes = v8::Object::New();
   result->Set(v8::String::New("attributes"), attributes);
-  attributes->Set(v8::String::New("count"), v8::Number::New(info->_numberAttributes));
-  attributes->Set(v8::String::New("size"), v8::Number::New(info->_sizeAttributes));
+  attributes->Set(v8::String::New("count"), v8::Number::New((double) info->_numberAttributes));
+  attributes->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeAttributes));
 
   v8::Handle<v8::Object> indexes = v8::Object::New();
   result->Set(v8::String::New("indexes"), indexes);
-  indexes->Set(v8::String::New("count"), v8::Number::New(info->_numberIndexes));
-  indexes->Set(v8::String::New("size"), v8::Number::New(info->_sizeIndexes));
+  indexes->Set(v8::String::New("count"), v8::Number::New((double) info->_numberIndexes));
+  indexes->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeIndexes));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -6991,7 +6991,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     v8::Handle<v8::Array> shardKeys = v8::Array::New();
     const vector<string> sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
-      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
+      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str(), (int) sks[i].size()));
     }
     result->Set(v8::String::New("shardKeys"), shardKeys);
     result->Set(v8::String::New("numberOfShards"), v8::Number::New((*c).numberOfShards()));
@@ -7932,7 +7932,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  int res = TRI_TruncateDatafile(path.c_str(), size);
+  int res = TRI_TruncateDatafile(path.c_str(), (TRI_voc_size_t) size);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -8142,7 +8142,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   string cacheKey(key, keyLength);
   cacheKey.push_back('*');
 
-  v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), cacheKey.size());
+  v8::Local<v8::String> cacheName = v8::String::New(cacheKey.c_str(), (int) cacheKey.size());
   v8::Handle<v8::Object> holder = info.Holder()->ToObject();
   
   if (*key == '_') {
@@ -9057,7 +9057,7 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
     v8::Handle<v8::Array> result = v8::Array::New();
     for (size_t i = 0;  i < list.size();  ++i) {    
       result->Set((uint32_t) i, v8::String::New(list[i].c_str(), 
-                                                list[i].size()));
+                                                (int) list[i].size()));
     }
     return scope.Close(result);
   }
@@ -9094,7 +9094,7 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
               v8::Handle<v8::Array> result = v8::Array::New();
               for (size_t i = 0;  i < list.size();  ++i) {    
                 result->Set((uint32_t) i, v8::String::New(list[i].c_str(), 
-                                                          list[i].size()));
+                                                          (int) list[i].size()));
               }
               return scope.Close(result);
             }
@@ -9293,6 +9293,9 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 /// change into the current database to the new database. Changing the current
 /// database must explicitly be requested by using the @ref HandlingDatabasesUse
 /// "db._useDatabase" method.
+///
+/// The @FA{options} attribute currently has no meaning and is reserved for
+/// future use.
 ///
 /// The optional @FA{users} attribute can be used to create initial users for
 /// the new database. If specified, it must be a list of user objects. Each user 
@@ -9764,14 +9767,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string const key = TRI_ObjectToString(name);
 
-  if (key.empty()) {
-    // we must not throw a v8 exception here because this will cause follow up errors
-    return scope.Close(v8::Handle<v8::Value>());
-  }
-
-  char const* ckey = key.c_str();
-
-  if (ckey[0] == '_' || strchr(ckey, '.') != 0) {
+  if (key.empty() || key[0] == '_' || strchr(key.c_str(), '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -9781,7 +9777,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
-  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, ckey);
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
 
   if (pid == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -9813,20 +9809,18 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::Array> result = v8::Array::New();
-
   // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
@@ -9841,20 +9835,18 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
 
   if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
-  TRI_shape_size_t i;
-  TRI_shape_size_t n;
   char const* qtr;
 
   // shape is an array
   s = (TRI_array_shape_t const*) shape;
 
   // number of entries
-  n = s->_fixedEntries + s->_variableEntries;
+  TRI_shape_size_t const n = s->_fixedEntries + s->_variableEntries;
 
   // calculate position of attribute ids
   qtr = (char const*) shape;
@@ -9862,8 +9854,10 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   qtr += n * sizeof(TRI_shape_sid_t);
   aids = (TRI_shape_aid_t const*) qtr;
 
+  v8::Handle<v8::Array> result = v8::Array::New(n);
   uint32_t count = 0;
-  for (i = 0;  i < n;  ++i, ++aids) {
+
+  for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
     if (att != 0) {
@@ -9886,9 +9880,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
                                                         const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
+  // sanity check
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
@@ -9903,7 +9897,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   // convert the JavaScript string to a string
   string const key = TRI_ObjectToString(name);
 
-  if (key == "") {
+  if (key.empty()) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
@@ -9959,7 +9953,7 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
 
   len = TRI_StringUInt32InPlace(idx, (char*) &buffer);
 
-  v8::Local<v8::String> strVal = v8::String::New((char*) &buffer, len);
+  v8::Local<v8::String> strVal = v8::String::New((char*) &buffer, (int) len);
 
   return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
@@ -10554,7 +10548,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   }
 
   // current thread number
-  context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New(threadNumber), v8::ReadOnly);
+  context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New((double) threadNumber), v8::ReadOnly);
 }
 
 // -----------------------------------------------------------------------------

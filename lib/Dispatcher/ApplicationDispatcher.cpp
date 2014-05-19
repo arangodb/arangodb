@@ -53,8 +53,8 @@ namespace {
   class DispatcherReporterTask : public PeriodicTask {
     public:
       DispatcherReporterTask (Dispatcher* dispatcher, double reportInterval)
-        : Task("Dispatcher-Reporter"), 
-          PeriodicTask(0.0, reportInterval), 
+        : Task("Dispatcher-Reporter"),
+          PeriodicTask("Dispatcher-Reporter", 0.0, reportInterval), 
           _dispatcher(dispatcher) {
       }
 
@@ -131,6 +131,7 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
 
   LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
 
+  assert(_dispatcher != 0);
   _dispatcher->addQueue("STANDARD", nrThreads, maxSize);
 }
 
@@ -147,6 +148,7 @@ void ApplicationDispatcher::buildNamedQueue (string const& name,
 
   LOG_TRACE("setting up a named queue '%s' with %d threads", name.c_str(), (int) nrThreads);
 
+  assert(_dispatcher != 0);
   _dispatcher->addQueue(name, nrThreads, maxSize);
 }
 

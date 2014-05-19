@@ -25,10 +25,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include <stdio.h>
-#include <iomanip>
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
@@ -50,7 +49,6 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
-
 
 using namespace std;
 using namespace triagens::basics;
@@ -78,7 +76,7 @@ ArangoClient BaseClient;
 /// @brief started counter
 ////////////////////////////////////////////////////////////////////////////////
 
-static volatile int Started = 0;
+static atomic<int> Started;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for start counter
@@ -171,7 +169,6 @@ static string TestCase = "version";
 ////////////////////////////////////////////////////////////////////////////////
 
 static void UpdateStartCounter () {
-  MUTEX_LOCKER(StartMutex);
   ++Started;
 }
 
@@ -180,7 +177,6 @@ static void UpdateStartCounter () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GetStartCounter () {
-  MUTEX_LOCKER(StartMutex);
   return Started;
 }
 
@@ -208,7 +204,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
     ("keep-alive", &KeepAlive, "use HTTP keep-alive")
     ("collection", &Collection, "collection name to use in tests")
-    ("test-case", &TestCase, "test case to use")
+    ("test-case", &TestCase, "test case to use (possible values: version, document, collection, hash, skiplist, edge, shapes, shapes-append, random-shapes, crud, crud-append, counttrx, multitrx)")
     ("complexity", &Complexity, "complexity parameter for the test")
     ("delay", &Delay, "use a startup delay (necessary only when run in series)")
     ("progress", &Progress, "show progress")

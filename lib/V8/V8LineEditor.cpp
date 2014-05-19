@@ -198,95 +198,107 @@ static char* CompletionGenerator (char const* text, int state) {
 
 static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions * lc) {
   vector<string> completions;
-    // locate global object or sub-object
-    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    string path;
-    char* prefix;
 
-    if (*text != '\0') {
-      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+  // locate global object or sub-object
+  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+  string path;
+  char* prefix;
 
-      if (1 < splitted._length) {
-        for (size_t i = 0;  i < splitted._length - 1;  ++i) {
-          v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
+  if (*text != '\0') {
+    TRI_vector_string_t splitted = TRI_SplitString(text, '.');
 
-          if (! current->Has(name)) {
-            TRI_DestroyVectorString(&splitted);
-            return;
-          }
+    if (1 < splitted._length) {
+      for (size_t i = 0;  i < splitted._length - 1;  ++i) {
+        v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
 
-          v8::Handle<v8::Value> val = current->Get(name);
-
-          if (! val->IsObject()) {
-            TRI_DestroyVectorString(&splitted);
-            return;
-          }
-
-          current = val->ToObject();
-          path = path + splitted._buffer[i] + ".";
+        if (! current->Has(name)) {
+          TRI_DestroyVectorString(&splitted);
+          return;
         }
 
-        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
-      }
-      else {
-        prefix = TRI_DuplicateString(text);
+        v8::Handle<v8::Value> val = current->Get(name);
+
+        if (! val->IsObject()) {
+          TRI_DestroyVectorString(&splitted);
+          return;
+        }
+
+        current = val->ToObject();
+        path = path + splitted._buffer[i] + ".";
       }
 
-      TRI_DestroyVectorString(&splitted);
+      prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
     }
     else {
       prefix = TRI_DuplicateString(text);
     }
 
-    v8::HandleScope scope;
+    TRI_DestroyVectorString(&splitted);
+  }
+  else {
+    prefix = TRI_DuplicateString(text);
+  }
 
-    // compute all possible completions
-    v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
+  v8::HandleScope scope;
 
-    if (current->HasOwnProperty(cpl)) {
-      v8::Handle<v8::Value> funcVal = current->Get(cpl);
+  // compute all possible completions
+  v8::Handle<v8::Array> properties;
+  v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
 
-      if (funcVal->IsFunction()) {
-        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
-        v8::Handle<v8::Value> args;
-        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+  if (current->HasOwnProperty(cpl)) {
+    v8::Handle<v8::Value> funcVal = current->Get(cpl);
 
-        if (cpls->IsArray()) {
-          properties = v8::Handle<v8::Array>::Cast(cpls);
-        }
+    if (funcVal->IsFunction()) {
+      v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
+      v8::Handle<v8::Value> args;
+      v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+
+      if (cpls->IsArray()) {
+        properties = v8::Handle<v8::Array>::Cast(cpls);
       }
     }
-    else {
-      properties = current->GetPropertyNames();
-    }
+  }
+  else {
+    properties = current->GetPropertyNames();
+  }
 
-    // locate
-    if (! properties.IsEmpty()) {
-      const uint32_t n = properties->Length();
+  // locate
+  if (! properties.IsEmpty()) {
+    const uint32_t n = properties->Length();
 
-      for (uint32_t i = 0;  i < n;  ++i) {
-        v8::Handle<v8::Value> v = properties->Get(i);
+    for (uint32_t i = 0;  i < n;  ++i) {
+      v8::Handle<v8::Value> v = properties->Get(i);
 
-        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
-        char const* s = *str;
+      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+      char const* s = *str;
 
-        if (s != 0 && *s) {
-          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+      if (s != 0 && *s) {
+        string const suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+
+        if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
           string name = path + s + suffix;
-
-          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
-             linenoiseAddCompletion(lc, name.c_str());
-             completions.push_back(name);
-          }
+          completions.push_back(name);
         }
       }
     }
+  }
 
+  // sort completions
+  size_t const n = completions.size();
 
-    lc->multiLine = 1;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+  std::sort(completions.begin(), completions.end(), 
+    [](std::string const& l, std::string const& r) -> bool {
+      int res = strcasecmp(l.c_str(), r.c_str());
+      return (res < 0);
+    }
+  );
 
+  for (size_t i = 0; i < n; ++i) {
+    linenoiseAddCompletion(lc, completions[i].c_str());
+  }
+
+  lc->multiLine = 1;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
 }
 
 #endif
@@ -297,8 +309,8 @@ static void LinenoiseCompletionGenerator (char const* text, linenoiseCompletions
 
 #ifdef TRI_HAVE_LINENOISE
 
-static void AttemptedCompletion(char const* text, linenoiseCompletions * lc) {
-	LinenoiseCompletionGenerator(text, lc);
+static void AttemptedCompletion (char const* text, linenoiseCompletions * lc) {
+  LinenoiseCompletionGenerator(text, lc);
 }
 
 #else
@@ -357,7 +369,7 @@ V8LineEditor::~V8LineEditor () {
 bool V8LineEditor::open (const bool autoComplete) { 
   if (autoComplete) {
 #ifdef TRI_HAVE_LINENOISE
-	  linenoiseSetCompletionCallback(AttemptedCompletion);
+    linenoiseSetCompletionCallback(AttemptedCompletion);
 #else
 
     rl_attempted_completion_function = AttemptedCompletion;

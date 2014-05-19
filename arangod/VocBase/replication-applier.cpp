@@ -849,8 +849,6 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  res = TRI_ERROR_NO_ERROR;
-
   if (config->_endpoint == NULL || strlen(config->_endpoint) == 0) {
     // no endpoint
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;

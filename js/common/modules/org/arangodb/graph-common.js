@@ -36,7 +36,7 @@ var is = require("org/arangodb/is"),
   Iterator;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       module "org/arangodb/graph"
+// --SECTION--                             module "org/arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
 Iterator = function (wrapper, cursor, stringRepresentation) {

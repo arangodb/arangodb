@@ -123,8 +123,9 @@ add_executable(
     Utils/DocumentHelper.cpp
     Utils/Exception.cpp
     V8Server/ApplicationV8.cpp
+    V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp
-    V8Server/V8PeriodicJob.cpp
+    V8Server/V8TimerTask.cpp
     V8Server/v8-actions.cpp
     V8Server/v8-query.cpp
     V8Server/v8-vocbase.cpp

@@ -615,12 +615,12 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   delay = delay / 1000;
 
   if (SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, (DWORD) delay) != 0) {
-	return true;
+    return true;
   }
 
   res = GetLastError();
   if (res == ERROR_TIMEOUT) {
-	return false;
+    return false;
   }
 
   return false;
