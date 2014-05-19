@@ -30,8 +30,9 @@
 
 
 var arangodb = require("org/arangodb"),
-	ArangoCollection = arangodb.ArangoCollection,
-	db = arangodb.db;
+  ArangoCollection = arangodb.ArangoCollection,
+  db = arangodb.db,
+  _ = require("underscore");
 
 
 // -----------------------------------------------------------------------------
@@ -48,10 +49,10 @@ var arangodb = require("org/arangodb"),
 
 
 var stringToArray = function (x) {
-	if (typeof(x) === "string") {
-		return [x];
-	}
-	return x;
+  if (typeof(x) === "string") {
+    return [x];
+  }
+  return x;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,16 +62,16 @@ var stringToArray = function (x) {
 
 
 var isValidCollectionsParameter = function (x) {
-	if (!x) {
-		return false;
-	}
-	if (Array.isArray(x) && x.length === 0) {
-		return false;
-	}
-	if (typeof(x) !== "string" && !Array.isArray(x)) {
-		return false;
-	}
-	return true;
+  if (!x) {
+    return false;
+  }
+  if (Array.isArray(x) && x.length === 0) {
+    return false;
+  }
+  if (typeof(x) !== "string" && !Array.isArray(x)) {
+    return false;
+  }
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,20 +79,20 @@ var isValidCollectionsParameter = function (x) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var findOrCreateCollectionByName = function (name, type) {
-	var col = db._collection(name),res = false;
-	if (col === null) {
-		if (type === ArangoCollection.TYPE_DOCUMENT) {
-			col = db._create(name);
-		} else {
-			col = db._createEdgeCollection(name);
-		}
-		res = true;
-	} else if (!(col instanceof ArangoCollection) || col.type() !== type) {
-		throw "<" + name + "> must be a " +
-			(type === ArangoCollection.TYPE_DOCUMENT ? "document" : "edge")
-		+ " collection";
-	}
-	return res;
+  var col = db._collection(name),res = false;
+  if (col === null) {
+    if (type === ArangoCollection.TYPE_DOCUMENT) {
+      col = db._create(name);
+    } else {
+      col = db._createEdgeCollection(name);
+    }
+    res = true;
+  } else if (!(col instanceof ArangoCollection) || col.type() !== type) {
+    throw "<" + name + "> must be a " +
+    (type === ArangoCollection.TYPE_DOCUMENT ? "document" : "edge")
+    + " collection";
+  }
+  return res;
 };
 
 // -----------------------------------------------------------------------------
@@ -109,23 +110,23 @@ var findOrCreateCollectionByName = function (name, type) {
 
 var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
-	if (arguments.length < 2) {
-		throw "method _undirectedRelationDefinition expects 2 arguments";
-	}
+  if (arguments.length < 2) {
+    throw "method _undirectedRelationDefinition expects 2 arguments";
+  }
 
-	if (typeof relationName !== "string" || relationName === "") {
-		throw "<relationName> must be a not empty string";
-	}
+  if (typeof relationName !== "string" || relationName === "") {
+    throw "<relationName> must be a not empty string";
+  }
 
-	if (!isValidCollectionsParameter(vertexCollections)) {
-		throw "<vertexCollections> must be a not empty string or array";
-	}
+  if (!isValidCollectionsParameter(vertexCollections)) {
+    throw "<vertexCollections> must be a not empty string or array";
+  }
 
-	return {
-		collection: "relationName",
-		from: stringToArray(vertexCollections),
-		to: stringToArray(vertexCollections)
-	};
+  return {
+    collection: relationName,
+    from: stringToArray(vertexCollections),
+    to: stringToArray(vertexCollections)
+  };
 };
 
 
@@ -135,29 +136,29 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
 
 var _directedRelationDefinition = function (
-	relationName, fromVertexCollections, toVertexCollections) {
+  relationName, fromVertexCollections, toVertexCollections) {
 
-	if (arguments.length < 3) {
-		throw "method _undirectedRelationDefinition expects 3 arguments";
-	}
+  if (arguments.length < 3) {
+    throw "method _undirectedRelationDefinition expects 3 arguments";
+  }
 
-	if (typeof relationName !== "string" || relationName === "") {
-		throw "<relationName> must be a not empty string";
-	}
+  if (typeof relationName !== "string" || relationName === "") {
+    throw "<relationName> must be a not empty string";
+  }
 
-	if (!isValidCollectionsParameter(fromVertexCollections)) {
-		throw "<fromVertexCollections> must be a not empty string or array";
-	}
+  if (!isValidCollectionsParameter(fromVertexCollections)) {
+    throw "<fromVertexCollections> must be a not empty string or array";
+  }
 
-	if (!isValidCollectionsParameter(toVertexCollections)) {
-		throw "<toVertexCollections> must be a not empty string or array";
-	}
+  if (!isValidCollectionsParameter(toVertexCollections)) {
+    throw "<toVertexCollections> must be a not empty string or array";
+  }
 
-	return {
-		collection: "relationName",
-		from: stringToArray(fromVertexCollections),
-		to: stringToArray(toVertexCollections)
-	};
+  return {
+    collection: relationName,
+    from: stringToArray(fromVertexCollections),
+    to: stringToArray(toVertexCollections)
+  };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,12 +168,12 @@ var _directedRelationDefinition = function (
 
 var edgeDefinitions = function () {
 
-	var res = [], args = arguments;
-	Object.keys(args).forEach(function (x) {
-		res.push(args[x]);
-	});
+  var res = [], args = arguments;
+  Object.keys(args).forEach(function (x) {
+    res.push(args[x]);
+  });
 
-	return res;
+  return res;
 
 };
 
@@ -183,47 +184,51 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-	var gdb = db["_graphs"],
-		g,
-		graphAlreadyExists = true;
+  var gdb = db["_graphs"],
+    g,
+    graphAlreadyExists = true,
+	  vertexCollections = {};
+		edgeCollections = {};
 
-	if (gdb === null) {
-		throw "_graphs collection does not exist.";
-	}
+  if (gdb === null) {
+    throw "_graphs collection does not exist.";
+  }
 
-	if (!graphName) {
-		throw "a graph name is required to create a graph.";
-	}
-	if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
-		throw "at least one edge definition is required to create a graph.";
-	}
+  if (!graphName) {
+    throw "a graph name is required to create a graph.";
+  }
+  if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
+    throw "at least one edge definition is required to create a graph.";
+  }
 
-	try {
-		g = gdb.document(graphName);
-	} catch (e) {
-		if (e.errorNum !== 1202) {
-			throw e;
-		}
-		graphAlreadyExists = false;
-	}
+  try {
+    g = gdb.document(graphName);
+  } catch (e) {
+    if (e.errorNum !== 1202) {
+      throw e;
+    }
+    graphAlreadyExists = false;
+  }
 
-	if (graphAlreadyExists) {
-		throw "graph " + graphName + " already exists.";
-	}
+  if (graphAlreadyExists) {
+    throw "graph " + graphName + " already exists.";
+  }
 
-	edgeDefinitions.forEach(function (e) {
-		e.from.concat(e.to).forEach(function (v) {
-			findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
-		});
-		findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
-	});
+  edgeDefinitions.forEach(function (e) {
+    e.from.concat(e.to).forEach(function (v) {
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
+      vertexCollections[v] = db[v];
+    });
+    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
+    edgeCollections[e] = db[e];
+  });
 
-	gdb.save({
-		'edgeDefinitions' : edgeDefinitions,
-		'_key' : graphName
-	});
+  gdb.save({
+    'edgeDefinitions' : edgeDefinitions,
+    '_key' : graphName
+  });
 
-	return new Graph(graphName, edgeDefinitions);
+  return new Graph(graphName, edgeDefinitions, vertexCollections, edgeCollections);
 
 };
 
@@ -232,8 +237,10 @@ var _create = function (graphName, edgeDefinitions) {
 /// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
 
-var Graph = function(graphName, edgeDefinitions) {
-
+var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
+  this.vertexCollections = vertexCollections;
+  this.edgeCollections = edgeCollections;
+  this.edgeDefinitions = edgeDefinitions;
 };
 
 
@@ -244,31 +251,37 @@ var Graph = function(graphName, edgeDefinitions) {
 
 var _graph = function(graphName) {
 
-	var gdb = db["_graphs"],
-		g;
+  var gdb = db["_graphs"],
+    g;
 
-	if (gdb === null) {
-		throw "_graphs collection does not exist.";
-	}
+  if (gdb === null) {
+    throw "_graphs collection does not exist.";
+  }
 
-	try {
-		g = gdb.document(graphName);
-	} catch (e) {
-		require("internal").print(e)
-		throw e;
-	}
+  try {
+    g = gdb.document(graphName);
+  } catch (e) {
+    require("internal").print(e)
+    throw e;
+  }
 
   return new Graph(graphName, g.edgeDefinitions);
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all edge collections of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype.edgeCollections = function() {
-  //testdummy
-  return [require("internal").db.w3];
+  return _.values(this.edgeCollections);
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all vertex collections of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype.vertexCollections = function() {
-  //testdummy
-  return [require("internal").db.a, require("internal").db.b];
+  return _.values(this.vertexCollections);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
