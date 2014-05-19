@@ -1432,6 +1432,10 @@ int main (int argc, char* argv[]) {
     ret = EXIT_FAILURE;
   }
 
+  if (Client != 0) {
+    delete Client;
+  }
+
   TRIAGENS_REST_SHUTDOWN;
 
   arangodumpExitFunction(ret, NULL);

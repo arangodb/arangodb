@@ -29,10 +29,8 @@ add_executable(
 
 target_link_libraries(
     ${BIN_ARANGOB}
-    ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
@@ -66,10 +64,8 @@ add_executable(
 
 target_link_libraries(
     ${BIN_ARANGODUMP}
-    ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
@@ -142,10 +138,8 @@ add_executable(
 
 target_link_libraries(
     ${BIN_ARANGORESTORE}
-    ${LIB_ARANGO_V8}
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
-    ${V8_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
