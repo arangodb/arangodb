@@ -229,7 +229,7 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = db["_graphs"],
+  var gdb = db._graphs,
     g,
     graphAlreadyExists = true,
 	  collections;
@@ -296,7 +296,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 var _graph = function(graphName) {
 
-  var gdb = db["_graphs"],
+  var gdb = db._graphs,
 	  g, collections;
 
   if (gdb === null) {
