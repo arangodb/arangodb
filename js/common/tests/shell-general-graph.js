@@ -482,7 +482,7 @@ function GeneralGraphAQLQueriesSuite() {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict construct on edges
+/// @brief test: query creation for edges
 ////////////////////////////////////////////////////////////////////////////////
 
     test_edges: function() {
@@ -503,6 +503,10 @@ function GeneralGraphAQLQueriesSuite() {
       dropInclExcl();
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for outEdges
+////////////////////////////////////////////////////////////////////////////////
+
     test_outEdges: function() {
       var g = createInclExcl();
       var query = g._outEdges("v1/1");
@@ -520,6 +524,10 @@ function GeneralGraphAQLQueriesSuite() {
       */
       dropInclExcl();
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for inEdges
+////////////////////////////////////////////////////////////////////////////////
 
     test_inEdges: function() {
       var g = createInclExcl();
@@ -610,9 +618,11 @@ function GeneralGraphAQLQueriesSuite() {
    
    test_filterOnEdges: function() {
       var g = createInclExcl();
-      var query = g._edges("v1/1").filter("e.val = true");
+      var query = g._edges("v1/1").filter({val: true});
+      // var query = g._edges("v1/1").filter("e.val = true");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + "@graphName,@startVertex_0,any) FILTER edges_0.val = true");
+        + '@graphName,@startVertex_0,any) '
+        + 'FILTER MATCHES(edges_0,[{"val":true}])');
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
       assertEqual(bindVars.startVertex_0, "v1/1");
@@ -633,9 +643,10 @@ function GeneralGraphAQLQueriesSuite() {
    
    test_filterOnInEdges: function() {
       var g = createInclExcl();
-      var query = g._inEdges("v1/1").filter("e.val = true");
+      var query = g._inEdges("v1/1").filter({val: true});
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + "@graphName,@startVertex_0,inbound) FILTER edges_0.val = true");
+        + '@graphName,@startVertex_0,inbound) '
+        + 'FILTER MATCHES(edges_0,[{"val":true}])');
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
       assertEqual(bindVars.startVertex_0, "v1/1");
@@ -655,9 +666,11 @@ function GeneralGraphAQLQueriesSuite() {
    
    test_filterOnOutEdges: function() {
       var g = createInclExcl();
-      var query = g._outEdges("v1/1").filter("e.val = true");
+      var query = g._outEdges("v1/1").filter({val: true});
+      // var query = g._outEdges("v1/1").filter("e.val = true");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + "@graphName,@startVertex_0,outbound) FILTER edges_0.val = true");
+        + '@graphName,@startVertex_0,outbound) '
+        + 'FILTER MATCHES(edges_0,[{"val":true}])');
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, "graph");
       assertEqual(bindVars.startVertex_0, "v1/1");
@@ -671,8 +684,33 @@ function GeneralGraphAQLQueriesSuite() {
       dropInclExcl();
    }
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: let construct on edges
+////////////////////////////////////////////////////////////////////////////////
+   
+/* Broken string replacement
+   test_letOnEdges: function() {
+      var g = createInclExcl();
+      var query = g._edges("v1/1").let("myVal = e.val");
+      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
+        + "@graphName,@startVertex_0,any) LET myVal = edges_0.val");
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, "graph");
+      assertEqual(bindVars.startVertex_0, "v1/1");
+      */
+      /*
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result, e3));
+      assertFalse(findIdInResult(result, e1));
+      assertFalse(findIdInResult(result, e2));
+      */
+     /*
+      dropInclExcl();
+   }
+  */
 
+  };
 
 }
 
