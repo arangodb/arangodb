@@ -419,6 +419,16 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief write a marker into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::writeMarker (Marker& marker,
+                                 bool waitForSync) {
+  return allocateAndWrite(marker.buffer, marker.size, waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
