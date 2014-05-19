@@ -142,8 +142,17 @@ AQLGenerator.prototype.edges = function(startVertex, direction) {
   return this;
 };
 
-AQLGenerator.prototype.restrict = function() {
-
+AQLGenerator.prototype.restrict = function(restrictions) {
+  var lastQuery = this.stack.pop();
+  if (!lastQuery.isEdgeQuery()) {
+    this.stack.push(lastQuery);
+    throw "Restrict can only be applied directly after edge selectors";
+  }
+  lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
+  lastQuery.edgeQuery = false;
+  this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
+  this.stack.push(lastQuery);
+  return this;
 };
 
 AQLGenerator.prototype.printQuery = function() {
