@@ -43,10 +43,12 @@ namespace triagens {
     
   public:
     ////////////////////////////////////////////////////////////////////////////////
-    ///                                                           public constructor
+    ///                                               public constructor, destructor
     ////////////////////////////////////////////////////////////////////////////////
 
     LinenoiseShell(string const& history, Completer *);
+
+    virtual ~LinenoiseShell();
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief line editor open
