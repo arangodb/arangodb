@@ -39,6 +39,11 @@
 namespace triagens {
   using namespace std;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @addtogroup Shell
+  /// @{
+  ////////////////////////////////////////////////////////////////////////////////
+  
   class LinenoiseShell: public ShellImplementation {
     
   public:
@@ -84,7 +89,10 @@ namespace triagens {
     virtual bool writeHistory();
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief todo!!
+    /// @brief returns the characters which the user has typed
+    /// @arg  is the prompt of the shell
+    /// Note: this is the interface between our shell world and some implementation
+    ///       of key events (linenoise, readline)
     ////////////////////////////////////////////////////////////////////////////////
 
     virtual char * getLine(char const *);
@@ -96,3 +104,12 @@ namespace triagens {
   };
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
