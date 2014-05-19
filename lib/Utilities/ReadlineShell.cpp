@@ -28,9 +28,8 @@
 
 #include "ReadlineShell.h"
 #include "Completer.h"
-// IMPORTANT: v8-utils.h includes before readline.h
-#include "V8/v8-utils.h"
 
+#include <iostream>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -45,142 +44,56 @@ using namespace std;
 using namespace triagens;
 
 namespace {
-static char WordBreakCharacters[] = {
+
+  Completer * COMPLETER;
+
+  static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
     '<', '>', '=', ';', '|', '&', '{', '}', '(', ')',
     '\0'
-};
+  };
 
-static char* CompletionGenerator (char const* text, int state) {
-  static size_t currentIndex;
-  static vector<string> result;
-  // compute the possible completion
-  if (state == 0) {
-    if (! v8::Context::InContext()) {
+  static char* CompletionGenerator (char const* text, int state) {
+    static size_t currentIndex;
+    static vector<string> result;
+    // compute the possible completion
+    if(state == 0) {
+      COMPLETER->getAlternatives(text, result);
+    }
+
+    if (currentIndex < result.size()) {
+      return TRI_SystemDuplicateString(result[currentIndex++].c_str());
+    }
+    else {
+      result.clear();
       return 0;
     }
-
-    // locate global object or sub-object
-    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    string path;
-    char* prefix;
-
-    if (*text != '\0') {
-      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
-
-      if (1 < splitted._length) {
-        for (size_t i = 0;  i < splitted._length - 1;  ++i) {
-          v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
-
-          if (! current->Has(name)) {
-            TRI_DestroyVectorString(&splitted);
-            return 0;
-          }
-
-          v8::Handle<v8::Value> val = current->Get(name);
-
-          if (! val->IsObject()) {
-            TRI_DestroyVectorString(&splitted);
-            return 0;
-          }
-
-          current = val->ToObject();
-          path = path + splitted._buffer[i] + ".";
-        }
-
-        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
-      }
-      else {
-        prefix = TRI_DuplicateString(text);
-      }
-
-      TRI_DestroyVectorString(&splitted);
-    }
-    else {
-      prefix = TRI_DuplicateString(text);
-    }
-
-    v8::HandleScope scope;
-
-    // compute all possible completions
-    v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
-
-    if (current->HasOwnProperty(cpl)) {
-      v8::Handle<v8::Value> funcVal = current->Get(cpl);
-
-      if (funcVal->IsFunction()) {
-        v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
-        v8::Handle<v8::Value> args;
-        v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
-
-        if (cpls->IsArray()) {
-          properties = v8::Handle<v8::Array>::Cast(cpls);
-        }
-      }
-    }
-    else {
-      properties = current->GetPropertyNames();
-    }
-
-    // locate
-    if (! properties.IsEmpty()) {
-      const uint32_t n = properties->Length();
-
-      for (uint32_t i = 0;  i < n;  ++i) {
-        v8::Handle<v8::Value> v = properties->Get(i);
-
-        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
-        char const* s = *str;
-
-        if (s != 0 && *s) {
-          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
-          string name = path + s + suffix;
-
-          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
-            result.push_back(name);
-          }
-        }
-      }
-    }
-
-    currentIndex = 0;
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
   }
 
-  if (currentIndex < result.size()) {
-    return TRI_SystemDuplicateString(result[currentIndex++].c_str());
-  }
-  else {
-    result.clear();
-    return 0;
-  }
-}
 
+  static char** AttemptedCompletion (char const* text, int start, int end) {
+    char** result;
 
-static char** AttemptedCompletion (char const* text, int start, int end) {
-  char** result;
+    result = rl_completion_matches(text, CompletionGenerator);
+    rl_attempted_completion_over = true;
 
-  result = rl_completion_matches(text, CompletionGenerator);
-  rl_attempted_completion_over = true;
+    if (result != 0 && result[0] != 0 && result[1] == 0) {
+      size_t n = strlen(result[0]);
 
-  if (result != 0 && result[0] != 0 && result[1] == 0) {
-    size_t n = strlen(result[0]);
-
-    if (result[0][n - 1] == ')') {
-      result[0][n - 1] = '\0';
+      if (result[0][n - 1] == ')') {
+        result[0][n - 1] = '\0';
+      }
     }
-  }
 
 #if RL_READLINE_VERSION >= 0x0500
-  // issue #289
-  rl_completion_suppress_append = 1;
+    // issue #289
+    rl_completion_suppress_append = 1;
 #endif
 
-  return result;
+    return result;
+  }
 }
-}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ReadlineShell
 // -----------------------------------------------------------------------------
@@ -195,6 +108,8 @@ static char** AttemptedCompletion (char const* text, int start, int end) {
 
 ReadlineShell::ReadlineShell(std::string const& history, Completer *completer)
   : ShellImplementation(history, completer) {
+    
+    COMPLETER = completer;
 
     rl_initialize();
 
