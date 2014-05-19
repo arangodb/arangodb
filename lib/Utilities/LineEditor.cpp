@@ -46,7 +46,8 @@ using namespace triagens;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor(std::string const& history): _history(history) {
+LineEditor::LineEditor (std::string const& history)
+  : _history(history) {
   _shellImpl = 0;
 }
 
@@ -54,7 +55,7 @@ LineEditor::LineEditor(std::string const& history): _history(history) {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor() {
+LineEditor::~LineEditor () {
   if (_shellImpl) {
     close();
     delete _shellImpl;
@@ -69,7 +70,7 @@ LineEditor::~LineEditor() {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open(bool autoComplete) {
+bool LineEditor::open (bool autoComplete) {
   prepareShell();
   return _shellImpl->open(autoComplete);
 }
@@ -78,16 +79,24 @@ bool LineEditor::open(bool autoComplete) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close() {
+bool LineEditor::close () {
   prepareShell();
   return _shellImpl->close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor prompt
+////////////////////////////////////////////////////////////////////////////////
+
+char* LineEditor::prompt (char const* prompt) {
+  return _shellImpl->prompt(prompt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath() {
+string LineEditor::historyPath () {
   prepareShell();
   return _shellImpl->historyPath();
 }
@@ -96,7 +105,7 @@ string LineEditor::historyPath() {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory(char const* str) {
+void LineEditor::addHistory (char const* str) {
   prepareShell();
   return _shellImpl->addHistory(str);
 }
@@ -105,19 +114,30 @@ void LineEditor::addHistory(char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory() {
+bool LineEditor::writeHistory () {
   prepareShell();
   return _shellImpl->writeHistory();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
+/// @brief sort the alternatives results vector
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt(char const* prompt) {
-  return _shellImpl->prompt(prompt);
+void LineEditor::sortAlternatives (vector<string>& completions) {
+  std::sort(completions.begin(), completions.end(), 
+    [](std::string const& l, std::string const& r) -> bool {
+      int res = strcasecmp(l.c_str(), r.c_str());
+      return (res < 0);
+    }
+  );
 }
-void LineEditor::prepareShell() {
+    
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+
+void LineEditor::prepareShell () {
   if (!_shellImpl) {
     initializeShell();
   //  assert _shellImpl != 0;
