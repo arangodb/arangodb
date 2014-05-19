@@ -78,9 +78,9 @@ var isValidCollectionsParameter = function (x) {
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type) {
+var findOrCreateCollectionByName = function (name, type, noCreate) {
   var col = db._collection(name),res = false;
-  if (col === null) {
+  if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
       col = db._create(name);
     } else {
@@ -94,6 +94,29 @@ var findOrCreateCollectionByName = function (name, type) {
   }
   return res;
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create a collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
+	var vertexCollections = {},
+	edgeCollections = {};
+	edgeDefinitions.forEach(function (e) {
+		e.from.concat(e.to).forEach(function (v) {
+			findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+			vertexCollections[v] = db[v];
+		});
+		findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
+		edgeCollections[e.collection] = db[e.collection];
+	});
+	return [
+		vertexCollections,
+		edgeCollections
+	];
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -170,7 +193,7 @@ var edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
-    res.push(args[x]);
+   res.push(args[x]);
   });
 
   return res;
@@ -187,20 +210,17 @@ var _create = function (graphName, edgeDefinitions) {
   var gdb = db["_graphs"],
     g,
     graphAlreadyExists = true,
-	  vertexCollections = {};
-		edgeCollections = {};
+	  collections;
 
   if (gdb === null) {
     throw "_graphs collection does not exist.";
   }
-
   if (!graphName) {
     throw "a graph name is required to create a graph.";
   }
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
     throw "at least one edge definition is required to create a graph.";
   }
-
   try {
     g = gdb.document(graphName);
   } catch (e) {
@@ -214,21 +234,14 @@ var _create = function (graphName, edgeDefinitions) {
     throw "graph " + graphName + " already exists.";
   }
 
-  edgeDefinitions.forEach(function (e) {
-    e.from.concat(e.to).forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
-      vertexCollections[v] = db[v];
-    });
-    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
-    edgeCollections[e.collection] = db[e.collection];
-  });
+	collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
 
   gdb.save({
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
 
-  return new Graph(graphName, edgeDefinitions, vertexCollections, edgeCollections);
+  return new Graph(graphName, edgeDefinitions, collections[0], collections[1]);
 
 };
 
@@ -251,7 +264,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   _.each(edgeCollections, function(obj, key) {
     self[key] = obj;
   });
-
 };
 
 
@@ -263,7 +275,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 var _graph = function(graphName) {
 
   var gdb = db["_graphs"],
-    g;
+	  g, collections;
 
   if (gdb === null) {
     throw "_graphs collection does not exist.";
@@ -272,11 +284,15 @@ var _graph = function(graphName) {
   try {
     g = gdb.document(graphName);
   } catch (e) {
-    require("internal").print(e)
-    throw e;
-  }
+	  if (e.errorNum !== 1202) {
+		  throw e;
+	  }
+	  throw "graph " + graphName + " does not exists.";
+	}
 
-  return new Graph(graphName, g.edgeDefinitions);
+	collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+
+	return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
