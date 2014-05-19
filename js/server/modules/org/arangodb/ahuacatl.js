@@ -2644,7 +2644,7 @@ function REVERSE (value) {
 
   LIST(value);
 
-  return value.reverse();
+  return CLONE(value).reverse();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
