@@ -241,7 +241,7 @@ function GeneralGraphCreationSuite() {
 			    )
 		    )
 		  );
-			assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
+assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
 		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
 		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
 		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
@@ -569,7 +569,147 @@ function GeneralGraphSimpleQueriesSuite() {
 
 }
 
+function EdgesAndVerticesSuite() {
 
+  try {
+    arangodb.db._collection("_graphs").remove("_graphs/blubGraph")
+  } catch (err) {
+  }
+  var g = graph._create(
+    "blubGraph",
+    graph.edgeDefinitions(
+      graph._undirectedRelationDefinition("edgeCollection1", "vertexCollection1"),
+      graph._directedRelationDefinition("edgeCollection2",
+        ["vertexCollection1", "vertexCollection2"], ["vertexCollection3", "vertexCollection4"]
+      )
+    )
+  );
+
+  var vertexIds = [];
+  var vertexId1, vertexId2;
+  var edgeId1, edgeId2;
+
+  return {
+
+    test_edgeCollections : function () {
+
+      var edgeCollections = g._edgeCollections();
+      assertEqual(edgeCollections[0].name(), 'edgeCollection1');
+      assertEqual(edgeCollections[1].name(), 'edgeCollection2');
+    },
+
+    test_vertexCollections : function () {
+
+      var vertexCollections = g._vertexCollections();
+      assertEqual(vertexCollections[0].name(), 'vertexCollection1');
+      assertEqual(vertexCollections[1].name(), 'vertexCollection2');
+      assertEqual(vertexCollections[2].name(), 'vertexCollection3');
+      assertEqual(vertexCollections[3].name(), 'vertexCollection4');
+    },
+
+    test_vC_save : function () {
+      var vertex = g.vertexCollection1.save({first_name: "Tom"});
+      assertFalse(vertex.error);
+      vertexId1 = vertex._id;
+      var vertexObj = g.vertexCollection1.document(vertexId1);
+      assertEqual(vertexObj.first_name, "Tom");
+    },
+
+    test_vC_replace : function () {
+      var vertex = g.vertexCollection1.replace(vertexId1, {first_name: "Tim"});
+      assertFalse(vertex.error);
+      var vertexObj = g.vertexCollection1.document(vertexId1);
+      assertEqual(vertexObj.first_name, "Tim");
+    },
+
+    test_vC_update : function () {
+      var vertex = g.vertexCollection1.update(vertexId1, {age: 42});
+      assertFalse(vertex.error);
+      var vertexObj = g.vertexCollection1.document(vertexId1);
+      assertEqual(vertexObj.first_name, "Tim");
+      assertEqual(vertexObj.age, 42);
+    },
+
+    test_vC_remove : function () {
+      var vertex = g.vertexCollection1.remove(vertexId1);
+      assertTrue(vertex);
+    },
+
+    test_eC_save_undirected : function() {
+      var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
+      vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection1.save({first_name: "Tim"});
+      vertexId2 = vertex2._id;
+      var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
+      assertFalse(edge.error);
+      edgeId1 = edge._id;
+      g.vertexCollection1.remove(vertexId1);
+      g.vertexCollection1.remove(vertexId2);
+    },
+
+    test_eC_save_directed : function() {
+      var vertex1 = g.vertexCollection2.save({first_name: "Tom"});
+      vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection4.save({first_name: "Tim"});
+      vertexId2 = vertex2._id;
+      var edge = g.edgeCollection2.save(vertexId1, vertexId2, {});
+      assertFalse(edge.error);
+      edgeId2 = edge._id;
+      g.vertexCollection2.remove(vertexId1);
+      g.vertexCollection4.remove(vertexId2);
+    },
+
+    test_eC_save_withError : function() {
+      var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
+      vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection2.save({first_name: "Tim"});
+      vertexId2 = vertex2._id;
+      try {
+        var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
+      } catch (e) {
+        assertEqual(e, "Edge is not allowed between " + vertexId1 + " and " + vertexId2 + ".")
+      }
+      g.vertexCollection1.remove(vertexId1);
+      g.vertexCollection2.remove(vertexId2);
+    },
+
+    test_eC_replace : function() {
+      var edge = g.edgeCollection1.replace(edgeId1, {label: "knows"});
+      assertFalse(edge.error);
+      var edgeObj = g.edgeCollection1.document(edgeId1);
+      assertEqual(edgeObj.label, "knows");
+      assertEqual(edgeObj._id, edgeId1);
+    },
+
+    test_eC_update : function () {
+      var edge = g.edgeCollection1.update(edgeId1, {blub: "blub"});
+      assertFalse(edge.error);
+      var edgeObj = g.edgeCollection1.document(edgeId1);
+      assertEqual(edgeObj.label, "knows");
+      assertEqual(edgeObj.blub, "blub");
+      assertEqual(edgeObj._id, edgeId1);
+    },
+
+    test_eC_remove : function () {
+      var edge = g.edgeCollection1.remove(edgeId1);
+      assertTrue(edge);
+      edge = g.edgeCollection2.remove(edgeId2);
+      assertTrue(edge);
+    },
+
+
+
+    dump : function() {
+      db.vertexCollection1.drop();
+      db.vertexCollection2.drop();
+      db.vertexCollection3.drop();
+      db.vertexCollection4.drop();
+      db.edgeCollection1.drop();
+      db.edgeCollection2.drop();
+    }
+
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
@@ -579,8 +719,9 @@ function GeneralGraphSimpleQueriesSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GeneralGraphCreationSuite);
-jsunity.run(GeneralGraphSimpleQueriesSuite);
+//jsunity.run(GeneralGraphCreationSuite);
+//jsunity.run(GeneralGraphSimpleQueriesSuite);
+jsunity.run(EdgesAndVerticesSuite);
 
 return jsunity.done();
 
