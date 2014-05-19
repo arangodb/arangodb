@@ -185,7 +185,7 @@ DOXYGEN = \
 	Doxygen/js/server/modules/org/arangodb/foxx/repository.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/request_context.c \
 	Doxygen/js/server/modules/org/arangodb/foxx/template_middleware.c \
-	Doxygen/js/server/modules/org/arangodb/graph.c \
+	Doxygen/js/server/modules/org/arangodb/graph-blueprint.c \
 	Doxygen/js/server/modules/org/arangodb/simple-query.c \
 	Doxygen/js/server/modules/org/arangodb/cluster.c \
 	Doxygen/js/server/modules/org/arangodb/cluster/planner.c \

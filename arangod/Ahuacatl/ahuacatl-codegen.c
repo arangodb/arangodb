@@ -953,7 +953,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
     ScopeOutputRegister(generator, forScope->_keyRegister);
     ScopeOutput(generator, " % ");
     ScopeOutputRegister(generator, forScope->_listRegister);
-    ScopeOutput(generator, ".batchSize == 0 && ");
+    ScopeOutput(generator, ".batchSize === 0 && ");
     ScopeOutputRegister(generator, forScope->_keyRegister);
     ScopeOutput(generator, " > 0) {\n");
     ScopeOutputRegister(generator, forScope->_listRegister);
@@ -2963,7 +2963,7 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
 
   generator->_context = context;
 
-  TRI_InitStringBuffer(&generator->_buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitSizedStringBuffer(&generator->_buffer, TRI_UNKNOWN_MEM_ZONE, 1024);
   TRI_InitStringBuffer(&generator->_functionBuffer, TRI_UNKNOWN_MEM_ZONE);
 
   res = TRI_InitVectorPointer2(&generator->_scopes, TRI_UNKNOWN_MEM_ZONE, 4);

@@ -536,8 +536,8 @@ SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
   skiplistIndex->_numFields = numFields;
   skiplistIndex->unique = unique;
   skiplistIndex->sparse = sparse;
-  skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm,CmpKeyElm,skiplistIndex,
-                                             FreeElm,unique);
+  skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm, CmpKeyElm, skiplistIndex,
+                                             FreeElm, unique);
   if (skiplistIndex->skiplist == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     return NULL;
