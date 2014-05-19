@@ -9854,7 +9854,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   qtr += n * sizeof(TRI_shape_sid_t);
   aids = (TRI_shape_aid_t const*) qtr;
 
-  v8::Handle<v8::Array> result = v8::Array::New(n);
+  v8::Handle<v8::Array> result = v8::Array::New((int) n);
   uint32_t count = 0;
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
