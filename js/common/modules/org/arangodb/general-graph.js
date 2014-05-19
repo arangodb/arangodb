@@ -100,8 +100,65 @@ var findOrCreateCollectionByName = function (name, type) {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             Fluent AQL bindins
+// --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             Fluent AQL Interface
+// -----------------------------------------------------------------------------
+
+var AQLStatement = function(query, isEdgeQuery) {
+  this.query = query;
+  this.edgeQuery = isEdgeQuery || false;
+};
+
+AQLStatement.prototype.printQuery = function() {
+  return this.query;
+};
+
+AQLStatement.prototype.isEdgeQuery = function() {
+  return this.edgeQuery;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             AQL Generator
+// -----------------------------------------------------------------------------
+
+var AQLGenerator = function(graphName) {
+  this.stack = [];
+  this.bindVars = {
+    "graphName": graphName
+  };
+};
+
+AQLGenerator.prototype.edges = function(startVertex, direction) {
+  var query = "GRAPH_EDGES(@graphName,@startVertex_"
+    + this.stack.length + ","
+    + direction + ")";
+  this.bindVars["startVertex_" + this.stack.length] = startVertex;
+  var stmt = new AQLStatement(query, true);
+  this.stack.push(stmt);
+  return this;
+};
+
+AQLGenerator.prototype.restrict = function() {
+
+};
+
+AQLGenerator.prototype.printQuery = function() {
+  return this.stack.map(function(stmt) {
+    return stmt.printQuery();
+  }).join(" ");
+};
+
+AQLGenerator.prototype.execute = function() {
+  //TODO Implement -> db._query().execute()
+};
+
+AQLGenerator.prototype.toArray = function() {
+  return this.exectue().toArray();
+};
 
 var bindFluentAQLFunctionsToArray = function(arr) {
   var filter = arr.filter.bind(arr);
@@ -261,6 +318,7 @@ var _create = function (graphName, edgeDefinitions) {
 
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
   var self = this;
+  this.__name = graphName;
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
@@ -297,10 +355,11 @@ Graph.prototype._vertexCollections = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _edges(vertexId).
+/// @brief _EDGES(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(vertexId) {
+// might be needed from AQL itself
+Graph.prototype._EDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -311,8 +370,16 @@ Graph.prototype._edges = function(vertexId) {
       result = result.concat(edgeCollection.edges(vertexId));
     }
   );
-  bindFluentAQLFunctionsToArray(result);
   return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _edges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._edges = function(vertexId) {
+  var AQLStmt = new AQLGenerator(this.__name);
+  return AQLStmt.edges(vertexId, "any");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
