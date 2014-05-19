@@ -4,7 +4,7 @@ v2.1.0 (XXXX-XX-XX)
 * fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 
 
-v2.1.0-rc1 (XXXX-XX-XX)
+v2.1.0-rc1 (2014-05-13)
 -----------------------
 
 * added server-side periodic task management functions:
