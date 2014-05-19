@@ -377,14 +377,15 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
           if (edgeDefinition.collection === key) {
             var fromCollection = from.split("/")[0];
             var toCollection = to.split("/")[0];
-            if (! _.contains(edgeDefinition.from, fromCollection) || ! _.contains(edgeDefinition.to, toCollection)) {
+            if (! _.contains(edgeDefinition.from, fromCollection)
+              || ! _.contains(edgeDefinition.to, toCollection)) {
               throw "Edge is not allowed between " + from + " and " + to + ".";
             }
           }
         }
       );
       return old_save(from, to, data);
-    }
+    };
   });
 };
 
