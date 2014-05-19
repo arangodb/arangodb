@@ -481,6 +481,20 @@ function ahuacatlFunctionsTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test reverse function
+//////////////////////////////////////////////////////////////////////////////// 
+
+    testReverse4 : function () {
+      var expected = [ [ 1, 2, 3 ] ];
+      var actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3 ] RETURN i) LET b = REVERSE(a) RETURN a");
+      // make sure reverse does not modify the original value
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3] RETURN i) LET b = REVERSE(a) RETURN b");
+      assertEqual([ expected[0].reverse() ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
 ////////////////////////////////////////////////////////////////////////////////
 
     testReverseInvalid : function () {
