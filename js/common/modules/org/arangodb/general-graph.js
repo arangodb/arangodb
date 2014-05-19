@@ -49,7 +49,7 @@ var arangodb = require("org/arangodb"),
 
 
 var stringToArray = function (x) {
-  if (typeof(x) === "string") {
+  if (typeof x === "string") {
     return [x];
   }
   return x;
@@ -68,7 +68,7 @@ var isValidCollectionsParameter = function (x) {
   if (Array.isArray(x) && x.length === 0) {
     return false;
   }
-  if (typeof(x) !== "string" && !Array.isArray(x)) {
+  if (typeof x !== "string" && !Array.isArray(x)) {
     return false;
   }
   return true;
@@ -121,6 +121,28 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             Fluent AQL bindins
+// -----------------------------------------------------------------------------
+
+var bindFluentAQLFunctionsToArray = function(arr) {
+  var filter = arr.filter.bind(arr);
+  arr.restrict = function(collections) {
+    if (typeof collections === "string") {
+      collections = [collections];
+    }
+    if (!Array.isArray(collections)) {
+      throw "Restrict requires either one collection name, or a list of them.";
+    }
+    var res = filter(function(i) {
+      var colName = i._id.split("/")[0];
+      return _.contains(collections, colName);
+    });
+    return res;
+  };
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 public functions
@@ -312,10 +334,10 @@ Graph.prototype._vertexCollections = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edges(vertexId).
+/// @brief _edges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.edges = function(vertexId) {
+Graph.prototype._edges = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -326,6 +348,7 @@ Graph.prototype.edges = function(vertexId) {
       result = result.concat(edgeCollection.edges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
@@ -333,7 +356,7 @@ Graph.prototype.edges = function(vertexId) {
 /// @brief inEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.inEdges = function(vertexId) {
+Graph.prototype._inEdges = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -344,6 +367,7 @@ Graph.prototype.inEdges = function(vertexId) {
       result = result.concat(edgeCollection.inEdges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
@@ -351,7 +375,7 @@ Graph.prototype.inEdges = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.outEdges = function(vertexId) {
+Graph.prototype._outEdges = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -362,6 +386,7 @@ Graph.prototype.outEdges = function(vertexId) {
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
+  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 
@@ -369,7 +394,7 @@ Graph.prototype.outEdges = function(vertexId) {
 /// @brief get ingoing vertex of an edge.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.getInVertex = function(edgeId) {
+Graph.prototype._getInVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -383,7 +408,7 @@ Graph.prototype.getInVertex = function(edgeId) {
 /// @brief get outgoing vertex of an edge .
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.getOutVertex = function(edgeId) {
+Graph.prototype._getOutVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
