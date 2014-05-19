@@ -224,25 +224,190 @@ function GeneralGraphCreationSuite() {
 			  }
 		  ]);
 
-	  }
-
-	  /*test_create : function () {
+	  },
 
 
-		  var a = graph._create(
+	  test_create : function () {
+			try {
+		    arangodb.db._collection("_graphs").remove("_graphs/bla3")
+			} catch (err) {
+			}
+			var a = graph._create(
 			  "bla3",
 			  graph.edgeDefinitions(
 			    graph._undirectedRelationDefinition("relationName", "vertexC1"),
-			    graph._directedRelationDefinition("relationName",
+			    graph._directedRelationDefinition("relationName2",
 				  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
 			    )
 		    )
 		  );
-		  assertTrue(true);
+			assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
+		  assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
+		  assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+		  assertEqual(a.__edgeDefinitions, [
+			  {
+				  "collection" : "relationName",
+				  "from" : [
+					  "vertexC1"
+				  ],
+				  "to" : [
+					  "vertexC1"
+				  ]
+			  },
+			  {
+				  "collection" : "relationName2",
+				  "from" : [
+					  "vertexC1",
+					  "vertexC2"
+				  ],
+				  "to" : [
+					  "vertexC3",
+					  "vertexC4"
+				  ]
+			  }
+		  ]
+		  );
+	  },
 
+	  test_create_WithOut_EdgeDefiniton : function () {
+		  var msg;
+		  try {
+			  arangodb.db._collection("_graphs").remove("_graphs/bla3")
+		  } catch (err) {
+		  }
 
+		  try {
+			  var a = graph._create(
+				  "bla3",
+				  []
+			  );
+		  } catch (err) {
+				msg = err;
+		  }
 
-	  }*/
+		  assertEqual(msg, "at least one edge definition is required to create a graph.");
+
+	  },
+
+	  test_create_WithOut_Name : function () {
+		  var msg;
+		  try {
+			  arangodb.db._collection("_graphs").remove("_graphs/bla3")
+		  } catch (err) {
+		  }
+
+		  try {
+			  var a = graph._create(
+				  "",
+				  graph.edgeDefinitions(
+					  graph._undirectedRelationDefinition("relationName", "vertexC1"),
+					  graph._directedRelationDefinition("relationName2",
+						  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+					  )
+				  )
+			  );
+		  } catch (err) {
+			  msg = err;
+		  }
+
+		  assertEqual(msg, "a graph name is required to create a graph.");
+
+	  },
+
+	  test_create_With_Already_Existing_Graph : function () {
+		  try {
+			  arangodb.db._collection("_graphs").remove("_graphs/bla3")
+		  } catch (err) {
+		  }
+		  graph._create(
+			  "bla3",
+			  graph.edgeDefinitions(
+				  graph._undirectedRelationDefinition("relationName", "vertexC1"),
+				  graph._directedRelationDefinition("relationName2",
+					  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+				  )
+			  )
+		  );
+		  var msg;
+		  try {
+			  var a = graph._create(
+				  "bla3",
+				  graph.edgeDefinitions(
+					  graph._undirectedRelationDefinition("relationName", "vertexC1"),
+					  graph._directedRelationDefinition("relationName2",
+						  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+					  )
+				  )
+			  );
+		  } catch (err) {
+			  msg = err;
+		  }
+
+		  assertEqual(msg, "graph bla3 already exists.");
+
+	  },
+
+	  test_get_graph : function () {
+
+		  try {
+			  arangodb.db._collection("_graphs").remove("_graphs/bla3")
+		  } catch (err) {
+		  }
+		  graph._create(
+			  "bla3",
+			  graph.edgeDefinitions(
+				  graph._undirectedRelationDefinition("relationName", "vertexC1"),
+				  graph._directedRelationDefinition("relationName2",
+					  ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
+				  )
+			  )
+		  );
+
+		  var a = graph._graph("bla3");
+
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
+		  assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
+		  assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
+		  assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+		  assertEqual(a.__edgeDefinitions, [
+			  {
+				  "collection" : "relationName",
+				  "from" : [
+					  "vertexC1"
+				  ],
+				  "to" : [
+					  "vertexC1"
+				  ]
+			  },
+			  {
+				  "collection" : "relationName2",
+				  "from" : [
+					  "vertexC1",
+					  "vertexC2"
+				  ],
+				  "to" : [
+					  "vertexC3",
+					  "vertexC4"
+				  ]
+			  }
+		  ]
+		  );
+	  },
+
+	  test_get_graph_without_hit : function () {
+		  var msg;
+		  try {
+		    var a = graph._graph("bla4");
+		  } catch (e) {
+			  msg = e;
+		  }
+		  assertEqual(msg, "graph bla4 does not exists.");
+	  }
 
   };
 
