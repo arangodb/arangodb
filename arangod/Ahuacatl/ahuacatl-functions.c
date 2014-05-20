@@ -703,10 +703,12 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
 
   // graph functions
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
+  REGISTER_FUNCTION("GRAPH_PATHS", "GENERAL_GRAPH_PATHS", false, false, "s|s,b,n,n", &OptimisePaths);
   REGISTER_FUNCTION("SHORTEST_PATH", "GRAPH_SHORTEST_PATH", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s|a", NULL);
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s|l", NULL);
+  REGISTER_FUNCTION("GRAPH_EDGES", "GENERAL_GRAPH_EDGES", false, false, "s,s,s|lza,ls", NULL);
   REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
   
   // date functions

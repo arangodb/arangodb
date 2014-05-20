@@ -144,7 +144,7 @@ if test "x$tr_READLINE" = xyes;  then
   READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
 
 elif test "x$tr_READLINE" = xlinenoise;  then
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_HAVE_LINENOISE -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
 fi
 
 dnl ----------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using linenoise
+/// @brief line editor using getline
 ///
 /// @file
 ///
@@ -25,19 +25,16 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LineEditor.h"
-
-extern "C" {
-#include <linenoise.h>
-}
+#include "DummyShell.h"
 
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
 
 using namespace std;
+using namespace triagentriagens;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
+// --SECTION--                                                  class DummyShell
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -48,7 +45,7 @@ using namespace std;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
+DummyShell::DummyShell (std::string const& history)
   : _current(),
     _historyFilename(history),
     _state(STATE_NONE) {
@@ -58,7 +55,7 @@ LineEditor::LineEditor (std::string const& history)
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
+DummyShell::~DummyShell () {
   close();
 }
 
@@ -70,11 +67,8 @@ LineEditor::~LineEditor () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool) {
-  linenoiseHistoryLoad(historyPath().c_str());
-
+bool DummyShell::open (bool) {
   _state = STATE_OPENED;
-
   return true;
 }
 
@@ -82,60 +76,31 @@ bool LineEditor::open (bool) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
-  if (_state != STATE_OPENED) {
-    // avoid duplicate saving of history
-    return true;
-  }
-
+bool DummyShell::close () {
   _state = STATE_CLOSED;
-
-  return writeHistory();
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::historyPath () {
-  string path;
-
-  // get home directory
-  char* p = TRI_HomeDirectory();
-
-  if (p != 0) {
-    path.append(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p);
-
-    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-      path.push_back(TRI_DIR_SEPARATOR_CHAR);
-    }
-  }
-
-  path.append(_historyFilename);
-
-  return path;
+string DummyShell::historyPath () {
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (char const* str) {
-  if (*str == '\0') {
-    return;
-  }
-
-  linenoiseHistoryAdd(str);
+void DummyShell::addHistory (char const* str) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::writeHistory () {
-  linenoiseHistorySave(historyPath().c_str());
-
+bool DummyShell::writeHistory () {
   return true;
 }
 
@@ -143,7 +108,7 @@ bool LineEditor::writeHistory () {
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-char* LineEditor::prompt (char const* prompt) {
+char* DummyShell::prompt (char const* prompt) {
   string dotdot;
   char const* p = prompt;
   size_t len1 = strlen(prompt);
@@ -161,20 +126,16 @@ char* LineEditor::prompt (char const* prompt) {
   char const* sep = "";
 
   while (true) {
-    char* result = linenoise(p);
+    fprintf(stdout, "%s", p);
+    fflush(stdout);
+
+    string line;
+    getline(cin, line);
 
     p = dotdot.c_str();
 
-    if (result == 0) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
+    if (cin.eof()) {
         return 0;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
     }
 
     _current += sep;
@@ -182,7 +143,7 @@ char* LineEditor::prompt (char const* prompt) {
     ++lineno;
 
     // remove any prompt at the beginning of the line
-    char* originalLine = result;
+    char* result = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, line.c_str());
     bool c1 = strncmp(result, prompt, len1) == 0;
     bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
 
@@ -202,9 +163,6 @@ char* LineEditor::prompt (char const* prompt) {
     _current += result;
 
     bool ok = isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call readline
-    TRI_SystemFree(originalLine);
 
     // stop if line is complete
     if (ok) {
