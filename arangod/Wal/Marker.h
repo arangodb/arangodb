@@ -29,6 +29,7 @@
 #define TRIAGENS_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
+#include "ShapedJson/Legends.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
 
@@ -225,9 +226,10 @@ namespace triagens {
                       TRI_voc_rid_t revisionId,
                       TRI_voc_tid_t transactionId,
                       std::string const& key,
+                      triagens::basics::JsonLegend& legend,
                       TRI_shaped_json_t const* shapedJson) 
         : Marker(TRI_WAL_MARKER_DOCUMENT, 
-                 sizeof(document_marker_t) + alignedSize(key.size() + 2) + shapedJson->_data.length) {
+                 sizeof(document_marker_t) + alignedSize(key.size() + 2) + legend.getSize() + shapedJson->_data.length) {
 
         document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
         m->_databaseId   = databaseId;
@@ -237,7 +239,7 @@ namespace triagens {
         m->_shape        = shapedJson->_sid;
         m->_offsetKey    = sizeof(document_marker_t); // start position of key
         m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 2);
-        m->_offsetJson   = m->_offsetLegend; // TODO: account for legendSize // + alignedSize(legendSize)
+        m->_offsetJson   = m->_offsetLegend + alignedSize(legend.getSize());
                
         {
           // store key
@@ -253,7 +255,11 @@ namespace triagens {
           memcpy(p + 1, key.c_str(), n); 
         }
 
-        // store legend // TODO
+        // store legend 
+        {
+          char* p = static_cast<char*>(base()) + m->_offsetLegend;
+          legend.dump(p);
+        }
 
         // store shapedJson
         {
