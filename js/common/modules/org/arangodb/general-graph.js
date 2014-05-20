@@ -32,6 +32,7 @@
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
   db = arangodb.db,
+  errors = arangodb.errors,
   _ = require("underscore");
 
 
@@ -126,7 +127,6 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
@@ -160,8 +160,8 @@ AQLGenerator.prototype.edges = function(startVertex, direction) {
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertex_"
-    + this.stack.length + ","
-    + direction + ")";
+    + this.stack.length + ',"'
+    + direction + '")';
   this.bindVars["startVertex_" + this.stack.length] = startVertex;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
@@ -189,12 +189,38 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   return this;
 };
 
+AQLGenerator.prototype.filter = function(example) {
+  var ex = [];
+  if (Object.prototype.toString.call(example) !== "[object Array]") {
+    if (Object.prototype.toString.call(example) !== "[object Object]") {
+      throw "The example has to be an Object, or an Array";
+    }
+    ex = [example];
+  } else {
+    ex = example;
+  }
+  var query = "FILTER MATCHES(" + this.getLastEdgeVar() + "," + JSON.stringify(ex) + ")";
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+
+/* Old Filter version, string replacements broxen
 AQLGenerator.prototype.filter = function(condition) {
   var con = condition.replace("e.", this.getLastEdgeVar() + "."); 
   var query = "FILTER " + con;
   this.stack.push(new AQLStatement(query));
   return this;
 };
+*/
+
+/* Old LET version, string replacements broxen
+AQLGenerator.prototype.let = function(assignment) {
+  var asg = assignment.replace("e.", this.getLastEdgeVar() + "."); 
+  var query = "LET " + asg;
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+*/
 
 AQLGenerator.prototype.printQuery = function() {
   return this.stack.map(function(stmt) {
@@ -203,30 +229,15 @@ AQLGenerator.prototype.printQuery = function() {
 };
 
 AQLGenerator.prototype.execute = function() {
-  //TODO Implement -> db._query().execute()
+  var query = this.printQuery();
+  var bindVars = this.bindVars;
+  query += " RETURN " + this.getLastEdgeVar();
+  return db._query(query, bindVars);
 };
 
 AQLGenerator.prototype.toArray = function() {
-  return this.exectue().toArray();
+  return this.execute().toArray();
 };
-
-var bindFluentAQLFunctionsToArray = function(arr) {
-  var filter = arr.filter.bind(arr);
-  arr.restrict = function(collections) {
-    if (typeof collections === "string") {
-      collections = [collections];
-    }
-    if (!Array.isArray(collections)) {
-      throw "Restrict requires either one collection name, or a list of them.";
-    }
-    var res = filter(function(i) {
-      var colName = i._id.split("/")[0];
-      return _.contains(collections, colName);
-    });
-    return res;
-  };
-};
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 public functions
@@ -318,7 +329,7 @@ var _create = function (graphName, edgeDefinitions) {
     graphAlreadyExists = true,
     collections;
 
-  if (gdb === null) {
+  if (gdb === null || gdb === undefined) {
     throw "_graphs collection does not exist.";
   }
   if (!graphName) {
@@ -330,7 +341,7 @@ var _create = function (graphName, edgeDefinitions) {
   try {
     g = gdb.document(graphName);
   } catch (e) {
-    if (e.errorNum !== 1202) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     graphAlreadyExists = false;
@@ -400,14 +411,15 @@ var _graph = function(graphName) {
   var gdb = db._graphs,
     g, collections;
 
-  if (gdb === null) {
+  if (gdb === null || gdb === undefined) {
     throw "_graphs collection does not exist.";
   }
 
   try {
     g = gdb.document(graphName);
-  } catch (e) {
-    if (e.errorNum !== 1202) {
+  } 
+  catch (e) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     throw "graph " + graphName + " does not exists.";
@@ -475,7 +487,7 @@ Graph.prototype._INEDGES = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._outEdges = function(vertexId) {
+Graph.prototype._OUTEDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -486,7 +498,6 @@ Graph.prototype._outEdges = function(vertexId) {
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
-  bindFluentAQLFunctionsToArray(result);
   return result;
 };
 

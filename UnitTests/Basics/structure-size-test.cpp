@@ -122,32 +122,6 @@ BOOST_AUTO_TEST_CASE (tst_df_footer_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_document_marker_t 
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_df_document_marker) {
-  size_t s = sizeof(TRI_df_document_marker_t);
-
-  BOOST_CHECK_EQUAL(24, s); // base + own size
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
-
-  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_df_document_marker_s, base));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_df_skip_marker_t 
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_df_skip_marker) {
-  size_t s = sizeof(TRI_df_skip_marker_t);
-
-  BOOST_CHECK_EQUAL(24, s); // base + own size
-  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
-
-  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_df_skip_marker_s, base));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_col_header_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -178,6 +152,7 @@ BOOST_AUTO_TEST_CASE (tst_doc_document_key_marker) {
   BOOST_CHECK_EQUAL(40, offsetof(struct TRI_doc_document_key_marker_s, _shape));
   BOOST_CHECK_EQUAL(48, offsetof(struct TRI_doc_document_key_marker_s, _offsetKey));
   BOOST_CHECK_EQUAL(50, offsetof(struct TRI_doc_document_key_marker_s, _offsetJson));
+  BOOST_CHECK_EQUAL(52, offsetof(struct TRI_doc_document_key_marker_s, _offsetLegend));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
