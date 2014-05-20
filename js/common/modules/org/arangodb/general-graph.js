@@ -475,7 +475,7 @@ Graph.prototype._INEDGES = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._outEdges = function(vertexId) {
+Graph.prototype._OUTEDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
