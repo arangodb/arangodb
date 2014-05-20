@@ -113,15 +113,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks EDGES()
+/// @brief checks GRAPH_EDGES() and GRAPH_NEIGHBOURS()
 ////////////////////////////////////////////////////////////////////////////////
-
-    //graphname,
-    //startvertex,
-    //direction,
-    //edgeexamples,
-    //collectionRestrictions
-
 
     testEdgesAny: function () {
       var actual;
@@ -135,6 +128,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'any' , [{'what' : 'v2->v1'}]) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v1" ]);
 
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', 'any' , [{'what' : 'v2->v1'}]) SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v2->v1");
+      assertEqual(actual[0].vertex._key , "v2");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,6 +148,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', 'inbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v5" ]);
+
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex3/v5', 'inbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v2->v5");
+      assertEqual(actual[0].vertex._key , "v2");
     },
 
 
@@ -170,6 +170,12 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'outbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e.what");
       assertEqual(actual, []);
+
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', 'outbound') SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v1->v2");
+      assertEqual(actual[0].vertex._key , "v2");
+      assertEqual(actual[1].edge.what , "v1->v5");
+      assertEqual(actual[1].vertex._key , "v5");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,11 +194,351 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for GRAPH_PATHS() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryGeneralPathsTestSuite() {
+  var vertex = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlVertex3");
+      db._drop("UnitTestsAhuacatlVertex4");
+      db._drop("UnitTestsAhuacatlEdge1");
+      db._drop("UnitTestsAhuacatlEdge2");
+
+      e1 = "UnitTestsAhuacatlEdge1";
+      e2 = "UnitTestsAhuacatlEdge2";
+
+      vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      vertex3 = db._create("UnitTestsAhuacatlVertex3");
+      vertex4 = db._create("UnitTestsAhuacatlVertex4");
+      edge1 = db._createEdgeCollection(e1);
+      edge2 = db._createEdgeCollection(e2);
+
+      var v1 = vertex1.save({ _key: "v1" });
+      var v2 = vertex1.save({ _key: "v2" });
+      var v3 = vertex2.save({ _key: "v3" });
+      var v4 = vertex2.save({ _key: "v4" });
+      var v5 = vertex3.save({ _key: "v5" });
+      var v6 = vertex3.save({ _key: "v6" });
+      var v7 = vertex4.save({ _key: "v7" });
+
+      try {
+        db._collection("_graphs").remove("_graphs/bla3")
+      } catch (err) {
+      }
+      var g = graph._create(
+        "bla3",
+        graph.edgeDefinitions(
+          graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
+          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+            ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
+            ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
+          )
+        )
+      );
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+      }
+      makeEdge(v1._id, v2._id, g[e1]);
+      makeEdge(v2._id, v1._id, g[e1]);
+      makeEdge(v1._id, v5._id, g[e2]);
+      makeEdge(v2._id, v5._id, g[e2]);
+      makeEdge(v4._id, v7._id, g[e2]);
+      makeEdge(v3._id, v5._id, g[e2]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlVertex3");
+      db._drop("UnitTestsAhuacatlVertex4");
+      db._drop("UnitTestsAhuacatlEdge1");
+      db._drop("UnitTestsAhuacatlEdge2");
+      db._collection("_graphs").remove("_graphs/bla3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_PATHS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testPaths: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3') SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v1"] , "");
+      assertEqual(result["2:v1v2"] , "|v1->v2");
+      assertEqual(result["3:v1v5"] , "|v1->v2|v2->v5");
+      assertEqual(result["4:v1v5"] , "|v1->v5");
+      assertEqual(result["5:v2v1"] , "|v2->v1");
+      assertEqual(result["6:v2v2"] , "");
+      assertEqual(result["7:v2v5"] , "|v2->v5");
+      assertEqual(result["8:v2v5"] , "|v2->v1|v1->v5");
+      assertEqual(result["9:v3v3"] , "");
+      assertEqual(result["10:v3v5"] , "|v3->v5");
+      assertEqual(result["11:v4v4"] , "");
+      assertEqual(result["12:v4v7"] , "|v4->v7");
+
+
+
+    },
+
+    testPathsWithDirectionAnyAndMaxLength1: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'any', false , 1 , 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v2"] , "|v2->v1");
+      assertEqual(result["2:v1v2"] , "|v1->v2");
+      assertEqual(result["3:v1v5"] , "|v1->v5");
+      assertEqual(result["4:v2v1"] , "|v1->v2");
+      assertEqual(result["5:v2v1"] , "|v2->v1");
+      assertEqual(result["6:v2v5"] , "|v2->v5");
+      assertEqual(result["7:v3v5"] , "|v3->v5");
+      assertEqual(result["8:v4v7"] , "|v4->v7");
+      assertEqual(result["9:v5v1"] , "|v1->v5");
+      assertEqual(result["10:v5v2"] , "|v2->v5");
+      assertEqual(result["11:v5v3"] , "|v3->v5");
+      assertEqual(result["12:v7v4"] , "|v4->v7");
+
+
+    },
+
+    testInBoundPaths: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'inbound', false, 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v2"] , "|v2->v1");
+      assertEqual(result["2:v2v1"] , "|v1->v2");
+      assertEqual(result["3:v5v1"] , "|v1->v5");
+      assertEqual(result["4:v5v1"] , "|v2->v5|v1->v2");
+      assertEqual(result["5:v5v2"] , "|v1->v5|v2->v1");
+      assertEqual(result["6:v5v2"] , "|v2->v5");
+      assertEqual(result["7:v5v3"] , "|v3->v5");
+      assertEqual(result["8:v7v4"] , "|v4->v7");
+    }
+
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for GRAPH_TRAVERSAL() and GRAPH_SHORTEST_PATH function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryGeneralTraversalTestSuite() {
+  var vertex = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop("UnitTests_Berliner");
+      db._drop("UnitTests_Hamburger");
+      db._drop("UnitTests_Frankfurter");
+      db._drop("UnitTests_Leipziger");
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+
+      KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      KenntAnderen = "UnitTests_KenntAnderen";
+
+      Berlin = db._create("UnitTests_Berliner");
+      Hamburg = db._create("UnitTests_Hamburger");
+      Frankfurt = db._create("UnitTests_Frankfurter");
+      Leipzig = db._create("UnitTests_Leipziger");
+      db._createEdgeCollection(KenntAnderenBerliner);
+      db._createEdgeCollection(KenntAnderen);
+
+      var Anton = Berlin.save({ _key: "Anton" , gender : "male"});
+      var Berta = Berlin.save({ _key: "Berta" , gender : "female"});
+      var Caesar = Hamburg.save({ _key: "Caesar" , gender : "male"});
+      var Dieter = Hamburg.save({ _key: "Dieter" , gender : "male"});
+      var Emil = Frankfurt.save({ _key: "Emil" , gender : "male"});
+      var Fritz = Frankfurt.save({ _key: "Fritz" , gender : "male"});
+      var Gerda = Leipzig.save({ _key: "Gerda" , gender : "female"});
+
+      try {
+        db._collection("_graphs").remove("_graphs/werKenntWen")
+      } catch (err) {
+      }
+      var g = graph._create(
+        "werKenntWen",
+        graph.edgeDefinitions(
+          graph._undirectedRelationDefinition(KenntAnderenBerliner, "UnitTests_Berliner"),
+          graph._directedRelationDefinition(KenntAnderen,
+            ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
+            ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
+          )
+        )
+      );
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+      }
+      makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner]);
+      makeEdge(Caesar._id, Anton._id, g[KenntAnderen]);
+      makeEdge(Caesar._id, Berta._id, g[KenntAnderen]);
+      makeEdge(Berta._id, Gerda._id, g[KenntAnderen]);
+      makeEdge(Gerda._id, Dieter._id, g[KenntAnderen]);
+      makeEdge(Dieter._id, Emil._id, g[KenntAnderen]);
+      makeEdge(Emil._id, Fritz._id, g[KenntAnderen]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop("UnitTests_Berliner");
+      db._drop("UnitTests_Hamburger");
+      db._drop("UnitTests_Frankfurter");
+      db._drop("UnitTests_Leipziger");
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+      db._collection("_graphs").remove("_graphs/werKenntWen");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_TRAVERSAL()
+////////////////////////////////////////////////////////////////////////////////
+
+    testGRAPH_TRAVERSALs: function () {
+      var actual, result= [];
+
+      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN e");
+      //require("internal").print(actual);
+      actual.forEach(function (s) {
+        result.push(s.vertex._key);
+      });
+      //require("internal").print(result)
+      assertEqual(result, [
+        "Caesar",
+        "Anton",
+        "Berta",
+        "Anton",
+        "Gerda",
+        "Dieter",
+        "Emil",
+        "Fritz"
+      ]);
+    },
+
+    testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
+      var actual, start, middle;
+
+      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN e");
+      start = actual[0][0];
+
+      assertEqual(start._key, "Caesar");
+      assertTrue(start.hasOwnProperty("connected"));
+      assertTrue(start.connected.length === 2);
+      assertEqual(start.connected[0]._key, "Anton");
+      assertEqual(start.connected[1]._key, "Berta");
+
+      assertTrue(!start.connected[0].hasOwnProperty("connected"));
+      assertTrue(start.connected[1].hasOwnProperty("connected"));
+
+      middle = start.connected[1];
+
+      assertTrue(middle.connected.length === 2);
+      assertEqual(middle.connected[0]._key, "Anton");
+      assertEqual(middle.connected[1]._key, "Gerda");
+
+      assertTrue(!middle.connected[0].hasOwnProperty("connected"));
+      assertTrue(middle.connected[1].hasOwnProperty("connected"));
+
+      middle = middle.connected[1];
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Dieter");
+
+      middle = middle.connected[0];
+
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Emil");
+
+      middle = middle.connected[0];
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Fritz");
+
+    },
+
+    testGRAPH_SHORTEST_PATH: function () {
+      var actual, result= [];
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', 'outbound') RETURN e");
+      actual.forEach(function (s) {
+        result.push(s.vertex._key);
+      });
+      assertEqual(result, [
+        "Caesar",
+        "Berta",
+        "Gerda",
+        "Dieter",
+        "Emil"
+      ]);
+
+    }
+  }
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
+jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 
 return jsunity.done();
 
