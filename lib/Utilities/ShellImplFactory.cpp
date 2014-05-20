@@ -41,11 +41,10 @@
 using namespace triagens;
 using namespace std;
 
-ShellImplementation * ShellImplFactory::buildShell(string const &  history, Completer * completer) {
-
+ShellImplementation * ShellImplFactory::buildShell (string const & history, Completer * completer) {
 
 #ifdef _WIN32 
-  //under windows the realine is not compilable
+  //under windows the readline is not compilable
   return new LinenoiseShell(history, completer);
 #elif defined TRI_HAVE_LINENOISE
   return new LinenoiseShell(history, completer);
