@@ -21,37 +21,31 @@ textarea,
   font-style: normal;
   font-weight: 300;
   src: local("Open Sans Light"), local("OpenSans-Light"), url("../fonts/opensans/OpenSansLight.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
   src: local("Open Sans"), local("OpenSans"), url("../fonts/opensans/OpenSans.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 700;
   src: local("Open Sans Bold"), local("OpenSans-Bold"), url("../fonts/opensans/OpenSansBold.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 300;
   src: local("Open Sans Light Italic"), local("OpenSansLight-Italic"), url("../fonts/opensans/OpenSansLightItalic.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 400;
   src: local("Open Sans Italic"), local("OpenSans-Italic"), url("../fonts/opensans/OpenSansItalic.woff") format("woff"); }
-
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 700;
   src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
-
 /*!
  *  Font Awesome 4.0.3 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
@@ -64,7 +58,6 @@ textarea,
   src: url("../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.0.3") format("embedded-opentype"), url("../fonts/fontawesome/fontawesome-webfont.woff?v=4.0.3") format("woff"), url("../fonts/fontawesome/fontawesome-webfont.ttf?v=4.0.3") format("truetype"), url("../fonts/fontawesome/fontawesome-webfont.svg?v=4.0.3#fontawesomeregular") format("svg");
   font-weight: normal;
   font-style: normal; }
-
 .fa {
   display: inline-block;
   font-family: FontAwesome;
@@ -140,35 +133,30 @@ textarea,
 
   100% {
     -moz-transform: rotate(359deg); } }
-
 @-webkit-keyframes spin {
   0% {
     -webkit-transform: rotate(0deg); }
 
   100% {
     -webkit-transform: rotate(359deg); } }
-
 @-o-keyframes spin {
   0% {
     -o-transform: rotate(0deg); }
 
   100% {
     -o-transform: rotate(359deg); } }
-
 @-ms-keyframes spin {
   0% {
     -ms-transform: rotate(0deg); }
 
   100% {
     -ms-transform: rotate(359deg); } }
-
 @keyframes spin {
   0% {
     transform: rotate(0deg); }
 
   100% {
     transform: rotate(359deg); } }
-
 .fa-rotate-90 {
   filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=$rotation);
   -webkit-transform: rotate(90deg);
@@ -1456,7 +1444,7 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
     background-color: gray; }
 
@@ -3876,6 +3864,14 @@ div.breadcrumb a.disabledBread {
   .modal-body select,
   .modal-body textarea {
     margin-top: 10px; }
+  .modal-body input[type='checkbox'] {
+    margin-bottom: 10px; }
+  .modal-body input[type='text'].invalid-input {
+    border-color: rgba(234, 23, 23, 0.6); }
+    .modal-body input[type='text'].invalid-input:focus {
+      -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
+      -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
+      box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6); }
   .modal-body th th.actionCell, .modal-body th th.keyCell, .modal-body th .valueCell {
     text-align: center; }
   .modal-body th.actionCell {
@@ -3898,6 +3894,14 @@ div.breadcrumb a.disabledBread {
     padding-bottom: 5px; }
   .modal-body .icon-info-sign:hover {
     opacity: 1; }
+  .modal-body .icon_arangodb_info {
+    color: #736b68;
+    font-size: 18px;
+    margin-top: -10px;
+    position: absolute;
+    right: 12px; }
+  .modal-body .icon_arangodb_info:hover {
+    color: black; }
   .modal-body .collapse {
     margin-right: -14px;
     position: relative; }
@@ -3932,6 +3936,10 @@ div.breadcrumb a.disabledBread {
 
 .modal {
   border-radius: 0 !important; }
+  .modal .fade.in {
+    top: 12.1% !important; }
+  .modal table tr:last-child {
+    border-bottom: 0 !important; }
 
 .waitModal {
   -webkit-box-shadow: none;
@@ -3970,50 +3978,21 @@ pre.gv-object-view {
   padding-left: 5px;
   padding-right: 10px;
   padding-top: 4px; }
-
-.modal-header .arangoHeader {
-  position: relative;
-  top: 3px; }
-
-.modal-header a {
-  top: 2px !important; }
-
-.modal-header .close {
-  color: white;
-  font-weight: 300;
-  opacity: .5; }
-
-.modal-header .close:hover {
-  opacity: 1; }
-
-.modal-body .icon_arangodb_info {
-  color: #736b68;
-  font-size: 18px;
-  margin-top: -10px;
-  position: absolute;
-  right: 12px; }
-
-.modal-body .icon_arangodb_info:hover {
-  color: black; }
-
-.modal.fade.in {
-  top: 12.1% !important; }
+  .modal-header .arangoHeader {
+    position: relative;
+    top: 3px; }
+  .modal-header a {
+    top: 2px !important; }
+  .modal-header .close {
+    color: white;
+    font-weight: 300;
+    opacity: .5; }
+  .modal-header .close:hover {
+    opacity: 1; }
 
 .modal table tr,
 .thBorderBottom {
   border-bottom: 1px solid #f7f3f2 !important; }
-
-.modal table tr:last-child {
-  border-bottom: 0 !important; }
-
-.modal-body input[type='checkbox'] {
-  margin-bottom: 10px; }
-
-.modal-body input[type='text'].invalid-input {
-  webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
-  moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
-  border-color: rgba(234, 23, 23, 0.8); }
 
 .modal-delete-confirmation {
   display: none; }
@@ -4173,7 +4152,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -5288,8 +5267,8 @@ input.gv-radio-button {
   .arango-collection-ul a {
     font-size: 13px; } }
 .hotkeysList .hotkeysLabel {
-  color: #000;
   clear: both;
+  color: #000;
   font-size: 16px;
   font-weight: 400; }
 .hotkeysList .hotkeysContent {
@@ -5310,8 +5289,8 @@ input.gv-radio-button {
   width: 19px; }
 
 .hotkeysContentLabel {
-  width: 30%;
-  float: left; }
+  float: left;
+  width: 30%; }
 
 .arango-table {
   border-top: 1px solid #000;
