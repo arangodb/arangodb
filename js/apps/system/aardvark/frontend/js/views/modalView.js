@@ -13,7 +13,7 @@
     };
   };
 
-  var createTextStub = function(type, label, value, info, placeholder, mandatory) {
+  var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp) {
     var obj = {
       type: type,
       label: label
@@ -29,6 +29,12 @@
     }
     if (mandatory) {
       obj.mandatory = mandatory;
+    }
+    if (regexp){
+      // returns true if the string contains the match
+      obj.validateInput = function(el){
+        return regexp.test(el.val());
+      };
     }
     return obj;
   };
@@ -161,8 +167,9 @@
       return obj;
     },
 
-    createTextEntry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory);
+    createTextEntry: function(id, label, value, info, placeholder, mandatory, regexp) {
+      var obj = createTextStub(this.tables.TEXT, label, value, info, placeholder, mandatory,
+                               regexp);
       obj.id = id;
       return obj;
     },
@@ -270,6 +277,20 @@
           });
         }
       });//handle select2
+
+      self.testInput = (function(){
+        _.each(tableContent,function(r){
+          if(r.validateInput){
+            $('#' + r.id).on('keyup', function(){
+              if(r.validateInput($('#' + r.id))){
+                $('#' + r.id).addClass('invalid-input');
+              } else {
+                $('#' + r.id).removeClass('invalid-input');
+              }
+            });
+          }
+        });
+      }());
       if (events) {
           this.events = events;
           this.delegateEvents();

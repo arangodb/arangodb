@@ -53,7 +53,7 @@ var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
   }
-  return x;
+  return _.clone(x);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +121,6 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -279,7 +275,7 @@ var _directedRelationDefinition = function (
   relationName, fromVertexCollections, toVertexCollections) {
 
   if (arguments.length < 3) {
-    throw "method _undirectedRelationDefinition expects 3 arguments";
+    throw "method _directedRelationDefinition expects 3 arguments";
   }
 
   if (typeof relationName !== "string" || relationName === "") {
@@ -431,6 +427,51 @@ var _graph = function(graphName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _drop = function(graphId, dropCollections) {
+
+  var gdb = db._graphs;
+
+
+  if (gdb === null || gdb === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+
+  if (!gdb.exists(graphId)) {
+    throw "Graph " + graphId + " does not exist.";
+  }
+
+  if (dropCollections !== false) {
+    var graph = gdb.document(graphId);
+    var edgeDefinitions = graph.edgeDefinitions;
+    require("internal").print(edgeDefinitions);
+    edgeDefinitions.forEach(
+      function(edgeDefinition) {
+        var from = edgeDefinition.from;
+        var to = edgeDefinition.to;
+        var edge = edgeDefinition.collection;
+        db._drop(edge);
+        from.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+        to.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+      }
+    );
+  }
+
+  gdb.remove(graphId);
+  return true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return all edge collections of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -487,7 +528,7 @@ Graph.prototype._INEDGES = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._outEdges = function(vertexId) {
+Graph.prototype._OUTEDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -587,6 +628,7 @@ exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
 exports._create = _create;
+exports._drop = _drop;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
