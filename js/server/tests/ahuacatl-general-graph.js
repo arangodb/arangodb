@@ -113,7 +113,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks EDGES()
+/// @brief checks GRAPH_EDGES() and GRAPH_NEIGHBOURS()
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesAny: function () {
@@ -128,6 +128,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'any' , [{'what' : 'v2->v1'}]) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v1" ]);
 
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', 'any' , [{'what' : 'v2->v1'}]) SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v2->v1");
+      assertEqual(actual[0].vertex._key , "v2");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +148,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', 'inbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v5" ]);
+
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex3/v5', 'inbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v2->v5");
+      assertEqual(actual[0].vertex._key , "v2");
     },
 
 
@@ -163,6 +170,12 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'outbound' , [{'what' : 'v2->v5'}]) SORT e.what RETURN e.what");
       assertEqual(actual, []);
+
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', 'outbound') SORT e.what RETURN e");
+      assertEqual(actual[0].edge.what , "v1->v2");
+      assertEqual(actual[0].vertex._key , "v2");
+      assertEqual(actual[1].edge.what , "v1->v5");
+      assertEqual(actual[1].vertex._key , "v5");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +366,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for GRAPH_TRAVERSAL() function
+/// @brief test suite for GRAPH_TRAVERSAL() and GRAPH_SHORTEST_PATH function
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralTraversalTestSuite() {
@@ -493,6 +506,23 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       middle = middle.connected[0];
       assertTrue(middle.connected.length === 1);
       assertEqual(middle.connected[0]._key, "Fritz");
+
+    },
+
+    testGRAPH_SHORTEST_PATH: function () {
+      var actual, result= [];
+
+      actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar',  'UnitTests_Frankfurter/Emil', 'outbound') RETURN e");
+      actual.forEach(function (s) {
+        result.push(s.vertex._key);
+      });
+      assertEqual(result, [
+        "Caesar",
+        "Berta",
+        "Gerda",
+        "Dieter",
+        "Emil"
+      ]);
 
     }
   }
