@@ -32,6 +32,7 @@
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
   db = arangodb.db,
+  errors = arangodb.errors,
   _ = require("underscore");
 
 
@@ -49,7 +50,7 @@ var arangodb = require("org/arangodb"),
 
 
 var stringToArray = function (x) {
-  if (typeof(x) === "string") {
+  if (typeof x === "string") {
     return [x];
   }
   return x;
@@ -68,7 +69,7 @@ var isValidCollectionsParameter = function (x) {
   if (Array.isArray(x) && x.length === 0) {
     return false;
   }
-  if (typeof(x) !== "string" && !Array.isArray(x)) {
+  if (typeof x !== "string" && !Array.isArray(x)) {
     return false;
   }
   return true;
@@ -78,9 +79,9 @@ var isValidCollectionsParameter = function (x) {
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type) {
+var findOrCreateCollectionByName = function (name, type, noCreate) {
   var col = db._collection(name),res = false;
-  if (col === null) {
+  if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
       col = db._create(name);
     } else {
@@ -95,9 +96,148 @@ var findOrCreateCollectionByName = function (name, type) {
   return res;
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create a collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
+  var vertexCollections = {},
+  edgeCollections = {};
+  edgeDefinitions.forEach(function (e) {
+    e.from.concat(e.to).forEach(function (v) {
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      vertexCollections[v] = db[v];
+    });
+    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
+    edgeCollections[e.collection] = db[e.collection];
+  });
+  return [
+    vertexCollections,
+    edgeCollections
+  ];
+};
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             Fluent AQL Interface
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             Fluent AQL Interface
+// -----------------------------------------------------------------------------
+
+var AQLStatement = function(query, isEdgeQuery) {
+  this.query = query;
+  this.edgeQuery = isEdgeQuery || false;
+};
+
+AQLStatement.prototype.printQuery = function() {
+  return this.query;
+};
+
+AQLStatement.prototype.isEdgeQuery = function() {
+  return this.edgeQuery;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                             AQL Generator
+// -----------------------------------------------------------------------------
+
+var AQLGenerator = function(graphName) {
+  this.stack = [];
+  this.bindVars = {
+    "graphName": graphName
+  };
+  this.lastEdgeVar = "";
+};
+
+AQLGenerator.prototype.edges = function(startVertex, direction) {
+  var edgeName = "edges_" + this.stack.length;
+  var query = "FOR " + edgeName
+    + " IN GRAPH_EDGES(@graphName,@startVertex_"
+    + this.stack.length + ',"'
+    + direction + '")';
+  this.bindVars["startVertex_" + this.stack.length] = startVertex;
+  var stmt = new AQLStatement(query, true);
+  this.stack.push(stmt);
+  this.lastEdgeVar = edgeName;
+  return this;
+};
+
+AQLGenerator.prototype.getLastEdgeVar = function() {
+  if (this.lastEdgeVar === "") {
+    return false;
+  }
+  return this.lastEdgeVar;
+};
+
+AQLGenerator.prototype.restrict = function(restrictions) {
+  var lastQuery = this.stack.pop();
+  if (!lastQuery.isEdgeQuery()) {
+    this.stack.push(lastQuery);
+    throw "Restrict can only be applied directly after edge selectors";
+  }
+  lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
+  lastQuery.edgeQuery = false;
+  this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
+  this.stack.push(lastQuery);
+  return this;
+};
+
+AQLGenerator.prototype.filter = function(example) {
+  var ex = [];
+  if (Object.prototype.toString.call(example) !== "[object Array]") {
+    if (Object.prototype.toString.call(example) !== "[object Object]") {
+      throw "The example has to be an Object, or an Array";
+    }
+    ex = [example];
+  } else {
+    ex = example;
+  }
+  var query = "FILTER MATCHES(" + this.getLastEdgeVar() + "," + JSON.stringify(ex) + ")";
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+
+/* Old Filter version, string replacements broxen
+AQLGenerator.prototype.filter = function(condition) {
+  var con = condition.replace("e.", this.getLastEdgeVar() + "."); 
+  var query = "FILTER " + con;
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+*/
+
+/* Old LET version, string replacements broxen
+AQLGenerator.prototype.let = function(assignment) {
+  var asg = assignment.replace("e.", this.getLastEdgeVar() + "."); 
+  var query = "LET " + asg;
+  this.stack.push(new AQLStatement(query));
+  return this;
+};
+*/
+
+AQLGenerator.prototype.printQuery = function() {
+  return this.stack.map(function(stmt) {
+    return stmt.printQuery();
+  }).join(" ");
+};
+
+AQLGenerator.prototype.execute = function() {
+  var query = this.printQuery();
+  var bindVars = this.bindVars;
+  query += " RETURN " + this.getLastEdgeVar();
+  return db._query(query, bindVars);
+};
+
+AQLGenerator.prototype.toArray = function() {
+  return this.execute().toArray();
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 public functions
@@ -170,7 +310,7 @@ var edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
-    res.push(args[x]);
+   res.push(args[x]);
   });
 
   return res;
@@ -184,25 +324,24 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = db._collection("_graphs"),
+  var gdb = db._graphs,
     g,
-    graphAlreadyExists = true;
+    graphAlreadyExists = true,
+    collections;
 
-  if (gdb === null) {
+  if (gdb === null || gdb === undefined) {
     throw "_graphs collection does not exist.";
   }
-
   if (!graphName) {
     throw "a graph name is required to create a graph.";
   }
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
     throw "at least one edge definition is required to create a graph.";
   }
-
   try {
     g = gdb.document(graphName);
   } catch (e) {
-    if (e.errorNum !== 1202) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     graphAlreadyExists = false;
@@ -212,33 +351,25 @@ var _create = function (graphName, edgeDefinitions) {
     throw "graph " + graphName + " already exists.";
   }
 
-  var vertexCollections = {};
-  var edgeCollections = {};
-  edgeDefinitions.forEach(function (e) {
-    e.from.concat(e.to).forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
-      vertexCollections[v] = db[v];
-    });
-    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
-    edgeCollections[e.collection] = db[e.collection];
-  });
+  collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
 
   gdb.save({
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
 
-  return new Graph(graphName, edgeDefinitions, vertexCollections, edgeCollections);
+  return new Graph(graphName, edgeDefinitions, collections[0], collections[1]);
+
 };
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load a graph.
+/// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
 
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
   var self = this;
+  this.__name = graphName;
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
@@ -250,12 +381,53 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(edgeCollections, function(obj, key) {
     self[key] = obj;
+    var old_save = obj.save.bind(obj);
+    obj.save = function(from, to, data) {
+      edgeDefinitions.forEach(
+        function(edgeDefinition) {
+          if (edgeDefinition.collection === key) {
+            var fromCollection = from.split("/")[0];
+            var toCollection = to.split("/")[0];
+            if (! _.contains(edgeDefinition.from, fromCollection)
+              || ! _.contains(edgeDefinition.to, toCollection)) {
+              throw "Edge is not allowed between " + from + " and " + to + ".";
+            }
+          }
+        }
+      );
+      return old_save(from, to, data);
+    };
   });
-
 };
 
-var _graph = function() {
-  return new Graph();
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _graph = function(graphName) {
+
+  var gdb = db._graphs,
+    g, collections;
+
+  if (gdb === null || gdb === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+
+  try {
+    g = gdb.document(graphName);
+  } 
+  catch (e) {
+    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw e;
+    }
+    throw "graph " + graphName + " does not exists.";
+  }
+
+  collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+
+  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,10 +447,11 @@ Graph.prototype._vertexCollections = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edges(vertexId).
+/// @brief _EDGES(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.edges = function(vertexId) {
+// might be needed from AQL itself
+Graph.prototype._EDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -293,10 +466,10 @@ Graph.prototype.edges = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inEdges(vertexId).
+/// @brief INEDGES(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.inEdges = function(vertexId) {
+Graph.prototype._INEDGES = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -314,7 +487,7 @@ Graph.prototype.inEdges = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.outEdges = function(vertexId) {
+Graph.prototype._outEdges = function(vertexId) {
   var edgeCollections = this._edgeCollections();
   var result = [];
 
@@ -329,10 +502,36 @@ Graph.prototype.outEdges = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief _edges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._edges = function(vertexId) {
+  var AQLStmt = new AQLGenerator(this.__name);
+  return AQLStmt.edges(vertexId, "any");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._inEdges = function(vertexId) {
+  var AQLStmt = new AQLGenerator(this.__name);
+  return AQLStmt.edges(vertexId, "inbound");
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._outEdges = function(vertexId) {
+  var AQLStmt = new AQLGenerator(this.__name);
+  return AQLStmt.edges(vertexId, "outbound");
+};
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get ingoing vertex of an edge.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.getInVertex = function(edgeId) {
+Graph.prototype._getInVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -346,7 +545,7 @@ Graph.prototype.getInVertex = function(edgeId) {
 /// @brief get outgoing vertex of an edge .
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype.getOutVertex = function(edgeId) {
+Graph.prototype._getOutVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
