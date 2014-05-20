@@ -48,12 +48,14 @@ namespace triagens {
       explicit SlotInfo (int errorCode) 
         : slot(nullptr),
           mem(nullptr),
+          size(0),
           errorCode(errorCode) {
       }
       
       explicit SlotInfo (Slot* slot) 
         : slot(slot),
           mem(slot->mem()),
+          size(slot->size()),
           errorCode(TRI_ERROR_NO_ERROR) {
       }
 
@@ -63,6 +65,7 @@ namespace triagens {
 
       Slot*       slot;
       void const* mem;
+      uint32_t    size;
       int         errorCode;
     };
 
