@@ -867,6 +867,20 @@ function EdgesAndVerticesSuite() {
       assertTrue(vertex);
     },
 
+    test_vC_removeWithEdge : function () {
+      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertexId2 = vertex2._id;
+      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edgeId = edge._id;
+      var result = g.unitTestVertexCollection1.remove(vertexId1);
+      assertTrue(result);
+      assertFalse(db.unitTestEdgeCollection1.exists(edgeId));
+      result = g.unitTestVertexCollection1.remove(vertexId2);
+      assertTrue(result);
+    },
+
     test_eC_save_undirected : function() {
       var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
