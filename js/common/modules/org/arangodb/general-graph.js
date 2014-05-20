@@ -119,6 +119,19 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
   ];
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to get graphs collection
+////////////////////////////////////////////////////////////////////////////////
+
+var _getGraphCollection = function() {
+  var gCol = db._graphs;
+  if (gCol === null || gCol === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+  return gCol;
+};
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -336,14 +349,11 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = db._graphs,
+  var gdb = _getGraphCollection(),
     g,
     graphAlreadyExists = true,
     collections;
 
-  if (gdb === null || gdb === undefined) {
-    throw "_graphs collection does not exist.";
-  }
   if (!graphName) {
     throw "a graph name is required to create a graph.";
   }
@@ -435,12 +445,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 var _graph = function(graphName) {
 
-  var gdb = db._graphs,
+  var gdb = _getGraphCollection(),
     g, collections;
-
-  if (gdb === null || gdb === undefined) {
-    throw "_graphs collection does not exist.";
-  }
 
   try {
     g = gdb.document(graphName);
@@ -458,17 +464,21 @@ var _graph = function(graphName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a graph exists.
+////////////////////////////////////////////////////////////////////////////////
+
+var _exists = function(graphId) {
+  var gCol = _getGraphCollection();
+  return gCol.exists(graphId);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
 
-  var gdb = db._graphs;
-
-
-  if (gdb === null || gdb === undefined) {
-    throw "_graphs collection does not exist.";
-  }
+  var gdb = _getGraphCollection();
 
   if (!gdb.exists(graphId)) {
     throw "Graph " + graphId + " does not exist.";
@@ -477,7 +487,6 @@ var _drop = function(graphId, dropCollections) {
   if (dropCollections !== false) {
     var graph = gdb.document(graphId);
     var edgeDefinitions = graph.edgeDefinitions;
-    require("internal").print(edgeDefinitions);
     edgeDefinitions.forEach(
       function(edgeDefinition) {
         var from = edgeDefinition.from;
@@ -660,6 +669,7 @@ exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
+exports._exists = _exists;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
