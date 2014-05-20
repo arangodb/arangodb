@@ -152,7 +152,6 @@ BOOST_AUTO_TEST_CASE (tst_doc_document_key_marker) {
   BOOST_CHECK_EQUAL(40, offsetof(struct TRI_doc_document_key_marker_s, _shape));
   BOOST_CHECK_EQUAL(48, offsetof(struct TRI_doc_document_key_marker_s, _offsetKey));
   BOOST_CHECK_EQUAL(50, offsetof(struct TRI_doc_document_key_marker_s, _offsetJson));
-  BOOST_CHECK_EQUAL(52, offsetof(struct TRI_doc_document_key_marker_s, _offsetLegend));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
