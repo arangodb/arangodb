@@ -38,6 +38,8 @@
     "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" }, 
     "ERROR_REQUEST_CANCELED"       : { "code" : 21, "message" : "canceled request" }, 
     "ERROR_DEBUG"                  : { "code" : 22, "message" : "intentional debug error" }, 
+    "ERROR_AID_NOT_FOUND"          : { "code" : 23, "message" : "internal error with attribute ID in shaper" }, 
+    "ERROR_LEGEND_INCOMPLETE"      : { "code" : 24, "message" : "internal error if a legend could not be created" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
