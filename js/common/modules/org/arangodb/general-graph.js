@@ -31,6 +31,7 @@
 
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
+  ArangoError = arangodb.ArangoError,
   db = arangodb.db,
   errors = arangodb.errors,
   _ = require("underscore");
@@ -144,11 +145,12 @@ AQLStatement.prototype.isEdgeQuery = function() {
 // --SECTION--                             AQL Generator
 // -----------------------------------------------------------------------------
 
-var AQLGenerator = function(graphName) {
+var AQLGenerator = function(graph) {
   this.stack = [];
   this.bindVars = {
-    "graphName": graphName
+    "graphName": graph.__name
   };
+  this.graph = graph;
   this.lastEdgeVar = "";
 };
 
@@ -173,6 +175,20 @@ AQLGenerator.prototype.getLastEdgeVar = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  var rest = stringToArray(restrictions);
+  var unknown = [];
+  var g = this.graph;
+  _.each(rest, function(r) {
+    if (!g.__edgeCollections[r]) {
+      unknown.push(r);
+    }
+  });
+  if (unknown.length > 0) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "edge collections: " + unknown.join(" and ") + " are not known to the graph";
+    throw err;
+  }
   var lastQuery = this.stack.pop();
   if (!lastQuery.isEdgeQuery()) {
     this.stack.push(lastQuery);
@@ -180,7 +196,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   }
   lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
   lastQuery.edgeQuery = false;
-  this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
+  this.bindVars["restrictions_" + this.stack.length] = rest;
   this.stack.push(lastQuery);
   return this;
 };
@@ -547,7 +563,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._edges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "any");
 };
 
@@ -556,7 +572,7 @@ Graph.prototype._edges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._inEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "inbound");
 };
 
@@ -565,7 +581,7 @@ Graph.prototype._inEdges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._outEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "outbound");
 };
 ////////////////////////////////////////////////////////////////////////////////
