@@ -413,7 +413,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       );
 
       return old_remove(vertexId, options);
-    }
+    };
   });
 
   _.each(edgeCollections, function(obj, key) {
