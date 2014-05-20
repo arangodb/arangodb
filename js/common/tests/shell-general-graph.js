@@ -424,19 +424,9 @@ function GeneralGraphAQLQueriesSuite() {
   var v3 = "UnitTestV3";
 
   var dropInclExcl = function() {
-    var col = db._collection("_graphs");
-    try {
-      col.remove(graphName);
-    } catch (e) {
-      return;
+    if (graph._exists(graphName)) {
+      graph._drop(graphName);
     }
-    var colList = [v1, v2, v3, included, excluded];
-    _.each(colList, function(c) {
-      var colToClear = db._collection(c);
-      if (col) {
-        colToClear.truncate();
-      }
-    });
   };
 
   var e1, e2, e3;
