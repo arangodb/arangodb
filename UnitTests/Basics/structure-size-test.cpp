@@ -137,6 +137,44 @@ BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test sizeof TRI_wal_document_marker_t
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_wal_document_marker) {
+  size_t s = sizeof(TRI_wal_document_marker_t);
+
+  BOOST_CHECK_EQUAL(24 + 48, s); // base + own size
+  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+
+  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_document_marker_s, base));
+  BOOST_CHECK_EQUAL(24, offsetof(struct TRI_wal_document_marker_s, _databaseId));
+  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_wal_document_marker_s, _collectionId));
+  BOOST_CHECK_EQUAL(40, offsetof(struct TRI_wal_document_marker_s, _rid));
+  BOOST_CHECK_EQUAL(48, offsetof(struct TRI_wal_document_marker_s, _tid));
+  BOOST_CHECK_EQUAL(56, offsetof(struct TRI_wal_document_marker_s, _shape));
+  BOOST_CHECK_EQUAL(64, offsetof(struct TRI_wal_document_marker_s, _offsetKey));
+  BOOST_CHECK_EQUAL(66, offsetof(struct TRI_wal_document_marker_s, _offsetLegend));
+  BOOST_CHECK_EQUAL(68, offsetof(struct TRI_wal_document_marker_s, _offsetJson));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sizeof TRI_wal_edge_marker_t
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_wal_edge_marker) {
+  size_t s = sizeof(TRI_wal_edge_marker_t);
+
+  BOOST_CHECK_EQUAL(24 + 48 + 24, s); // base + own size
+  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+
+  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_edge_marker_s, base));
+  BOOST_CHECK_EQUAL(72, offsetof(struct TRI_wal_edge_marker_s, _toCid));
+  BOOST_CHECK_EQUAL(80, offsetof(struct TRI_wal_edge_marker_s, _fromCid));
+  BOOST_CHECK_EQUAL(88, offsetof(struct TRI_wal_edge_marker_s, _offsetToKey));
+  BOOST_CHECK_EQUAL(90, offsetof(struct TRI_wal_edge_marker_s, _offsetFromKey));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_doc_document_key_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
