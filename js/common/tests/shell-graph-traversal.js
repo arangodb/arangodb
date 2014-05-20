@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var traversal = require("org/arangodb/graph/traversal");
 var graph = require("org/arangodb/graph");
+var generalGraph = require("org/arangodb/general-graph");
 
 var db = arangodb.db;
 var Traverser = traversal.Traverser;
@@ -1856,6 +1857,370 @@ function CollectionTraversalSuite () {
   };
 }
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           general graph traversal
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: general-graph-based graph traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function GeneralGraphTraversalSuite () {
+  // Definition of the edges: A -> BDEH <-> CFGI
+  var vnA = "UnitTestsVertices1";
+  var enDir = "UnitTestsEdges1";
+  var vnBDH = "UnitTestsVertices2";
+  var enUndir = "UnitTestsEdges2";
+  var vnCEFGI = "UnitTestsVertices3";
+
+  var gn = "UnitTestsGraph";
+
+  var g;
+  
+  var getResult = function () {
+    return {
+      visited: {
+        vertices: [ ],
+        paths: [ ]
+      }
+    }; 
+  };
+  
+  var getIds = function (data) {
+    var r = [ ];
+    data.forEach(function (item) {
+      r.push(item._id);
+    });
+    return r;
+  };
+  var saveVertex = function(colName, key) {
+    g[colName].save({ _key: key, name: key });
+  };
+  var saveEdge = function(edgeCol, fromCol, toCol, nodePair) {
+    var l = nodePair[0];
+    var r = nodePair[1];
+    g[edgeCol].save(fromCol + "/" + l, toCol + "/" + r, {_key: l + r, what: l + "->" + r });
+  };
+
+  var cleanUp = function() {
+    db._drop(vnA);
+    db._drop(vnBDH);
+    db._drop(vnCEFGI);
+    db._drop(enDir);
+    db._drop(enUndir);
+    if (db._graphs.exists(gn)) {
+      db._graphs.remove(gn);
+    }
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      cleanUp();
+
+      var edgeDef = [];
+      edgeDef.push(generalGraph._directedRelationDefinition(enDir, vnA, vnBDH));
+      edgeDef.push(generalGraph._undirectedRelationDefinition(enUndir, [vnBDH, vnCEFGI]));
+      g = generalGraph._create(gn, edgeDef);
+
+      saveVertex(vnA, "A");
+      [ "B", "D", "H" ].forEach(function (item) {
+        saveVertex(vnBDH, item);
+      });
+      [ "C", "E", "F", "G", "I" ].forEach(function (item) {
+        saveVertex(vnCEFGI, item);
+      });
+
+      [ [ "A", "B" ], [ "A", "D" ] ].forEach(function (item) {
+        saveEdge(enDir, vnA, vnBDH, item);
+      });
+      [ [ "B", "C" ], [ "D", "E" ], [ "D", "F" ], [ "B", "G" ], [ "B", "I" ] ].forEach(function (item) {
+        saveEdge(enUndir, vnBDH, vnCEFGI, item);
+      });
+      [ [ "C", "D" ], [ "G", "H" ], [ "I", "H"] ].forEach(function (item) {
+        saveEdge(enUndir, vnCEFGI, vnBDH, item);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      cleanUp();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test outbound expander
+////////////////////////////////////////////////////////////////////////////////
+
+    testOutboundExpander : function () {
+      var config = {
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        datasource: traversal.generalGraphDatasourceFactory(gn)
+      }; 
+
+      var expander = traversal.outboundExpander;
+      var connected;
+      
+      connected = [ ];
+      expander(config, g[vnA].document("A")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ "B", "D" ], connected);
+      
+      connected = [ ];
+      expander(config, g[vnBDH].document("D")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ "E", "F" ], connected);
+      
+      connected = [ ];
+      expander(config, g[vnBDH].document("H")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ ], connected);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test inbound expander
+////////////////////////////////////////////////////////////////////////////////
+
+    testInboundExpander : function () {
+      var config = {
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        datasource: traversal.generalGraphDatasourceFactory(gn)
+      }; 
+
+      var expander = traversal.inboundExpander;
+      var connected;
+      
+      connected = [ ];
+      expander(config, g[vnBDH].document("D")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ "A", "C" ], connected);
+      
+      connected = [ ];
+      expander(config, g[vnBDH].document("H")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ "G", "I" ], connected);
+      
+      connected = [ ];
+      expander(config, g[vnA].document("A")).forEach(function(item) {
+        connected.push(item.vertex._key);
+      }); 
+
+      assertEqual([ ], connected);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateFullOutbound : function () {
+      var config = { 
+        datasource: traversal.generalGraphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+      };
+      
+      var traverser = new Traverser(config);
+      var result = getResult();
+      traverser.traverse(result, g[vnA].document("A"));
+
+      var expectedVisits = [
+        vnA + "/A", 
+        vnBDH + "/B", 
+        vnCEFGI + "/C", 
+        vnBDH + "/D", 
+        vnCEFGI + "/E", 
+        vnCEFGI + "/F", 
+        vnCEFGI + "/G", 
+        vnBDH + "/H", 
+        vnCEFGI + "/I", 
+        vnBDH + "/H", 
+        vnBDH + "/D", 
+        vnCEFGI + "/E", 
+        vnCEFGI + "/F" 
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateInbound : function () {
+      var config = { 
+        datasource: traversal.generalGraphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        filter: traversal.visitAllFilter,
+        expander: traversal.inboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+      };
+     
+      var result = getResult(); 
+      var traverser = new Traverser(config);
+      traverser.traverse(result, g[vnCEFGI].document("F"));
+
+      var expectedVisits = [
+        vnCEFGI + "/F", 
+        vnBDH + "/D", 
+        vnA + "/A", 
+        vnCEFGI + "/C", 
+        vnBDH + "/B", 
+        vnA + "/A" 
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniqueGlobalVertices : function () {
+      var config = { 
+        datasource: traversal.generalGraphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        uniqueness: {
+          vertices: Traverser.UNIQUE_GLOBAL,
+          edges: Traverser.UNIQUE_NONE
+        }, 
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+      };
+      
+      var result = getResult();
+      var traverser = new Traverser(config);
+      traverser.traverse(result, g[vnA].document("A"));
+
+      var expectedVisits = [
+        vnA + "/A", 
+        vnBDH + "/B", 
+        vnCEFGI + "/C", 
+        vnBDH + "/D", 
+        vnCEFGI + "/E", 
+        vnCEFGI + "/F", 
+        vnCEFGI + "/G", 
+        vnBDH + "/H", 
+        vnCEFGI + "/I" 
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniquePathVertices : function () {
+      var config = { 
+        datasource: traversal.generalGraphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        uniqueness: {
+          vertices: Traverser.UNIQUE_PATH,
+          edges: Traverser.UNIQUE_NONE
+        }, 
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+      };
+      
+      var result = getResult();
+      var traverser = new Traverser(config);
+      traverser.traverse(result, g[vnA].document("A"));
+
+      var expectedVisits = [
+        vnA + "/A", 
+        vnBDH + "/B", 
+        vnCEFGI + "/C", 
+        vnBDH + "/D", 
+        vnCEFGI + "/E", 
+        vnCEFGI + "/F", 
+        vnCEFGI + "/G", 
+        vnBDH + "/H", 
+        vnCEFGI + "/I", 
+        vnBDH + "/H",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F"
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testIterateUniqueEdges : function () {
+      var config = { 
+        datasource: traversal.generalGraphDatasourceFactory(gn),
+        strategy: Traverser.DEPTH_FIRST,
+        order: Traverser.PRE_ORDER,
+        itemOrder: Traverser.FORWARD,
+        uniqueness: {
+          vertices: Traverser.UNIQUE_NONE,
+          edges: Traverser.UNIQUE_GLOBAL
+        }, 
+        filter: traversal.visitAllFilter,
+        expander: traversal.outboundExpander,
+
+        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+      };
+      
+      var result = getResult();
+      var traverser = new Traverser(config);
+      traverser.traverse(result, g[vnA].document("A"));
+
+      var expectedVisits = [
+        vnA + "/A", 
+        vnBDH + "/B", 
+        vnCEFGI + "/C", 
+        vnBDH + "/D", 
+        vnCEFGI + "/E", 
+        vnCEFGI + "/F", 
+        vnCEFGI + "/G", 
+        vnBDH + "/H", 
+        vnCEFGI + "/I", 
+        vnBDH + "/H", 
+        vnBDH + "/D" 
+      ];
+
+      assertEqual(expectedVisits, getIds(result.visited.vertices));
+    }
+  };
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
@@ -1867,6 +2232,7 @@ function CollectionTraversalSuite () {
 jsunity.run(GraphTraversalSuite);
 jsunity.run(MemoryTraversalSuite);
 jsunity.run(CollectionTraversalSuite);
+jsunity.run(GeneralGraphTraversalSuite);
 
 return jsunity.done();
 
