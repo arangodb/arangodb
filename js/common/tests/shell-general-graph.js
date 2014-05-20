@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
-/*global require, assertEqual, assertTrue, assertFalse */
+/*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
 var graph = require("org/arangodb/general-graph");
+var ERRORS = arangodb.errors;
 
 var _ = require("underscore");
 
@@ -165,7 +166,7 @@ function GeneralGraphCreationSuite() {
         exception = err;
       }
 
-      assertEqual(exception, "method _undirectedRelationDefinition expects 3 arguments");
+      assertEqual(exception, "method _directedRelationDefinition expects 3 arguments");
 
     },
 
@@ -608,6 +609,34 @@ function GeneralGraphAQLQueriesSuite() {
    },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict error handling
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictErrorHandlingSingle: function() {
+      try {
+        g._outEdges("v1/1").restrict(["included", "unknown"]);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+        assertEqual(err.errorMessage, "edge collections: unknown are not known to the graph");
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict error handling on multiple failures
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictErrorHandlingMultiple: function() {
+      try {
+        g._outEdges("v1/1").restrict(["failed", "included", "unknown", "foxxle"]);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+        assertEqual(err.errorMessage, "edge collections: failed and unknown and foxxle are not known to the graph");
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: filter construct on Edges
 ////////////////////////////////////////////////////////////////////////////////
    
@@ -703,15 +732,15 @@ function EdgesAndVerticesSuite() {
 
   fillCollections = function() {
     var ids = {};
-    var vertex = g.vertexCollection1.save({first_name: "Tam"});
+    var vertex = g.unitTestVertexCollection1.save({first_name: "Tam"});
     ids["vId11"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tem"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tem"});
     ids["vId12"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tim"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
     ids["vId13"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tom"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tom"});
     ids["vId14"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tum"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tum"});
     ids["vId15"] = vertex._id;
     vertex = g.unitTestVertexCollection3.save({first_name: "Tam"});
     ids["vId31"] = vertex._id;
@@ -757,11 +786,11 @@ function EdgesAndVerticesSuite() {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove("_graphs/blubGraph")
+        arangodb.db._collection("_graphs").remove("_graphs/unitTestGraph")
       } catch (err) {
       }
       g = graph._create(
-        "blubGraph",
+        "unitTestGraph",
         graph.edgeDefinitions(
           graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
           graph._directedRelationDefinition("unitTestEdgeCollection2",
@@ -940,8 +969,6 @@ function EdgesAndVerticesSuite() {
       result = g._getOutVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
     }
-
-
 
   };
 }

@@ -25,6 +25,8 @@ ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when 
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is canceled by the user."
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
+ERROR_AID_NOT_FOUND,23,"internal error with attribute ID in shaper","Will be raised if an attribute ID is not found in the shaper but should have been."
+ERROR_LEGEND_INCOMPLETE,24,"internal error if a legend could not be created","Will be raised if the legend generator was only given access to the shape and some sids are in the data object (inhomogeneous lists)."
 
 ################################################################################
 ## HTTP standard errors

@@ -29,6 +29,7 @@
 #define TRIAGENS_WAL_LOG_SLOT_H 1
 
 #include "Basics/Common.h"
+#include "ShapedJson/Legends.h"
 #include "Wal/Logfile.h"
 
 extern "C" {
