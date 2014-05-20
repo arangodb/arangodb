@@ -97,7 +97,8 @@
         undefined,
         this.events
       );
-			window.modalView.hideFooter = false;
+
+      window.modalView.hideFooter = false;
 
       $('#modal-dialog').on('hidden', function () {
         self.hidden();
@@ -411,13 +412,7 @@
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
-          } else if (self.isUpdating !== true)  {
-            window.modalView.show(
-              "modalWarning.ejs",
-              "WARNING !"
-            );
-            self.isUpdating = false;
-          }
+          } 
         }
       );
     },
