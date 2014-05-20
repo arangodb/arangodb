@@ -698,25 +698,41 @@ function GeneralGraphAQLQueriesSuite() {
 
 function EdgesAndVerticesSuite() {
 
-  try {
-    arangodb.db._collection("_graphs").remove("_graphs/blubGraph")
-  } catch (err) {
-  }
-  var g = graph._create(
-    "blubGraph",
-    graph.edgeDefinitions(
-      graph._undirectedRelationDefinition("edgeCollection1", "vertexCollection1"),
-      graph._directedRelationDefinition("edgeCollection2",
-        ["vertexCollection1", "vertexCollection2"], ["vertexCollection3", "vertexCollection4"]
-      )
-    )
-  );
-
+  var g;
   var vertexIds = [];
   var vertexId1, vertexId2;
   var edgeId1, edgeId2;
 
   return {
+
+    setUp : function() {
+      try {
+        arangodb.db._collection("_graphs").remove("_graphs/blubGraph")
+      } catch (err) {
+      }
+      g = graph._create(
+        "blubGraph",
+        graph.edgeDefinitions(
+          graph._undirectedRelationDefinition("edgeCollection1", "vertexCollection1"),
+          graph._directedRelationDefinition("edgeCollection2",
+            ["vertexCollection1", "vertexCollection2"], ["vertexCollection3", "vertexCollection4"]
+          )
+        )
+      );
+
+
+    },
+
+    tearDown : function() {
+      db.vertexCollection1.drop();
+      db.vertexCollection2.drop();
+      db.vertexCollection3.drop();
+      db.vertexCollection4.drop();
+      db.edgeCollection1.drop();
+      db.edgeCollection2.drop();
+    },
+
+
 
     test_edgeCollections : function () {
 
@@ -743,30 +759,36 @@ function EdgesAndVerticesSuite() {
     },
 
     test_vC_replace : function () {
-      var vertex = g.vertexCollection1.replace(vertexId1, {first_name: "Tim"});
+      var vertex = g.vertexCollection1.save({first_name: "Tom"});
+      var vertexId = vertex._id;
+      vertex = g.vertexCollection1.replace(vertexId, {first_name: "Tim"});
       assertFalse(vertex.error);
-      var vertexObj = g.vertexCollection1.document(vertexId1);
+      var vertexObj = g.vertexCollection1.document(vertexId);
       assertEqual(vertexObj.first_name, "Tim");
     },
 
     test_vC_update : function () {
-      var vertex = g.vertexCollection1.update(vertexId1, {age: 42});
+      var vertex = g.vertexCollection1.save({first_name: "Tim"});
+      var vertexId = vertex._id;
+      vertex = g.vertexCollection1.update(vertexId, {age: 42});
       assertFalse(vertex.error);
-      var vertexObj = g.vertexCollection1.document(vertexId1);
+      var vertexObj = g.vertexCollection1.document(vertexId);
       assertEqual(vertexObj.first_name, "Tim");
       assertEqual(vertexObj.age, 42);
     },
 
     test_vC_remove : function () {
-      var vertex = g.vertexCollection1.remove(vertexId1);
+      var vertex = g.vertexCollection1.save({first_name: "Tim"});
+      var vertexId = vertex._id;
+      var vertex = g.vertexCollection1.remove(vertexId);
       assertTrue(vertex);
     },
 
     test_eC_save_undirected : function() {
       var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
-      vertexId1 = vertex1._id;
+      var vertexId1 = vertex1._id;
       var vertex2 = g.vertexCollection1.save({first_name: "Tim"});
-      vertexId2 = vertex2._id;
+      var vertexId2 = vertex2._id;
       var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
       assertFalse(edge.error);
       edgeId1 = edge._id;
@@ -801,7 +823,13 @@ function EdgesAndVerticesSuite() {
     },
 
     test_eC_replace : function() {
-      var edge = g.edgeCollection1.replace(edgeId1, {label: "knows"});
+      var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection1.save({first_name: "Tim"});
+      var vertexId2 = vertex2._id;
+      var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
+      var edgeId1 = edge._id;
+      edge = g.edgeCollection1.replace(edgeId1, {label: "knows"});
       assertFalse(edge.error);
       var edgeObj = g.edgeCollection1.document(edgeId1);
       assertEqual(edgeObj.label, "knows");
@@ -809,7 +837,14 @@ function EdgesAndVerticesSuite() {
     },
 
     test_eC_update : function () {
-      var edge = g.edgeCollection1.update(edgeId1, {blub: "blub"});
+      var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection1.save({first_name: "Tim"});
+      var vertexId2 = vertex2._id;
+      var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
+      var edgeId1 = edge._id;
+      edge = g.edgeCollection1.replace(edgeId1, {label: "knows"});
+      edge = g.edgeCollection1.update(edgeId1, {blub: "blub"});
       assertFalse(edge.error);
       var edgeObj = g.edgeCollection1.document(edgeId1);
       assertEqual(edgeObj.label, "knows");
@@ -818,9 +853,13 @@ function EdgesAndVerticesSuite() {
     },
 
     test_eC_remove : function () {
-      var edge = g.edgeCollection1.remove(edgeId1);
-      assertTrue(edge);
-      edge = g.edgeCollection2.remove(edgeId2);
+      var vertex1 = g.vertexCollection1.save({first_name: "Tom"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g.vertexCollection1.save({first_name: "Tim"});
+      var vertexId2 = vertex2._id;
+      var edge = g.edgeCollection1.save(vertexId1, vertexId2, {});
+      var edgeId1 = edge._id;
+      edge = g.edgeCollection1.remove(edgeId1);
       assertTrue(edge);
     },
 
@@ -854,9 +893,9 @@ function EdgesAndVerticesSuite() {
       var eId13 = vertex._id;
       edge = g.edgeCollection1.save(vId11, vId15, {});
       var eId14 = vertex._id;
-      edge = g.edgeCollection1.save(vId13, vId11, {});
-      var eId15 = vertex._id;
       edge = g.edgeCollection1.save(vId12, vId11, {});
+      var eId15 = vertex._id;
+      edge = g.edgeCollection1.save(vId13, vId11, {});
       var eId16 = vertex._id;
       edge = g.edgeCollection1.save(vId14, vId11, {});
       var eId17 = vertex._id;
@@ -873,21 +912,8 @@ function EdgesAndVerticesSuite() {
       edge = g.edgeCollection2.save(vId11, vId35, {});
       var eId25 = vertex._id;
 
-      var result = g._EDGES(vId11)
-      require("internal").print("***");
-      require("internal").print(result);
-      require("internal").print("***");
-    },
-
-
-
-    dump : function() {
-      db.vertexCollection1.drop();
-      db.vertexCollection2.drop();
-      db.vertexCollection3.drop();
-      db.vertexCollection4.drop();
-      db.edgeCollection1.drop();
-      db.edgeCollection2.drop();
+      var result = g._edges(vId11).toArray();
+      assertEqual(result.length, 13)
     }
 
   };
