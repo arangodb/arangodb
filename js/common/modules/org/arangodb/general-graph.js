@@ -53,7 +53,7 @@ var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
   }
-  return x;
+  return _.clone(x);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +121,6 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -279,7 +275,7 @@ var _directedRelationDefinition = function (
   relationName, fromVertexCollections, toVertexCollections) {
 
   if (arguments.length < 3) {
-    throw "method _undirectedRelationDefinition expects 3 arguments";
+    throw "method _directedRelationDefinition expects 3 arguments";
   }
 
   if (typeof relationName !== "string" || relationName === "") {

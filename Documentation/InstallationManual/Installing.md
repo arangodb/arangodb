@@ -36,7 +36,17 @@ Please use the
 @EXTREF_S{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
 provided by @@mgiken.
 
-### Linux-Mint {#InstallingDebian}
+### Debian sid {#InstallingDebian}
+
+To use ArangoDB on Debian sid (the development version of Debian), a different version
+of ICU is required. User basir provided the following instructions for getting ArangoDB 2.0.7
+to work on an x86_64:
+
+@EXTREF_S{https://github.com/triAGENS/ArangoDB/issues/865,link to Github issue}
+
+Other versions of ArangoDB or other architectures should work similarly.
+
+### Linux-Mint {#InstallingLinuxMint}
 
 Download and import GPG-PublicKey:
 
