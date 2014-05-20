@@ -1579,14 +1579,17 @@ static int InsertIndexes (TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
+                                     TRI_df_marker_type_e markerType,
                                      TRI_voc_key_t key,
                                      TRI_voc_rid_t rid,
                                      TRI_doc_mptr_t* mptr,
+                                     TRI_document_edge_t const* edge,
                                      TRI_shaped_json_t const* shaped,
                                      bool lock,
                                      bool forceSync,
                                      bool isRestore) {
 
+  // TODO: isRestore is not used yet!
   TRI_voc_tick_t tick;
 
   if (rid == 0) {
@@ -1631,29 +1634,50 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
 
 
-  // TODO: isRestore is not used yet!
+  triagens::wal::SlotInfo slotInfo;
 
-  triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
-                                       primary->base._info._cid,
-                                       rid,
-                                       TRI_GetMarkerIdTransaction(trxCollection->_transaction),
-                                       keyString,
-                                       legend,
-                                       shaped);
+  if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    // document
+    assert(edge == nullptr);
 
-  // insert into WAL first
-  triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+    triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
+                                         primary->base._info._cid,
+                                         rid,
+                                         TRI_GetMarkerIdTransaction(trxCollection->_transaction),
+                                         keyString,
+                                         legend,
+                                         shaped);
+
+    slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+  }
+  else {
+    // edge
+    assert(edge != nullptr);
+
+    triagens::wal::EdgeMarker marker(primary->base._vocbase->_id,
+                                     primary->base._info._cid,
+                                     rid,
+                                     TRI_GetMarkerIdTransaction(trxCollection->_transaction),
+                                     keyString,
+                                     edge,
+                                     legend,
+                                     shaped);
+
+    slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+  }
+
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
     return slotInfo.errorCode;
   }
 
+
   // now insert into indexes
   triagens::arango::CollectionWriteLocker collectionLocker(primary, lock);
 
   TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-  TRI_doc_mptr_t* header = document->_headers->request(document->_headers, marker.size);
+  TRI_doc_mptr_t* header = document->_headers->request(document->_headers, slotInfo.size);
 
   if (header == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -3108,7 +3132,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   // crud methods
   document->base.insert            = InsertShapedJson;
   document->base.insertDocument    = InsertDocumentShapedJson;
-//  document->base.insertEdge        = InsertEdgeShapedJson; // TODO
   document->base.read              = ReadShapedJson;
   document->base.update            = UpdateShapedJson;
   document->base.remove            = RemoveShapedJson;
