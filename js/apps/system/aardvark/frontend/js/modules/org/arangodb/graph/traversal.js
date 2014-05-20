@@ -30,6 +30,7 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var graph = require("org/arangodb/graph-blueprint");
+var generalGraph = require("org/arangodb/general-graph");
 var arangodb = require("org/arangodb");
 var BinaryHeap = require("org/arangodb/heap").BinaryHeap;
 var ArangoError = arangodb.ArangoError;
@@ -158,6 +159,72 @@ function collectionDatasourceFactory (edgeCollection) {
     }
   };
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief general graph datasource
+///
+/// This is a factory function that creates a datasource that operates on the
+/// specified general graph. The vertices and edges are delivered by the
+/// the general-graph module.
+////////////////////////////////////////////////////////////////////////////////
+
+function generalGraphDatasourceFactory (graph) {
+  var g = graph;
+  if (typeof g === 'string') {
+   g = generalGraph._graph(g);
+  }
+
+  return {
+    graph: g,
+
+    getVertexId: function (vertex) {
+      return vertex._id;
+    },
+
+    getPeerVertex: function (edge, vertex) {
+      if (edge._from === vertex._id) {
+        return db._document(edge._to);
+      }
+
+      if (edge._to === vertex._id) {
+        return db._document(edge._from);
+      }
+
+      return null;
+    },
+
+    getInVertex: function (edge) {
+      return db._document(edge._to);
+    },
+
+    getOutVertex: function (edge) {
+      return db._document(edge._from);
+    },
+
+    getEdgeId: function (edge) {
+      return edge._id;
+    },
+
+    getLabel: function (edge) {
+      return edge.$label;
+    },
+
+    getAllEdges: function (vertex) {
+      return this.graph._EDGES(vertex._id);
+    },
+    
+    getInEdges: function (vertex) {
+      return this.graph._INEDGES(vertex._id);
+    },
+    
+    getOutEdges: function (vertex) {
+      return this.graph._OUTEDGES(vertex._id);
+    }
+  };
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default Graph datasource
@@ -1487,6 +1554,7 @@ ArangoTraverser.EXCLUDE              = 'exclude';
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.collectionDatasourceFactory     = collectionDatasourceFactory;
+exports.generalGraphDatasourceFactory   = generalGraphDatasourceFactory;
 exports.graphDatasourceFactory          = graphDatasourceFactory;
 
 exports.outboundExpander                = outboundExpander;
