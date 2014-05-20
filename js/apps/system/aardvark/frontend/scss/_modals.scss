@@ -219,6 +219,13 @@ pre.gv-object-view {
   margin-bottom: 10px;
 }
 
+.modal-body input[type='text'].invalid-input{
+  webkit-box-shadow : inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
+  moz-box-shadow : inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
+  box-shadow : inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6);
+  border-color : rgba(234, 23, 23, 0.8)
+}
+
 .modal-delete-confirmation {
   display: none;
 
