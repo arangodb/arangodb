@@ -39,23 +39,12 @@ provided by @@mgiken.
 ### Debian sid {#InstallingDebian}
 
 To use ArangoDB on Debian sid (the development version of Debian), a different version
-of ICU is required. User @basir provided the following instructions for getting ArangoDB 2.0.7
-to work on an x86_64. Other versions of ArangoDB or other architectures should work
-similarly:
+of ICU is required. User basir provided the following instructions for getting ArangoDB 2.0.7
+to work on an x86_64:
 
-    cd ~
-    wget https://www.arangodb.org/repositories/arangodb2/Debian_7.0/amd64/arangodb_2.0.7_amd64.deb
-    wget http://ftp.de.debian.org/debian/pool/main/i/icu/icu_4.8.1.1.orig.tar.gz
-    tar xf icu_4.8.1.1.orig.tar.gz
-    cd icu/source
-    ./configure
-    make
-    cd lib
-    cp libicui18n.so.48 /usr/lib/x86_64-linux-gnu/
-    cp libicuuc.so.48 /usr/lib/x86_64-linux-gnu/
-    cp libicudata.so.48 /usr/lib/x86_64-linux-gnu/
-    cd ~
-    dpkg -i arangodb_2.0.7_amd64.deb
+@EXTREF_S{https://github.com/triAGENS/ArangoDB/issues/865,link to Github issue}
+
+Other versions of ArangoDB or other architectures should work similarly.
 
 ### Linux-Mint {#InstallingLinuxMint}
 
