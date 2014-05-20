@@ -373,6 +373,21 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(vertexCollections, function(obj, key) {
     self[key] = obj;
+    var old_remove = obj.remove.bind(obj);
+    obj.remove = function(vertexId, options) {
+      var myEdges = self._EDGES(vertexId);
+      myEdges.forEach(
+        function(edgeObj) {
+          var edgeId = edgeObj._id;
+          var edgeCollection = edgeId.split("/")[0];
+          if (db[edgeCollection] && db[edgeCollection].exists(edgeId)) {
+            db[edgeCollection].remove(edgeId);
+          }
+        }
+      );
+
+      return old_remove(vertexId, options);
+    }
   });
 
   _.each(edgeCollections, function(obj, key) {
