@@ -262,7 +262,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks EDGES()
+/// @brief checks GRAPH_PATHS()
 ////////////////////////////////////////////////////////////////////////////////
 
     testPaths: function () {
@@ -352,11 +352,161 @@ function ahuacatlQueryGeneralPathsTestSuite() {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for GRAPH_TRAVERSAL() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryGeneralTraversalTestSuite() {
+  var vertex = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop("UnitTests_Berliner");
+      db._drop("UnitTests_Hamburger");
+      db._drop("UnitTests_Frankfurter");
+      db._drop("UnitTests_Leipziger");
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+
+      KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      KenntAnderen = "UnitTests_KenntAnderen";
+
+      Berlin = db._create("UnitTests_Berliner");
+      Hamburg = db._create("UnitTests_Hamburger");
+      Frankfurt = db._create("UnitTests_Frankfurter");
+      Leipzig = db._create("UnitTests_Leipziger");
+      db._createEdgeCollection(KenntAnderenBerliner);
+      db._createEdgeCollection(KenntAnderen);
+
+      var Anton = Berlin.save({ _key: "Anton" , gender : "male"});
+      var Berta = Berlin.save({ _key: "Berta" , gender : "female"});
+      var Caesar = Hamburg.save({ _key: "Caesar" , gender : "male"});
+      var Dieter = Hamburg.save({ _key: "Dieter" , gender : "male"});
+      var Emil = Frankfurt.save({ _key: "Emil" , gender : "male"});
+      var Fritz = Frankfurt.save({ _key: "Fritz" , gender : "male"});
+      var Gerda = Leipzig.save({ _key: "Gerda" , gender : "female"});
+
+      try {
+        db._collection("_graphs").remove("_graphs/werKenntWen")
+      } catch (err) {
+      }
+      var g = graph._create(
+        "werKenntWen",
+        graph.edgeDefinitions(
+          graph._undirectedRelationDefinition(KenntAnderenBerliner, "UnitTests_Berliner"),
+          graph._directedRelationDefinition(KenntAnderen,
+            ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
+            ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
+          )
+        )
+      );
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+      }
+      makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner]);
+      makeEdge(Caesar._id, Anton._id, g[KenntAnderen]);
+      makeEdge(Caesar._id, Berta._id, g[KenntAnderen]);
+      makeEdge(Berta._id, Gerda._id, g[KenntAnderen]);
+      makeEdge(Gerda._id, Dieter._id, g[KenntAnderen]);
+      makeEdge(Dieter._id, Emil._id, g[KenntAnderen]);
+      makeEdge(Emil._id, Fritz._id, g[KenntAnderen]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop("UnitTests_Berliner");
+      db._drop("UnitTests_Hamburger");
+      db._drop("UnitTests_Frankfurter");
+      db._drop("UnitTests_Leipziger");
+      db._drop("UnitTests_KenntAnderenBerliner");
+      db._drop("UnitTests_KenntAnderen");
+      db._collection("_graphs").remove("_graphs/werKenntWen");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_TRAVERSAL()
+////////////////////////////////////////////////////////////////////////////////
+
+    testGRAPH_TRAVERSALs: function () {
+      var actual, result= [];
+
+      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN e");
+      //require("internal").print(actual);
+      actual.forEach(function (s) {
+        result.push(s.vertex._key);
+      });
+      //require("internal").print(result)
+      assertEqual(result, [
+        "Caesar",
+        "Anton",
+        "Berta",
+        "Anton",
+        "Gerda",
+        "Dieter",
+        "Emil",
+        "Fritz"
+      ]);
+    },
+
+    testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
+      var actual, start, middle;
+
+      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN e");
+      start = actual[0][0];
+
+      assertEqual(start._key, "Caesar");
+      assertTrue(start.hasOwnProperty("connected"));
+      assertTrue(start.connected.length === 2);
+      assertEqual(start.connected[0]._key, "Anton");
+      assertEqual(start.connected[1]._key, "Berta");
+
+      assertTrue(!start.connected[0].hasOwnProperty("connected"));
+      assertTrue(start.connected[1].hasOwnProperty("connected"));
+
+      middle = start.connected[1];
+
+      assertTrue(middle.connected.length === 2);
+      assertEqual(middle.connected[0]._key, "Anton");
+      assertEqual(middle.connected[1]._key, "Gerda");
+
+      assertTrue(!middle.connected[0].hasOwnProperty("connected"));
+      assertTrue(middle.connected[1].hasOwnProperty("connected"));
+
+      middle = middle.connected[1];
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Dieter");
+
+      middle = middle.connected[0];
+
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Emil");
+
+      middle = middle.connected[0];
+      assertTrue(middle.connected.length === 1);
+      assertEqual(middle.connected[0]._key, "Fritz");
+
+    }
+  }
+}
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
 jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 
