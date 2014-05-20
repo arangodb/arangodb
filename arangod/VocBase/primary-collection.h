@@ -344,61 +344,6 @@ typedef struct TRI_primary_collection_s {
 TRI_primary_collection_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wal document marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_wal_document_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tick_t  _databaseId;
-  TRI_voc_cid_t   _collectionId;
-
-  TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-  TRI_voc_tid_t   _tid;
-
-  TRI_shape_sid_t _shape;
-
-  uint16_t        _offsetKey;
-  uint16_t        _offsetLegend;
-  uint32_t        _offsetJson;
-}
-TRI_wal_document_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal edge marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_wal_edge_marker_s {
-  TRI_wal_document_marker_t base;
-  
-  TRI_voc_cid_t   _toCid;
-  TRI_voc_cid_t   _fromCid;
-
-  uint16_t        _offsetToKey;
-  uint16_t        _offsetFromKey;
-
-#ifdef TRI_PADDING_32
-  char            _padding_df_marker[4];
-#endif
-}
-TRI_wal_edge_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal remove marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_wal_remove_marker_s {
-  TRI_df_marker_t base;
-  
-  TRI_voc_tick_t  _databaseId;
-  TRI_voc_cid_t   _collectionId;
-  
-  TRI_voc_rid_t   _rid;   // this is the tick for the deletion
-  TRI_voc_tid_t   _tid;
-}
-TRI_wal_remove_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile marker with key
 ////////////////////////////////////////////////////////////////////////////////
 
