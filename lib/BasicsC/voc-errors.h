@@ -57,6 +57,12 @@ extern "C" {
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
+/// - 23: @LIT{internal error with attribute ID in shaper}
+///   Will be raised if an attribute ID is not found in the shaper but should
+///   have been.
+/// - 24: @LIT{internal error if a legend could not be created}
+///   Will be raised if the legend generator was only given access to the shape
+///   and some sids are in the data object (inhomogeneous lists).
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -757,6 +763,28 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_DEBUG                                                   (22)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 23: ERROR_AID_NOT_FOUND
+///
+/// internal error with attribute ID in shaper
+///
+/// Will be raised if an attribute ID is not found in the shaper but should
+/// have been.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AID_NOT_FOUND                                           (23)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 24: ERROR_LEGEND_INCOMPLETE
+///
+/// internal error if a legend could not be created
+///
+/// Will be raised if the legend generator was only given access to the shape
+/// and some sids are in the data object (inhomogeneous lists).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
