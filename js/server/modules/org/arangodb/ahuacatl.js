@@ -3971,6 +3971,34 @@ function DATE_MILLISECOND (value) {
 // --SECTION--                                                   graph functions
 // -----------------------------------------------------------------------------
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all paths through a graph, INTERNAL part called recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
+
+  if (!Array.isArray(edgeCollections)) {
+    edgeCollections = [edgeCollections];
+  }
+
+  var result = [];
+  edgeCollections.forEach(function (edgeCollection) {
+    if (direction === 1) {
+      result = result.concat(edgeCollection.outEdges(vertexId));
+    }
+    else if (direction === 2) {
+      result = result.concat(edgeCollection.inEdges(vertexId));
+    }
+    else if (direction === 3) {
+      result = result.concat(edgeCollection.edges(vertexId));
+    }
+  });
+  return result;
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph, INTERNAL part called recursively
 ////////////////////////////////////////////////////////////////////////////////
@@ -3993,18 +4021,9 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
     return result;
   }
         
-        
-  var subEdges;
-
-  if (searchAttributes.direction === 1) {
-    subEdges = searchAttributes.edgeCollection.outEdges(vertexId);
-  }
-  else if (searchAttributes.direction === 2) {
-    subEdges = searchAttributes.edgeCollection.inEdges(vertexId);
-  }
-  else if (searchAttributes.direction === 3) {
-    subEdges = searchAttributes.edgeCollection.edges(vertexId);
-  }
+  var subEdges = GET_SUB_EDGES(
+    searchAttributes.edgeCollection, searchAttributes.direction, vertexId
+  );
 
   var i, j, k;
   for (i = 0; i < subEdges.length; ++i) {
@@ -4125,73 +4144,92 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, maxLength) {
   "use strict";
 
-  /*var searchDirection;
+  var searchDirection;
   direction      = direction || "outbound";
   followCycles   = followCycles || false;
   minLength      = minLength || 0;
   maxLength      = maxLength !== undefined ? maxLength : 10;
 
 
-  var graph = DOCUMENT_HANDLE("_graph" + graphname);
+  // check graph exists and load edgeDefintions
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
   if (!graph) {
-    THROW(INTERNAL.errors.ERROR_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
-  var vertexCollections = [];
+  var startCollections = [], edgeCollections = [];
 
-  // validate arguments
-  if (direction === "outbound") {
-    searchDirection = 1;
-    graph.__edgeDefinitions.forEach(function (def) {
-      vertexCollections.concat(def.from);
-    });
-  }
-  else if (direction === "inbound") {
-    graph.__edgeDefinitions.forEach(function (def) {
-      vertexCollections.concat(def.to);
-    });
-    searchDirection = 2;
-  }
-  else if (direction === "any") {
-    graph.__edgeDefinitions.forEach(function (def) {
-      vertexCollections.concat(def.to);
-      vertexCollections.concat(def.from);
-    });
-    searchDirection = 3;
-  }
-  else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
-  }
+  // validate direction and create edgeCollection array.
+  graph.edgeDefinitions.forEach(function (def) {
+    if (direction === "outbound") {
+      searchDirection = 1;
+      def.from.forEach(function (s) {
+        if (startCollections.indexOf(s) === -1) {
+          startCollections.push(s);
+        }
+      });
+    }
+    else if (direction === "inbound") {
+      searchDirection = 2;
+      def.to.forEach(function (s) {
+        if (startCollections.indexOf(s) === -1) {
+          startCollections.push(s);
+        }
+      });
+    }
+    else if (direction === "any") {
+      def.from.forEach(function (s) {
+        searchDirection = 3;
+        if (startCollections.indexOf(s) === -1) {
+          startCollections.push(s);
+        }
+      });
+      def.to.forEach(function (s) {
+        if (startCollections.indexOf(s) === -1) {
+          startCollections.push(s);
+        }
+      });
+    }
+    else {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+    }
+    if (edgeCollections.indexOf(def.collection) === -1) {
+      edgeCollections.push(COLLECTION(def.collection));
+    }
+
+  });
 
   if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
   }
 
-
-
-  var searchAttributes = {
-    //edgeCollection : COLLECTION(edgeCollection),
-    minLength : minLength,
-    maxLength : maxLength,
-    direction : searchDirection,
-    followCycles : followCycles
-  };
-
   var result = [ ];
-  var n = vertices.length, i, j;
-  for (i = 0; i < n; ++i) {
-    var vertex = vertices[i];
-    var visited = { };
+  startCollections.forEach(function (startCollection) {
 
-    visited[vertex._id] = true;
-    //GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
-    var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
-    for (j = 0; j < connected.length; ++j) {
-      result.push(connected[j]);
+    var searchAttributes = {
+      edgeCollection : edgeCollections,
+      minLength : minLength,
+      maxLength : maxLength,
+      direction : searchDirection,
+      followCycles : followCycles
+    };
+
+    var vertices = GET_DOCUMENTS(startCollection);
+    var n = vertices.length, i, j;
+    for (i = 0; i < n; ++i) {
+      var vertex = vertices[i];
+      var visited = { };
+
+      visited[vertex._id] = true;
+      var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+      for (j = 0; j < connected.length; ++j) {
+        result.push(connected[j]);
+      }
     }
-  }
 
-  return result;*/
+  });
+
+  return result;
 }
 
 
@@ -4800,6 +4838,7 @@ exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;
 exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
+exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
 exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;

@@ -116,13 +116,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 /// @brief checks EDGES()
 ////////////////////////////////////////////////////////////////////////////////
 
-    //graphname,
-    //startvertex,
-    //direction,
-    //edgeexamples,
-    //collectionRestrictions
-
-
     testEdgesAny: function () {
       var actual;
 
@@ -188,11 +181,184 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 }
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for GRAPH_PATHS() function
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryGeneralPathsTestSuite() {
+  var vertex = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlVertex3");
+      db._drop("UnitTestsAhuacatlVertex4");
+      db._drop("UnitTestsAhuacatlEdge1");
+      db._drop("UnitTestsAhuacatlEdge2");
+
+      e1 = "UnitTestsAhuacatlEdge1";
+      e2 = "UnitTestsAhuacatlEdge2";
+
+      vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      vertex3 = db._create("UnitTestsAhuacatlVertex3");
+      vertex4 = db._create("UnitTestsAhuacatlVertex4");
+      edge1 = db._createEdgeCollection(e1);
+      edge2 = db._createEdgeCollection(e2);
+
+      var v1 = vertex1.save({ _key: "v1" });
+      var v2 = vertex1.save({ _key: "v2" });
+      var v3 = vertex2.save({ _key: "v3" });
+      var v4 = vertex2.save({ _key: "v4" });
+      var v5 = vertex3.save({ _key: "v5" });
+      var v6 = vertex3.save({ _key: "v6" });
+      var v7 = vertex4.save({ _key: "v7" });
+
+      try {
+        db._collection("_graphs").remove("_graphs/bla3")
+      } catch (err) {
+      }
+      var g = graph._create(
+        "bla3",
+        graph.edgeDefinitions(
+          graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
+          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+            ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
+            ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
+          )
+        )
+      );
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+      }
+      makeEdge(v1._id, v2._id, g[e1]);
+      makeEdge(v2._id, v1._id, g[e1]);
+      makeEdge(v1._id, v5._id, g[e2]);
+      makeEdge(v2._id, v5._id, g[e2]);
+      makeEdge(v4._id, v7._id, g[e2]);
+      makeEdge(v3._id, v5._id, g[e2]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlVertex3");
+      db._drop("UnitTestsAhuacatlVertex4");
+      db._drop("UnitTestsAhuacatlEdge1");
+      db._drop("UnitTestsAhuacatlEdge2");
+      db._collection("_graphs").remove("_graphs/bla3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testPaths: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3') SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v1"] , "");
+      assertEqual(result["2:v1v2"] , "|v1->v2");
+      assertEqual(result["3:v1v5"] , "|v1->v2|v2->v5");
+      assertEqual(result["4:v1v5"] , "|v1->v5");
+      assertEqual(result["5:v2v1"] , "|v2->v1");
+      assertEqual(result["6:v2v2"] , "");
+      assertEqual(result["7:v2v5"] , "|v2->v5");
+      assertEqual(result["8:v2v5"] , "|v2->v1|v1->v5");
+      assertEqual(result["9:v3v3"] , "");
+      assertEqual(result["10:v3v5"] , "|v3->v5");
+      assertEqual(result["11:v4v4"] , "");
+      assertEqual(result["12:v4v7"] , "|v4->v7");
+
+
+
+    },
+
+    testPathsWithDirectionAnyAndMaxLength1: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'any', false , 1 , 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v2"] , "|v2->v1");
+      assertEqual(result["2:v1v2"] , "|v1->v2");
+      assertEqual(result["3:v1v5"] , "|v1->v5");
+      assertEqual(result["4:v2v1"] , "|v1->v2");
+      assertEqual(result["5:v2v1"] , "|v2->v1");
+      assertEqual(result["6:v2v5"] , "|v2->v5");
+      assertEqual(result["7:v3v5"] , "|v3->v5");
+      assertEqual(result["8:v4v7"] , "|v4->v7");
+      assertEqual(result["9:v5v1"] , "|v1->v5");
+      assertEqual(result["10:v5v2"] , "|v2->v5");
+      assertEqual(result["11:v5v3"] , "|v3->v5");
+      assertEqual(result["12:v7v4"] , "|v4->v7");
+
+
+    },
+
+    testInBoundPaths: function () {
+      var actual, result= {}, i = 0, ed;
+
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'inbound', false, 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+
+      actual.forEach(function (p) {
+        i++;
+        ed = "";
+        p[2].forEach(function (e) {
+          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
+        });
+        result[i + ":" + p[0] + p[1]] = ed;
+      });
+
+      assertEqual(result["1:v1v2"] , "|v2->v1");
+      assertEqual(result["2:v2v1"] , "|v1->v2");
+      assertEqual(result["3:v5v1"] , "|v1->v5");
+      assertEqual(result["4:v5v1"] , "|v2->v5|v1->v2");
+      assertEqual(result["5:v5v2"] , "|v1->v5|v2->v1");
+      assertEqual(result["6:v5v2"] , "|v2->v5");
+      assertEqual(result["7:v5v3"] , "|v3->v5");
+      assertEqual(result["8:v7v4"] , "|v4->v7");
+    }
+
+  }
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
+jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 
 return jsunity.done();
 
