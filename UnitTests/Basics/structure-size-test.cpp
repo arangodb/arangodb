@@ -30,6 +30,7 @@
 #include "arangod/VocBase/datafile.h"
 #include "arangod/VocBase/primary-collection.h"
 #include "arangod/VocBase/voc-shaper.h"
+#include "arangod/Wal/Marker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -137,58 +138,58 @@ BOOST_AUTO_TEST_CASE (tst_col_header_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_wal_document_marker_t
+/// @brief test sizeof document_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_document_marker) {
-  size_t s = sizeof(TRI_wal_document_marker_t);
+  size_t s = sizeof(triagens::wal::document_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 48, s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_document_marker_s, base));
-  BOOST_CHECK_EQUAL(24, offsetof(struct TRI_wal_document_marker_s, _databaseId));
-  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_wal_document_marker_s, _collectionId));
-  BOOST_CHECK_EQUAL(40, offsetof(struct TRI_wal_document_marker_s, _rid));
-  BOOST_CHECK_EQUAL(48, offsetof(struct TRI_wal_document_marker_s, _tid));
-  BOOST_CHECK_EQUAL(56, offsetof(struct TRI_wal_document_marker_s, _shape));
-  BOOST_CHECK_EQUAL(64, offsetof(struct TRI_wal_document_marker_s, _offsetKey));
-  BOOST_CHECK_EQUAL(66, offsetof(struct TRI_wal_document_marker_s, _offsetLegend));
-  BOOST_CHECK_EQUAL(68, offsetof(struct TRI_wal_document_marker_s, _offsetJson));
+  BOOST_CHECK_EQUAL( 0, offsetof(triagens::wal::document_marker_t, base));
+  BOOST_CHECK_EQUAL(24, offsetof(triagens::wal::document_marker_t, _databaseId));
+  BOOST_CHECK_EQUAL(32, offsetof(triagens::wal::document_marker_t, _collectionId));
+  BOOST_CHECK_EQUAL(40, offsetof(triagens::wal::document_marker_t, _rid));
+  BOOST_CHECK_EQUAL(48, offsetof(triagens::wal::document_marker_t, _tid));
+  BOOST_CHECK_EQUAL(56, offsetof(triagens::wal::document_marker_t, _shape));
+  BOOST_CHECK_EQUAL(64, offsetof(triagens::wal::document_marker_t, _offsetKey));
+  BOOST_CHECK_EQUAL(66, offsetof(triagens::wal::document_marker_t, _offsetLegend));
+  BOOST_CHECK_EQUAL(68, offsetof(triagens::wal::document_marker_t, _offsetJson));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_wal_edge_marker_t
+/// @brief test sizeof edge_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_edge_marker) {
-  size_t s = sizeof(TRI_wal_edge_marker_t);
+  size_t s = sizeof(triagens::wal::edge_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 48 + 24, s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_edge_marker_s, base));
-  BOOST_CHECK_EQUAL(72, offsetof(struct TRI_wal_edge_marker_s, _toCid));
-  BOOST_CHECK_EQUAL(80, offsetof(struct TRI_wal_edge_marker_s, _fromCid));
-  BOOST_CHECK_EQUAL(88, offsetof(struct TRI_wal_edge_marker_s, _offsetToKey));
-  BOOST_CHECK_EQUAL(90, offsetof(struct TRI_wal_edge_marker_s, _offsetFromKey));
+  BOOST_CHECK_EQUAL( 0, offsetof(triagens::wal::edge_marker_t, base));
+  BOOST_CHECK_EQUAL(72, offsetof(triagens::wal::edge_marker_t, _toCid));
+  BOOST_CHECK_EQUAL(80, offsetof(triagens::wal::edge_marker_t, _fromCid));
+  BOOST_CHECK_EQUAL(88, offsetof(triagens::wal::edge_marker_t, _offsetToKey));
+  BOOST_CHECK_EQUAL(90, offsetof(triagens::wal::edge_marker_t, _offsetFromKey));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test sizeof TRI_wal_remove_marker_t
+/// @brief test sizeof remove_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_wal_remove_marker) {
-  size_t s = sizeof(TRI_wal_remove_marker_t);
+  size_t s = sizeof(triagens::wal::remove_marker_t);
 
   BOOST_CHECK_EQUAL(24 + 32, s); // base + own size
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_remove_marker_s, base));
-  BOOST_CHECK_EQUAL(24, offsetof(struct TRI_wal_remove_marker_s, _databaseId));
-  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_wal_remove_marker_s, _collectionId));
-  BOOST_CHECK_EQUAL(40, offsetof(struct TRI_wal_remove_marker_s, _rid));
-  BOOST_CHECK_EQUAL(48, offsetof(struct TRI_wal_remove_marker_s, _tid));
+  BOOST_CHECK_EQUAL( 0, offsetof(triagens::wal::remove_marker_t, base));
+  BOOST_CHECK_EQUAL(24, offsetof(triagens::wal::remove_marker_t, _databaseId));
+  BOOST_CHECK_EQUAL(32, offsetof(triagens::wal::remove_marker_t, _collectionId));
+  BOOST_CHECK_EQUAL(40, offsetof(triagens::wal::remove_marker_t, _rid));
+  BOOST_CHECK_EQUAL(48, offsetof(triagens::wal::remove_marker_t, _tid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

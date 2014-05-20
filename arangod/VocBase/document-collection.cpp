@@ -1626,9 +1626,9 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
                                        primary->base._info._cid,
+                                       rid,
                                        TRI_GetMarkerIdTransaction(trxCollection->_transaction),
                                        keyString,
-                                       rid,
                                        shaped);
 
   // insert into WAL first
@@ -1648,11 +1648,14 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   if (header == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(slotInfo.mem);
 
   header->_rid  = rid;
   header->_fid  = 0; // TODO: use WAL fid
-  header->_data = slotInfo.mem; // let header point to WAL location
-  header->_key  = const_cast<char*>(static_cast<char const*>(slotInfo.mem) + marker.offsetKey); 
+  // let header point to WAL location
+  header->_data = (void*) m;
+  header->_key  = (char*) m + m->_offsetKey; 
 
   int res = InsertIndexes(trxCollection, header, forceSync);
 

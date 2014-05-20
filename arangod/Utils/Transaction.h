@@ -896,6 +896,7 @@ namespace triagens {
                                           false);
           }
           else {
+            // edge
             res = primary->insertEdge(trxCollection,
                                       key, 
                                       rid, 
