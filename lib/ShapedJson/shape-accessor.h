@@ -62,14 +62,13 @@ typedef struct TRI_shape_access_s {
 TRI_shape_access_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief size of short strings
+/// @brief shape accessor bytecode operations
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_SHAPE_AC_DONE = 1,
-  TRI_SHAPE_AC_SHAPE_PTR = 2,
-  TRI_SHAPE_AC_OFFSET_FIX = 3,
-  TRI_SHAPE_AC_OFFSET_VAR = 4
+  TRI_SHAPE_AC_DONE       = 1,
+  TRI_SHAPE_AC_OFFSET_FIX = 2,
+  TRI_SHAPE_AC_OFFSET_VAR = 3
 }
 TRI_shape_ac_bc_e;
 

@@ -1,5 +1,32 @@
+v2.2.0 (XXXX-XX-XX)
+-------------------
+
+* issue #862: added `--overwrite` option to arangoimp
+
+* prevent buffering of long print results in arangosh's and arangod's print
+  command
+
+  this change will emit buffered intermediate print results and discard the
+  output buffer to quickly deliver print results to the user, and to prevent
+  constructing very large buffers for large results
+
+* removed sorting of attribute names for use in a collection's shaper
+
+  sorting attribute names was done on document insert to keep attributes 
+  of a collection in sorted order for faster comparisons. The sort order
+  of attributes was only used in one particular and unlikey case, so it
+  was removed. Collections with many different attribute names should 
+  benefit from this change by faster inserts and slightly less memory usage.
+
+
 v2.1.0 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
+
+
+v2.1.0-rc1 (XXXX-XX-XX)
+-----------------------
 
 * added server-side periodic task management functions:
 

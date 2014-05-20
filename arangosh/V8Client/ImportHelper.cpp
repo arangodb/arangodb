@@ -57,16 +57,19 @@ namespace triagens {
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* _client, uint64_t maxUploadSize)
-    : _client(_client),
+    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* client, 
+                                uint64_t maxUploadSize)
+    : _client(client),
       _maxUploadSize(maxUploadSize),
+      _separator(","),
+      _quote("\""),
+      _createCollection(false),
+      _overwrite(false),
+      _progress(false),
+      _firstChunk(true),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
-      _quote = "\"";
-      _separator = ",";
-      _createCollection = false;
-      _progress = false;
       regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_EXTENDED);
       regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_EXTENDED);
       _hasError = false;
@@ -78,16 +81,12 @@ namespace triagens {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// public functions
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a delmiited file
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool ImportHelper::importDelimited (const string& collectionName,
-                                        const string& fileName,
-                                        const DelimitedImportType typeImport) {
+    bool ImportHelper::importDelimited (string const& collectionName,
+                                        string const& fileName,
+                                        DelimitedImportType typeImport) {
       _collectionName = collectionName;
       _firstLine = "";
       _numberLines = 0;
@@ -225,7 +224,6 @@ namespace triagens {
         }
       }
 
-      char buffer[32768];
       bool isArray = false;
       bool checkedFront = false;
 
@@ -233,8 +231,21 @@ namespace triagens {
       int64_t totalRead = 0;
       double nextProgress = ProgressStep;
 
+      static const int BUFFER_SIZE = 32768;
+
       while (! _hasError) {
-        ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+        // reserve enough room to read more data
+        if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
+          _errorMessage = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+
+          if (fd != STDIN_FILENO) {
+            TRI_CLOSE(fd);
+          }
+          return false;
+        }
+
+        // read directly into string buffer
+        ssize_t n = TRI_READ(fd, _outputBuffer.end(), BUFFER_SIZE - 1);
 
         if (n < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;
@@ -247,16 +258,24 @@ namespace triagens {
           // we're done
           break;
         }
+    
+        // adjust size of the buffer by the size of the chunk we just read
+        _outputBuffer.increaseLength(n);
 
         if (! checkedFront) {
           // detect the import file format (single lines with individual JSON objects
           // or a JSON array with all documents)
-          const string firstChar = StringUtils::lTrim(string(buffer, n), "\r\n\t\f\b ").substr(0, 1);
-          isArray = (firstChar == "[");
+          char const* p = _outputBuffer.begin();
+          char const* e = _outputBuffer.end();
+          
+          while (p < e && 
+                 (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t' || *p == '\f' || *p == '\b')) {
+            ++p;
+          }
+
+          isArray = (*p == '[');
           checkedFront = true;
         }
-
-        _outputBuffer.appendText(buffer, n);
 
         totalRead += (int64_t) n;
         reportProgress(totalLength, totalRead, nextProgress);
@@ -271,7 +290,7 @@ namespace triagens {
           }
 
           // send all data before last '\n'
-          const char* first = _outputBuffer.c_str();
+          char const* first = _outputBuffer.c_str();
           char* pos = (char*) memrchr(first, '\n', _outputBuffer.length());
 
           if (pos != 0) {
@@ -301,8 +320,8 @@ namespace triagens {
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////
 
-    void ImportHelper::reportProgress (const int64_t totalLength,
-                                       const int64_t totalRead,
+    void ImportHelper::reportProgress (int64_t totalLength,
+                                       int64_t totalRead,
                                        double& nextProgress) {
       if (! _progress || totalLength == 0) {
         return;
@@ -323,8 +342,16 @@ namespace triagens {
     string ImportHelper::getCollectionUrlPart () {
       string part("collection=" + StringUtils::urlEncode(_collectionName));
 
-      if (_createCollection) {
-        part += "&createCollection=yes";
+      if (_firstChunk) {
+        if (_createCollection) {
+          part += "&createCollection=yes";
+        }
+
+        if (_overwrite) {
+          part += "&overwrite=yes";
+        }
+
+        _firstChunk = false;
       }
 
       return part;
