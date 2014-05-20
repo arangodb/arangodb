@@ -168,7 +168,7 @@
           this.buildCollectionLink(
             this.collectionContext.prev
           ),
-          { 
+          {
             trigger: true
           }
         );
@@ -281,7 +281,7 @@
 
       var num = ++this.filterId;
       $('#filterHeader').append(' <div class="queryline querylineAdd">'+
-                                '<input id="attribute_name' + num + 
+                                '<input id="attribute_name' + num +
                                 '" type="text" placeholder="Attribute name">'+
                                 '<select name="operator" id="operator' +
                                 num + '" class="filterSelect">'+
@@ -292,8 +292,8 @@
                                 '    <option value="&gt;=">&gt;=</option>'+
                                 '    <option value="&gt;">&gt;</option>'+
                                 '</select>'+
-                                '<input id="attribute_value' + num + 
-                                '" type="text" placeholder="Attribute value" ' + 
+                                '<input id="attribute_value' + num +
+                                '" type="text" placeholder="Attribute value" ' +
                                 'class="filterValue">'+
                                 ' <a class="removeFilterItem" id="removeFilter' + num + '">' +
                                 '<i class="icon icon-minus arangoicon"></i></a></div>');
@@ -432,6 +432,7 @@
           this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
         this.drawTable();
+        this.renderPaginationElements();
       }
 
     },
@@ -554,7 +555,7 @@
       $('.modalImportTooltips').tooltip({
         placement: "left"
       });
-        
+
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
       this.drawTable();
       this.renderPaginationElements();

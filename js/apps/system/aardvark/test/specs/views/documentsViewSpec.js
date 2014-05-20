@@ -1290,9 +1290,11 @@
             spyOn(view, "drawTable");
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
+            spyOn(view, "renderPaginationElements");
 
             view.reallyDelete();
 
+            expect(view.renderPaginationElements).toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith("#confirmDeleteBtn");
             expect(window.$).toHaveBeenCalledWith("#documentsTableID");
             expect(window.$).toHaveBeenCalledWith("#docDeleteModal");
@@ -1375,8 +1377,11 @@
             view.collection = new window.arangoDocuments();
             view.target = "#confirmDeleteBtn";
             spyOn(view, "drawTable");
+            spyOn(view, "renderPaginationElements");
+
             view.reallyDelete();
 
+            expect(view.renderPaginationElements).toHaveBeenCalled();
             expect(window.$).toHaveBeenCalledWith("#confirmDeleteBtn");
 
 
