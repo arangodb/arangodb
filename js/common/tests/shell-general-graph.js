@@ -757,11 +757,11 @@ function EdgesAndVerticesSuite() {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove("_graphs/blubGraph")
+        arangodb.db._collection("_graphs").remove("_graphs/unitTestGraph")
       } catch (err) {
       }
       g = graph._create(
-        "blubGraph",
+        "unitTestGraph",
         graph.edgeDefinitions(
           graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
           graph._directedRelationDefinition("unitTestEdgeCollection2",
@@ -940,8 +940,6 @@ function EdgesAndVerticesSuite() {
       result = g._getOutVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
     }
-
-
 
   };
 }

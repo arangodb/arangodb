@@ -431,6 +431,51 @@ var _graph = function(graphName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _drop = function(graphId, dropCollections) {
+
+  var gdb = db._graphs;
+
+
+  if (gdb === null || gdb === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+
+  if (!gdb.exists(graphId)) {
+    throw "Graph " + graphId + " does not exist.";
+  }
+
+  if (dropCollections !== false) {
+    var graph = gdb.document(graphId);
+    var edgeDefinitions = graph.edgeDefinitions;
+    require("internal").print(edgeDefinitions);
+    edgeDefinitions.forEach(
+      function(edgeDefinition) {
+        var from = edgeDefinition.from;
+        var to = edgeDefinition.to;
+        var edge = edgeDefinition.collection;
+        db._drop(edge);
+        from.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+        to.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+      }
+    );
+  }
+
+  gdb.remove(graphId);
+  return true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return all edge collections of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -587,6 +632,7 @@ exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
 exports._create = _create;
+exports._drop = _drop;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
