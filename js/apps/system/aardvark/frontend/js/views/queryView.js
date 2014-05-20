@@ -45,8 +45,8 @@
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
-      'click #queryDiv .showHotkeyHelp': 'shortcutModal'
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+
     },
 
     createCustomQueryModal: function(){
@@ -112,7 +112,6 @@
 
       //check for invalid query names, if present change the box-shadow to red
       // and disable the save functionality
-      //console.log(saveName.match(/[<>&'"]/));
       var boolTemp = false;
       this.customQueries.some(function(query){
         if( query.name === saveName ){
@@ -547,10 +546,6 @@
       outputEditor.resize();
       this.deselect(inputEditor);
 
-    },
-
-    shortcutModal: function() {
-      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     // This function changes the focus onto the tab that has been clicked

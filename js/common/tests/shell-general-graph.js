@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
-/*global require, assertEqual, assertTrue, assertFalse */
+/*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
 var graph = require("org/arangodb/general-graph");
+var ERRORS = arangodb.errors;
 
 var _ = require("underscore");
 
@@ -606,6 +607,34 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict error handling
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictErrorHandlingSingle: function() {
+      try {
+        g._outEdges("v1/1").restrict(["included", "unknown"]);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+        assertEqual(err.errorMessage, "edge collections: unknown are not known to the graph");
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: restrict error handling on multiple failures
+////////////////////////////////////////////////////////////////////////////////
+
+    test_restrictErrorHandlingMultiple: function() {
+      try {
+        g._outEdges("v1/1").restrict(["failed", "included", "unknown", "foxxle"]);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+        assertEqual(err.errorMessage, "edge collections: failed and unknown and foxxle are not known to the graph");
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: filter construct on Edges
