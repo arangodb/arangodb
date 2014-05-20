@@ -31,6 +31,7 @@
 
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
+  ArangoError = arangodb.ArangoError,
   db = arangodb.db,
   errors = arangodb.errors,
   _ = require("underscore");
@@ -144,11 +145,12 @@ AQLStatement.prototype.isEdgeQuery = function() {
 // --SECTION--                             AQL Generator
 // -----------------------------------------------------------------------------
 
-var AQLGenerator = function(graphName) {
+var AQLGenerator = function(graph) {
   this.stack = [];
   this.bindVars = {
-    "graphName": graphName
+    "graphName": graph.__name
   };
+  this.graph = graph;
   this.lastEdgeVar = "";
 };
 
@@ -173,6 +175,20 @@ AQLGenerator.prototype.getLastEdgeVar = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  var rest = stringToArray(restrictions);
+  var unknown = [];
+  var g = this.graph;
+  _.each(rest, function(r) {
+    if (!g.__edgeCollections[r]) {
+      unknown.push(r);
+    }
+  });
+  if (unknown.length > 0) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "edge collections: " + unknown.join(" and ") + " are not known to the graph";
+    throw err;
+  }
   var lastQuery = this.stack.pop();
   if (!lastQuery.isEdgeQuery()) {
     this.stack.push(lastQuery);
@@ -180,7 +196,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   }
   lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
   lastQuery.edgeQuery = false;
-  this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
+  this.bindVars["restrictions_" + this.stack.length] = rest;
   this.stack.push(lastQuery);
   return this;
 };
@@ -373,6 +389,21 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(vertexCollections, function(obj, key) {
     self[key] = obj;
+    var old_remove = obj.remove.bind(obj);
+    obj.remove = function(vertexId, options) {
+      var myEdges = self._EDGES(vertexId);
+      myEdges.forEach(
+        function(edgeObj) {
+          var edgeId = edgeObj._id;
+          var edgeCollection = edgeId.split("/")[0];
+          if (db[edgeCollection] && db[edgeCollection].exists(edgeId)) {
+            db[edgeCollection].remove(edgeId);
+          }
+        }
+      );
+
+      return old_remove(vertexId, options);
+    };
   });
 
   _.each(edgeCollections, function(obj, key) {
@@ -424,6 +455,51 @@ var _graph = function(graphName) {
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
 
   return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _drop = function(graphId, dropCollections) {
+
+  var gdb = db._graphs;
+
+
+  if (gdb === null || gdb === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+
+  if (!gdb.exists(graphId)) {
+    throw "Graph " + graphId + " does not exist.";
+  }
+
+  if (dropCollections !== false) {
+    var graph = gdb.document(graphId);
+    var edgeDefinitions = graph.edgeDefinitions;
+    require("internal").print(edgeDefinitions);
+    edgeDefinitions.forEach(
+      function(edgeDefinition) {
+        var from = edgeDefinition.from;
+        var to = edgeDefinition.to;
+        var edge = edgeDefinition.collection;
+        db._drop(edge);
+        from.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+        to.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+      }
+    );
+  }
+
+  gdb.remove(graphId);
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,7 +578,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._edges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "any");
 };
 
@@ -511,7 +587,7 @@ Graph.prototype._edges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._inEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "inbound");
 };
 
@@ -520,7 +596,7 @@ Graph.prototype._inEdges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._outEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "outbound");
 };
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,6 +659,7 @@ exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
 exports._create = _create;
+exports._drop = _drop;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
