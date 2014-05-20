@@ -45,8 +45,8 @@
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
-
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
+      'click #queryDiv .showHotkeyHelp': 'shortcutModal'
     },
 
     createCustomQueryModal: function(){
@@ -549,6 +549,10 @@
 
     },
 
+    shortcutModal: function() {
+      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
+    },
+
     // This function changes the focus onto the tab that has been clicked
     // it can be given an event-object or the id of the tab to switch to
     //    e.g. switchTab("result-switch");
@@ -563,7 +567,6 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        var wrapperDiv = divId + "Div";
         if ( element === switchId){
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");

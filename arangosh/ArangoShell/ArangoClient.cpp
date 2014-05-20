@@ -161,6 +161,13 @@ ArangoClient::ArangoClient ()
   }
 }
 
+ArangoClient::~ArangoClient () {
+  if (_endpointServer != 0) {
+    delete _endpointServer;
+  }
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -776,7 +783,6 @@ void ArangoClient::createEndpoint () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::createEndpoint (string const& definition) {
-
   // close previous endpoint
   if (_endpointServer != 0) {
     delete _endpointServer;

@@ -23,6 +23,8 @@ OPTION "--create-collection <bool>"
 set to "true" if collection should be created by the import ENDOPTION
 OPTION "--file <string>"
 input file with the data to import ENDOPTION
+OPTION "--overwrite <bool>"
+set to "true" to remove all data from the collection prior to the import ENDOPTION
 OPTION "--quote <string>"
 optional quote character to be used ENDOPTION
 OPTION "--separator <string>"

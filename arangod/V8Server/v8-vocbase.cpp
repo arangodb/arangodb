@@ -6991,7 +6991,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     v8::Handle<v8::Array> shardKeys = v8::Array::New();
     const vector<string> sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
-      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str()));
+      shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str(), (int) sks[i].size()));
     }
     result->Set(v8::String::New("shardKeys"), shardKeys);
     result->Set(v8::String::New("numberOfShards"), v8::Number::New((*c).numberOfShards()));
@@ -9767,14 +9767,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   // convert the JavaScript string to a string
   string const key = TRI_ObjectToString(name);
 
-  if (key.empty()) {
-    // we must not throw a v8 exception here because this will cause follow up errors
-    return scope.Close(v8::Handle<v8::Value>());
-  }
-
-  char const* ckey = key.c_str();
-
-  if (ckey[0] == '_' || strchr(ckey, '.') != 0) {
+  if (key.empty() || key[0] == '_' || strchr(key.c_str(), '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -9784,7 +9777,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
-  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, ckey);
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, key.c_str());
 
   if (pid == 0) {
     return scope.Close(v8::Handle<v8::Value>());
@@ -9816,20 +9809,18 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  v8::Handle<v8::Array> result = v8::Array::New();
-
   // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
   if (marker == 0) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
@@ -9844,20 +9835,18 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
 
   if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
-    return scope.Close(result);
+    return scope.Close(v8::Array::New());
   }
 
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
-  TRI_shape_size_t i;
-  TRI_shape_size_t n;
   char const* qtr;
 
   // shape is an array
   s = (TRI_array_shape_t const*) shape;
 
   // number of entries
-  n = s->_fixedEntries + s->_variableEntries;
+  TRI_shape_size_t const n = s->_fixedEntries + s->_variableEntries;
 
   // calculate position of attribute ids
   qtr = (char const*) shape;
@@ -9865,8 +9854,10 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   qtr += n * sizeof(TRI_shape_sid_t);
   aids = (TRI_shape_aid_t const*) qtr;
 
+  v8::Handle<v8::Array> result = v8::Array::New((int) n);
   uint32_t count = 0;
-  for (i = 0;  i < n;  ++i, ++aids) {
+
+  for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
     if (att != 0) {
@@ -9889,9 +9880,9 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
                                                         const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
-  // sanity check
   v8::Handle<v8::Object> self = info.Holder();
 
+  // sanity check
   if (self->InternalFieldCount() <= SLOT_BARRIER) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
@@ -9906,7 +9897,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   // convert the JavaScript string to a string
   string const key = TRI_ObjectToString(name);
 
-  if (key == "") {
+  if (key.empty()) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 

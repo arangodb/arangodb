@@ -79,22 +79,36 @@
             expect(col.loglevel).toEqual(1);
         });
 
+        it("should check if last page is active", function() {
+          col.page = 1;
+          col.pagesize = 10;
+          col.totalAmount = 14;
+          col.totalPages = 2;
+          expect(col.url()).toEqual('/_admin/log?upto=1&size=4&offset=0');
+        });
+
+        it("should check if totalAmount is set", function() {
+          col.totalAmount = 0;
+          col.url();
+        });
 
         it("url with upto", function() {
             col.initialize({upto : true, loglevel : 1});
-            col.page = 1;
+            col.page = 2;
             col.pagesize = 2;
+            col.totalAmount = 10;
 
-            expect(col.url()).toEqual('/_admin/log?upto=1&size=2&offset=2');
+            expect(col.url()).toEqual('/_admin/log?upto=1&size=2&offset=4');
         });
 
         it("url with no upto", function() {
             col.initialize({upto : false, loglevel : 1});
             col.upto = false;
-            col.page = 1;
+            col.page = 2;
             col.pagesize = 2;
+            col.totalAmount = 10;
 
-            expect(col.url()).toEqual('/_admin/log?level=1&size=2&offset=2');
+            expect(col.url()).toEqual('/_admin/log?level=1&size=2&offset=4');
         });
     });
 
