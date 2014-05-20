@@ -34,6 +34,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_DEBUG, "intentional debug error");
+  REG_ERROR(ERROR_AID_NOT_FOUND, "internal error with attribute ID in shaper");
+  REG_ERROR(ERROR_LEGEND_INCOMPLETE, "internal error if a legend could not be created");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");

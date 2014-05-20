@@ -60,18 +60,18 @@ namespace triagens {
 
         void clear ();
 
-        bool addAttributeId (TRI_shape_aid_t aid);
+        int addAttributeId (TRI_shape_aid_t aid);
 
-        bool addShape (TRI_shaped_json_t const* sh_json) {
+        int addShape (TRI_shaped_json_t const* sh_json) {
           return addShape(sh_json->_sid, sh_json->_data.data,
                           sh_json->_data.length);
         }
 
-        bool addShape (TRI_shape_sid_t sid, TRI_blob_t const* blob) {
+        int addShape (TRI_shape_sid_t sid, TRI_blob_t const* blob) {
           return addShape(sid, blob->data, blob->length);
         }
 
-        bool addShape (TRI_shape_sid_t sid, char const* data, uint32_t len);
+        int addShape (TRI_shape_sid_t sid, char const* data, uint32_t len);
 
         size_t getSize ();
 
@@ -90,6 +90,12 @@ namespace triagens {
 
         };
 
+        static struct AttributeComparerClass {
+          bool operator() (AttributeId const& a, AttributeId const& b) {
+            return a.aid < b.aid;
+          }
+        } AttributeComparerObject;
+
         struct Shape {
           TRI_shape_sid_t sid;
           TRI_shape_size_t offset;
@@ -100,12 +106,19 @@ namespace triagens {
 
         };
 
+        static struct ShapeComparerClass {
+          bool operator() (Shape const& a, Shape const& b) {
+            return a.sid < b.sid;
+          }
+        } ShapeComparerObject;
+
         unordered_set<TRI_shape_aid_t> _have_attribute;
         vector<AttributeId> _attribs;
         StringBuffer _att_data;
         unordered_set<TRI_shape_sid_t> _have_shape;
         vector<Shape> _shapes;
         StringBuffer _shape_data;
+
     };
 
   }
