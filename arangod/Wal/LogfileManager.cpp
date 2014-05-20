@@ -423,8 +423,8 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::writeMarker (Marker& marker,
-                                 bool waitForSync) {
+SlotInfo LogfileManager::writeMarker (Marker& marker,
+                                      bool waitForSync) {
   return allocateAndWrite(marker.buffer, marker.size, waitForSync);
 }
 
@@ -433,14 +433,14 @@ int LogfileManager::writeMarker (Marker& marker,
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::allocateAndWrite (void* src,
-                                      uint32_t size,
-                                      bool waitForSync) {
+SlotInfo LogfileManager::allocateAndWrite (void* src,
+                                           uint32_t size,
+                                           bool waitForSync) {
 
   SlotInfo slotInfo = allocate(size);
  
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    return slotInfo.errorCode;
+    return slotInfo;
   }
 
   assert(slotInfo.slot != nullptr);
@@ -448,7 +448,7 @@ int LogfileManager::allocateAndWrite (void* src,
   slotInfo.slot->fill(src, size);
 
   finalise(slotInfo, waitForSync);
-  return slotInfo.errorCode;
+  return slotInfo;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
