@@ -165,6 +165,68 @@ static int InitCollectionOperations (TRI_transaction_collection_t* trxCollection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a WAL-based operation for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static int AddOperation (TRI_transaction_collection_t* trxCollection,
+                         TRI_voc_document_operation_e type,
+                         TRI_doc_mptr_t* newHeader,
+                         TRI_doc_mptr_t* oldHeader,
+                         TRI_doc_mptr_t* oldData,
+                         TRI_voc_rid_t rid,
+                         void const* marker) {
+
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("AddOperation-OOM") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  int res;
+
+  if (trxCollection->_operations == NULL) {
+    res = InitCollectionOperations(trxCollection);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  TRI_transaction_operation_t trxOperation;
+  trxOperation._type       = type;
+  trxOperation._newHeader  = newHeader;
+  trxOperation._oldHeader  = oldHeader;
+  trxOperation._marker     = (TRI_df_marker_t*) marker; // TODO: remove cast!
+  
+  if (oldData != NULL) {
+    trxOperation._oldData  = *oldData;
+  }
+  else {
+    memset(&trxOperation._oldData, 0, sizeof(TRI_doc_mptr_t));
+  }
+  
+  res = TRI_PushBackVector(trxCollection->_operations, &trxOperation);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+
+  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
+    document->_headers->moveBack(document->_headers, newHeader, oldData);
+  }
+  else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+    document->_headers->unlink(document->_headers, oldHeader);
+  }
+
+  // update collection revision
+  if (rid > 0) {
+    TRI_SetRevisionDocumentCollection(document, rid, false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add an operation for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1041,8 +1103,14 @@ static int UseCollections (TRI_transaction_t* const trx,
         trxCollection->_compactionLocked = true;
       }
     }
+  
+    if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && trxCollection->_originalRevision == 0) {
+      // store original revision at transaction start
+      trxCollection->_originalRevision = trxCollection->_collection->_collection->base._info._revision;
+    }
         
     shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);
+
     if (! shouldLock) {
       shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) && 
                    ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) == 0);
@@ -1120,7 +1188,7 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   
   triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, false);
+  return GetLogfileManager()->writeMarker(marker, false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1134,7 +1202,7 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 
   triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync);
+  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1148,7 +1216,7 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
 
   triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync);
+  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1524,6 +1592,54 @@ int TRI_AddIdFailedTransaction (TRI_vector_t* vector,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a WAL operation for a transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddOperationTransaction (TRI_transaction_collection_t* trxCollection,
+                                 TRI_voc_document_operation_e type,
+                                 TRI_doc_mptr_t* newHeader,
+                                 TRI_doc_mptr_t* oldHeader,
+                                 TRI_doc_mptr_t* oldData,
+                                 void const* marker,
+                                 TRI_voc_rid_t rid,
+                                 bool syncRequested) {
+
+  TRI_transaction_t* trx = trxCollection->_transaction;
+
+  // TODO: re-add replication!!
+ 
+  int res;
+
+  if (trx->_hints & ((TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION)) {
+    // single operation transaction
+    res = TRI_ERROR_NO_ERROR;
+  }
+  else {
+    res = AddOperation(trxCollection, type, newHeader, oldHeader, oldData, rid, marker);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      // if everything went well, this will ensure we don't double free etc. headers
+      trx->_hasOperations = true;
+    }
+    else {
+      TRI_ASSERT_MAINTAINER(res == TRI_ERROR_OUT_OF_MEMORY || res == TRI_ERROR_DEBUG);
+      // if something went wrong, this will ensure that we'll not manipulate headers twice
+    }
+  }
+  
+  // update waitForSync for the transaction 
+  if (syncRequested) {
+    trxCollection->_waitForSync = true;
+    trx->_waitForSync = true;
+  }
+  else if (trxCollection->_waitForSync) {
+    trx->_waitForSync = true;
+  }
+  
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

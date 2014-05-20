@@ -47,11 +47,13 @@ namespace triagens {
     struct SlotInfo {
       explicit SlotInfo (int errorCode) 
         : slot(nullptr),
+          mem(nullptr),
           errorCode(errorCode) {
       }
       
       explicit SlotInfo (Slot* slot) 
         : slot(slot),
+          mem(slot->mem()),
           errorCode(TRI_ERROR_NO_ERROR) {
       }
 
@@ -59,8 +61,9 @@ namespace triagens {
         : SlotInfo(TRI_ERROR_NO_ERROR) {
       }
 
-      Slot* slot;
-      int   errorCode;
+      Slot*       slot;
+      void const* mem;
+      int         errorCode;
     };
 
 // -----------------------------------------------------------------------------

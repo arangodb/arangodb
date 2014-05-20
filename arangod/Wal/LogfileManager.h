@@ -221,17 +221,17 @@ namespace triagens {
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-        int writeMarker (Marker&, 
-                         bool);
+        SlotInfo writeMarker (Marker&, 
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-        int allocateAndWrite (void*,
-                              uint32_t,
-                              bool);
+        SlotInfo allocateAndWrite (void*,
+                                   uint32_t,
+                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief re-inserts a logfile back into the inventory only

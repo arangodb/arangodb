@@ -157,16 +157,16 @@ namespace triagens {
         store<TRI_shape_sid_t>(p, shapedJson->_sid);
 
         // offset to key
-        uint16_t offsetKey = static_cast<uint16_t>(sizeof(TRI_df_marker_t) + fixedSize());
-        store<uint16_t>(p, offsetKey);
+        offsetKey = static_cast<decltype(offsetKey)>(sizeof(TRI_df_marker_t) + fixedSize());
+        store<decltype(offsetKey)>(p, offsetKey);
 
         // offset to legend
-        uint16_t offsetLegend = offsetKey + alignedSize(key.size() + 2);
-        store<uint16_t>(p, offsetLegend);
+        offsetLegend = static_cast<decltype(offsetLegend)>(offsetKey + alignedSize(key.size() + 2));
+        store<decltype(offsetLegend)>(p, offsetLegend);
 
         // offset to shapedJson
-        uint32_t offsetShapedJson = offsetLegend + 8; // TODO
-        store<uint32_t>(p, offsetShapedJson);
+        offsetShapedJson = static_cast<decltype(offsetShapedJson)>(offsetLegend + 8); // TODO
+        store<decltype(offsetShapedJson)>(p, offsetShapedJson);
 
         // store key
         size_t const n = key.size();
@@ -195,6 +195,10 @@ namespace triagens {
                sizeof(uint16_t) +
                sizeof(uint32_t);
       }
+
+      uint16_t offsetKey;
+      uint16_t offsetLegend;
+      uint32_t offsetShapedJson;
 
     };
    /* 

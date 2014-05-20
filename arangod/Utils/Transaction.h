@@ -880,17 +880,32 @@ namespace triagens {
                            const bool forceSync) {
          
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
-          int res = primary->insert(trxCollection,
-                                    key, 
-                                    rid,
-                                    mptr, 
-                                    markerType, 
-                                    shaped, 
-                                    data, 
-                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                    forceSync,
-                                    false);
+          int res;
+
+          if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
+            // document
+            res = primary->insertDocument(trxCollection,
+                                          key, 
+                                          rid, 
+                                          mptr,
+                                          shaped,
+                                          lock,
+                                          forceSync,
+                                          false);
+          }
+          else {
+            res = primary->insertEdge(trxCollection,
+                                      key, 
+                                      rid, 
+                                      mptr,
+                                      shaped,
+                                      data,
+                                      lock,
+                                      forceSync,
+                                      false);
+          }
 
           return res;
         }

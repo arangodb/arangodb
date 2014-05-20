@@ -255,6 +255,19 @@ int TRI_AddIdFailedTransaction (TRI_vector_t*,
                                 TRI_voc_tid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a WAL operation fora transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddOperationTransaction (TRI_transaction_collection_t*,
+                                 TRI_voc_document_operation_e,
+                                 struct TRI_doc_mptr_s*,
+                                 struct TRI_doc_mptr_s*,
+                                 struct TRI_doc_mptr_s*,
+                                 void const*,
+                                 TRI_voc_rid_t,
+                                 bool);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a marker to a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -37,6 +37,7 @@
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
+#include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
@@ -45,7 +46,9 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
+#include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
+#include "Wal/Slots.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -570,7 +573,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CreateHeader (TRI_document_collection_t* document,
-                         const TRI_doc_document_key_marker_t* marker,
+                         TRI_doc_document_key_marker_t const* marker,
                          TRI_voc_fid_t fid,
                          TRI_doc_mptr_t** result) {
   TRI_doc_mptr_t* header;
@@ -1507,12 +1510,76 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a WAL marker into indexes
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertIndexes (TRI_transaction_collection_t* trxCollection,
+                          TRI_doc_mptr_t* header,
+                          bool waitForSync) {
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+
+  // insert into primary index first
+  int res = InsertPrimaryIndex(document, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insert has failed
+    document->_headers->release(document->_headers, header, true);
+    return res;
+  }
+  
+  // insert into secondary indexes
+  res = InsertSecondaryIndexes(document, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insertion into secondary indexes failed
+    DeleteSecondaryIndexes(document, header, true);
+    DeletePrimaryIndex(document, header, true);
+    document->_headers->release(document->_headers, header, true);
+
+    return res;
+  }
+  
+  res = TRI_AddOperationTransaction(trxCollection, 
+                                    TRI_VOC_DOCUMENT_OPERATION_INSERT, 
+                                    header,
+                                    NULL, 
+                                    NULL, 
+                                    header->_data,
+                                    header->_rid,
+                                    waitForSync);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // something has failed.... now delete from the indexes again
+    RollbackInsert(document, header, NULL);
+
+    return res;
+  }
+
+  // .............................................................................
+  // post process insert
+  // .............................................................................
+   
+  size_t const n = document->_allIndexes._length;
+
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+
+    if (idx->postInsert != NULL) {
+      idx->postInsert(trxCollection, idx, header);
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shaped-json document into the WAL
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
-                                     const TRI_voc_key_t key,
+                                     TRI_voc_key_t key,
                                      TRI_voc_rid_t rid,
                                      TRI_doc_mptr_t* mptr,
                                      TRI_shaped_json_t const* shaped,
@@ -1520,16 +1587,83 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool forceSync,
                                      bool isRestore) {
 
+  TRI_voc_tick_t tick;
+
+  if (rid == 0) {
+    // generate new revision id
+    tick = TRI_NewTickServer();
+  }
+  else {
+    tick = static_cast<TRI_voc_tick_t>(rid);
+  }
+  
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary->_keyGenerator);
+
+  // TODO: write-lock the key generator!
+  std::string keyString;
+
+  if (key == nullptr) {
+    // no key specified, now generate a new one
+    keyString = keyGenerator->generateKey(keyGenerator, tick);
+
+    if (keyString.empty()) {
+      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+    }
+  }
+  else {
+    // key was specified, now validate it
+    int res = keyGenerator->validateKey(keyGenerator, key);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    keyString = key;
+  }
+
+  // TODO: isRestore is not used yet!
 
   triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
                                        primary->base._info._cid,
                                        TRI_GetMarkerIdTransaction(trxCollection->_transaction),
-                                       std::string(key),
+                                       keyString,
                                        rid,
                                        shaped);
 
-  return TRI_ERROR_NO_ERROR;
+  // insert into WAL first
+  triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    // some error occurred
+    return slotInfo.errorCode;
+  }
+
+  // now insert into indexes
+  triagens::arango::CollectionWriteLocker collectionLocker(primary, lock);
+
+  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  TRI_doc_mptr_t* header = document->_headers->request(document->_headers, marker.size);
+
+  if (header == NULL) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  header->_rid  = rid;
+  header->_fid  = 0; // TODO: use WAL fid
+  header->_data = slotInfo.mem; // let header point to WAL location
+  header->_key  = const_cast<char*>(static_cast<char const*>(slotInfo.mem) + marker.offsetKey); 
+
+  int res = InsertIndexes(trxCollection, header, forceSync);
+
+  // eager unlock
+  collectionLocker.unlock();
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    *mptr = *header;
+  }
+  
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2960,6 +3094,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // crud methods
   document->base.insert            = InsertShapedJson;
+  document->base.insertDocument    = InsertDocumentShapedJson;
+//  document->base.insertEdge        = InsertEdgeShapedJson; // TODO
   document->base.read              = ReadShapedJson;
   document->base.update            = UpdateShapedJson;
   document->base.remove            = RemoveShapedJson;
