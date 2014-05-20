@@ -175,6 +175,23 @@ BOOST_AUTO_TEST_CASE (tst_wal_edge_marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test sizeof TRI_wal_remove_marker_t
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_wal_remove_marker) {
+  size_t s = sizeof(TRI_wal_remove_marker_t);
+
+  BOOST_CHECK_EQUAL(24 + 32, s); // base + own size
+  BOOST_CHECK_EQUAL(true, s % 8 == 0); 
+
+  BOOST_CHECK_EQUAL( 0, offsetof(struct TRI_wal_remove_marker_s, base));
+  BOOST_CHECK_EQUAL(24, offsetof(struct TRI_wal_remove_marker_s, _databaseId));
+  BOOST_CHECK_EQUAL(32, offsetof(struct TRI_wal_remove_marker_s, _collectionId));
+  BOOST_CHECK_EQUAL(40, offsetof(struct TRI_wal_remove_marker_s, _rid));
+  BOOST_CHECK_EQUAL(48, offsetof(struct TRI_wal_remove_marker_s, _tid));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test sizeof TRI_doc_document_key_marker_t
 ////////////////////////////////////////////////////////////////////////////////
 
