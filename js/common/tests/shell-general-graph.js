@@ -703,15 +703,15 @@ function EdgesAndVerticesSuite() {
 
   fillCollections = function() {
     var ids = {};
-    var vertex = g.vertexCollection1.save({first_name: "Tam"});
+    var vertex = g.unitTestVertexCollection1.save({first_name: "Tam"});
     ids["vId11"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tem"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tem"});
     ids["vId12"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tim"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
     ids["vId13"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tom"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tom"});
     ids["vId14"] = vertex._id;
-    vertex = g.vertexCollection1.save({first_name: "Tum"});
+    vertex = g.unitTestVertexCollection1.save({first_name: "Tum"});
     ids["vId15"] = vertex._id;
     vertex = g.unitTestVertexCollection3.save({first_name: "Tam"});
     ids["vId31"] = vertex._id;
