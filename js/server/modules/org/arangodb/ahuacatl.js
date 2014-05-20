@@ -4495,7 +4495,46 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
                         direction, 
                         params);
 }
- 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path algorithm
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_SHORTEST_PATH (graphName,
+                              startVertex,
+                              endVertex,
+                              direction,
+                              params) {
+  "use strict";
+
+  if (params === undefined) {
+    params = { };
+  }
+
+  params.strategy = "dijkstra";
+  params.itemorder = "forward";
+  params.visitor = TRAVERSAL_VISITOR;
+
+  if (typeof params.distance === "string") {
+    var name = params.distance.toUpperCase();
+
+    params.distance = function (config, vertex1, vertex2, edge) {
+      return FCALL_USER(name, [ config, vertex1, vertex2, edge ]);
+    };
+  }
+  else {
+    params.distance = undefined;
+  }
+
+  return TRAVERSAL_FUNC("SHORTEST_PATH",
+    TRAVERSAL.generalGraphDatasourceFactory(graphName),
+    TO_ID(startVertex),
+    TO_ID(endVertex),
+    direction,
+    params);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -4785,7 +4824,54 @@ function GRAPH_NEIGHBORS (vertexCollection,
   });
 
   return result;
-} 
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_NEIGHBORS (graphName,
+                          vertex,
+                          direction,
+                          examples) {
+  "use strict";
+
+
+  var edges = GENERAL_GRAPH_EDGES(graphName, TO_ID(vertex), direction);
+  var result = [ ];
+
+  FILTER(edges, examples).forEach (function (e) {
+    var key;
+
+    if (direction === "inbound") {
+      key = e._from;
+    }
+    else if (direction === "outbound") {
+      key = e._to;
+    }
+    else if (direction === "any") {
+      key = e._from;
+      if (key === vertex) {
+        key = e._to;
+      }
+    }
+
+    if (key === vertex) {
+      // do not return the start vertex itself
+      return;
+    }
+
+    try {
+      result.push({ edge: CLONE(e), vertex: DOCUMENT_HANDLE(key) });
+    }
+    catch (err) {
+    }
+  });
+
+  return result;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
@@ -4892,6 +4978,7 @@ exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
+exports.GENERAL_GRAPH_SHORTEST_PATH = GENERAL_GRAPH_SHORTEST_PATH;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GENERAL_GRAPH_TRAVERSAL = GENERAL_GRAPH_TRAVERSAL;
@@ -4900,6 +4987,7 @@ exports.GRAPH_EDGES = GRAPH_EDGES;
 exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
 exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
 exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
+exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
