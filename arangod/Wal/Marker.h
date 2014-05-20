@@ -37,11 +37,100 @@ namespace triagens {
 
     static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal transaction begin marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_begin_marker_t {
+      TRI_df_marker_t base;
+
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal transaction commit marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_commit_marker_t {
+      TRI_df_marker_t base;
+
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal transaction abort marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_abort_marker_t {
+      TRI_df_marker_t base;
+
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal document marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct document_marker_t {
+      TRI_df_marker_t base;
+
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_cid_t   _collectionId;
+
+      TRI_voc_rid_t   _rid;        // this is the tick for a create and update
+      TRI_voc_tid_t   _tid;
+
+      TRI_shape_sid_t _shape;
+
+      uint16_t        _offsetKey;
+      uint16_t        _offsetLegend;
+      uint32_t        _offsetJson;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal edge marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct edge_marker_t {
+      document_marker_t base;
+
+      TRI_voc_cid_t   _toCid;
+      TRI_voc_cid_t   _fromCid;
+
+      uint16_t        _offsetToKey;
+      uint16_t        _offsetFromKey;
+
+#ifdef TRI_PADDING_32
+      char            _padding_df_marker[4];
+#endif
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal remove marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct remove_marker_t {
+      TRI_df_marker_t base;
+
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_cid_t   _collectionId;
+
+      TRI_voc_rid_t   _rid;   // this is the tick for the deletion
+      TRI_voc_tid_t   _tid;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal marker class
+////////////////////////////////////////////////////////////////////////////////
+
     struct Marker {
       Marker (TRI_df_marker_type_e type,
-              size_t payloadSize) 
-        : buffer(new char[sizeof(TRI_df_marker_t) + payloadSize]),
-          size(sizeof(TRI_df_marker_t) + payloadSize) {
+              size_t size)
+        : buffer(new char[size]),
+          size(size) {
 
         std::cout << "CREATING MARKER OF TYPE: " << type << "\n";
 
@@ -59,7 +148,7 @@ namespace triagens {
         }
       }
       
-      inline size_t alignedSize (size_t size) const {
+      static inline size_t alignedSize (size_t size) {
         return TRI_DF_ALIGN_BLOCK(size);
       }
 
@@ -67,22 +156,12 @@ namespace triagens {
         return (TRI_df_marker_t*) buffer;
       }
       
-      inline char* data () const {
-        return (char*) buffer + sizeof(TRI_df_marker_t);
+      inline char* base () const {
+        return (char*) buffer;
       }
-
-      inline void advance (char*& ptr, size_t length) {
-        ptr += length;
-      }
-
-      template <typename T> void store (char*& ptr, T value) {
-        *((T*) ptr) = value;
-        advance(ptr, sizeof(T));
-      }
-
-      void store (char*& ptr, char const* src, size_t length) {
-        memcpy(ptr, src, length);
-        advance(ptr, length);
+      
+      inline char* payload () const {
+        return base() + sizeof(TRI_df_marker_t);
       }
 
       char*          buffer;
@@ -93,11 +172,12 @@ namespace triagens {
       BeginTransactionMarker (TRI_voc_tick_t databaseId,
                               TRI_voc_tid_t transactionId) 
         : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, 
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_tid_t)) {
+                 sizeof(transaction_begin_marker_t)) {
+        
+        transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(base());
 
-        char* p = data();
-        store<TRI_voc_tick_t>(p, databaseId);
-        store<TRI_voc_tid_t>(p, transactionId);
+        m->_databaseId = databaseId;
+        m->_transactionId = transactionId; 
       }
 
       ~BeginTransactionMarker () {
@@ -109,11 +189,12 @@ namespace triagens {
       CommitTransactionMarker (TRI_voc_tick_t databaseId,
                                TRI_voc_tid_t transactionId) 
         : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, 
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_tid_t)) {
-
-        char* p = data();
-        store<TRI_voc_tick_t>(p, databaseId);
-        store<TRI_voc_tid_t>(p, transactionId);
+                 sizeof(transaction_commit_marker_t)) {
+        
+        transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(base());
+        
+        m->_databaseId = databaseId;
+        m->_transactionId = transactionId; 
       }
 
       ~CommitTransactionMarker () {
@@ -125,11 +206,12 @@ namespace triagens {
       AbortTransactionMarker (TRI_voc_tick_t databaseId,
                               TRI_voc_tid_t transactionId) 
         : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, 
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_tid_t)) {
-
-        char* p = data();
-        store<TRI_voc_tick_t>(p, databaseId);
-        store<TRI_voc_tid_t>(p, transactionId);
+                 sizeof(transaction_abort_marker_t)) {
+        
+        transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(base());
+        
+        m->_databaseId = databaseId;
+        m->_transactionId = transactionId; 
       }
 
       ~AbortTransactionMarker () {
@@ -140,67 +222,51 @@ namespace triagens {
     struct DocumentMarker : public Marker {
       DocumentMarker (TRI_voc_tick_t databaseId,
                       TRI_voc_cid_t collectionId,
+                      TRI_voc_rid_t revisionId,
                       TRI_voc_tid_t transactionId,
                       std::string const& key,
-                      TRI_voc_rid_t revision,
                       TRI_shaped_json_t const* shapedJson) 
         : Marker(TRI_WAL_MARKER_DOCUMENT, 
-                 fixedSize() + alignedSize(key.size() + 2) + shapedJson->_data.length) {
+                 sizeof(document_marker_t) + alignedSize(key.size() + 2) + shapedJson->_data.length) {
 
-        char* p = data();
-        store<TRI_voc_tick_t>(p, databaseId);
-        store<TRI_voc_cid_t>(p, collectionId);
-        store<TRI_voc_tid_t>(p, transactionId);
-        store<TRI_voc_rid_t>(p, revision);
+        document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
+        m->_databaseId   = databaseId;
+        m->_collectionId = collectionId;
+        m->_rid          = revisionId;
+        m->_tid          = transactionId;
+        m->_shape        = shapedJson->_sid;
+        m->_offsetKey    = sizeof(document_marker_t); // start position of key
+        m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 2);
+        m->_offsetJson   = m->_offsetLegend; // TODO: account for legendSize // + alignedSize(legendSize)
                
-        // sid
-        store<TRI_shape_sid_t>(p, shapedJson->_sid);
+        {
+          // store key
+          size_t const n = key.size();
+          char* p = static_cast<char*>(base()) + m->_offsetKey;
 
-        // offset to key
-        offsetKey = static_cast<decltype(offsetKey)>(sizeof(TRI_df_marker_t) + fixedSize());
-        store<decltype(offsetKey)>(p, offsetKey);
-
-        // offset to legend
-        offsetLegend = static_cast<decltype(offsetLegend)>(offsetKey + alignedSize(key.size() + 2));
-        store<decltype(offsetLegend)>(p, offsetLegend);
-
-        // offset to shapedJson
-        offsetShapedJson = static_cast<decltype(offsetShapedJson)>(offsetLegend + 8); // TODO
-        store<decltype(offsetShapedJson)>(p, offsetShapedJson);
-
-        // store key
-        size_t const n = key.size();
-        store<uint8_t>(p, (uint8_t) n); // length of key
-        store(p, key.c_str(), n);
-
-        // pad key with \0
-        for (size_t i = n + 1; i < 8 + ((n + 1) / 8) * 8; ++i) {
-          store<unsigned char>(p, '\0');
+          // init key buffer
+          memset(p, '\0', (1 + ((n + 1) / 8)) * 8); 
+       
+          // store length of key 
+          *p = (uint8_t) n;
+          // store actual key 
+          memcpy(p + 1, key.c_str(), n); 
         }
 
-        // store shaped json
-        store(p, (char const*) shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
+        // store legend // TODO
+
+        // store shapedJson
+        {
+          char* p = static_cast<char*>(base()) + m->_offsetJson;
+          memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
+        }
       }
 
       ~DocumentMarker () {
       }
 
-      size_t fixedSize () const {
-        return sizeof(TRI_voc_tick_t) + 
-               sizeof(TRI_voc_cid_t) + 
-               sizeof(TRI_voc_tid_t) + 
-               sizeof(TRI_voc_rid_t) + 
-               sizeof(TRI_shape_sid_t) + 
-               sizeof(uint16_t) +
-               sizeof(uint16_t) +
-               sizeof(uint32_t);
-      }
-
-      uint16_t offsetKey;
-      uint16_t offsetLegend;
-      uint32_t offsetShapedJson;
-
     };
+
    /* 
     struct RemoveMarker : public Marker {
       RemoveMarker (TRI_voc_tick_t databaseId,
