@@ -478,14 +478,32 @@ function GeneralGraphAQLQueriesSuite() {
     });
   };
 
+  // The testee graph object
+  var g;
+
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setUp: query creation for edges
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function() {
+      g = createInclExcl();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for edges
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function() {
+      dropInclExcl();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: query creation for edges
 ////////////////////////////////////////////////////////////////////////////////
 
     test_edges: function() {
-      var g = createInclExcl();
       var query = g._edges("v1/1");
       assertEqual(query.printQuery(), 'FOR edges_0 IN GRAPH_EDGES('
         + '@graphName,@startVertex_0,"any")');
@@ -497,7 +515,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertTrue(findIdInResult(result, e3), "Did not include e3");
-      dropInclExcl();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,7 +522,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_outEdges: function() {
-      var g = createInclExcl();
       var query = g._outEdges("v1/1");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"outbound")');
@@ -517,7 +533,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertTrue(findIdInResult(result, e3), "Did not include e3");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      dropInclExcl();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,7 +540,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_inEdges: function() {
-      var g = createInclExcl();
       var query = g._inEdges("v1/1");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"inbound")');
@@ -537,11 +551,9 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertFalse(findIdInResult(result, e1), "e1 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
     },
 
     test_restrictOnEdges: function() {
-      var g = createInclExcl();
       var query = g._edges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"any",{},@restrictions_0)');
@@ -555,7 +567,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +574,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_restrictOnInEdges: function() {
-      var g = createInclExcl();
       var query = g._inEdges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"inbound",{},@restrictions_0)');
@@ -576,7 +586,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertFalse(findIdInResult(result, e1), "e1 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -584,7 +593,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_restrictOnOutEdges: function() {
-      var g = createInclExcl();
       var query = g._outEdges("v1/1").restrict("included");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"outbound",{},@restrictions_0)');
@@ -597,7 +605,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
    },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,7 +612,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnEdges: function() {
-      var g = createInclExcl();
       var query = g._edges("v1/1").filter({val: true});
       // var query = g._edges("v1/1").filter("e.val = true");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
@@ -619,8 +625,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
-
    },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -628,7 +632,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnInEdges: function() {
-      var g = createInclExcl();
       var query = g._inEdges("v1/1").filter({val: true});
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"inbound") '
@@ -641,7 +644,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e1), "e1 is not excluded");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +651,6 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnOutEdges: function() {
-      var g = createInclExcl();
       var query = g._outEdges("v1/1").filter({val: true});
       // var query = g._outEdges("v1/1").filter("e.val = true");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
@@ -663,7 +664,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-      dropInclExcl();
    }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,7 +672,6 @@ function GeneralGraphAQLQueriesSuite() {
    
 /* Broken string replacement
    test_letOnEdges: function() {
-      var g = createInclExcl();
       var query = g._edges("v1/1").let("myVal = e.val");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + "@graphName,@startVertex_0,any) LET myVal = edges_0.val");
@@ -688,7 +687,6 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e2));
       */
      /*
-      dropInclExcl();
    }
   */
 
