@@ -165,7 +165,7 @@ function GeneralGraphCreationSuite() {
         exception = err;
       }
 
-      assertEqual(exception, "method _undirectedRelationDefinition expects 3 arguments");
+      assertEqual(exception, "method _directedRelationDefinition expects 3 arguments");
 
     },
 
