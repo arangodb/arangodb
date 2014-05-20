@@ -822,6 +822,61 @@ function EdgesAndVerticesSuite() {
       assertTrue(edge);
     },
 
+    test_edges : function() {
+      var vertex = g.vertexCollection1.save({first_name: "Tam"});
+      var vId11 = vertex._id;
+      vertex = g.vertexCollection1.save({first_name: "Tem"});
+      var vId12 = vertex._id;
+      vertex = g.vertexCollection1.save({first_name: "Tim"});
+      var vId13 = vertex._id;
+      vertex = g.vertexCollection1.save({first_name: "Tom"});
+      var vId14 = vertex._id;
+      vertex = g.vertexCollection1.save({first_name: "Tum"});
+      var vId15 = vertex._id;
+      vertex = g.vertexCollection3.save({first_name: "Tam"});
+      var vId31 = vertex._id;
+      vertex = g.vertexCollection3.save({first_name: "Tem"});
+      var vId32 = vertex._id;
+      vertex = g.vertexCollection3.save({first_name: "Tim"});
+      var vId33 = vertex._id;
+      vertex = g.vertexCollection3.save({first_name: "Tom"});
+      var vId34 = vertex._id;
+      vertex = g.vertexCollection3.save({first_name: "Tum"});
+      var vId35 = vertex._id;
+
+      var edge = g.edgeCollection1.save(vId11, vId12, {});
+      var eId11 = vertex._id;
+      edge = g.edgeCollection1.save(vId11, vId13, {});
+      var eId12 = vertex._id;
+      edge = g.edgeCollection1.save(vId11, vId14, {});
+      var eId13 = vertex._id;
+      edge = g.edgeCollection1.save(vId11, vId15, {});
+      var eId14 = vertex._id;
+      edge = g.edgeCollection1.save(vId13, vId11, {});
+      var eId15 = vertex._id;
+      edge = g.edgeCollection1.save(vId12, vId11, {});
+      var eId16 = vertex._id;
+      edge = g.edgeCollection1.save(vId14, vId11, {});
+      var eId17 = vertex._id;
+      edge = g.edgeCollection1.save(vId15, vId11, {});
+      var eId18 = vertex._id;
+      edge = g.edgeCollection2.save(vId11, vId31, {});
+      var eId21 = vertex._id;
+      edge = g.edgeCollection2.save(vId11, vId32, {});
+      var eId22 = vertex._id;
+      edge = g.edgeCollection2.save(vId11, vId33, {});
+      var eId23 = vertex._id;
+      edge = g.edgeCollection2.save(vId11, vId34, {});
+      var eId24 = vertex._id;
+      edge = g.edgeCollection2.save(vId11, vId35, {});
+      var eId25 = vertex._id;
+
+      var result = g._EDGES(vId11)
+      require("internal").print("***");
+      require("internal").print(result);
+      require("internal").print("***");
+    },
+
 
 
     dump : function() {
