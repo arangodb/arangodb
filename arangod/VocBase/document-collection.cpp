@@ -1622,6 +1622,15 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     keyString = key;
   }
 
+  // construct a legend for the shaped json
+  triagens::basics::JsonLegend legend(primary->_shaper);
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+
   // TODO: isRestore is not used yet!
 
   triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
@@ -1629,6 +1638,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                        rid,
                                        TRI_GetMarkerIdTransaction(trxCollection->_transaction),
                                        keyString,
+                                       legend,
                                        shaped);
 
   // insert into WAL first
@@ -1657,7 +1667,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   header->_data = (void*) m;
   header->_key  = (char*) m + m->_offsetKey; 
 
-  int res = InsertIndexes(trxCollection, header, forceSync);
+  res = InsertIndexes(trxCollection, header, forceSync);
 
   // eager unlock
   collectionLocker.unlock();

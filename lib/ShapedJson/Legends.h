@@ -73,7 +73,7 @@ namespace triagens {
 
         int addShape (TRI_shape_sid_t sid, char const* data, uint32_t len);
 
-        size_t getSize ();
+        size_t getSize () const;
 
         void dump (void* buf);
 
