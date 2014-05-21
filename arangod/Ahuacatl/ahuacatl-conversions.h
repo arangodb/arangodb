@@ -32,10 +32,6 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 struct TRI_string_buffer_s;
 
@@ -95,10 +91,6 @@ bool TRI_NodeStringAql (struct TRI_string_buffer_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

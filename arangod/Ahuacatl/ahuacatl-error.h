@@ -30,10 +30,6 @@
 
 #include "BasicsC/common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -96,10 +92,6 @@ char* TRI_GetContextErrorAql (const char* const,
                               const size_t, 
                               const size_t, 
                               const size_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

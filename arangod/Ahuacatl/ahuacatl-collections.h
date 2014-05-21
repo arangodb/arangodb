@@ -37,10 +37,6 @@
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 struct TRI_vector_pointer_s;
 
@@ -185,10 +181,6 @@ struct TRI_vector_pointer_s* TRI_GetIndexesCollectionAql (struct TRI_aql_context
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

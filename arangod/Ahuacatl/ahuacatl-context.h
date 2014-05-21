@@ -35,10 +35,6 @@
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_parser_s;
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -197,10 +193,6 @@ struct TRI_json_s* TRI_GetOptionContextAql (TRI_aql_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
