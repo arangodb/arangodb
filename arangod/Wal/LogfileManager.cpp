@@ -426,7 +426,7 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 
 SlotInfo LogfileManager::writeMarker (Marker& marker,
                                       bool waitForSync) {
-  return allocateAndWrite(marker.buffer, marker.size, waitForSync);
+  return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

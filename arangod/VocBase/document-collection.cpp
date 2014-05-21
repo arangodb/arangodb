@@ -1574,7 +1574,7 @@ static int InsertIndexes (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a shaped-json document into the WAL
+/// @brief insert a shaped-json document (or edge) into the WAL
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1650,7 +1650,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
     slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
   }
-  else {
+  else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // edge
     assert(edge != nullptr);
 
@@ -1664,6 +1664,11 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      shaped);
 
     slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+  }
+  else {
+    // invalid marker type
+    assert(false);
+    return TRI_ERROR_INTERNAL;
   }
 
 
