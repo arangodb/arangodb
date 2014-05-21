@@ -235,6 +235,13 @@ namespace triagens {
                         TRI_shaped_json_t const*);
 
         ~DocumentMarker ();
+
+      public: 
+
+        inline char const* key () const {
+          // pointer to key
+          return base() + sizeof(document_marker_t);
+        }
         
         void dump () const;
     };
@@ -280,7 +287,8 @@ namespace triagens {
       public:
 
         inline char const* key () const {
-          return base() + sizeof(remove_marker_t) + 1;
+          // pointer to key
+          return base() + sizeof(remove_marker_t);
         }
 
         inline TRI_voc_rid_t rid () const {
