@@ -35,6 +35,7 @@
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
@@ -882,31 +883,16 @@ namespace triagens {
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
-          int res;
-
-          if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
-            // document
-            res = primary->insertDocument(trxCollection,
-                                          key, 
-                                          rid, 
-                                          mptr,
-                                          shaped,
-                                          lock,
-                                          forceSync,
-                                          false);
-          }
-          else {
-            // edge
-            res = primary->insertEdge(trxCollection,
-                                      key, 
-                                      rid, 
-                                      mptr,
-                                      shaped,
-                                      data,
-                                      lock,
-                                      forceSync,
-                                      false);
-          }
+          int res = primary->insertDocument(trxCollection,
+                                            markerType,
+                                            key, 
+                                            rid, 
+                                            mptr,
+                                            static_cast<TRI_document_edge_t const*>(data),
+                                            shaped,
+                                            lock,
+                                            forceSync,
+                                            false);
 
           return res;
         }

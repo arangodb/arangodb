@@ -50,6 +50,7 @@ struct TRI_cap_constraint_s;
 struct TRI_doc_deletion_key_marker_s;
 struct TRI_doc_document_key_marker_s;
 struct TRI_doc_update_policy_s;
+struct TRI_document_edge_s;
 struct TRI_key_generator_s;
 struct TRI_primary_collection_s;
 
@@ -330,8 +331,7 @@ typedef struct TRI_primary_collection_s {
   int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
 
   int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool, const bool);
-  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, bool, bool, bool);
-  int (*insertEdge) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, void const*, bool, bool, bool);
+  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_df_marker_type_e, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, struct TRI_document_edge_s const*, TRI_shaped_json_t const*, bool, bool, bool);
 
   int (*read) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
 

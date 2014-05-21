@@ -17,26 +17,6 @@
       this.tableDescription.rows = this.customQueries;
     },
 
-    updateTable:  function () {
-      this.tableDescription.rows = this.customQueries;
-
-      _.each(this.tableDescription.rows, function(k,v) {
-        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
-              ' title="Delete query"></span></a>';
-      });
-
-      this.$(this.id).html(this.table.render({content: this.tableDescription}));
-    },
-
-    editCustomQuery: function(e) {
-      var queryName = $(e.target).parent().children().first().text();
-      var inputEditor = ace.edit("aqlEditor");
-      inputEditor.setValue(this.getCustomQueryValueByName(queryName));
-      this.deselect(inputEditor);
-      $('#querySelect').val(queryName);
-      this.switchTab("query-switch");
-    },
-
     events: {
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
@@ -57,18 +37,56 @@
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
       'click #editAQL': 'editAQL',
-      'click #save-query': 'saveAQL',
-      'click #delete-edit-query': 'showDeleteField',
+      'click #delete-edit-query': 'showDeleteFie/ld',
       'click #abortDeleteQuery': 'hideDeleteField',
-      'keyup #new-query-name': 'listenKey',
       'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
-      'click #queryDiv .showHotkeyHelp': 'shortcutModal'
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+
+    },
+
+    createCustomQueryModal: function(){
+      var buttons = [], tableContent = [];
+      tableContent.push(
+        window.modalView.createTextEntry(
+          'new-query-name',
+          'Name',
+          '',
+          undefined,
+          undefined,
+          false,
+          /[<>&'"]/
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton('Save', this.saveAQL.bind(this))
+      );
+      window.modalView.show('modalTable.ejs', 'Save Query', buttons, tableContent, undefined,
+        {'keyup #new-query-name' : this.listenKey.bind(this)});
+    },
+
+    updateTable:  function () {
+      this.tableDescription.rows = this.customQueries;
+
+      _.each(this.tableDescription.rows, function(k,v) {
+        k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
+              ' title="Delete query"></span></a>';
+      });
+
+      this.$(this.id).html(this.table.render({content: this.tableDescription}));
+    },
+
+    editCustomQuery: function(e) {
+      var queryName = $(e.target).parent().children().first().text();
+      var inputEditor = ace.edit("aqlEditor");
+      inputEditor.setValue(this.getCustomQueryValueByName(queryName));
+      this.deselect(inputEditor);
+      $('#querySelect').val(queryName);
+      this.switchTab("query-switch");
     },
 
     initTabArray: function() {
@@ -92,42 +110,19 @@
         return;
       }
 
-      //check for invalid query names, if present change the box-shadoq to red
+      //check for invalid query names, if present change the box-shadow to red
       // and disable the save functionality
-
-      var dangerCss = {
-      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6)",
-      "border-color" : "rgba(234, 23, 23, 0.8)"
-      };
-
-      var normalCss = {
-      "webkit-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-      "moz-box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-      "box-shadow" : "inset 0 1px 1px rgba( 0,0,0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6)",
-      "border-color" : "rgba(82, 168, 236, 0.8)"
-      };
-
-      if ( saveName.match(/[<>&'"]/g)){
-        $('#new-query-name').css(dangerCss);
-        $('#new-query-name').addClass('invalid');
-      } else {
-        $('#new-query-name').css(normalCss);
-        $('#new-query-name').removeClass('invalid');
-      }
-
       var boolTemp = false;
       this.customQueries.some(function(query){
         if( query.name === saveName ){
-          $('#save-query').removeClass('button-success');
-          $('#save-query').addClass('button-warning');
-          $('#save-query').text('Update');
+          $('#modalButton1').removeClass('button-success');
+          $('#modalButton1').addClass('button-warning');
+          $('#modalButton1').text('Update');
             boolTemp = true;
         } else {
-          $('#save-query').removeClass('button-warning');
-          $('#save-query').addClass('button-success');
-          $('#save-query').text('Save');
+          $('#modalButton1').removeClass('button-warning');
+          $('#modalButton1').addClass('button-success');
+          $('#modalButton1').text('Save');
         }
 
         if (boolTemp) {
@@ -309,8 +304,8 @@
 
     addAQL: function () {
       //render options
+      this.createCustomQueryModal();
       $('#new-query-name').val($('#querySelect').val());
-      $('#new-aql-query').modal('show');
       setTimeout(function () {
         $('#new-query-name').focus();
       }, 500);
@@ -363,10 +358,11 @@
     },
 
     saveAQL: function (e) {
+      e.stopPropagation();
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
 
-      if ($('#new-query-name').hasClass('invalid')) {
+      if ($('#new-query-name').hasClass('invalid-input')) {
         return;
       }
 
@@ -389,8 +385,7 @@
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
-        $('#new-aql-query').modal('hide');
-        $('#edit-aql-query').modal('hide');
+        window.modalView.hide();
         return;
       }
 
@@ -399,8 +394,7 @@
         value: content
       });
 
-      $('#new-aql-query').modal('hide');
-      $('#edit-aql-query').modal('hide');
+      window.modalView.hide();
 
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
@@ -552,10 +546,6 @@
       outputEditor.resize();
       this.deselect(inputEditor);
 
-    },
-
-    shortcutModal: function() {
-      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     // This function changes the focus onto the tab that has been clicked
