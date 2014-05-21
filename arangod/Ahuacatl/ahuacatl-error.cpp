@@ -179,7 +179,8 @@ char* TRI_GetContextErrorAql (const char* const query,
     return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, queryLength - offset);
   }
 
-  q = result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SNIPPET_LENGTH + strlen(SNIPPET_SUFFIX) + 1, false);
+  q = result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
+                       SNIPPET_LENGTH + strlen(SNIPPET_SUFFIX) + 1, false));
 
   if (result == NULL) {
     // out of memory

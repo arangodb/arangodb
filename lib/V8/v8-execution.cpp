@@ -27,11 +27,6 @@
 
 #include "v8-execution.h"
 
-#include <fstream>
-#include <locale>
-
-#include <v8.h>
-
 #include "V8/v8-conv.h"
 
 using namespace std;
@@ -44,38 +39,18 @@ using namespace std;
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execution context
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct js_exec_context_s {
-  v8::Isolate* _isolate;
-  v8::Persistent<v8::Function> _func;
-  v8::Persistent<v8::Object> _arguments;
-  int _error;
-}
-js_exec_context_t;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the error code from an execution context
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_GetErrorExecutionContext (TRI_js_exec_context_t const context) {
-  return ((js_exec_context_t const*) context)->_error;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
+TRI_js_exec_context_t* TRI_CreateExecutionContext (char const* script,
                                                   size_t length) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  js_exec_context_t* ctx = new js_exec_context_t;
+  TRI_js_exec_context_t* ctx = new TRI_js_exec_context_t;
   ctx->_error = TRI_ERROR_NO_ERROR;
 
   // execute script inside the context
@@ -85,7 +60,7 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
   // compilation failed, return
   if (compiled.IsEmpty()) {
     ctx->_error = TRI_ERROR_INTERNAL; 
-    return (TRI_js_exec_context_t) ctx;
+    return ctx;
   }
 
   // compute the function
@@ -99,12 +74,12 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
     else {
       ctx->_error = TRI_ERROR_REQUEST_CANCELED; 
     }
-    return (TRI_js_exec_context_t) ctx;
+    return ctx;
   }
 
   if (val.IsEmpty()) {
     ctx->_error = TRI_ERROR_INTERNAL; 
-    return (TRI_js_exec_context_t) ctx;
+    return ctx;
   }
 
   ctx->_func = v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(val));
@@ -113,18 +88,14 @@ TRI_js_exec_context_t TRI_CreateExecutionContext (char const* script,
   ctx->_error = TRI_ERROR_NO_ERROR;
 
   // return the handle
-  return (TRI_js_exec_context_t) ctx;
+  return ctx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeExecutionContext (TRI_js_exec_context_t context) {
-  js_exec_context_t* ctx;
-
-  ctx = (js_exec_context_t*) context;
-
+void TRI_FreeExecutionContext (TRI_js_exec_context_t* ctx) {
   if (ctx->_error == TRI_ERROR_NO_ERROR) {
     ctx->_func.Dispose(ctx->_isolate);
     ctx->_func.Clear();
@@ -144,11 +115,7 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t context) {
 /// @brief executes a result context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t context) {
-  js_exec_context_t* ctx;
-
-  ctx = (js_exec_context_t*) context;
-
+TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t* ctx) {
   assert(ctx->_error == TRI_ERROR_NO_ERROR);
 
   // convert back into a handle

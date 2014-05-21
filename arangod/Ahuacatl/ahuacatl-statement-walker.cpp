@@ -134,7 +134,8 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     if (walker->preVisitStatement != NULL) {
       // this might change the node ptr
       VisitStatement(walker, i, walker->preVisitStatement);
-      node = walker->_statements->_statements._buffer[i];
+      node = static_cast<TRI_aql_node_t*>
+                        (walker->_statements->_statements._buffer[i]);
     }
 
 
@@ -330,7 +331,9 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
     scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, --n);
     assert(scope);
 
-    variable = TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name);
+    variable = static_cast<TRI_aql_variable_t*>
+                          (TRI_LookupByKeyAssociativePointer(&scope->_variables,
+                                                             (void*) name));
     if (variable != NULL) {
       return variable;
     }

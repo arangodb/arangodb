@@ -282,7 +282,7 @@ static bool InsertOrs (TRI_aql_context_t* const context,
     orElement = FindOrElement(dest, fieldAccess->_fullName);
     if (orElement == NULL) {
       // element not found. create a new one
-      orElement = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(or_element_t), false);
+      orElement = static_cast<or_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(or_element_t), false));
       if (orElement == NULL) {
         // out of memory
         return false;
@@ -2061,7 +2061,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
     // this is an OR merge
     // we need to check which elements are contained in just one of the vectors and
     // remove them. if we don't do this, we would probably restrict the query too much
-    orElements = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
+    orElements = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false));
     if (orElements == NULL) {
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
 
@@ -2159,7 +2159,7 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
 
 static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const context,
                                                     const TRI_aql_attribute_name_t* const field,
-                                                    const TRI_aql_node_type_e operator,
+                                                    const TRI_aql_node_type_e operatorarg,
                                                     const TRI_aql_node_t* const node) {
   TRI_aql_field_access_t* fieldAccess;
   TRI_json_t* value;
@@ -2189,7 +2189,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
   SetNameLength(fieldAccess);
 
-  if (operator == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
+  if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_NE) {
     // create an all items access, and we're done
     fieldAccess->_type = TRI_AQL_ACCESS_ALL;
 
@@ -2200,7 +2200,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
       node->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
     // create the reference access
     fieldAccess->_type = TRI_AQL_ACCESS_REFERENCE;
-    fieldAccess->_value._reference._operator = operator;
+    fieldAccess->_value._reference._operator = operatorarg;
 
     if (node->_type == TRI_AQL_NODE_REFERENCE) {
       fieldAccess->_value._reference._type = TRI_AQL_REFERENCE_VARIABLE;
@@ -2225,36 +2225,36 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
   assert(value != NULL);
 
-  if (operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
+  if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // create an exact value access
     fieldAccess->_type = TRI_AQL_ACCESS_EXACT;
     fieldAccess->_value._value = value;
   }
-  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
+  else if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_LT) {
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_EXCLUDED;
     fieldAccess->_value._singleRange._value = value;
   }
-  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
+  else if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_UPPER_INCLUDED;
     fieldAccess->_value._singleRange._value = value;
   }
-  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
+  else if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_GT) {
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_EXCLUDED;
     fieldAccess->_value._singleRange._value = value;
   }
-  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
+  else if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_GE) {
     // create a single range access
     fieldAccess->_type = TRI_AQL_ACCESS_RANGE_SINGLE;
     fieldAccess->_value._singleRange._type = TRI_AQL_RANGE_LOWER_INCLUDED;
     fieldAccess->_value._singleRange._value = value;
   }
-  else if (operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
+  else if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     TRI_json_t* list;
 
     if (value->_type != TRI_JSON_LIST) {
@@ -2301,7 +2301,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
 
 static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const context,
                                                    const TRI_aql_attribute_name_t* const field,
-                                                   const TRI_aql_node_type_e operator,
+                                                   const TRI_aql_node_type_e operatorarg,
                                                    const TRI_aql_node_t* const node) {
   TRI_aql_field_access_t* fieldAccess;
 
@@ -2313,7 +2313,7 @@ static TRI_aql_field_access_t* GetAttributeAccess (TRI_aql_context_t* const cont
     return NULL;
   }
 
-  fieldAccess = CreateAccessForNode(context, field, operator, node);
+  fieldAccess = CreateAccessForNode(context, field, operatorarg, node);
 
   if (fieldAccess == NULL) {
     // OOM
@@ -2486,7 +2486,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_attribute_name_t* field;
     TRI_aql_node_t* node1;
     TRI_aql_node_t* node2;
-    TRI_aql_node_type_e operator;
+    TRI_aql_node_type_e oper;
     bool useBoth;
   
 /*
@@ -2502,7 +2502,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       // collection.attribute|reference|fcall operator const value|reference|attribute access|fcall
       node1 = lhs;
       node2 = rhs;
-      operator = node->_type;
+      oper = node->_type;
 
       if (IsSameAttributeAccess(lhs, rhs)) {
         // we must not optimise something like FILTER a.x == a.x
@@ -2520,7 +2520,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       // const value|reference|attribute|fcall access operator collection.attribute|reference|fcall
       node1 = rhs;
       node2 = lhs;
-      operator = TRI_ReverseOperatorRelationalAql(node->_type);
+      oper = TRI_ReverseOperatorRelationalAql(node->_type);
       
       if (IsSameAttributeAccess(lhs, rhs)) {
         // we must not optimise something like FILTER a.x == a.x
@@ -2528,7 +2528,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       }
       
     
-      TRI_ASSERT_MAINTAINER(operator != TRI_AQL_NODE_NOP);
+      TRI_ASSERT_MAINTAINER(oper != TRI_AQL_NODE_NOP);
 
       if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) {
         // expression of type reference|attribute access|fcall operator reference|attribute access|fcall
@@ -2555,7 +2555,7 @@ again:
     field = GetAttributeName(context, node1);
 
     if (field && node2->_type != TRI_AQL_NODE_FCALL) {
-      TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, operator, node2);
+      TRI_aql_field_access_t* attributeAccess = GetAttributeAccess(context, field, oper, node2);
       TRI_vector_pointer_t* result;
 
       TRI_DestroyStringBuffer(&field->_name);
@@ -2592,7 +2592,7 @@ again:
         node1 = node2;
         node2 = tempNode;
 
-        operator = TRI_ReverseOperatorRelationalAql(node->_type);
+        oper = TRI_ReverseOperatorRelationalAql(node->_type);
 
         // and try again
         previous = result;

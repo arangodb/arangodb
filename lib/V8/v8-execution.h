@@ -29,6 +29,9 @@
 #define TRIAGENS_V8_V8_EXECUTION_H 1
 
 #include "BasicsC/common.h"
+#include "Basics/Common.h"
+
+#include <v8.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,29 +51,29 @@ struct TRI_json_s;
 /// @brief execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void* TRI_js_exec_context_t;
+typedef struct TRI_js_exec_context_s {
+  v8::Isolate* _isolate;
+  v8::Persistent<v8::Function> _func;
+  v8::Persistent<v8::Object> _arguments;
+  int _error;
+}
+TRI_js_exec_context_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the error code from an execution context
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_GetErrorExecutionContext (TRI_js_exec_context_t const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_js_exec_context_t TRI_CreateExecutionContext (const char*, size_t);
+TRI_js_exec_context_t* TRI_CreateExecutionContext (const char*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an new execution context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeExecutionContext (TRI_js_exec_context_t);
+void TRI_FreeExecutionContext (TRI_js_exec_context_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -80,7 +83,7 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t);
 /// @brief executes a result context
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ExecuteResultContext (TRI_js_exec_context_t context);
+struct TRI_json_s* TRI_ExecuteResultContext (TRI_js_exec_context_t* context);
 
 #ifdef __cplusplus
 }

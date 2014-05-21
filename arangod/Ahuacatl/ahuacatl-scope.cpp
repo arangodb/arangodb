@@ -157,7 +157,8 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
   // free variables lookup hash
   n = scope->_variables._nrAlloc;
   for (i = 0; i < n; ++i) {
-    TRI_aql_variable_t* variable = scope->_variables._table[i];
+    TRI_aql_variable_t* variable 
+        = static_cast<TRI_aql_variable_t*>(scope->_variables._table[i]);
 
     if (variable) {
       TRI_FreeVariableAql(variable);
@@ -340,7 +341,8 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
   n = context->_currentScopes._length;
   assert(n > 0);
 
-  scope = TRI_RemoveVectorPointer(&context->_currentScopes, --n);
+  scope = static_cast<TRI_aql_scope_t*>
+                     (TRI_RemoveVectorPointer(&context->_currentScopes, --n));
   LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
 
   node = TRI_CreateNodeScopeEndAql(context, scope);

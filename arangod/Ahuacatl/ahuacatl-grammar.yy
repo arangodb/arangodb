@@ -1,6 +1,6 @@
 
 %define api.pure
-%name-prefix="Ahuacatl"
+%name-prefix "Ahuacatl"
 %locations 
 %defines
 %parse-param { TRI_aql_context_t* const context }
