@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H
 #define TRIAGENS_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/socket-utils.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 

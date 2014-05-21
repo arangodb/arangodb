@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_SCOPE_H
 #define TRIAGENS_AHUACATL_AHUACATL_SCOPE_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/associative.h"
 #include "BasicsC/vector.h"
 

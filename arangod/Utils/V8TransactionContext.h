@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H
 #define TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H 1
 
+#include "Basics/Common.h"
+
 #include <v8.h>
 
 #include "V8/v8-globals.h"

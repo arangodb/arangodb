@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_UTILITIES_LINENOISESHELL_H
 #define TRIAGENS_UTILITIES_LINENOISESHELL_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 #include "Completer.h"
 #include "ShellImplementation.h"

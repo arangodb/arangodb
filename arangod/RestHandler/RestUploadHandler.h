@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_UPLOAD_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
 

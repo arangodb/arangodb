@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
 #define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shape-accessor.h"
@@ -37,10 +37,6 @@
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "Wal/Marker.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_document_collection_s;
 
@@ -192,10 +188,6 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
     (dst)._data.data = NULL;
   }
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

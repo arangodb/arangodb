@@ -28,16 +28,12 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_APPLIER_H
 #define TRIAGENS_VOC_BASE_REPLICATION_APPLIER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/threads.h"
 #include "Replication/replication-static.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -311,10 +307,6 @@ int TRI_ForgetReplicationApplier (TRI_replication_applier_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

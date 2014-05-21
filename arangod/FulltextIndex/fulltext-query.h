@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_QUERY_H
 #define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_QUERY_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -158,10 +154,6 @@ bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

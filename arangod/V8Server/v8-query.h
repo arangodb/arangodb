@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8SERVER_V8_QUERY_H
 #define TRIAGENS_V8SERVER_V8_QUERY_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 

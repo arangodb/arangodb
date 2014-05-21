@@ -28,16 +28,12 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_DUMP_H
 #define TRIAGENS_VOC_BASE_REPLICATION_DUMP_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -130,10 +126,6 @@ void TRI_DestroyDumpReplication (TRI_replication_dump_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

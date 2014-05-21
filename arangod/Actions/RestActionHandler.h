@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ACTIONS_REST_ACTION_HANDLER_H
 #define TRIAGENS_ACTIONS_REST_ACTION_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include "Actions/actions.h"

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_SSL_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/SslAsyncCommTask.h"
 

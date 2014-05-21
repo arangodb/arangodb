@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_EXPLAIN_H
 #define TRIAGENS_AHUACATL_AHUACATL_EXPLAIN_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 struct TRI_aql_context_s;
 struct TRI_json_s;

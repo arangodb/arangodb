@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_TRANSACTION_H
 #define TRIAGENS_VOC_BASE_TRANSACTION_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "BasicsC/hashes.h"
@@ -37,10 +37,6 @@
 
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -420,11 +416,6 @@ int TRI_CreateMarkerAbortTransaction (TRI_transaction_t*,
 
 int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t*,
                                         struct TRI_doc_prepare_transaction_marker_s**);
-
-                                        
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

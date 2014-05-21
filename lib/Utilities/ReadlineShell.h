@@ -28,7 +28,8 @@
 #ifndef TRIAGENS_UTILITIES_READLINE_SHELL_H
 #define TRIAGENS_UTILITIES_READLINE_SHELL_H 1
 
-#include <string>
+#include "Basics/Common.h"
+
 #include "ShellImplementation.h"
 #include "Completer.h"
 

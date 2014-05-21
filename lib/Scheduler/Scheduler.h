@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_SCHEDULER_H
 #define TRIAGENS_SCHEDULER_SCHEDULER_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/socket-utils.h"
 #include "Scheduler/TaskManager.h"
 

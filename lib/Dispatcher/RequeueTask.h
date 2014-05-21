@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_DISPATCHER_REQUEUE_TASK_H
 #define TRIAGENS_DISPATCHER_REQUEUE_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "Scheduler/TimerTask.h"
 
 // -----------------------------------------------------------------------------

@@ -28,16 +28,12 @@
 #ifndef TRIAGENS_VOC_BASE_COLLECTION_H
 #define TRIAGENS_VOC_BASE_COLLECTION_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/vector.h"
 
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DurhamCollections Collections
@@ -464,10 +460,6 @@ bool TRI_IsAllowedNameCollection (bool,
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_TypeNameCollection (const TRI_col_type_e);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

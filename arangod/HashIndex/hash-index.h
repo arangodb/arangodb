@@ -29,14 +29,10 @@
 #ifndef TRIAGENS_HASH_INDEX_HASH_INDEX_H
 #define TRIAGENS_HASH_INDEX_HASH_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "HashIndex/hash-array.h"
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -142,10 +138,6 @@ TRI_index_result_t TRI_LookupHashIndex (TRI_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

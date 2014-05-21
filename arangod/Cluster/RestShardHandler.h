@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_CLUSTER_REST_SHARD_HANDLER_H
 #define TRIAGENS_CLUSTER_REST_SHARD_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Admin/RestBaseHandler.h"
 
 namespace triagens {

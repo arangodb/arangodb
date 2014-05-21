@@ -29,7 +29,10 @@
 #ifndef TRIAGENS_SHAPED_JSON_JSON_SHAPER_H
 #define TRIAGENS_SHAPED_JSON_JSON_SHAPER_H 1
 
-#include "BasicsC/common.h"
+// Note that this file is included in lib/BasicsC/init.c and thus must
+// use C linkage.
+
+#include "Basics/Common.h"
 
 #include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
@@ -169,10 +172,6 @@ static inline TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void) {
   return 7;
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises global basic shape types
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,10 +183,6 @@ void TRI_InitialiseShaper (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownShaper (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

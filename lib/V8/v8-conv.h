@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_V8_CONV_H
 #define TRIAGENS_V8_V8_CONV_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 #include "BasicsC/json.h"

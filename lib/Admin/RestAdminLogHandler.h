@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ADMIN_REST_ADMIN_LOG_HANDLER_H
 #define TRIAGENS_ADMIN_REST_ADMIN_LOG_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Admin/RestAdminBaseHandler.h"
 
 namespace triagens {

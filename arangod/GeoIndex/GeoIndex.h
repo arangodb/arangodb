@@ -28,13 +28,12 @@
 /* GeoIndex.h - header file for GeoIndex algorithms  */
 /* Version 2.1   8.1.2012   R. A. Parker             */
 
-#include "BasicsC/common.h"
+#ifndef TRIAGENS_GEO_INDEX_GEOINDEX_H
+#define TRIAGENS_GEO_INDEX_GEOINDEX_H 1
+
+#include "Basics/Common.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* first the things that a user might want to change */
 
@@ -121,8 +120,6 @@ void GeoIndex_INDEXDUMP(GeoIndex * gi, FILE * f);
 int  GeoIndex_INDEXVALID(GeoIndex * gi);
 #endif
 
-#ifdef __cplusplus
-}
 #endif
 
 /* end of GeoIndex.h  */
