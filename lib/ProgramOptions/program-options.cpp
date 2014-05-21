@@ -269,7 +269,7 @@ static void ParseDoubleArg (const char * userarg, void * value) {
 
   assert(value != NULL);
 
-  desc = value;
+  desc = static_cast<po_double_t*>(value);
   tmp = TRI_DoubleString(userarg);
 
   if (TRI_errno() == TRI_ERROR_NO_ERROR) {
@@ -554,7 +554,7 @@ static void ParseUInt16Arg (const char * userarg, void * value) {
 
   assert(value != NULL);
 
-  desc = value;
+  desc = static_cast<po_uint16_t*>(value);
   tmp = TRI_UInt32String(userarg);
 
   if (TRI_errno() == TRI_ERROR_NO_ERROR) {
@@ -599,7 +599,7 @@ static void ParseUInt32Arg (const char * userarg, void * value) {
 
   assert(value != NULL);
 
-  desc = value;
+  desc = static_cast<po_uint32_t*>(value);
   tmp = TRI_UInt32String(userarg);
 
   if (TRI_errno() == TRI_ERROR_NO_ERROR) {
@@ -639,7 +639,7 @@ static void ParseUInt64Arg (const char * userarg, void * value) {
 
   assert(value != NULL);
 
-  desc = value;
+  desc = static_cast<po_uint64_t*>(value);
   tmp = TRI_UInt64String(userarg);
 
   if (TRI_errno() == TRI_ERROR_NO_ERROR) {
@@ -679,7 +679,7 @@ static void ParseVectorStringArg (const char * userarg, void * value) {
   assert(value != NULL);
   assert(userarg != NULL);
 
-  desc = value;
+  desc = static_cast<TRI_PO_vector_string_t*>(value);
 
   TRI_PushBackVectorString(desc->_value, TRI_DuplicateString(userarg));
 }
@@ -749,7 +749,8 @@ static void VisitProgramOptions (TRI_PO_desc_t * ptr,
       n = section->_children._length;
 
       for (i = 0;  i < n;  ++i) {
-        TRI_PO_desc_t* child = section->_children._buffer[i];
+        TRI_PO_desc_t* child = static_cast<TRI_PO_desc_t*>
+                                          (section->_children._buffer[i]);
 
         VisitProgramOptions(child, functions, input, output);
       }
@@ -808,7 +809,7 @@ static bool HandleOption (TRI_program_options_t * options,
   for (i = 0;  i < options->_items._length;  ++i) {
     TRI_PO_item_t * item;
 
-    item = TRI_AtVector(&options->_items, i);
+    item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (TRI_EqualString(full, item->_desc->_name)) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, full);
@@ -840,7 +841,7 @@ static bool HandleOption (TRI_program_options_t * options,
 static void UsageNode (TRI_PO_desc_t * desc, const char * arg, void * output) {
   TRI_string_buffer_t * buffer;
 
-  buffer = output;
+  buffer = static_cast<TRI_string_buffer_t*>(output);
 
   TRI_AppendStringStringBuffer(buffer, "  --");
   TRI_AppendStringStringBuffer(buffer, desc->_name);
@@ -920,7 +921,7 @@ static void UsageSectionNode (TRI_PO_section_t * section, const void * input, vo
   TRI_string_buffer_t * buffer;
   const char* description;
 
-  buffer = output;
+  buffer = static_cast<TRI_string_buffer_t*>(output);
 
   if (section->base._desc != NULL) {
     description = section->base._desc;
@@ -983,7 +984,8 @@ static void UsageVectorStringNode (TRI_PO_vector_string_t * desc, const void * i
 TRI_PO_section_t* TRI_CreatePODescription (const char *description) {
   TRI_PO_section_t * desc;
 
-  desc = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_section_t), false);
+  desc = static_cast<TRI_PO_section_t*>
+            (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_section_t), false));
 
   desc->base._type = TRI_PO_SECTION;
   desc->base._name = TRI_DuplicateString("Program Options");
@@ -1098,7 +1100,8 @@ void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
   assert(name != NULL);
   assert(variable != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t), false);
+  res = static_cast<po_double_t*>
+        (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t), false));
 
   res->base._type  = TRI_PO_DOUBLE;
   res->base._name  = TRI_DuplicateString(name);
@@ -1123,7 +1126,8 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
 
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t), false);
+  res = static_cast<po_flag_t*>
+                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t), false));
 
   res->base._type  = TRI_PO_FLAG;
   res->base._name  = TRI_DuplicateString(name);
@@ -1150,7 +1154,8 @@ void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t), false);
+  res = static_cast<po_int16_t*>
+                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t), false));
 
   res->base._type  = TRI_PO_INT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1177,7 +1182,8 @@ void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t), false);
+  res = static_cast<po_int32_t*>
+                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t), false));
 
   res->base._type  = TRI_PO_INT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1204,7 +1210,8 @@ void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t), false);
+  res = static_cast<po_int64_t*>
+                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t), false));
 
   res->base._type  = TRI_PO_INT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1230,7 +1237,8 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t), false);
+  res = static_cast<TRI_PO_string_t*>
+          (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t), false));
 
   res->base._type  = TRI_PO_STRING;
   res->base._name  = TRI_DuplicateString(name);
@@ -1257,7 +1265,8 @@ void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t), false);
+  res = static_cast<po_uint16_t*>
+              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t), false));
 
   res->base._type  = TRI_PO_UINT16;
   res->base._name  = TRI_DuplicateString(name);
@@ -1284,7 +1293,8 @@ void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t), false);
+  res = static_cast<po_uint32_t*>
+              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t), false));
 
   res->base._type  = TRI_PO_UINT32;
   res->base._name  = TRI_DuplicateString(name);
@@ -1311,7 +1321,8 @@ void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t), false);
+  res = static_cast<po_uint64_t*>
+              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t), false));
 
   res->base._type  = TRI_PO_UINT64;
   res->base._name  = TRI_DuplicateString(name);
@@ -1338,7 +1349,8 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
   assert(variable != NULL);
   assert(name != NULL);
 
-  res = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t), false);
+  res = static_cast<TRI_PO_vector_string_t*>
+      (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t), false));
 
   res->base._type  = TRI_PO_VECTOR_STRING;
   res->base._name  = TRI_DuplicateString(name);
@@ -1411,7 +1423,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
 
   for (i = 0;  i < options->_items._length;  ++i) {
-    item = TRI_AtVector(&options->_items, i);
+    item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_desc->_short != '\0') {
       TRI_AppendCharStringBuffer(&buffer, item->_desc->_short);
@@ -1455,7 +1467,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 
     if (c < 256) {
       for (i = 0;  i < options->_items._length;  ++i) {
-        item = TRI_AtVector(&options->_items, i);
+        item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
         if (item->_desc->_short == c) {
           break;
@@ -1477,7 +1489,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
         return false;
       }
 
-      item = TRI_AtVector(&options->_items, c);
+      item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, c));
     }
 
     // the opt.. are external variables
@@ -1744,7 +1756,7 @@ bool TRI_HasOptionProgramOptions (TRI_program_options_t const * options, const c
   for (i = 0;  i < options->_items._length;  ++i) {
     TRI_PO_item_t * item;
 
-    item = TRI_AtVector(&options->_items, i);
+    item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used && TRI_EqualString(name, item->_desc->_name)) {
       return true;
