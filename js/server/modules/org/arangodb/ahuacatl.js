@@ -3948,7 +3948,7 @@ function TRAVERSAL_FUNC (func,
                          params) {
   "use strict";
   
-  if (startVertex === 'object' && startVertex.hasOwnProperty('_id')) {
+  if (typeof startVertex === 'object' && startVertex.hasOwnProperty('_id')) {
     startVertex = startVertex._id;
   }
 
@@ -3957,7 +3957,7 @@ function TRAVERSAL_FUNC (func,
   }
   
   if (endVertex !== undefined) {
-    if (endVertex === 'object' && endVertex.hasOwnProperty('_id')) {
+    if (typeof endVertex === 'object' && endVertex.hasOwnProperty('_id')) {
       endVertex = endVertex._id;
     }
   
