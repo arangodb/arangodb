@@ -182,9 +182,9 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
     (dst)._data.data = (((char*) (src)) + ((triagens::wal::document_marker_t*) (src))->_offsetJson);
   }
   else if (((TRI_df_marker_t const*) (src))->_type == TRI_WAL_MARKER_EDGE) {
-    (dst)._sid = ((triagens::wal::edge_marker_t*) (src))->base._shape;
-    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((triagens::wal::edge_marker_t*) (src))->base._offsetJson;
-    (dst)._data.data = (((char*) (src)) + ((triagens::wal::edge_marker_t*) (src))->base._offsetJson);
+    (dst)._sid = ((triagens::wal::edge_marker_t*) (src))->_shape;
+    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((triagens::wal::edge_marker_t*) (src))->_offsetJson;
+    (dst)._data.data = (((char*) (src)) + ((triagens::wal::edge_marker_t*) (src))->_offsetJson);
   }
   else {
     (dst)._sid = 0;
