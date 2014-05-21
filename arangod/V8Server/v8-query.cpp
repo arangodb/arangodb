@@ -2353,14 +2353,9 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
-#ifndef TRI_ENABLE_CLUSTER
-    const string extra = helper->_resolver->getCollectionName(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
-                         helper->_resolver->getCollectionName(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
-#else
     const string extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
                          helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
   
-#endif
     localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
   }
   else {
@@ -2405,12 +2400,10 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-#endif
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());

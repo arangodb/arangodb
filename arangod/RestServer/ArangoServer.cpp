@@ -79,12 +79,9 @@
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/ClusterComm.h"
-#endif
 
 #ifdef TRI_ENABLE_MRUBY
 #include "MRServer/ApplicationMR.h"
@@ -145,12 +142,10 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
 
-#ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
                             dispatcher->dispatcher());
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,11 +224,9 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
   }
-#endif
 
   return TRI_UseDatabaseServer(server, dbName.c_str());
 }
@@ -292,9 +285,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationDispatcher(0),
     _applicationEndpointServer(0),
     _applicationAdminServer(0),
-#ifdef TRI_ENABLE_CLUSTER
     _applicationCluster(0),
-#endif
     _jobManager(0),
 #ifdef TRI_ENABLE_MRUBY
     _applicationMR(0),
@@ -546,7 +537,6 @@ void ArangoServer::buildApplicationServer () {
   // cluster options
   // .............................................................................
 
-#ifdef TRI_ENABLE_CLUSTER
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
 
   if (_applicationCluster == 0) {
@@ -554,7 +544,6 @@ void ArangoServer::buildApplicationServer () {
   }
 
   _applicationServer->addFeature(_applicationCluster);
-#endif
 
   // .............................................................................
   // server options
@@ -595,12 +584,8 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-#ifdef TRI_ENABLE_CLUSTER
   _jobManager = new AsyncJobManager(&TRI_NewTickServer,
                                     ClusterCommRestCallback);
-#else
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 0);
-#endif
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,

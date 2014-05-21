@@ -79,7 +79,6 @@ VocbaseContext::~VocbaseContext () {
 /// @brief whether or not to use special cluster authentication
 ////////////////////////////////////////////////////////////////////////////////
   
-#ifdef TRI_ENABLE_CLUSTER
 bool VocbaseContext::useClusterAuthentication () const {
   if (ServerState::instance()->isDBserver()) {
     return true;
@@ -94,7 +93,6 @@ bool VocbaseContext::useClusterAuthentication () const {
 
   return false;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
@@ -157,7 +155,6 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     ++auth;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (useClusterAuthentication()) {
     string const expected = ServerState::instance()->getAuthentication();
   
@@ -179,7 +176,6 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
     return HttpResponse::OK;
   }
-#endif
 
   // look up the info in the cache first
   bool mustChange;
