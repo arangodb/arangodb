@@ -25,10 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
-
-#include <stdio.h>
-#include <fstream>
+#include "Basics/Common.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"

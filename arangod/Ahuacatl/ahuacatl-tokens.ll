@@ -13,7 +13,7 @@
 %x COMMENT_MULTI
 
 %{
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/tri-strings.h"
 

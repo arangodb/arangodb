@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8SERVER_V8_VOCBASE_H
 #define TRIAGENS_V8SERVER_V8_VOCBASE_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/CollectionNameResolver.h"

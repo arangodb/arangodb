@@ -31,11 +31,6 @@
 
 #include "v8-utils.h"
 
-#include "BasicsC/common.h"
-
-#include <fstream>
-#include <locale>
-
 #include <regex.h>
 
 #include "Basics/Dictionary.h"

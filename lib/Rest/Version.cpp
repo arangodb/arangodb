@@ -31,10 +31,8 @@
 #include "BasicsC/win-utils.h"
 #endif
 
-#include "BasicsC/common.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
-#include "Basics/Common.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 

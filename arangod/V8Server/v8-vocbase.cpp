@@ -27,8 +27,6 @@
 
 #include "v8-vocbase.h"
 
-#include "BasicsC/common.h"
-
 #include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-context.h"

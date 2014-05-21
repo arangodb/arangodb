@@ -74,7 +74,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/voc-mimetypes.c \
 	lib/BasicsC/xxhash.c \
 	lib/BasicsC/tri-zip.c \
-	lib/JsonParser/json-parser.c \
+	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.c \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
@@ -215,8 +215,8 @@ endif
 ### @brief flex
 ################################################################################
 
-FLEX_FILES += \
-	lib/JsonParser/json-parser.c
+FLEXXX_FILES += \
+	lib/JsonParser/json-parser.cpp
 
 ################################################################################
 ### @brief flex++

@@ -27,8 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include <stdio.h>
-
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
