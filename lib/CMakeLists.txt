@@ -79,7 +79,7 @@ add_library(
     BasicsC/fasthash.c
     BasicsC/files.c
     BasicsC/hashes.c
-    BasicsC/init.cpp
+    Basics/init.cpp
     BasicsC/json.c
     BasicsC/json-utilities.c
     BasicsC/linked-list.c
