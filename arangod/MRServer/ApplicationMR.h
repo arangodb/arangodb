@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_MRSERVER_APPLICATION_MR_H
 #define TRIAGENS_MRSERVER_APPLICATION_MR_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include "MRuby/mr-utils.h"

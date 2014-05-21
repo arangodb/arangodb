@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralServer.h"
 
 #include "Dispatcher/Dispatcher.h"

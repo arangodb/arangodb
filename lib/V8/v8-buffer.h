@@ -51,6 +51,8 @@
 #ifndef TRIAGENS_V8_V8_BUFFER_H
 #define TRIAGENS_V8_V8_BUFFER_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-wrapper.h"
 
 // -----------------------------------------------------------------------------

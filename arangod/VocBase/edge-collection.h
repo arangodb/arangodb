@@ -28,11 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_EDGE_COLLECTION_H
 #define TRIAGENS_VOC_BASE_EDGE_COLLECTION_H 1
 
-#include "VocBase/document-collection.h"
+#include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -102,10 +100,6 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

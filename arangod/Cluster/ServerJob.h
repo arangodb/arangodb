@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_CLUSTER_SERVER_JOB_H
 #define TRIAGENS_CLUSTER_SERVER_JOB_H 1
 
+#include "Basics/Common.h"
+
 #include "Dispatcher/Job.h"
 
 #include "Basics/Exceptions.h"

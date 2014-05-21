@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_USER_TRANSACTION_H
 #define TRIAGENS_UTILS_USER_TRANSACTION_H 1
 
+#include "Basics/Common.h"
+
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_REST_TRANSACTION_CONTEXT_H
 #define TRIAGENS_UTILS_REST_TRANSACTION_CONTEXT_H 1
 
+#include "Basics/Common.h"
+
 #include "VocBase/transaction.h"
 
 namespace triagens {

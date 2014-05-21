@@ -30,6 +30,8 @@
 
 #include "GeneralServer/GeneralSslServer.h"
 
+#include "Basics/Common.h"
+
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
