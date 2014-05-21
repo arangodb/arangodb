@@ -712,32 +712,6 @@
 
         });
 
-        it("getStatistics without nextStart and no data yet", function () {
-            view.server = {
-                endpoint: "abcde",
-                target: "xyz"
-            };
-            spyOn(view, "mergeHistory");
-            spyOn(modalDummy, "show");
-            spyOn($, "ajax").andCallFake(function (url, opt) {
-                expect(opt.async).toEqual(false);
-                return {
-                    done: function (y) {
-                        y({
-                            times: []
-                        });
-                    }
-                };
-            });
-
-            view.getStatistics();
-            expect(view.mergeHistory).not.toHaveBeenCalled();
-            expect(modalDummy.show).toHaveBeenCalledWith("modalWarning.ejs",
-                "WARNING !");
-            expect(view.isUpdating).toEqual(false);
-        });
-
-
         it("prepare D3Charts", function () {
             spyOn(nv, "addGraph").andCallFake(function (a, b) {
                 a();
