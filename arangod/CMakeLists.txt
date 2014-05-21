@@ -30,18 +30,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangod
 ################################################################################
 
-if (USE_MRUBY)
-  set(ARANGOD_MRUBY_SOURCE
-      MRServer/ApplicationMR.cpp
-      MRServer/mr-actions.cpp
-  )
-
-  set(ARANGOD_MRUBY_LIBS
-      ${LIB_ARANGO_MRUBY}
-      ${MRUBY_LIBS}
-  )
-endif ()
-
 add_executable(
     ${BIN_ARANGOD}
     Actions/actions.cpp
@@ -155,7 +143,6 @@ add_executable(
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
     Wal/TestThread.cpp
-    ${ARANGOD_MRUBY_SOURCE}
 )
 
 target_link_libraries(
@@ -163,7 +150,6 @@ target_link_libraries(
     ${LIB_ARANGO_FE}
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO}
-    ${ARANGOD_MRUBY_LIBS}
     ${LIBEV_LIBS}
     ${V8_LIBS} # need this for rest::Version
     ${ICU_LIBS}
