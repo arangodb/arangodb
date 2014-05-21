@@ -28,14 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_KEY_GENERATOR_H
 #define TRIAGENS_VOC_BASE_KEY_GENERATOR_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    KEY GENERATORS
@@ -130,10 +125,6 @@ bool TRI_ValidateDocumentIdKeyGenerator (char const*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

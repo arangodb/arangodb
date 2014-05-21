@@ -29,13 +29,9 @@
 #ifndef TRIAGENS_SHAPED_JSON_SHAPED_JSON_H
 #define TRIAGENS_SHAPED_JSON_SHAPED_JSON_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShapedJson JSON Shapes
@@ -1130,10 +1126,6 @@ void TRI_PrintShapeValues (TRI_shape_value_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

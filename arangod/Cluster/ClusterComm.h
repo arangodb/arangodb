@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_CLUSTER_COMM_H
 #define TRIAGENS_CLUSTER_COMM_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
@@ -38,7 +37,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
-
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"

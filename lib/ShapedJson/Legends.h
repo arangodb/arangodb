@@ -29,7 +29,6 @@
 #ifndef TRIAGENS_SHAPED_JSON_LEGENDS_H
 #define TRIAGENS_SHAPED_JSON_LEGENDS_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 
 #include "BasicsC/structures.h"

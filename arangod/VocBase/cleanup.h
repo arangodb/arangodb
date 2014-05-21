@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_CLEANUP_H
 #define TRIAGENS_VOC_BASE_CLEANUP_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines
@@ -73,10 +69,6 @@ void TRI_CleanupVocBase (void*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

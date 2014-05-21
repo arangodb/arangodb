@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_MARKER_H
 #define TRIAGENS_VOC_BASE_MARKER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -71,10 +67,6 @@ void TRI_InitMarker (char*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

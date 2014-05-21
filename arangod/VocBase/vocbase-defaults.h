@@ -28,12 +28,8 @@
 #ifndef TRIAGENS_VOC_BASE_VOCBASE_DEFAULTS_H
 #define TRIAGENS_VOC_BASE_VOCBASE_DEFAULTS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -99,10 +95,6 @@ void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

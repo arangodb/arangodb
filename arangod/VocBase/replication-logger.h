@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_LOGGER_H
 #define TRIAGENS_VOC_BASE_REPLICATION_LOGGER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
@@ -37,10 +37,6 @@
 #include "VocBase/replication-common.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -321,10 +317,6 @@ int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @} 
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

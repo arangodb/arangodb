@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_BIND_PARAMETER_H
 #define TRIAGENS_AHUACATL_AHUACATL_BIND_PARAMETER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/vector.h"

@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_CODEGEN_H
 #define TRIAGENS_AHUACATL_AHUACATL_CODEGEN_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/tri-strings.h"

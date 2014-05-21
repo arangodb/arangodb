@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_CAP_CONSTRAINT_CAP_CONSTRAINT_H
 #define TRIAGENS_CAP_CONSTRAINT_CAP_CONSTRAINT_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
@@ -98,10 +94,6 @@ void TRI_FreeCapConstraint (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -28,7 +28,6 @@
 #ifndef CONNECTION_MANAGER_H
 #define CONNECTION_MANAGER_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_GEO_INDEX_GEO_INDEX_H
 #define TRIAGENS_GEO_INDEX_GEO_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
@@ -120,10 +116,6 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
