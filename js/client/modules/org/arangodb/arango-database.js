@@ -761,7 +761,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   } else {
     // set default value for keepNull
     var keepNullValue = ((typeof keepNull === "undefined") ? true : keepNull);
-    var params = "?keepNull=" + (keepNullValue ? "true" : "false");
+    params = "?keepNull=" + (keepNullValue ? "true" : "false");
 
     if (overwrite) {
       params += "&policy=last";
