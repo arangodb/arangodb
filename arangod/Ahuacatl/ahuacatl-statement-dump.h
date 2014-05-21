@@ -30,10 +30,6 @@
 
 #include "BasicsC/common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_statement_list_s;
 
 // -----------------------------------------------------------------------------
@@ -76,10 +72,6 @@ void TRI_DumpStatementsAql (struct TRI_aql_statement_list_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -1399,13 +1399,9 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 /// @brief c binding for getIndexesCoordinator 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {  
-
 TRI_vector_pointer_t* TRI_GetCoordinatorIndexes (char const* databaseName, 
                                                  char const* collectionName) {
   return getIndexesCoordinator(string(databaseName), string(collectionName));
-}
-
 }
 
 // Local Variables:

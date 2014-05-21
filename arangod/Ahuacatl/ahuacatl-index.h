@@ -33,10 +33,6 @@
 
 #include "VocBase/index.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 
 // -----------------------------------------------------------------------------
@@ -85,10 +81,6 @@ TRI_aql_index_t* TRI_DetermineIndexAql (struct TRI_aql_context_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

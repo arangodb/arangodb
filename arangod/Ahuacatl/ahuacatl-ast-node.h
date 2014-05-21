@@ -32,10 +32,6 @@
 
 #include "Ahuacatl/ahuacatl-node.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 
 // -----------------------------------------------------------------------------
@@ -448,10 +444,6 @@ TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e)
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

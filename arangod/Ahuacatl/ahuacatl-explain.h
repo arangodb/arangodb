@@ -30,10 +30,6 @@
 
 #include "BasicsC/common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 struct TRI_json_s;
 
@@ -78,10 +74,6 @@ struct TRI_json_s* TRI_ExplainAql (struct TRI_aql_context_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

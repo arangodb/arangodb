@@ -36,10 +36,6 @@
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct TRI_aql_context_s;
 struct TRI_json_s;
 
@@ -117,10 +113,6 @@ bool TRI_InjectBindParametersAql (struct TRI_aql_context_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
