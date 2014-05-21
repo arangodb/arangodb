@@ -38,6 +38,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/primary-collection.h"
 #include "VocBase/server.h"

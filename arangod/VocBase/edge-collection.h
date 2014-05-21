@@ -28,11 +28,11 @@
 #ifndef TRIAGENS_VOC_BASE_EDGE_COLLECTION_H
 #define TRIAGENS_VOC_BASE_EDGE_COLLECTION_H 1
 
-#include "VocBase/document-collection.h"
+#include "Basics/Common.h"
+#include "BasicsC/vector.h"
+#include "VocBase/voc-types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct TRI_document_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -41,15 +41,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for edge flags
-/// the type is an integer which indicates the edge direction (IN/OUT)
-/// plus two extra bits that indicate whether the edge is self-reflexive and
-/// whether the edge is directed
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint32_t TRI_edge_flags_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge from and to
@@ -98,14 +89,10 @@ TRI_edge_header_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
-                                                  TRI_document_collection_t*,
+                                                  struct TRI_document_collection_s*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

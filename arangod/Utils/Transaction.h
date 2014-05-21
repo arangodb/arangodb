@@ -947,14 +947,14 @@ namespace triagens {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
           
-          int res = primary->update(trxCollection, 
-                                    (const TRI_voc_key_t) key.c_str(),
-                                    rid, 
-                                    mptr, 
-                                    shaped, 
-                                    &updatePolicy, 
-                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                    forceSync);
+          int res = primary->updateDocument(trxCollection, 
+                                            (TRI_voc_key_t) key.c_str(),
+                                            rid, 
+                                            mptr, 
+                                            shaped, 
+                                            &updatePolicy, 
+                                            ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                            forceSync);
           
           return res;
         }

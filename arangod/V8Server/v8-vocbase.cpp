@@ -2450,8 +2450,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   // the following values are defaults that will be overridden below
   edge._fromCid = 0;
   edge._toCid   = 0;
-  edge._fromKey = 0;
-  edge._toKey   = 0;
+  edge._fromKey = nullptr;
+  edge._toKey   = nullptr;
 
   // extract from
   res = TRI_ParseVertex(resolver, edge._fromCid, edge._fromKey, argv[0], false);
