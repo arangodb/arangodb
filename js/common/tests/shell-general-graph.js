@@ -805,6 +805,7 @@ function EdgesAndVerticesSuite() {
       db.unitTestVertexCollection4.drop();
       db.unitTestEdgeCollection1.drop();
       db.unitTestEdgeCollection2.drop();
+      graph._drop("unitTestGraph");
     },
 
     test_edgeCollections : function () {
