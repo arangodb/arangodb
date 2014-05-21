@@ -24,7 +24,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Florian Bartels
+/// @author Florian Bartels, Michael Hackstein, Guido Schwab
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +123,7 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 /// @brief internal function to get graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var _getGraphCollection = function() {
+var getGraphCollection = function() {
   var gCol = db._graphs;
   if (gCol === null || gCol === undefined) {
     throw "_graphs collection does not exist.";
@@ -283,7 +283,32 @@ AQLGenerator.prototype.toArray = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_undirectedRelationDefinition
 /// @brief define an undirected relation.
+/// 
+/// @FUN{general-graph._undirectedRelationDefinition(@FA{relationName}, @FA{vertexCollections})}
+///
+/// Defines an undirected relation with the name @FA{relationName} using the
+/// list of @FA{vertexCollections}. This relation allows the user to store
+/// edges in any direction between any pair of vertices within the
+/// @FA{vertexCollections}.
+///
+/// @EXAMPLES
+///
+/// To define simple relation with only one vertex collection:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._undirectedRelationDefinition("friend", "user");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To define a relation between several vertex collections:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._undirectedRelationDefinition("marriage", ["female", "male"]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -363,7 +388,7 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = _getGraphCollection(),
+  var gdb = getGraphCollection(),
     g,
     graphAlreadyExists = true,
     collections;
@@ -463,7 +488,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 var _graph = function(graphName) {
 
-  var gdb = _getGraphCollection(),
+  var gdb = getGraphCollection(),
     g, collections;
 
   try {
@@ -486,7 +511,7 @@ var _graph = function(graphName) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _exists = function(graphId) {
-  var gCol = _getGraphCollection();
+  var gCol = getGraphCollection();
   return gCol.exists(graphId);
 };
 
@@ -496,7 +521,7 @@ var _exists = function(graphId) {
 
 var _drop = function(graphId, dropCollections) {
 
-  var gdb = _getGraphCollection();
+  var gdb = getGraphCollection();
 
   if (!gdb.exists(graphId)) {
     throw "Graph " + graphId + " does not exist.";
