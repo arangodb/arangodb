@@ -424,6 +424,10 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
           }
         }
       );
+
+      if (options === null || options === undefined) {
+        return old_remove(vertexId);
+      }
       return old_remove(vertexId, options);
     };
     self[key] = wrap;
