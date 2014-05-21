@@ -284,6 +284,17 @@ namespace triagens {
                       std::string const&);
 
         ~RemoveMarker ();
+
+      public:
+
+        inline char const* key () const {
+          return base() + sizeof(remove_marker_t) + 1;
+        }
+
+        inline TRI_voc_rid_t rid () const {
+          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(base());
+          return m->_rid;
+        }
     };
 
   }
