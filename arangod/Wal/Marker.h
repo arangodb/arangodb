@@ -39,6 +39,10 @@ namespace triagens {
 
     static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
+// -----------------------------------------------------------------------------
+// --SECTION--                   low level structs, used for on-disk persistence
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,233 +128,164 @@ namespace triagens {
       TRI_voc_tid_t   _tid;
     };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wal marker class
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            Marker
+// -----------------------------------------------------------------------------
 
-    struct Marker {
-      Marker (TRI_df_marker_type_e type,
-              size_t size)
-        : buffer(new char[size]),
-          size(size) {
+    class Marker {
 
-        std::cout << "CREATING MARKER OF TYPE: " << type << "\n";
+      protected:
 
-        // initialise the marker header
-        auto h = header();
-        h->_type = type;
-        h->_size = static_cast<TRI_voc_size_t>(size);
-        h->_crc  = 0;
-        h->_tick = 0;
-      }
+        Marker (Marker const&) = delete;
+        Marker& operator= (Marker const&) = delete;
 
-      virtual ~Marker () {
-        if (buffer != nullptr) {
-          delete buffer;
-        }
-      }
-      
-      static inline size_t alignedSize (size_t size) {
-        return TRI_DF_ALIGN_BLOCK(size);
-      }
+        Marker (TRI_df_marker_type_e,
+                size_t);
 
-      inline TRI_df_marker_t* header () const {
-        return (TRI_df_marker_t*) buffer;
-      }
-      
-      inline char* base () const {
-        return (char*) buffer;
-      }
-      
-      inline char* payload () const {
-        return base() + sizeof(TRI_df_marker_t);
-      }
-
-      void storeSizedString (size_t offset,
-                             char const* value,
-                             size_t length) {
-        // init key buffer
-        char* p = static_cast<char*>(base()) + offset;
-        memset(p, '\0', (1 + ((length + 1) / 8)) * 8); 
-       
-        // store length of key 
-        *p = (uint8_t) length;
-        // store actual key 
-        memcpy(p + 1, value, length);
-      }
-
-      char*          buffer;
-      uint32_t const size;
-    };
-
-    struct BeginTransactionMarker : public Marker {
-      BeginTransactionMarker (TRI_voc_tick_t databaseId,
-                              TRI_voc_tid_t transactionId) 
-        : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, 
-                 sizeof(transaction_begin_marker_t)) {
+        virtual ~Marker ();
         
-        transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(base());
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
-        m->_databaseId = databaseId;
-        m->_transactionId = transactionId; 
-      }
+      public:
+      
+        static inline size_t alignedSize (size_t size) {
+          return TRI_DF_ALIGN_BLOCK(size);
+        }
+        
+        inline void* mem () const {
+          return static_cast<void*>(_buffer);
+        }
 
-      ~BeginTransactionMarker () {
-      }
+        inline char* base () const {
+          return _buffer;
+        }
+      
+        inline char* payload () const {
+          return base() + sizeof(TRI_df_marker_t);
+        }
 
+        inline uint32_t size () const {
+          return _size;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+        
+      protected:
+
+        void storeSizedString (size_t,
+                               char const*,
+                               size_t);
+ 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+        char*          _buffer;
+        uint32_t const _size;
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            BeginTransactionMarker
+// -----------------------------------------------------------------------------
+
+    class BeginTransactionMarker : public Marker {
+
+      public:
+
+        BeginTransactionMarker (TRI_voc_tick_t,
+                                TRI_voc_tid_t); 
+
+        ~BeginTransactionMarker ();
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           CommitTransactionMarker
+// -----------------------------------------------------------------------------
     
-    struct CommitTransactionMarker : public Marker {
-      CommitTransactionMarker (TRI_voc_tick_t databaseId,
-                               TRI_voc_tid_t transactionId) 
-        : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, 
-                 sizeof(transaction_commit_marker_t)) {
-        
-        transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(base());
-        
-        m->_databaseId = databaseId;
-        m->_transactionId = transactionId; 
-      }
+    class CommitTransactionMarker : public Marker {
 
-      ~CommitTransactionMarker () {
-      }
+      public:
 
+        CommitTransactionMarker (TRI_voc_tick_t,
+                                 TRI_voc_tid_t);
+
+        ~CommitTransactionMarker ();
     };
 
-    struct AbortTransactionMarker : public Marker {
-      AbortTransactionMarker (TRI_voc_tick_t databaseId,
-                              TRI_voc_tid_t transactionId) 
-        : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, 
-                 sizeof(transaction_abort_marker_t)) {
-        
-        transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(base());
-        
-        m->_databaseId = databaseId;
-        m->_transactionId = transactionId; 
-      }
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AbortTransactionMarker
+// -----------------------------------------------------------------------------
 
-      ~AbortTransactionMarker () {
-      }
+    class AbortTransactionMarker : public Marker {
 
+      public:
+
+        AbortTransactionMarker (TRI_voc_tick_t,
+                                TRI_voc_tid_t);
+
+        ~AbortTransactionMarker ();
     };
 
-    struct DocumentMarker : public Marker {
-      DocumentMarker (TRI_voc_tick_t databaseId,
-                      TRI_voc_cid_t collectionId,
-                      TRI_voc_rid_t revisionId,
-                      TRI_voc_tid_t transactionId,
-                      std::string const& key,
-                      triagens::basics::JsonLegend& legend,
-                      TRI_shaped_json_t const* shapedJson) 
-        : Marker(TRI_WAL_MARKER_DOCUMENT, 
-                 sizeof(document_marker_t) + alignedSize(key.size() + 2) + legend.getSize() + shapedJson->_data.length) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    DocumentMarker
+// -----------------------------------------------------------------------------
 
-        document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
-        m->_databaseId   = databaseId;
-        m->_collectionId = collectionId;
-        m->_rid          = revisionId;
-        m->_tid          = transactionId;
-        m->_shape        = shapedJson->_sid;
-        m->_offsetKey    = sizeof(document_marker_t); // start position of key
-        m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 2);
-        m->_offsetJson   = m->_offsetLegend + alignedSize(legend.getSize());
-               
-        storeSizedString(m->_offsetKey, key.c_str(), key.size());
+    class DocumentMarker : public Marker {
 
-        // store legend 
-        {
-          char* p = static_cast<char*>(base()) + m->_offsetLegend;
-          legend.dump(p);
-        }
+      public:
 
-        // store shapedJson
-        {
-          char* p = static_cast<char*>(base()) + m->_offsetJson;
-          memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
-        }
-      }
+        DocumentMarker (TRI_voc_tick_t,
+                        TRI_voc_cid_t,
+                        TRI_voc_rid_t,
+                        TRI_voc_tid_t,
+                        std::string const&,
+                        triagens::basics::JsonLegend&,
+                        TRI_shaped_json_t const*);
 
-      ~DocumentMarker () {
-      }
-
+        ~DocumentMarker ();
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        EdgeMarker
+// -----------------------------------------------------------------------------
     
-    struct EdgeMarker : public Marker {
-      EdgeMarker (TRI_voc_tick_t databaseId,
-                  TRI_voc_cid_t collectionId,
-                  TRI_voc_rid_t revisionId,
-                  TRI_voc_tid_t transactionId,
-                  std::string const& key,
-                  TRI_document_edge_t const* edge,
-                  triagens::basics::JsonLegend& legend,
-                  TRI_shaped_json_t const* shapedJson) 
-        : Marker(TRI_WAL_MARKER_EDGE,
-                 sizeof(edge_marker_t) + alignedSize(key.size() + 2) + alignedSize(strlen(edge->_fromKey) + 2) + alignedSize(strlen(edge->_toKey) + 2) + legend.getSize() + shapedJson->_data.length) {
+    class EdgeMarker : public Marker {
 
-        document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
-        edge_marker_t* e     = reinterpret_cast<edge_marker_t*>(base());
+      public:
 
-        m->_databaseId    = databaseId;
-        m->_collectionId  = collectionId;
-        m->_rid           = revisionId;
-        m->_tid           = transactionId;
-        m->_shape         = shapedJson->_sid;
-        m->_offsetKey     = sizeof(edge_marker_t); // start position of key
-        e->_toCid         = edge->_toCid;
-        e->_fromCid       = edge->_fromCid;
-        e->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 2);
-        e->_offsetFromKey = e->_offsetToKey + alignedSize(strlen(edge->_toKey) + 2);
-        m->_offsetLegend  = e->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 2);
-        m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
-               
-        // store keys
-        storeSizedString(m->_offsetKey, key.c_str(), key.size());
-        storeSizedString(e->_offsetFromKey, edge->_fromKey, strlen(edge->_fromKey));
-        storeSizedString(e->_offsetToKey, edge->_toKey, strlen(edge->_toKey));
+        EdgeMarker (TRI_voc_tick_t,
+                    TRI_voc_cid_t,
+                    TRI_voc_rid_t,
+                    TRI_voc_tid_t,
+                    std::string const&,
+                    TRI_document_edge_t const*,
+                    triagens::basics::JsonLegend&,
+                    TRI_shaped_json_t const*);
 
-        // store legend 
-        {
-          char* p = static_cast<char*>(base()) + m->_offsetLegend;
-          legend.dump(p);
-        }
-
-        // store shapedJson
-        {
-          char* p = static_cast<char*>(base()) + m->_offsetJson;
-          memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
-        }
-      }
-
-      ~EdgeMarker () {
-      }
-
+        ~EdgeMarker ();
     };
 
-   /* 
-    struct RemoveMarker : public Marker {
-      RemoveMarker (TRI_voc_tick_t databaseId,
-                    TRI_voc_cid_t collectionId,
-                    TRI_voc_tid_t transactionId,
-                    std::string const& key) 
-        : Marker(TRI_WAL_MARKER_REMOVE,
-                 sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + key.size() + 2) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      RemoveMarker
+// -----------------------------------------------------------------------------
 
-        char* p = data();
-        store<TRI_voc_tick_t>(p, databaseId);
-        store<TRI_voc_cid_t>(p, collectionId);
-        store<TRI_voc_tid_t>(p, transactionId);
+    class RemoveMarker : public Marker {
 
-        // store key
-        store<uint8_t>(p, (uint8_t) key.size()); 
-        store(p, key.c_str(), key.size());
-        store<unsigned char>(p, '\0');
-      }
+      public:
 
-      ~RemoveMarker () {
-      }
+        RemoveMarker (TRI_voc_tick_t,
+                      TRI_voc_cid_t,
+                      TRI_voc_rid_t,
+                      TRI_voc_tid_t,
+                      std::string const&);
 
+        ~RemoveMarker ();
     };
-*/
+
   }
 }
 
