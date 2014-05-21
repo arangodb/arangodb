@@ -2686,7 +2686,6 @@ void TRI_FreeBitarrayIndex (TRI_index_t* idx) {
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool IndexComparator (TRI_json_t const* lhs,
                       TRI_json_t const* rhs) {
   TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
@@ -2829,7 +2828,6 @@ bool IndexComparator (TRI_json_t const* lhs,
 
   return true;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

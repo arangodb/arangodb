@@ -48,11 +48,8 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
-  
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#endif
 
 using namespace triagens;
 using namespace triagens::basics;
@@ -812,10 +809,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8VocBridge(context->_context, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
 
-#ifdef TRI_ENABLE_CLUSTER
   TRI_InitV8Cluster(context->_context);
-#endif
-
 
   if (_useActions) {
     TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);

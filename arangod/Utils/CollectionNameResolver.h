@@ -28,15 +28,13 @@
 #ifndef TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H
 #define TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
-#endif
 
 namespace triagens {
   namespace arango {
@@ -132,7 +130,6 @@ namespace triagens {
 /// @brief look up a cluster collection id for a cluster collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         TRI_voc_cid_t getCollectionIdCluster (string const& name) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionId(name);
@@ -152,7 +149,6 @@ namespace triagens {
           }
           return cinfo->id();
         }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection name for a collection id, this implements
@@ -170,13 +166,6 @@ namespace triagens {
           }
 
           string name;
-#ifndef TRI_ENABLE_CLUSTER
-          char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (0 != n) {
-            name = n;
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-          }
-#else
           if (ServerState::instance()->isDBserver()) {
             TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
@@ -205,7 +194,6 @@ namespace triagens {
               TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
             }
           }
-#endif
           if (name.empty()) {
             name = "_unknown";
           }
@@ -220,7 +208,6 @@ namespace triagens {
 /// collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionName(cid);
@@ -243,7 +230,6 @@ namespace triagens {
 
           return "_unknown";
         }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

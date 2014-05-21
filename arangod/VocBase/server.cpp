@@ -884,7 +884,6 @@ static int CloseDatabases (TRI_server_t* server) {
     }
   }
   
-#ifdef TRI_ENABLE_CLUSTER  
   n = server->_coordinatorDatabases._nrAlloc;
 
   for (size_t i = 0; i < n; ++i) {
@@ -900,7 +899,6 @@ static int CloseDatabases (TRI_server_t* server) {
       server->_coordinatorDatabases._table[i] = NULL;
     }
   }
-#endif  
 
   WRITE_UNLOCK_DATABASES(server->_databasesLock);
 
@@ -1683,14 +1681,12 @@ int TRI_InitServer (TRI_server_t* server,
                              EqualKeyDatabaseName,
                              NULL);
   
-#ifdef TRI_ENABLE_CLUSTER
   TRI_InitAssociativePointer(&server->_coordinatorDatabases,
                              TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
                              HashElementDatabaseName,
                              EqualKeyDatabaseName,
                              NULL);
-#endif  
 
   TRI_InitReadWriteLock(&server->_databasesLock);
 
@@ -1718,9 +1714,7 @@ void TRI_DestroyServer (TRI_server_t* server) {
     TRI_DestroyMutex(&server->_createLock);
     TRI_DestroyVectorPointer(&server->_droppedDatabases);
     TRI_DestroyReadWriteLock(&server->_databasesLock);
-#ifdef TRI_ENABLE_CLUSTER    
     TRI_DestroyAssociativePointer(&server->_coordinatorDatabases);
-#endif
     TRI_DestroyAssociativePointer(&server->_databases);
 
     TRI_Free(TRI_CORE_MEM_ZONE, server->_devAppPath);
@@ -2047,7 +2041,6 @@ int TRI_StopServer (TRI_server_t* server) {
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
                                          TRI_voc_tick_t tick,
                                          char const* name,
@@ -2126,7 +2119,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   return TRI_ERROR_NO_ERROR;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -2224,7 +2216,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) { 
   TRI_vector_t v;
   TRI_voc_tick_t* data;
@@ -2258,13 +2249,11 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
 
   return data;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                            TRI_voc_tick_t id,
                                            bool force) {
@@ -2303,13 +2292,11 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
   return res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
                                        char const* name) {
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
@@ -2354,7 +2341,6 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
 
   return res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
@@ -2416,7 +2402,6 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                                      TRI_voc_tick_t id) {
   READ_LOCK_DATABASES(server->_databasesLock);
@@ -2439,14 +2424,12 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
   return NULL;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a coordinator database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
                                                  char const* name) {
   READ_LOCK_DATABASES(server->_databasesLock);
@@ -2464,7 +2447,6 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
 
   return vocbase;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a database by its name

@@ -75,7 +75,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/xxhash.c \
 	lib/BasicsC/tri-zip.c \
 	lib/JsonParser/json-parser.cpp \
-	lib/ProgramOptions/program-options.c \
+	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \

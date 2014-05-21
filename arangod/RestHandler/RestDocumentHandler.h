@@ -135,8 +135,6 @@ namespace triagens {
 
       virtual bool deleteDocument ();
 
-#ifdef TRI_ENABLE_CLUSTER
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +179,6 @@ namespace triagens {
                                       bool isPatch,
                                       TRI_json_t* json);
 
-#endif
 
     };
   }
