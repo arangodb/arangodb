@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_UTILITIES_SHELL_IMPLEMENTATION_H
 #define TRIAGENS_UTILITIES_SHELL_IMPLEMENTATION_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 #include "Completer.h"
 

@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H
 #define TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralAsyncCommTask.h"
 
 #include <openssl/ssl.h>

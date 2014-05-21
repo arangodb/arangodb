@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H
 #define TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/json.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"

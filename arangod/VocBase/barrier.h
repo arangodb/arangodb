@@ -28,11 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_BARRIER_H
 #define TRIAGENS_VOC_BASE_BARRIER_H 1
 
-#include "BasicsC/locks.h"
+#include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BasicsC/locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -266,10 +264,6 @@ void TRI_FreeBarrier (TRI_barrier_t* element);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

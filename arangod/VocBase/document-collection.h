@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H
 #define TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
+#include "Basics/Common.h"
+
 #include "VocBase/primary-collection.h"
 
 #include "VocBase/headers.h"
@@ -36,10 +38,6 @@
 #include "VocBase/voc-types.h"
 
 #include <regex.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -684,10 +682,6 @@ int TRI_RotateJournalDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

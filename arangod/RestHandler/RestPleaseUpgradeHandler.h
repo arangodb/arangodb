@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "HttpServer/HttpHandler.h"
 
 // -----------------------------------------------------------------------------

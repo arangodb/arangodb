@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_DISPATCHER_JOB_H
 #define TRIAGENS_DISPATCHER_JOB_H 1
 
+#include "Basics/Common.h"
+
 #include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------

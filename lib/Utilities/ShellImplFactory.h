@@ -29,7 +29,7 @@
 #ifndef TRIAGENS_UTILITIES_SHELLIMPL_FACTORY_H
 #define TRIAGENS_UTILITIES_SHELLIMPL_FACTORY_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 namespace triagens {
   using namespace std;
