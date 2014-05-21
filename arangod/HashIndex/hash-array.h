@@ -29,12 +29,8 @@
 #ifndef TRIAGENS_HASH_INDEX_HASH_ARRAY_H
 #define TRIAGENS_HASH_INDEX_HASH_ARRAY_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -253,10 +249,6 @@ int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

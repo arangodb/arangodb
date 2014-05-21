@@ -35,7 +35,6 @@ else ()
       BasicsC/terminal-utils-posix.c
       BasicsC/threads-posix.c
       Rest/EndpointUnixDomain.cpp
-      Utilities/LinenoiseShell.cpp
       Utilities/ReadlineShell.cpp
   )
 endif ()
@@ -79,7 +78,7 @@ add_library(
     BasicsC/fasthash.c
     BasicsC/files.c
     BasicsC/hashes.c
-    BasicsC/init.c
+    Basics/init.cpp
     BasicsC/json.c
     BasicsC/json-utilities.c
     BasicsC/linked-list.c
@@ -103,8 +102,8 @@ add_library(
     BasicsC/voc-mimetypes.c
     BasicsC/tri-zip.c
     BasicsC/xxhash.c
-    JsonParser/json-parser.c
-    ProgramOptions/program-options.c
+    JsonParser/json-parser.cpp
+    ProgramOptions/program-options.cpp
     Rest/AnyServer.cpp
     Rest/EndpointList.cpp
     Rest/Endpoint.cpp

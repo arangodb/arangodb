@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_TRANSACTION_H
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
+#include "Basics/Common.h"
+
 #include "Cluster/ServerState.h"
 
 #include "VocBase/barrier.h"

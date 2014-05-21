@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_EDGE_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_EDGE_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestDocumentHandler.h"
 
 // -----------------------------------------------------------------------------

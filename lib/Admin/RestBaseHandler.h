@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ADMIN_REST_BASE_HANDLER_H
 #define TRIAGENS_ADMIN_REST_BASE_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "HttpServer/HttpHandler.h"
 
 #include "BasicsC/json.h"

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_VOC_BASE_INDEX_H
 #define TRIAGENS_VOC_BASE_INDEX_H 1
 
+#include "Basics/Common.h"
+
 #include "VocBase/vocbase.h"
 
 #include "BasicsC/associative-multi.h"
@@ -41,10 +43,6 @@
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -610,10 +608,6 @@ bool IndexComparator (TRI_json_t const* lhs, TRI_json_t const* rhs);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8SERVER_V8_JOB_H
 #define TRIAGENS_V8SERVER_V8_JOB_H 1
 
+#include "Basics/Common.h"
+
 #include "Dispatcher/Job.h"
 #include "BasicsC/json.h"
 

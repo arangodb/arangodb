@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8SERVER_APPLICATION_V8_H
 #define TRIAGENS_V8SERVER_APPLICATION_V8_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include <v8.h>

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_MRUBY_MRLINE_EDITOR_H
 #define TRIAGENS_MRUBY_MRLINE_EDITOR_H 1
 
+#include "Basics/Common.h"
+
 #include "Utilities/LineEditor.h"
 
 #include "MRuby/mr-utils.h"

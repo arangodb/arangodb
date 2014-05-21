@@ -28,14 +28,9 @@
 #ifndef TRIAGENS_V8_V8_EXECUTION_H
 #define TRIAGENS_V8_V8_EXECUTION_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 
 #include <v8.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -84,10 +79,6 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_s* TRI_ExecuteResultContext (TRI_js_exec_context_t* context);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

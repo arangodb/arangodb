@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_AHUACATL_GUARD_H
 #define TRIAGENS_UTILS_AHUACATL_GUARD_H 1
 
+#include "Basics/Common.h"
+
 #include "Ahuacatl/ahuacatl-context.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"

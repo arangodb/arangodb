@@ -28,15 +28,11 @@
 #ifndef TRIAGENS_VOC_BASE_DATAFILE_H
 #define TRIAGENS_VOC_BASE_DATAFILE_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/locks.h"
 
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DurhamDatafiles Datafiles
@@ -636,10 +632,6 @@ void TRI_DestroyDatafileScan (TRI_df_scan_t* scan);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

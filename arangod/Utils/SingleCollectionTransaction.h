@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/logging.h"
 #include "BasicsC/voc-errors.h"

@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_MASTER_H
 #define TRIAGENS_VOC_BASE_REPLICATION_MASTER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/replication-common.h"
 #include "VocBase/replication-logger.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           REPLICATION MASTER INFO
@@ -99,10 +95,6 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

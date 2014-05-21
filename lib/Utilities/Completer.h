@@ -29,8 +29,7 @@
 #ifndef TRIAGENS_UTILITIES_COMPLETER_H
 #define TRIAGENS_UTILITIES_COMPLETER_H 1
 
-#include <string>
-#include <vector>
+#include "Basics/Common.h"
 
 namespace triagens {
   using namespace std;

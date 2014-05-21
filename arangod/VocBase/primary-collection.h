@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_VOC_BASE_PRIMARY_COLLECTION_H
 #define TRIAGENS_VOC_BASE_PRIMARY_COLLECTION_H 1
 
+#include "Basics/Common.h"
+
 #include "VocBase/collection.h"
 
 #include "BasicsC/json.h"
@@ -37,10 +39,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -508,10 +506,6 @@ size_t TRI_DocumentIteratorPrimaryCollection (TRI_primary_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

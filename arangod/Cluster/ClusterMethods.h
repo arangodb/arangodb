@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_CLUSTER_METHODS_H
 #define TRIAGENS_CLUSTER_METHODS_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 
 #include "Rest/HttpRequest.h"
@@ -39,7 +38,6 @@
 #include "VocBase/primary-collection.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
-
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
