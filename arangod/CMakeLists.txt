@@ -150,6 +150,7 @@ add_executable(
     Wal/CollectorThread.cpp
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
+    Wal/Marker.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
