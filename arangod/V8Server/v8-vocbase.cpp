@@ -74,15 +74,12 @@
 #include "VocBase/index.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Basics/JsonHelper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#endif
 
 #include "unicode/timezone.h"
 #include "unicode/utypes.h"
@@ -200,7 +197,6 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 /// @brief cluster coordinator case, parse a key and possible revision
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static int ParseKeyAndRef (v8::Handle<v8::Value> const arg, 
                            string& key,
                            TRI_voc_rid_t& rev) {
@@ -236,24 +232,20 @@ static int ParseKeyAndRef (v8::Handle<v8::Value> const arg,
   }
   return TRI_ERROR_NO_ERROR;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a coordinator collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
   TRI_DestroyReadWriteLock(&collection->_lock); 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
                                                  CollectionInfo const& ci) {
   TRI_vocbase_col_t* c = (TRI_vocbase_col_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
@@ -303,9 +295,7 @@ static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 
   return c;
 }
-#endif
 
-#ifdef TRI_ENABLE_CLUSTER
 struct CollectionGuard {
   CollectionGuard (TRI_vocbase_col_t* collection) 
     : _collection(collection) {
@@ -319,13 +309,11 @@ struct CollectionGuard {
 
   TRI_vocbase_col_t* _collection;
 };
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
   TRI_vector_pointer_t result;
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
@@ -343,13 +331,11 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
      
   return result;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all cluster collection names
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
   TRI_vector_string_t result;
   TRI_InitVectorString(&result, TRI_UNKNOWN_MEM_ZONE);
@@ -369,7 +355,6 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
      
   return result;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 collection id value from the internal collection id
@@ -631,14 +616,13 @@ static bool EqualCollection (CollectionNameResolver const& resolver,
     return true;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     if (collectionName == resolver.getCollectionNameCluster(collection->_cid)) {
       return true;
     }
     return false;
   }
-#endif
+
   if (collectionName == resolver.getCollectionName(collection->_cid)) {
     return true;
   }
@@ -705,7 +689,6 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     
     TRI_vocbase_col_t const* col = 0;
 
-#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
@@ -719,10 +702,6 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     else {
       col = resolver.getCollectionStruct(collectionName);
     }
-
-#else
-    col = resolver.getCollectionStruct(collectionName);
-#endif
 
     if (col == 0) {
       // collection not found
@@ -823,7 +802,6 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
   if (col != 0) {
-#ifdef TRI_ENABLE_CLUSTER
     if (! col->_isLocal) {
       *err = TRI_CreateErrorObject(__FILE__,
                                    __LINE__,
@@ -831,7 +809,6 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       return 0;
     }
-#endif
 
     res = TRI_UseCollectionVocBase(col->_vocbase, col);
 
@@ -1319,7 +1296,6 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 /// @brief ensures an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* collection,
                                                      TRI_json_t const* json,
                                                      bool create) {
@@ -1362,7 +1338,6 @@ static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* co
   
   return scope.Close(ret);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures an index, locally
@@ -1720,7 +1695,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
   int res = EnhanceIndexJson(argv, json, create);
 
   
-#ifdef TRI_ENABLE_CLUSTER 
   if (res == TRI_ERROR_NO_ERROR &&
       ServerState::instance()->isCoordinator()) {
     string const dbname(collection->_dbName);
@@ -1767,8 +1741,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     }
 
   }
-#endif
-
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (json != 0) {
@@ -1781,7 +1753,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
   
   v8::Handle<v8::Value> ret;
 
-#ifdef TRI_ENABLE_CLUSTER
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
     ret = EnsureIndexCoordinator(collection, json, create);
@@ -1789,9 +1760,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
   else {
     ret = EnsureIndexLocal(collection, json, create);
   }
-#else
-  ret = EnsureIndexLocal(collection, json, create);
-#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1805,7 +1773,6 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 /// ".document".
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
                                                             v8::Arguments const& argv,
                                                             bool generateDocument) {
@@ -1895,7 +1862,6 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
     return scope.Close(v8::True());
   }
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document and returns it
@@ -1952,11 +1918,9 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   assert(col != 0);
   assert(key != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
-#endif
 
   ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2077,11 +2041,9 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   assert(col != 0);
   assert(key != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
-#endif
 
   ReadTransactionType trx(vocbase, resolver, col->_cid);
 
@@ -2122,7 +2084,6 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
 /// @brief modifies a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   TRI_vocbase_col_t const* collection,
                                   TRI_doc_update_policy_e policy,
@@ -2195,7 +2156,6 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
   }
   return scope.Close(ret);
 }
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2262,7 +2222,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   assert(col != 0);
   assert(key != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
                                                    policy, 
@@ -2271,7 +2230,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    true,   // keepNull, does not matter
                                                    argv));
   }
-#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2291,7 +2249,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   // - creating a shape, which might trigger a write into the collection  
   trx.lockWrite();
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(primary->base._info._planId);
@@ -2331,7 +2288,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
-#endif
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true, true);
 
@@ -2614,7 +2570,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   assert(col != 0);
   assert(key != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
                                                    policy, 
@@ -2623,7 +2578,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                    ! nullMeansRemove,     // keepNull
                                                    argv));
   }
-#endif
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
@@ -2674,7 +2628,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
     const string cidString = StringUtils::itoa(primary->base._info._planId);
@@ -2687,7 +2640,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     } 
   }
-#endif
 
   TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
   TRI_FreeJson(zone, old);
@@ -2725,7 +2677,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 /// @brief deletes a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
                                                           TRI_doc_update_policy_e policy,
                                                           bool waitForSync,
@@ -2794,7 +2745,6 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
 
   return scope.Close(v8::True());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -2854,11 +2804,9 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   assert(col != 0);
   assert(key != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
   }
-#endif
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
   int res = trx.begin();
@@ -2888,8 +2836,6 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
 
 static v8::Handle<v8::Value> CreateCollectionCoordinator (
                                   v8::Arguments const& argv,
@@ -3090,8 +3036,6 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   return scope.Close(TRI_WrapCollection(newcoll));
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -3199,14 +3143,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   }
 
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, vocbase->_name, parameter, vocbase);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return scope.Close(result);
   }
-#endif
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase, 
                                                                     &parameter, 
@@ -3939,7 +3881,6 @@ static v8::Handle<v8::Value> JS_parseDatetime (v8::Arguments const& argv) {
 /// @brief reloads the authentication info, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
   TRI_json_t* json = 0;
   bool result;
@@ -3962,7 +3903,6 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
 
   return result;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the authentication info from collection _users
@@ -3982,17 +3922,12 @@ static v8::Handle<v8::Value> JS_ReloadAuth (v8::Arguments const& argv) {
   }
 
   bool result;
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     result = ReloadAuthCoordinator(vocbase);
   }
   else {
     result = TRI_ReloadAuthInfo(vocbase);
   }
-
-#else
-  result = TRI_ReloadAuthInfo(vocbase);
-#endif
 
   return scope.Close(v8::Boolean::New(result));
 }
@@ -6027,7 +5962,6 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "count()");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // First get the initial data:
     string const dbname(collection->_dbName);
@@ -6044,7 +5978,6 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
     return scope.Close(v8::Number::New((double) count));
   }
-#endif  
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6196,7 +6129,6 @@ static v8::Handle<v8::Value> JS_DocumentVocbaseCol (v8::Arguments const& argv) {
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* collection) {
   v8::HandleScope scope;
 
@@ -6220,7 +6152,6 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
   
   return scope.Close(v8::Undefined());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
@@ -6247,12 +6178,10 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
  
-#ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DropVocbaseColCoordinator(collection));
   }
-#endif
 
   int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
 
@@ -6267,7 +6196,6 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 /// @brief drops an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const& resolver,
                                                    TRI_vocbase_col_t const* collection,
                                                    v8::Handle<v8::Value> const val) {
@@ -6310,7 +6238,6 @@ static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const&
 
   return scope.Close(v8::Boolean::New(res == TRI_ERROR_NO_ERROR));
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
@@ -6348,11 +6275,9 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   CollectionNameResolver resolver(collection->_vocbase);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DropIndexCoordinator(resolver, collection, argv[0]));
   }
-#endif
 
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
 
@@ -6432,7 +6357,6 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 /// @brief fetch the figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* collection) {
   assert(collection != 0);
   
@@ -6450,7 +6374,6 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
 
   return result;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the figures for a local collection
@@ -6539,7 +6462,6 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   
   v8::Handle<v8::Object> result = v8::Object::New();
 
-#ifdef TRI_ENABLE_CLUSTER
   TRI_doc_collection_info_t* info;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -6548,9 +6470,6 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   else {
     info = GetFigures(collection);
   }
-#else
-  TRI_doc_collection_info_t* info = GetFigures(collection);
-#endif
 
   if (info == 0) {
     TRI_V8_EXCEPTION(scope, TRI_errno());
@@ -6629,7 +6548,6 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 /// @brief returns information about the indexes, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* collection) {
   v8::HandleScope scope;
     
@@ -6660,7 +6578,6 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 
   return scope.Close(ret);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
@@ -6683,11 +6600,9 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(GetIndexesCoordinator(collection));
   }
-#endif
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6753,7 +6668,6 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -6772,7 +6686,6 @@ static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
   
     return scope.Close(v8::Undefined());
   }
-#endif
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -6798,12 +6711,10 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-#ifdef TRI_ENABLE_CLUSTER
   if (! collection->_isLocal) {
     v8::Handle<v8::Value> result = v8::String::New(collection->_name);
     return scope.Close(result);
   }
-#endif
 
   // this copies the name into a new place so we can safely access it later
   // if we wouldn't do this, we would risk other threads modifying the name while
@@ -6820,8 +6731,6 @@ static v8::Handle<v8::Value> JS_NameVocbaseCol (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-#ifdef TRI_ENABLE_CLUSTER
-
 static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -6837,8 +6746,6 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(V8CollectionId(collection->_planId));
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
@@ -6915,7 +6822,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
     TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
@@ -7001,7 +6907,6 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
     return scope.Close(result);
   }
-#endif
 
   v8::Handle<v8::Object> err;
   collection = UseCollection(argv.Holder(), &err);
@@ -7212,12 +7117,10 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "rename(<name>)");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-#endif
 
   string const name = TRI_ObjectToString(argv[0]);
 
@@ -7241,12 +7144,10 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   
   PREVENT_EMBEDDED_TRANSACTION(scope);  
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-#endif
 
   int res = TRI_RenameCollectionVocBase(collection->_vocbase, 
                                         collection, 
@@ -7349,7 +7250,6 @@ static int GetRevision (TRI_vocbase_col_t* collection,
 /// @brief fetch the revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
                                    TRI_voc_rid_t& rid) {
   assert(collection != 0);
@@ -7361,7 +7261,6 @@ static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
 
   return res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
@@ -7393,16 +7292,12 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
   TRI_voc_rid_t rid;
   int res;
    
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     res = GetRevisionCoordinator(collection, rid);
   }
   else {
     res = GetRevision(collection, rid);
   }
-#else
-  res = GetRevision(collection, rid);
-#endif
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -7427,12 +7322,10 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-#endif
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
@@ -7528,7 +7421,6 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 /// @brief saves a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* collection,
                                                         v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -7596,7 +7488,6 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
   }
   return scope.Close(ret);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from a v8 object
@@ -7620,7 +7511,6 @@ static string GetId (v8::Handle<v8::Value> const arg) {
 /// @brief saves an edge, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collection,
                                                      v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -7691,7 +7581,6 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
   }
   return scope.Close(ret);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
@@ -7734,7 +7623,6 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
   
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
       return scope.Close(SaveVocbaseColCoordinator(collection, argv));
@@ -7743,7 +7631,6 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
       return scope.Close(SaveEdgeColCoordinator(collection, argv));
     }
   }
-#endif
 
   CollectionNameResolver resolver(collection->_vocbase);
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
@@ -7834,7 +7721,6 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
@@ -7848,7 +7734,6 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New((int) ci->status()));
   } 
   // fallthru intentional 
-#endif
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_vocbase_col_status_e status = collection->_status;
@@ -7960,7 +7845,6 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
     
@@ -7974,8 +7858,6 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New((int) ci->type()));
   } 
   // fallthru intentional 
-#endif
-
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
   TRI_col_type_e type = (TRI_col_type_e) collection->_type;
@@ -8008,7 +7890,6 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
 
   int res;
    
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     string const databaseName(collection->_dbName);
     
@@ -8017,11 +7898,6 @@ static v8::Handle<v8::Value> JS_UnloadVocbaseCol (v8::Arguments const& argv) {
   else {
     res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
   }
-#else 
-
-  res = TRI_UnloadCollectionVocBase(collection->_vocbase, collection, false);
-
-#endif
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -8043,12 +7919,10 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(v8::Number::New((int) TRI_COL_VERSION_15));
   } 
   // fallthru intentional 
-#endif
   
   TRI_col_info_t info;
 
@@ -8196,7 +8070,6 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
     holder->Delete(cacheName);
   }
   
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     shared_ptr<CollectionInfo> const& ci 
         = ClusterInfo::instance()->getCollection(vocbase->_name, std::string(key));
@@ -8216,10 +8089,6 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
   else {
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
   }
-#else
-  // look up the collection
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
-#endif
 
   if (collection == 0) {
     if (*key == '_') {
@@ -8307,7 +8176,6 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   v8::Handle<v8::Value> val = argv[0];
   TRI_vocbase_col_t const* collection = 0;
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     string const name = TRI_ObjectToString(val);
     shared_ptr<CollectionInfo> const& ci 
@@ -8323,11 +8191,6 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
   else {
     collection = GetCollectionFromArgument(vocbase, val);
   }
-#else
-
-  collection = GetCollectionFromArgument(vocbase, val);
-
-#endif  
 
   if (collection == 0) {
     return scope.Close(v8::Null());
@@ -8363,8 +8226,6 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
-
   TRI_vector_pointer_t colls;
 
   // if we are a coordinator, we need to fetch the collection info from the agency
@@ -8374,12 +8235,6 @@ static v8::Handle<v8::Value> JS_CollectionsVocbase (v8::Arguments const& argv) {
   else {
     colls = TRI_CollectionsVocBase(vocbase);
   }
-
-#else
-    
-  TRI_vector_pointer_t colls = TRI_CollectionsVocBase(vocbase);
-
-#endif
 
   bool error = false;
   // already create an array of the correct size
@@ -8421,7 +8276,6 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
     return scope.Close(v8::Array::New());
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   TRI_vector_string_t names;
   if (ServerState::instance()->isCoordinator()) {
     if (ClusterInfo::instance()->doesDatabaseExist(vocbase->_name)) {
@@ -8434,12 +8288,6 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   else {
     names = TRI_CollectionNamesVocBase(vocbase);
   }
-
-#else
-
-  TRI_vector_string_t names = TRI_CollectionNamesVocBase(vocbase);
-
-#endif
 
   size_t n = names._length;
   uint32_t j = 0;
@@ -9009,7 +8857,6 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
     return scope.Close(WrapVocBase(vocbase));
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     vocbase = TRI_UseCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
   }
@@ -9017,9 +8864,6 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
     // check if the other database exists, and increase its refcount
     vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
   }
-#else
-  vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());  
-#endif  
   
   if (vocbase != 0) {
     // switch databases
@@ -9042,7 +8886,6 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 /// @brief return the list of all existing databases in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -9109,7 +8952,6 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
     return scope.Close(v8::Undefined());
   }
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all existing databases
@@ -9139,12 +8981,10 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ListDatabasesCoordinator(argv));
   }
-#endif
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData(); 
 
@@ -9182,8 +9022,6 @@ static v8::Handle<v8::Value> JS_ListDatabases (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_CLUSTER
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for the agency
@@ -9277,7 +9115,6 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 
   return scope.Close(v8::True());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -9335,11 +9172,9 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(CreateDatabaseCoordinator(argv));
   }
-#endif
   
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
@@ -9429,7 +9264,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 /// @brief drop a database, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -9474,7 +9308,6 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
 
   return scope.Close(v8::True());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an existing database
@@ -9508,12 +9341,10 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
-#ifdef TRI_ENABLE_CLUSTER
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DropDatabaseCoordinator(argv));
   }
-#endif
 
   string const name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();  
@@ -9994,16 +9825,12 @@ int TRI_ParseVertex (CollectionNameResolver const& resolver,
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
    
-#ifdef TRI_ENABLE_CLUSTER
   if (translateName && ServerState::instance()->isDBserver()) { 
     cid = resolver.getCollectionIdCluster(collectionName);
   }
   else {
     cid = resolver.getCollectionId(collectionName);
   }
-#else
-  cid = resolver.getCollectionId(collectionName);
-#endif
 
   if (cid == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -10137,13 +9964,8 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
 
-#ifndef TRI_ENABLE_CLUSTER
-    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionName(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionName(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
-#else
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
-#endif
   }
 
   return scope.Close(result);
@@ -10443,9 +10265,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
-#ifdef TRI_ENABLE_CLUSTER  
   TRI_AddMethodVocbase(rt, "planId", JS_PlanIdVocbaseCol);
-#endif
   TRI_AddMethodVocbase(rt, "properties", JS_PropertiesVocbaseCol);
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);

@@ -28,9 +28,7 @@
 #ifndef TRIAGENS_UTILS_TRANSACTION_H
 #define TRIAGENS_UTILS_TRANSACTION_H 1
 
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
-#endif
 
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
@@ -112,11 +110,9 @@ namespace triagens {
 
           TRI_ASSERT_MAINTAINER(_vocbase != 0);
 
-#ifdef TRI_ENABLE_CLUSTER
           if (ServerState::instance()->isCoordinator()) {
             _isReal = false;
           }
-#endif
 
           this->setupTransaction();
         }
@@ -401,11 +397,9 @@ namespace triagens {
             return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
           }
 
-#ifdef TRI_ENABLE_CLUSTER
           if (! _isReal) {
             return addCollection(_resolver.getCollectionIdCluster(name), name.c_str(), type);
           }
-#endif
 
           return addCollection(_resolver.getCollectionId(name), name.c_str(), type);
         }

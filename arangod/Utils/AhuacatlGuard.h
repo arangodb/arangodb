@@ -32,10 +32,7 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "VocBase/vocbase.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
-#endif
 
 namespace triagens {
   namespace arango {
@@ -69,11 +66,7 @@ namespace triagens {
                        const string& query,
                        TRI_json_t* userOptions) :
           _context(0) {
-#ifdef TRI_ENABLE_CLUSTER
             const bool isCoordinator = ServerState::instance()->isCoordinator();
-#else
-            const bool isCoordinator = false;            
-#endif            
             _context = TRI_CreateContextAql(vocbase, query.c_str(), query.size(), isCoordinator, userOptions);
 
             if (_context == 0) {

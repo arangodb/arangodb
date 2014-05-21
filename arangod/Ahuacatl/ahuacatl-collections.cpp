@@ -38,10 +38,8 @@
 #include "Ahuacatl/ahuacatl-context.h"
 
 
-#ifdef TRI_ENABLE_CLUSTER
 struct TRI_vector_pointer_s;
 struct TRI_vector_pointer_s* TRI_GetCoordinatorIndexes (char const*, char const*);
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -482,7 +480,6 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* context,
 
 TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
                                                    TRI_aql_collection_t* collection) {
-#ifdef TRI_ENABLE_CLUSTER
   if (context->_isCoordinator) {
     if (collection->_availableIndexes == NULL) {
       collection->_availableIndexes = TRI_GetCoordinatorIndexes(context->_vocbase->_name, collection->_name);
@@ -491,7 +488,6 @@ TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
     return collection->_availableIndexes;
   }
   else {
-#endif    
     TRI_primary_collection_t* primary;
 
     if (collection->_collection == NULL) {
@@ -500,9 +496,7 @@ TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
 
     primary = collection->_collection->_collection;
     return &(((TRI_document_collection_t*) primary)->_allIndexes);
-#ifdef TRI_ENABLE_CLUSTER
   }
-#endif    
 }
 
 ////////////////////////////////////////////////////////////////////////////////

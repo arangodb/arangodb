@@ -33,12 +33,9 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -226,12 +223,10 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json, from, to);
   }
-#endif
 
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -343,7 +338,6 @@ bool RestEdgeHandler::createDocument () {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  bool waitForSync,
                                                  TRI_json_t* json,
@@ -370,7 +364,6 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
