@@ -22,29 +22,29 @@ bin_arangod_LDADD = \
 bin_arangod_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
-	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
-	arangod/Ahuacatl/ahuacatl-ast-node.c \
-	arangod/Ahuacatl/ahuacatl-bind-parameter.c \
-	arangod/Ahuacatl/ahuacatl-codegen.c \
-	arangod/Ahuacatl/ahuacatl-collections.c \
-	arangod/Ahuacatl/ahuacatl-context.c \
-	arangod/Ahuacatl/ahuacatl-conversions.c \
-	arangod/Ahuacatl/ahuacatl-error.c \
-	arangod/Ahuacatl/ahuacatl-explain.c \
-	arangod/Ahuacatl/ahuacatl-functions.c \
-	arangod/Ahuacatl/ahuacatl-grammar.c \
-	arangod/Ahuacatl/ahuacatl-index.c \
-	arangod/Ahuacatl/ahuacatl-node.c \
-	arangod/Ahuacatl/ahuacatl-optimiser.c \
-	arangod/Ahuacatl/ahuacatl-parser-functions.c \
-	arangod/Ahuacatl/ahuacatl-parser.c \
-	arangod/Ahuacatl/ahuacatl-result.c \
-	arangod/Ahuacatl/ahuacatl-scope.c \
-	arangod/Ahuacatl/ahuacatl-statement-dump.c \
-	arangod/Ahuacatl/ahuacatl-statement-walker.c \
-	arangod/Ahuacatl/ahuacatl-statementlist.c \
-	arangod/Ahuacatl/ahuacatl-tokens.c \
-	arangod/Ahuacatl/ahuacatl-variable.c \
+	arangod/Ahuacatl/ahuacatl-access-optimiser.cpp \
+	arangod/Ahuacatl/ahuacatl-ast-node.cpp \
+	arangod/Ahuacatl/ahuacatl-bind-parameter.cpp \
+	arangod/Ahuacatl/ahuacatl-codegen.cpp \
+	arangod/Ahuacatl/ahuacatl-collections.cpp \
+	arangod/Ahuacatl/ahuacatl-context.cpp \
+	arangod/Ahuacatl/ahuacatl-conversions.cpp \
+	arangod/Ahuacatl/ahuacatl-error.cpp \
+	arangod/Ahuacatl/ahuacatl-explain.cpp \
+	arangod/Ahuacatl/ahuacatl-functions.cpp \
+	arangod/Ahuacatl/ahuacatl-grammar.cpp \
+	arangod/Ahuacatl/ahuacatl-index.cpp \
+	arangod/Ahuacatl/ahuacatl-node.cpp \
+	arangod/Ahuacatl/ahuacatl-optimiser.cpp \
+	arangod/Ahuacatl/ahuacatl-parser-functions.cpp \
+	arangod/Ahuacatl/ahuacatl-parser.cpp \
+	arangod/Ahuacatl/ahuacatl-result.cpp \
+	arangod/Ahuacatl/ahuacatl-scope.cpp \
+	arangod/Ahuacatl/ahuacatl-statement-dump.cpp \
+	arangod/Ahuacatl/ahuacatl-statement-walker.cpp \
+	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
+	arangod/Ahuacatl/ahuacatl-tokens.cpp \
+	arangod/Ahuacatl/ahuacatl-variable.cpp \
 	arangod/BitIndexes/bitarray.cpp \
 	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
@@ -156,21 +156,21 @@ endif
 ### @brief flex
 ################################################################################
 
-FLEX_FILES += \
-        arangod/Ahuacatl/ahuacatl-tokens.c
+FLEXXX_FILES += \
+        arangod/Ahuacatl/ahuacatl-tokens.cpp
 
 ################################################################################
 ### @brief bison
 ################################################################################
 
-BISON_FILES += \
-	arangod/Ahuacatl/ahuacatl-grammar.c
+BISONXX_FILES += \
+	arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
 	arangod/Ahuacatl/ahuacatl-grammar.h \
-	arangod/Ahuacatl/ahuacatl-grammar.c
+	arangod/Ahuacatl/ahuacatl-grammar.cpp
 endif
 
 ################################################################################
