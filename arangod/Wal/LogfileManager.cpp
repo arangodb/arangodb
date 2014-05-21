@@ -29,7 +29,6 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
@@ -448,7 +447,6 @@ SlotInfo LogfileManager::allocateAndWrite (void* src,
 
   slotInfo.slot->fill(src, size);
 
-std::cout << TRI_PrintableString((char const*) src, size) << "\n";
   finalise(slotInfo, waitForSync);
   return slotInfo;
 }
