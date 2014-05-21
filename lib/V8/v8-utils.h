@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_V8_UTILS_H
 #define TRIAGENS_V8_V8_UTILS_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 #include "V8/JSLoader.h"

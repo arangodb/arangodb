@@ -33,11 +33,6 @@
 #include "BasicsC/tri-strings.h"
 
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup Memory_map

@@ -27,8 +27,6 @@
 
 #include "ServiceUnavailableHandler.h"
 
-#include <fstream>
-
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "BasicsC/logging.h"

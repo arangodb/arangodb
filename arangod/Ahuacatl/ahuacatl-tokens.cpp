@@ -601,7 +601,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[74] =
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/tri-strings.h"
 

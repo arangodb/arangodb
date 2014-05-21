@@ -36,8 +36,6 @@
 #include <sys/prctl.h>
 #endif
 
-#include <fstream>
-
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/safe_cast.h"
