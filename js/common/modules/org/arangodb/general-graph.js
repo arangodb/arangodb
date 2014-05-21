@@ -131,6 +131,20 @@ var _getGraphCollection = function() {
   return gCol;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to wrap arango collections for overwrite
+////////////////////////////////////////////////////////////////////////////////
+
+var wrapCollection = function(col) {
+  var wrapper = {};
+  _.each(_.functions(col), function(func) {
+    wrapper[func] = function() {
+      return col[func].apply(col, arguments);
+    };
+  });
+  return wrapper;
+};
+
 
 
 // -----------------------------------------------------------------------------
@@ -396,11 +410,10 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
 
-
   _.each(vertexCollections, function(obj, key) {
-    self[key] = obj;
-    var old_remove = obj.remove.bind(obj);
-    obj.remove = function(vertexId, options) {
+    var wrap = wrapCollection(obj);
+    var old_remove = wrap.remove;
+    wrap.remove = function(vertexId, options) {
       var myEdges = self._EDGES(vertexId);
       myEdges.forEach(
         function(edgeObj) {
@@ -411,15 +424,15 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
           }
         }
       );
-
       return old_remove(vertexId, options);
     };
+    self[key] = wrap;
   });
 
   _.each(edgeCollections, function(obj, key) {
-    self[key] = obj;
-    var old_save = obj.save.bind(obj);
-    obj.save = function(from, to, data) {
+    var wrap = wrapCollection(obj);
+    var old_save = wrap.save;
+    wrap.save = function(from, to, data) {
       edgeDefinitions.forEach(
         function(edgeDefinition) {
           if (edgeDefinition.collection === key) {
@@ -434,6 +447,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       );
       return old_save(from, to, data);
     };
+    self[key] = wrap;
   });
 };
 

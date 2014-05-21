@@ -403,6 +403,47 @@ function GeneralGraphCreationSuite() {
         msg = e;
       }
       assertEqual(msg, "graph bla4 does not exists.");
+    },
+
+    test_creationOfGraphShouldNotAffectCollections: function() {
+      var en = "UnitTestsEdges";
+      var vn1 = "UnitTestsVertices";
+      var vn2 = "UnitTestsVertices2";
+      var gn = "UnitTestsGraph";
+      var edgeDef = [graph._directedRelationDefinition(en, vn1, vn2)];
+      var g = graph._create(gn, edgeDef);
+      var v1 = g[vn1].save({_key: "1"})._id;
+      var v2 = g[vn2].save({_key: "2"})._id;
+      var v3 = g[vn1].save({_key: "3"})._id;
+
+      g[en].save(v1, v2, {});
+      assertEqual(g[vn1].count(), 2);
+      assertEqual(g[vn2].count(), 1);
+      assertEqual(g[en].count(), 1);
+      try {
+        g[en].save(v2, v3, {});
+        fail();
+      } catch (e) {
+        // This should create an error
+        assertEqual(g[en].count(), 1);
+      }
+
+      try {
+        db[en].save(v2, v3, {});
+      } catch (e) {
+        // This should not create an error
+        fail();
+      }
+      assertEqual(g[en].count(), 2);
+
+      db[vn2].remove(v2);
+      // This should not remove edges
+      assertEqual(g[en].count(), 2);
+
+      g[vn1].remove(v1);
+      // This should remove edges
+      assertEqual(g[en].count(), 1);
+      graph._drop(gn, true);
     }
 
   };
@@ -853,8 +894,8 @@ function EdgesAndVerticesSuite() {
     test_vC_remove : function () {
       var vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
       var vertexId = vertex._id;
-      var vertex = g.unitTestVertexCollection1.remove(vertexId);
-      assertTrue(vertex);
+      var result = g.unitTestVertexCollection1.remove(vertexId);
+      assertTrue(result);
     },
 
     test_vC_removeWithEdge : function () {
