@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_VOC_TYPES_H
 #define TRIAGENS_VOC_BASE_VOC_TYPES_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
@@ -148,10 +144,6 @@ TRI_voc_document_operation_e;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_STATISTICS_STATISTICS_H
 #define TRIAGENS_STATISTICS_STATISTICS_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/figures.h"

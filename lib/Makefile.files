@@ -45,7 +45,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/fasthash.c \
 	lib/BasicsC/files.c \
 	lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c \
+	lib/Basics/init.cpp \
 	lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c \
 	lib/BasicsC/linked-list.c \

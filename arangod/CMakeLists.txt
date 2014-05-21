@@ -46,29 +46,29 @@ add_executable(
     ${BIN_ARANGOD}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
-    Ahuacatl/ahuacatl-access-optimiser.c
-    Ahuacatl/ahuacatl-ast-node.c
-    Ahuacatl/ahuacatl-bind-parameter.c
-    Ahuacatl/ahuacatl-codegen.c
-    Ahuacatl/ahuacatl-collections.c
-    Ahuacatl/ahuacatl-context.c
-    Ahuacatl/ahuacatl-conversions.c
-    Ahuacatl/ahuacatl-error.c
-    Ahuacatl/ahuacatl-explain.c
-    Ahuacatl/ahuacatl-functions.c
-    Ahuacatl/ahuacatl-grammar.c
-    Ahuacatl/ahuacatl-index.c
-    Ahuacatl/ahuacatl-node.c
-    Ahuacatl/ahuacatl-optimiser.c
-    Ahuacatl/ahuacatl-parser-functions.c
-    Ahuacatl/ahuacatl-parser.c
-    Ahuacatl/ahuacatl-result.c
-    Ahuacatl/ahuacatl-scope.c
-    Ahuacatl/ahuacatl-statement-dump.c
-    Ahuacatl/ahuacatl-statement-walker.c
-    Ahuacatl/ahuacatl-statementlist.c
-    Ahuacatl/ahuacatl-tokens.c
-    Ahuacatl/ahuacatl-variable.c
+    Ahuacatl/ahuacatl-access-optimiser.cpp
+    Ahuacatl/ahuacatl-ast-node.cpp
+    Ahuacatl/ahuacatl-bind-parameter.cpp
+    Ahuacatl/ahuacatl-codegen.cpp
+    Ahuacatl/ahuacatl-collections.cpp
+    Ahuacatl/ahuacatl-context.cpp
+    Ahuacatl/ahuacatl-conversions.cpp
+    Ahuacatl/ahuacatl-error.cpp
+    Ahuacatl/ahuacatl-explain.cpp
+    Ahuacatl/ahuacatl-functions.cpp
+    Ahuacatl/ahuacatl-grammar.cpp
+    Ahuacatl/ahuacatl-index.cpp
+    Ahuacatl/ahuacatl-node.cpp
+    Ahuacatl/ahuacatl-optimiser.cpp
+    Ahuacatl/ahuacatl-parser-functions.cpp
+    Ahuacatl/ahuacatl-parser.cpp
+    Ahuacatl/ahuacatl-result.cpp
+    Ahuacatl/ahuacatl-scope.cpp
+    Ahuacatl/ahuacatl-statement-dump.cpp
+    Ahuacatl/ahuacatl-statement-walker.cpp
+    Ahuacatl/ahuacatl-statementlist.cpp
+    Ahuacatl/ahuacatl-tokens.cpp
+    Ahuacatl/ahuacatl-variable.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp

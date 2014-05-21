@@ -28,17 +28,13 @@
 #ifndef TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H
 #define TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/skip-list.h"
 
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -163,10 +159,6 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

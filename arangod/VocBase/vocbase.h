@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_VOCBASE_H
 #define TRIAGENS_VOC_BASE_VOCBASE_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
@@ -36,10 +36,6 @@
 #include "BasicsC/vector.h"
 #include "BasicsC/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -662,10 +658,6 @@ bool TRI_IsSystemVocBase (TRI_vocbase_t*);
 
 bool TRI_IsAllowedNameVocBase (bool, 
                                char const*);
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

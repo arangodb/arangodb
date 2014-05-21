@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_HEADERS_H
 #define TRIAGENS_VOC_BASE_HEADERS_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -115,10 +111,6 @@ void TRI_FreeSimpleHeaders (TRI_headers_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

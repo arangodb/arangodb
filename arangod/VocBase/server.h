@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_SERVER_H
 #define TRIAGENS_VOC_BASE_SERVER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/threads.h"
@@ -36,11 +36,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 
-#ifdef __cplusplus
-extern "C" {
-
 struct TRI_vocbase_s;
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -300,10 +296,6 @@ bool TRI_MSync (int,
                 void*,
                 char const*,
                 char const*);
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

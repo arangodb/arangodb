@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H
 #define TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               forward declaration
@@ -118,10 +114,6 @@ int BitarrayIndex_update (BitarrayIndex*, TRI_bitarray_index_key_t*, TRI_bitarra
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

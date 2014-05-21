@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_INDEX_H
 #define TRIAGENS_AHUACATL_AHUACATL_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
 
 #include "VocBase/index.h"

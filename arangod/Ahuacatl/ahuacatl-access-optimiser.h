@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H
 #define TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"

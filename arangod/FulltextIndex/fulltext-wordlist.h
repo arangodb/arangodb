@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_WORDLIST_H
 #define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_WORDLIST_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -109,10 +105,6 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

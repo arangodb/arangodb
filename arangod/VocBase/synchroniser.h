@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_SYNCHRONISER_H
 #define TRIAGENS_VOC_BASE_SYNCHRONISER_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -52,10 +48,6 @@ void TRI_SynchroniserVocBase (void*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

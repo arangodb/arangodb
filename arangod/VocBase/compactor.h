@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_COMPACTOR_H
 #define TRIAGENS_VOC_BASE_COMPACTOR_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_vocbase_s;
 
@@ -111,10 +107,6 @@ void TRI_CompactorVocBase (void*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

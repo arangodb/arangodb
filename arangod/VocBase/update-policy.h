@@ -28,12 +28,8 @@
 #ifndef TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H
 #define TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -102,10 +98,6 @@ int TRI_CheckUpdatePolicy (const TRI_doc_update_policy_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
