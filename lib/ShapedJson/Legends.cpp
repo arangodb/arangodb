@@ -188,11 +188,11 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
   return res;
 }
 
-static inline TRI_shape_size_t roundup8(TRI_shape_size_t x) {
+static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
   return (x + 7) - ((x + 7) & 7);
 }
 
-size_t JsonLegend::getSize () {
+size_t JsonLegend::getSize () const {
   // Add string pool size and shape pool size and add space for header
   // and tables in bytes.
   return   sizeof(TRI_shape_size_t)                 // number of aids

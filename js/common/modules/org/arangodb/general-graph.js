@@ -31,6 +31,7 @@
 
 var arangodb = require("org/arangodb"),
   ArangoCollection = arangodb.ArangoCollection,
+  ArangoError = arangodb.ArangoError,
   db = arangodb.db,
   errors = arangodb.errors,
   _ = require("underscore");
@@ -53,7 +54,7 @@ var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
   }
-  return x;
+  return _.clone(x);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,13 +119,22 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
   ];
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to get graphs collection
+////////////////////////////////////////////////////////////////////////////////
+
+var _getGraphCollection = function() {
+  var gCol = db._graphs;
+  if (gCol === null || gCol === undefined) {
+    throw "_graphs collection does not exist.";
+  }
+  return gCol;
+};
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -148,11 +158,12 @@ AQLStatement.prototype.isEdgeQuery = function() {
 // --SECTION--                             AQL Generator
 // -----------------------------------------------------------------------------
 
-var AQLGenerator = function(graphName) {
+var AQLGenerator = function(graph) {
   this.stack = [];
   this.bindVars = {
-    "graphName": graphName
+    "graphName": graph.__name
   };
+  this.graph = graph;
   this.lastEdgeVar = "";
 };
 
@@ -177,6 +188,20 @@ AQLGenerator.prototype.getLastEdgeVar = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  var rest = stringToArray(restrictions);
+  var unknown = [];
+  var g = this.graph;
+  _.each(rest, function(r) {
+    if (!g.__edgeCollections[r]) {
+      unknown.push(r);
+    }
+  });
+  if (unknown.length > 0) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = "edge collections: " + unknown.join(" and ") + " are not known to the graph";
+    throw err;
+  }
   var lastQuery = this.stack.pop();
   if (!lastQuery.isEdgeQuery()) {
     this.stack.push(lastQuery);
@@ -184,7 +209,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   }
   lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
   lastQuery.edgeQuery = false;
-  this.bindVars["restrictions_" + this.stack.length] = stringToArray(restrictions);
+  this.bindVars["restrictions_" + this.stack.length] = rest;
   this.stack.push(lastQuery);
   return this;
 };
@@ -279,7 +304,7 @@ var _directedRelationDefinition = function (
   relationName, fromVertexCollections, toVertexCollections) {
 
   if (arguments.length < 3) {
-    throw "method _undirectedRelationDefinition expects 3 arguments";
+    throw "method _directedRelationDefinition expects 3 arguments";
   }
 
   if (typeof relationName !== "string" || relationName === "") {
@@ -324,14 +349,11 @@ var edgeDefinitions = function () {
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = db._graphs,
+  var gdb = _getGraphCollection(),
     g,
     graphAlreadyExists = true,
     collections;
 
-  if (gdb === null || gdb === undefined) {
-    throw "_graphs collection does not exist.";
-  }
   if (!graphName) {
     throw "a graph name is required to create a graph.";
   }
@@ -377,6 +399,24 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(vertexCollections, function(obj, key) {
     self[key] = obj;
+    var old_remove = obj.remove.bind(obj);
+    obj.remove = function(vertexId, options) {
+      var myEdges = self._EDGES(vertexId);
+      myEdges.forEach(
+        function(edgeObj) {
+          var edgeId = edgeObj._id;
+          var edgeCollection = edgeId.split("/")[0];
+          if (db[edgeCollection] && db[edgeCollection].exists(edgeId)) {
+            db[edgeCollection].remove(edgeId);
+          }
+        }
+      );
+
+      if (options === null || options === undefined) {
+        return old_remove(vertexId);
+      }
+      return old_remove(vertexId, options);
+    };
   });
 
   _.each(edgeCollections, function(obj, key) {
@@ -408,12 +448,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 var _graph = function(graphName) {
 
-  var gdb = db._graphs,
+  var gdb = _getGraphCollection(),
     g, collections;
-
-  if (gdb === null || gdb === undefined) {
-    throw "_graphs collection does not exist.";
-  }
 
   try {
     g = gdb.document(graphName);
@@ -428,6 +464,54 @@ var _graph = function(graphName) {
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
 
   return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a graph exists.
+////////////////////////////////////////////////////////////////////////////////
+
+var _exists = function(graphId) {
+  var gCol = _getGraphCollection();
+  return gCol.exists(graphId);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var _drop = function(graphId, dropCollections) {
+
+  var gdb = _getGraphCollection();
+
+  if (!gdb.exists(graphId)) {
+    throw "Graph " + graphId + " does not exist.";
+  }
+
+  if (dropCollections !== false) {
+    var graph = gdb.document(graphId);
+    var edgeDefinitions = graph.edgeDefinitions;
+    edgeDefinitions.forEach(
+      function(edgeDefinition) {
+        var from = edgeDefinition.from;
+        var to = edgeDefinition.to;
+        var edge = edgeDefinition.collection;
+        db._drop(edge);
+        from.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+        to.forEach(
+          function(col) {
+            db._drop(col);
+          }
+        );
+      }
+    );
+  }
+
+  gdb.remove(graphId);
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,7 +590,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._edges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "any");
 };
 
@@ -515,7 +599,7 @@ Graph.prototype._edges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._inEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "inbound");
 };
 
@@ -524,7 +608,7 @@ Graph.prototype._inEdges = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._outEdges = function(vertexId) {
-  var AQLStmt = new AQLGenerator(this.__name);
+  var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "outbound");
 };
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,6 +671,8 @@ exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports.edgeDefinitions = edgeDefinitions;
 exports._create = _create;
+exports._drop = _drop;
+exports._exists = _exists;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
