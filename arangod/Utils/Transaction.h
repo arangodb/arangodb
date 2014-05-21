@@ -982,12 +982,12 @@ namespace triagens {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
 
-          int res = primary->remove(trxCollection,
-                                    (TRI_voc_key_t) key.c_str(), 
-                                    rid,
-                                    &updatePolicy, 
-                                    ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                    forceSync);
+          int res = primary->removeDocument(trxCollection,
+                                            (TRI_voc_key_t) key.c_str(), 
+                                            rid,
+                                            &updatePolicy, 
+                                            ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                            forceSync);
 
           return res;
         }
@@ -1023,12 +1023,12 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->remove(trxCollection,
-                                  (const TRI_voc_key_t) id.c_str(), 
-                                  0,
-                                  0, // policy
-                                  false,
-                                  forceSync);
+            res = primary->removeDocument(trxCollection,
+                                          (TRI_voc_key_t) id.c_str(), 
+                                          0,
+                                          nullptr, // policy
+                                          false,
+                                          forceSync);
 
 
             if (res != TRI_ERROR_NO_ERROR) {
