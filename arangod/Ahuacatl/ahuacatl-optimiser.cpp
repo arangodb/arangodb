@@ -303,12 +303,10 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
 
   availableIndexes = TRI_GetIndexesCollectionAql(context, collection);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (! context->_isCoordinator &&
       availableIndexes == NULL) {
     return;
   }
-#endif
 
   hint->_collection = collection;
 

@@ -36,13 +36,10 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Barrier.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -310,12 +307,10 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json);
   }
-#endif
 
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -381,7 +376,6 @@ bool RestDocumentHandler::createDocument () {
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
@@ -408,7 +402,6 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single or all documents
@@ -559,11 +552,9 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return getDocumentCoordinator(collection, key, generateBody);
   }
-#endif
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
@@ -643,7 +634,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::getDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -683,7 +673,6 @@ bool RestDocumentHandler::getDocumentCoordinator (
   }
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents from collection
@@ -748,11 +737,9 @@ bool RestDocumentHandler::readAllDocuments () {
   bool found;
   string collection = _request->value("collection", found);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return getAllDocumentsCoordinator(collection);
   }
-#endif
 
   // find and load collection given by name or identifier
   SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
@@ -824,7 +811,6 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::getAllDocumentsCoordinator (
                               string const& collname ) {
   string const& dbname = _request->databaseName();
@@ -846,7 +832,6 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
@@ -1328,13 +1313,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
   const bool waitForSync = extractWaitForSync();
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside
     return modifyDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync, isPatch, json);
   }
-#endif
 
   TRI_doc_mptr_t document;
 
@@ -1359,9 +1342,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   assert(primary != 0);
   TRI_shaper_t* shaper = primary->_shaper;
 
-#ifdef TRI_ENABLE_CLUSTER
   const string cidString = StringUtils::itoa(primary->base._info._planId);
-#endif
 
   if (isPatch) {
     // patching an existing document
@@ -1414,7 +1395,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isDBserver()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
@@ -1427,7 +1407,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
     }
-#endif
 
     TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
     TRI_FreeJson(shaper->_memoryZone, old);
@@ -1448,7 +1427,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   else {
     // replacing an existing document, using a lock
 
-#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isDBserver()) {
       // compare attributes in shardKeys
       // read the existing document
@@ -1492,7 +1470,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(shaper->_memoryZone, old);
       }
     }
-#endif
 
     res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1527,7 +1504,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @brief modifies a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::modifyDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -1563,7 +1539,6 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -1719,12 +1694,10 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return deleteDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync);
   }
-#endif
 
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
 
@@ -1773,7 +1746,6 @@ bool RestDocumentHandler::deleteDocument () {
 /// @brief deletes a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::deleteDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -1801,7 +1773,6 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 // Local Variables:
 // mode: outline-minor

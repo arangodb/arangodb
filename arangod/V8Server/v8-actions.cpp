@@ -50,13 +50,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
-#ifdef TRI_ENABLE_CLUSTER
-
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -906,8 +901,6 @@ static v8::Handle<v8::Value> JS_GetCurrentResponse (v8::Arguments const& argv) {
 /// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
-
 class CallbackTest : public ClusterCommCallback {
     string _msg;
 
@@ -1145,8 +1138,6 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 
   return scope.Close(r);
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a task id from an argument
@@ -1399,10 +1390,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
-
-#ifdef TRI_ENABLE_CLUSTER
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
-#endif
 
   // we need a scheduler and a dispatcher to define periodic tasks
   GlobalScheduler = scheduler->scheduler();

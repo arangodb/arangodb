@@ -28,9 +28,7 @@
 #ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
 #define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
-#endif
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
@@ -96,12 +94,10 @@ namespace triagens {
         
         void processCollection (triagens::arango::CollectionNameResolver const& resolver,
                                 TRI_aql_collection_t* collection) {
-#ifdef TRI_ENABLE_CLUSTER
           if (ServerState::instance()->isCoordinator()) {
             processCollectionCoordinator(resolver, collection);
             return;
           }
-#endif
 
           processCollectionNormal(resolver, collection);
         }
@@ -110,14 +106,12 @@ namespace triagens {
 /// @brief add a coordinator collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         void processCollectionCoordinator (triagens::arango::CollectionNameResolver const& resolver,
                                            TRI_aql_collection_t* collection) {
           TRI_voc_cid_t cid = resolver.getCollectionIdCluster(collection->_name);
          
           this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
         }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a regular collection to the transaction

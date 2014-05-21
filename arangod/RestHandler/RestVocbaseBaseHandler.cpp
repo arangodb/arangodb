@@ -146,14 +146,12 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
   }
 
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator() ||  
       ServerState::instance()->isDBserver()) {
     // create-collection is not supported in a cluster
     generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
     return false;
   }
-#endif
 
 
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
@@ -326,13 +324,8 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
-#ifdef TRI_ENABLE_CLUSTER
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
-#else
-    const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
-#endif
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
@@ -433,7 +426,6 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       generatePreconditionFailed(_resolver.getCollectionId(collectionName), key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
 
-#ifdef TRI_ENABLE_CLUSTER
     case TRI_ERROR_CLUSTER_SHARD_GONE:
       generateError(HttpResponse::SERVER_ERROR, res, 
                     "coordinator: no responsible shard found");
@@ -453,7 +445,6 @@ void RestVocbaseBaseHandler::generateTransactionError (const string& collectionN
       generateError(HttpResponse::NOT_IMPLEMENTED, res);
       return;
     }
-#endif
 
     default:
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
@@ -646,11 +637,7 @@ int RestVocbaseBaseHandler::parseDocumentId (string const& handle,
     cid = StringUtils::uint64(split[0].c_str(), split[0].size());
   }
   else {
-#ifdef TRI_ENABLE_CLUSTER
     cid = _resolver.getCollectionIdCluster(split[0]);
-#else
-    cid = _resolver.getCollectionId(split[0]);
-#endif
   }
 
   if (cid == 0) {

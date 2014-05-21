@@ -52,9 +52,7 @@ struct TRI_vocbase_s;
 
 typedef struct TRI_server_s {
   TRI_associative_pointer_t   _databases;
-#ifdef TRI_ENABLE_CLUSTER  
   TRI_associative_pointer_t   _coordinatorDatabases;
-#endif
   TRI_read_write_lock_t       _databasesLock;
 
   TRI_mutex_t                 _createLock;
@@ -163,13 +161,11 @@ int TRI_StopServer (TRI_server_t*);
 /// @brief create a new coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_CreateCoordinatorDatabaseServer (TRI_server_t*,
                                          TRI_voc_tick_t,
                                          char const*,
                                          TRI_vocbase_defaults_t const*,
                                          struct TRI_vocbase_s**);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -185,28 +181,22 @@ int TRI_CreateDatabaseServer (TRI_server_t*,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
                                            TRI_voc_tick_t, 
                                            bool);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int TRI_DropCoordinatorDatabaseServer (TRI_server_t*,
                                        char const*);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
@@ -220,20 +210,16 @@ int TRI_DropDatabaseServer (TRI_server_t*,
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 struct TRI_vocbase_s* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t*,
                                                             TRI_voc_tick_t);
-#endif  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a coordinator database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 struct TRI_vocbase_s* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
                                                         char const*);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its name

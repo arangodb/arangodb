@@ -120,11 +120,7 @@ bin_arangod_SOURCES = \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
 	arangod/Wal/TestThread.cpp \
-	arangod/Wal/SynchroniserThread.cpp 
-
-if ENABLE_CLUSTER
-
-bin_arangod_SOURCES += \
+	arangod/Wal/SynchroniserThread.cpp \
         arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
@@ -135,7 +131,6 @@ bin_arangod_SOURCES += \
 	arangod/Cluster/ServerState.cpp \
 	arangod/Cluster/v8-cluster.cpp \
 	arangod/Cluster/ClusterMethods.cpp
-endif
 
 
 if ENABLE_MRUBY

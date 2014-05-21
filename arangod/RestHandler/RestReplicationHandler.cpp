@@ -44,11 +44,8 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/index.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -147,47 +144,35 @@ Handler::status_t RestReplicationHandler::execute() {
     }
     else if (command == "batch") {
 
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandBatch();
       }
-#else
-      handleCommandBatch();
-#endif
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandInventory();
       }
-#else
-      handleCommandInventory();
-#endif
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandDump();
       }
-#else
-      handleCommandDump();
-#endif
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -208,16 +193,12 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleCommandRestoreDataCoordinator();
       }
       else {
         handleCommandRestoreData();
       }
-#else
-      handleCommandRestoreData();
-#endif
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -280,7 +261,6 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandApplierGetState();
       }
     }
-#ifdef TRI_ENABLE_CLUSTER
     else if (command == "clusterInventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -293,7 +273,6 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandClusterInventory();
       }
     }
-#endif
     else {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -391,14 +370,12 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
   
 bool RestReplicationHandler::isCoordinatorError () {
-#ifdef TRI_ENABLE_CLUSTER
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(HttpResponse::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
     return true;
   }
-#endif
     
   return false;
 }
@@ -1088,7 +1065,6 @@ void RestReplicationHandler::handleCommandBatch () {
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleTrampolineCoordinator () {
 
   // First check the DBserver component of the body json:
@@ -1164,7 +1140,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
   delete res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
@@ -1673,7 +1648,6 @@ void RestReplicationHandler::handleCommandInventory () {
 /// is returned if an error occurred while assembling the response.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleCommandClusterInventory () {
 
   string const& dbName = _request->databaseName();
@@ -1755,7 +1729,6 @@ void RestReplicationHandler::handleCommandClusterInventory () {
   }
 
 }
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1932,7 +1905,6 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-#ifdef TRI_ENABLE_CLUSTER
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(json, overwrite, recycleIds,
@@ -1942,10 +1914,6 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     res = processRestoreCollection(json, overwrite, recycleIds, force, 
                                    remoteServerId, errorMsg);
   }
-#else
-  int res = processRestoreCollection(json, overwrite, recycleIds, force,
-                                     remoteServerId, errorMsg);
-#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1986,7 +1954,6 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-#ifdef TRI_ENABLE_CLUSTER
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreIndexesCoordinator(json, force, remoteServerId, errorMsg);
@@ -1994,9 +1961,6 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   else {
     res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
   }
-#else
-  int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
-#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -2142,7 +2106,6 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int RestReplicationHandler::processRestoreCollectionCoordinator (
                  TRI_json_t const* collection,
                  bool dropExisting,
@@ -2292,7 +2255,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   return TRI_ERROR_NO_ERROR;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
@@ -2400,7 +2362,6 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int RestReplicationHandler::processRestoreIndexesCoordinator (
                  TRI_json_t const* collection,
                  bool force,
@@ -2473,7 +2434,6 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   return res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
@@ -2822,7 +2782,6 @@ void RestReplicationHandler::handleCommandRestoreData () {
 /// @brief restores the data of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   char const* name = _request->value("collection");
 
@@ -3071,7 +3030,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   generateResult(&result);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps the data of a collection
