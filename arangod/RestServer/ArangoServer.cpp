@@ -29,14 +29,6 @@
 
 #include <v8.h>
 
-#ifdef TRI_ENABLE_MRUBY
-#include "mruby.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/variable.h"
-#endif
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -82,13 +74,6 @@
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/ClusterComm.h"
-
-#ifdef TRI_ENABLE_MRUBY
-#include "MRServer/ApplicationMR.h"
-#include "MRServer/mr-actions.h"
-#include "MRuby/MRLineEditor.h"
-#include "MRuby/MRLoader.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -287,9 +272,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationAdminServer(0),
     _applicationCluster(0),
     _jobManager(0),
-#ifdef TRI_ENABLE_MRUBY
-    _applicationMR(0),
-#endif
     _applicationV8(0),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
@@ -421,20 +403,8 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
-  // MRuby engine
+  // MRuby engine (this has been removed from arangod in version 2.2)
   // .............................................................................
-
-#ifdef TRI_ENABLE_MRUBY
-
-  _applicationMR = new ApplicationMR(_server);
-
-  if (_applicationMR == 0) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
-  _applicationServer->addFeature(_applicationMR);
-
-#else
 
   string ignoreOpt;
 
@@ -444,8 +414,6 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
   ;
-
-#endif
 
   // .............................................................................
   // and start a simple admin server
@@ -781,11 +749,6 @@ int ArangoServer::startupServer () {
   if (_applicationServer->programOptions().has("no-upgrade")) {
     _applicationV8->skipUpgrade();
   }
-
-#ifdef TRI_ENABLE_MRUBY
-  _applicationMR->setVocbase(vocbase);
-  _applicationMR->setConcurrency(_dispatcherThreads);
-#endif
 
   _applicationServer->prepare();
 

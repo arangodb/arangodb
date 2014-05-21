@@ -133,17 +133,6 @@ bin_arangod_SOURCES = \
 	arangod/Cluster/ClusterMethods.cpp
 
 
-if ENABLE_MRUBY
-
-bin_arangod_LDADD += \
-	lib/libarango_mruby.a \
-	@MRUBY_LIBS@
-
-bin_arangod_SOURCES += \
-	arangod/MRServer/ApplicationMR.cpp \
-	arangod/MRServer/mr-actions.cpp
-endif
-
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
 ################################################################################
