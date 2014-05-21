@@ -113,7 +113,8 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   assert(fieldAccesses);
 
   if (pickedIndex == NULL) {
-    pickedIndex = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_index_t), false);
+    pickedIndex = static_cast<TRI_aql_index_t*>
+          (TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_index_t), false));
 
     if (pickedIndex == NULL) {
       // OOM

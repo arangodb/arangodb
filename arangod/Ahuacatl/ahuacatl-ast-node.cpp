@@ -1063,7 +1063,8 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
 
 bool TRI_PushListAql (TRI_aql_context_t* const context,
                       const TRI_aql_node_t* const value) {
-  TRI_aql_node_t* node = TRI_PeekStackParseAql(context);
+  TRI_aql_node_t* node 
+      = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
 
   assert(node);
   
@@ -1083,7 +1084,8 @@ bool TRI_PushListAql (TRI_aql_context_t* const context,
 bool TRI_PushArrayAql (TRI_aql_context_t* const context,
                        const char* const name,
                        const TRI_aql_node_t* const value) {
-  TRI_aql_node_t* node = TRI_PeekStackParseAql(context);
+  TRI_aql_node_t* node 
+      = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
   TRI_aql_node_t* element;
 
   assert(node);

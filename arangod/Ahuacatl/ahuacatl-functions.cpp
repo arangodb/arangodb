@@ -352,7 +352,8 @@ static bool EqualName (TRI_associative_pointer_t* array,
                        void const* element) {
   TRI_aql_function_t* function = (TRI_aql_function_t*) element;
 
-  return TRI_EqualString(key, function->_externalName);
+  return TRI_EqualString(static_cast<char const*>(key),
+                         function->_externalName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

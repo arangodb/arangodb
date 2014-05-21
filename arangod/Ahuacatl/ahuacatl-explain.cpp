@@ -128,7 +128,9 @@ static bool AddNodeValue (TRI_json_t* row, TRI_aql_node_t* const node) {
   }
 
   if (node->_type == TRI_AQL_NODE_COLLECTION) {
-    TRI_json_t* extra = TRI_GetJsonCollectionHintAql(TRI_AQL_NODE_DATA(node));
+    TRI_json_t* extra = TRI_GetJsonCollectionHintAql(
+        static_cast<TRI_aql_collection_hint_t*>
+                   (TRI_AQL_NODE_DATA(node)) );
 
     if (extra != NULL) {
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
@@ -326,7 +328,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
                              "resultVariable",
                              TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_AQL_NODE_STRING(variableNode)));
 
-        hint = TRI_AQL_NODE_DATA(node);
+        hint = static_cast<TRI_aql_for_hint_t*>(TRI_AQL_NODE_DATA(node));
         if (hint != NULL &&
             hint->_limit._status == TRI_AQL_LIMIT_USE) {
           TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,

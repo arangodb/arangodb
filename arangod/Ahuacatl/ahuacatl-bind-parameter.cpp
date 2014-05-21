@@ -221,7 +221,7 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array,
                                 void const* element) {
   TRI_aql_bind_parameter_t* parameter = (TRI_aql_bind_parameter_t*) element;
 
-  return TRI_EqualString(key, parameter->_name);
+  return TRI_EqualString(static_cast<char const*>(key), parameter->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +281,11 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
   }
 
   for (i = 0; i < n; i += 2) {
-    TRI_json_t* name = TRI_AtVector(&parameters->_value._objects, i);
-    TRI_json_t* value = TRI_AtVector(&parameters->_value._objects, i + 1);
+    TRI_json_t* name 
+      = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, i));
+    TRI_json_t* value 
+      = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, 
+                                              i + 1));
     TRI_aql_bind_parameter_t* parameter;
 
     assert(TRI_IsStringJson(name));

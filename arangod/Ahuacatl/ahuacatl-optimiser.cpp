@@ -533,7 +533,9 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     assert(scope != NULL);
 
     while (scope->_sorts._length > 0) {
-      char* criterion = TRI_RemoveVectorPointer(&scope->_sorts, (size_t) (scope->_sorts._length - 1));
+      char* criterion = static_cast<char*>
+             (TRI_RemoveVectorPointer(&scope->_sorts, 
+                                      (size_t) (scope->_sorts._length - 1)));
 
       if (criterion != NULL) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, criterion);
@@ -704,7 +706,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
     return node;
   }
   
-  res = TRI_GetErrorExecutionContext(execContext);
+  res = execContext->_error;
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeExecutionContext(execContext);
@@ -714,7 +716,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   json = TRI_ExecuteResultContext(execContext);
 
-  res = TRI_GetErrorExecutionContext(execContext);
+  res = execContext->_error;
   TRI_FreeExecutionContext(execContext);
   
   if (res == TRI_ERROR_REQUEST_CANCELED) {
@@ -1171,7 +1173,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   TRI_js_exec_context_t* execContext;
   TRI_string_buffer_t* code;
   TRI_json_t* json;
-  char* func;
+  char const* func;
   int res;
 
   if (! lhs || ! TRI_IsConstantValueNodeAql(lhs) || ! rhs || ! TRI_IsConstantValueNodeAql(rhs)) {
@@ -1227,7 +1229,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
 
   // check if an error occurred during context creation
-  res = TRI_GetErrorExecutionContext(execContext);
+  res = execContext->_error;
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeExecutionContext(execContext);
@@ -1240,7 +1242,7 @@ static TRI_aql_node_t* OptimiseBinaryRelationalOperation (TRI_aql_context_t* con
   }
 
   json = TRI_ExecuteResultContext(execContext);
-  res = TRI_GetErrorExecutionContext(execContext);
+  res = execContext->_error;
 
   TRI_FreeExecutionContext(execContext);
 
@@ -1564,7 +1566,9 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
       if (expressionNode->_type == TRI_AQL_NODE_FCALL) {
         // the defining node is a function call
         // get the function name
-        TRI_aql_function_t* function = TRI_AQL_NODE_DATA(expressionNode);
+        TRI_aql_function_t* function 
+            = static_cast<TRI_aql_function_t*>
+                         (TRI_AQL_NODE_DATA(expressionNode));
 
         if (function->optimise != NULL) {
           // call the function's optimise callback
@@ -1604,7 +1608,7 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
   TRI_aql_scope_t* scope;
   aql_optimiser_t* optimiser;
 
-  optimiser = walker->_data;
+  optimiser = static_cast<aql_optimiser_t*>(walker->_data);
   
   if (offset->_type != TRI_AQL_NODE_VALUE || limit->_type != TRI_AQL_NODE_VALUE) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);

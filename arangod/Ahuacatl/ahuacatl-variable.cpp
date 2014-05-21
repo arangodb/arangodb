@@ -111,7 +111,7 @@ bool TRI_EqualVariableAql (TRI_associative_pointer_t* array,
                            void const* element) {
   TRI_aql_variable_t* variable = (TRI_aql_variable_t*) element;
 
-  return TRI_EqualString(key, variable->_name);
+  return TRI_EqualString(static_cast<char const*>(key), variable->_name);
 }
 
 

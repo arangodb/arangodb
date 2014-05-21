@@ -145,7 +145,7 @@ static bool SetupCollections (TRI_aql_context_t* const context) {
   n = context->_collectionNames._nrAlloc;
 
   for (i = 0; i < n; ++i) {
-    char* name = context->_collectionNames._table[i];
+    char* name = static_cast<char*>(context->_collectionNames._table[i]);
     TRI_aql_collection_t* collection;
 
     if (name == NULL) {

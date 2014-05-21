@@ -232,7 +232,7 @@ static bool EqualVariable (TRI_associative_pointer_t* array,
                            void const* element) {
   TRI_aql_codegen_variable_t* variable = (TRI_aql_codegen_variable_t*) element;
 
-  return TRI_EqualString(key, variable->_name);
+  return TRI_EqualString(static_cast<char const*>(key), variable->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2289,7 +2289,8 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
-  TRI_aql_for_hint_t* hint = TRI_AQL_NODE_DATA(node);
+  TRI_aql_for_hint_t* hint 
+      = static_cast<TRI_aql_for_hint_t*>(TRI_AQL_NODE_DATA(node));
   TRI_string_buffer_t* buffer;
   bool isList;
 
@@ -2915,7 +2916,7 @@ static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* node;
 
-    node = TRI_AtVectorPointer(statements, i);
+    node = static_cast<TRI_aql_node_t*>(TRI_AtVectorPointer(statements, i));
     ProcessNode(generator, node);
   }
 
