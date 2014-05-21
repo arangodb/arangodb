@@ -5,6 +5,7 @@ TOC {#InstallingTOC}
   - @ref InstallingLinux
     - @ref InstallingLinuxPackageManager
       - @ref InstallingDebian
+      - @ref InstallingLinuxMint
   - @ref InstallingMacOSX
     - @ref InstallingMacOSXHomebrew
     - @ref InstallingMacOSXAppStore
