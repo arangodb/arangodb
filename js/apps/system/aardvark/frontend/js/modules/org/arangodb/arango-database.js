@@ -747,14 +747,27 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     id = id._id;
   }
 
-  // set default value for keepNull
-  var keepNullValue = ((typeof keepNull === "undefined") ? true : keepNull);
-  var params = "?keepNull=" + (keepNullValue ? "true" : "false");
+  var params = "";
+  if (typeof overwrite === "object") { 
+    // we assume the caller uses new signature (id, data, options)
+    var options = overwrite; 
+    if (! options.hasOwnProperty("keepNull")) {
+      options.keepNull = true;
+    } 
+    params = "?keepNull=" + options.keepNull;
 
-  if (overwrite) {
-    params += "&policy=last";
+    if (options.hasOwnProperty("overwrite") && options.overwrite) {
+      params += "&policy=last";
+    }
+  } else {
+    // set default value for keepNull
+    var keepNullValue = ((typeof keepNull === "undefined") ? true : keepNull);
+    params = "?keepNull=" + (keepNullValue ? "true" : "false");
+
+    if (overwrite) {
+      params += "&policy=last";
+    }
   }
-
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
 
