@@ -76,14 +76,12 @@ Marker::~Marker () {
 void Marker::storeSizedString (size_t offset,
                                char const* value,
                                size_t length) {
-  // init key buffer
   char* p = static_cast<char*>(base()) + offset;
-  memset(p, '\0', (1 + ((length + 1) / 8)) * 8); 
 
-  // store length of key 
-  *p = (uint8_t) length;
   // store actual key 
-  memcpy(p + 1, value, length);
+  memcpy(p, value, length);
+  // append NUL byte
+  p[length] = '\0';
 }
 
 // -----------------------------------------------------------------------------
@@ -196,7 +194,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
                                 triagens::basics::JsonLegend& legend,
                                 TRI_shaped_json_t const* shapedJson) 
   : Marker(TRI_WAL_MARKER_DOCUMENT, 
-    sizeof(document_marker_t) + alignedSize(key.size() + 2) + legend.getSize() + shapedJson->_data.length) {
+    sizeof(document_marker_t) + alignedSize(key.size() + 1) + legend.getSize() + shapedJson->_data.length) {
   document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
   m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
@@ -204,7 +202,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_tid          = transactionId;
   m->_shape        = shapedJson->_sid;
   m->_offsetKey    = sizeof(document_marker_t); // start position of key
-  m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 2);
+  m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 1);
   m->_offsetJson   = m->_offsetLegend + alignedSize(legend.getSize());
           
   storeSizedString(m->_offsetKey, key.c_str(), key.size());
@@ -250,7 +248,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
                         triagens::basics::JsonLegend& legend,
                         TRI_shaped_json_t const* shapedJson) 
   : Marker(TRI_WAL_MARKER_EDGE,
-    sizeof(edge_marker_t) + alignedSize(key.size() + 2) + alignedSize(strlen(edge->_fromKey) + 2) + alignedSize(strlen(edge->_toKey) + 2) + legend.getSize() + shapedJson->_data.length) {
+    sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legend.getSize() + shapedJson->_data.length) {
 
   document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
   edge_marker_t* e     = reinterpret_cast<edge_marker_t*>(base());
@@ -263,9 +261,9 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_offsetKey     = sizeof(edge_marker_t); // start position of key
   e->_toCid         = edge->_toCid;
   e->_fromCid       = edge->_fromCid;
-  e->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 2);
-  e->_offsetFromKey = e->_offsetToKey + alignedSize(strlen(edge->_toKey) + 2);
-  m->_offsetLegend  = e->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 2);
+  e->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 1);
+  e->_offsetFromKey = e->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1);
+  m->_offsetLegend  = e->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1);
   m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
           
   // store keys
@@ -311,7 +309,7 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
                             TRI_voc_tid_t transactionId,
                             std::string const& key) 
   : Marker(TRI_WAL_MARKER_REMOVE,
-    sizeof(remove_marker_t) + alignedSize(key.size() + 2)) {
+    sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
   remove_marker_t* m = reinterpret_cast<remove_marker_t*>(base());
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
