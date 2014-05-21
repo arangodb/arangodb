@@ -34,6 +34,7 @@
 #include "VocBase/headers.h"
 #include "VocBase/index.h"
 #include "VocBase/voc-types.h"
+#include "Wal/Marker.h"
 
 #include <regex.h>
 
@@ -149,24 +150,34 @@ struct TRI_json_s;
 /// @brief extracts the shaped JSON pointer from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_EXTRACT_SHAPED_JSON_MARKER(dst, src)                                                                       \
-  do {                                                                                                                 \
-    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {                                      \
-      (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;                                                   \
-      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;  \
-      (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);                    \
-    }                                                                                                                  \
-    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_EDGE) {                                     \
-      (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;                                                   \
-      (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;  \
-      (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);                    \
-    }                                                                                                                  \
-    else {                                                                                                             \
-      (dst)._sid = 0;                                                                                                  \
-      (dst)._data.length = 0;                                                                                          \
-      (dst)._data.data = NULL;                                                                                         \
-    }                                                                                                                  \
-  } while (0)
+static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
+                                                   void const* src) {
+  if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;
+    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;
+    (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);
+  }
+  else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    (dst)._sid = ((TRI_doc_document_key_marker_t*) (src))->_shape;
+    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((TRI_doc_document_key_marker_t*) (src))->_offsetJson;
+    (dst)._data.data = (((char*) (src)) + ((TRI_doc_document_key_marker_t*) (src))->_offsetJson);
+  }
+  else if (((TRI_df_marker_t const*) (src))->_type == TRI_WAL_MARKER_DOCUMENT) {
+    (dst)._sid = ((triagens::wal::document_marker_t*) (src))->_shape;
+    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((triagens::wal::document_marker_t*) (src))->_offsetJson;
+    (dst)._data.data = (((char*) (src)) + ((triagens::wal::document_marker_t*) (src))->_offsetJson);
+  }
+  else if (((TRI_df_marker_t const*) (src))->_type == TRI_WAL_MARKER_EDGE) {
+    (dst)._sid = ((triagens::wal::edge_marker_t*) (src))->base._shape;
+    (dst)._data.length = ((TRI_df_marker_t*) (src))->_size - ((triagens::wal::edge_marker_t*) (src))->base._offsetJson;
+    (dst)._data.data = (((char*) (src)) + ((triagens::wal::edge_marker_t*) (src))->base._offsetJson);
+  }
+  else {
+    (dst)._sid = 0;
+    (dst)._data.length = 0;
+    (dst)._data.data = NULL;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
