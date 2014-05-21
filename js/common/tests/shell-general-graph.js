@@ -410,6 +410,9 @@ function GeneralGraphCreationSuite() {
       var vn1 = "UnitTestsVertices";
       var vn2 = "UnitTestsVertices2";
       var gn = "UnitTestsGraph";
+      if(graph._exists(gn)) {
+        graph._drop(gn);
+      }
       var edgeDef = [graph._directedRelationDefinition(en, vn1, vn2)];
       var g = graph._create(gn, edgeDef);
       var v1 = g[vn1].save({_key: "1"})._id;
@@ -720,7 +723,6 @@ function GeneralGraphAQLQueriesSuite() {
    
    test_filterOnOutEdges: function() {
       var query = g._outEdges(v1 + "/1").filter({val: true});
-      // var query = g._outEdges("v1/1").filter("e.val = true");
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
         + '@graphName,@startVertex_0,"outbound") '
         + 'FILTER MATCHES(edges_0,[{"val":true}])');
@@ -732,7 +734,96 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-   }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: counting of query results
+////////////////////////////////////////////////////////////////////////////////
+    test_queryCount: function() {
+      var query = g._edges(v1 + "/1");
+      assertEqual(query.count(), 3);
+      query = g._inEdges(v1 + "/1").filter({val: true});
+      assertEqual(query.count(), 0);
+      query = g._outEdges(v1 + "/1").filter({val: true});
+      assertEqual(query.count(), 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Cursor iteration
+////////////////////////////////////////////////////////////////////////////////
+    test_cursorIteration: function() {
+      var query = g._edges(v1 + "/1");
+      var list = [e1, e2, e3];
+      var next;
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 2);
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 1);
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 0);
+      assertFalse(query.hasNext());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Cursor recreation after iteration
+////////////////////////////////////////////////////////////////////////////////
+    test_cursorIterationAndRecreation: function() {
+      var query = g._edges(v1 + "/1");
+      var list = [e1, e2, e3];
+      var next;
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 2);
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 1);
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 0);
+      assertFalse(query.hasNext());
+      query = query.filter({val: true});
+      list = [e1];
+      assertTrue(query.hasNext());
+      next = query.next();
+      list = _.without(list, next._id);
+      assertEqual(list.length, 0);
+      assertFalse(query.hasNext());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Is cursor recreated after counting of query results and appending filter
+////////////////////////////////////////////////////////////////////////////////
+    test_cursorRecreationAfterCount: function() {
+      var query = g._edges(v1 + "/1");
+      assertEqual(query.count(), 3);
+      query = query.filter({val: true});
+      assertEqual(query.count(), 1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Is cursor recreated after to array of query results and appending filter
+////////////////////////////////////////////////////////////////////////////////
+    test_cursorRecreationAfterToArray: function() {
+      var query = g._edges(v1 + "/1");
+      var result = query.toArray();
+      assertTrue(findIdInResult(result, e1), "Did not include e1");
+      assertTrue(findIdInResult(result, e2), "Did not include e2");
+      assertTrue(findIdInResult(result, e3), "Did not include e3");
+      query = query.filter({val: true});
+      result = query.toArray();
+      assertTrue(findIdInResult(result, e1), "Did not include e1");
+      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
+      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: let construct on edges
@@ -840,12 +931,6 @@ function EdgesAndVerticesSuite() {
     },
 
     tearDown : function() {
-      db.unitTestVertexCollection1.drop();
-      db.unitTestVertexCollection2.drop();
-      db.unitTestVertexCollection3.drop();
-      db.unitTestVertexCollection4.drop();
-      db.unitTestEdgeCollection1.drop();
-      db.unitTestEdgeCollection2.drop();
       graph._drop("unitTestGraph");
     },
 

@@ -178,10 +178,25 @@ var AQLGenerator = function(graph) {
     "graphName": graph.__name
   };
   this.graph = graph;
+  this.cursor = null;
   this.lastEdgeVar = "";
 };
 
+AQLGenerator.prototype._clearCursor = function() {
+  if (this.cursor) {
+    this.cursor.dispose();
+    this.cursor = null;
+  }
+};
+
+AQLGenerator.prototype._createCursor = function() {
+  if (!this.cursor) {
+    this.cursor = this.execute();
+  }
+};
+
 AQLGenerator.prototype.edges = function(startVertex, direction) {
+  this._clearCursor();
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertex_"
@@ -202,6 +217,7 @@ AQLGenerator.prototype.getLastEdgeVar = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  this._clearCursor();
   var rest = stringToArray(restrictions);
   var unknown = [];
   var g = this.graph;
@@ -229,6 +245,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 AQLGenerator.prototype.filter = function(example) {
+  this._clearCursor();
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
     if (Object.prototype.toString.call(example) !== "[object Object]") {
@@ -268,14 +285,31 @@ AQLGenerator.prototype.printQuery = function() {
 };
 
 AQLGenerator.prototype.execute = function() {
+  this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
   query += " RETURN " + this.getLastEdgeVar();
-  return db._query(query, bindVars);
+  return db._query(query, bindVars, {count: true});
 };
 
 AQLGenerator.prototype.toArray = function() {
-  return this.execute().toArray();
+  this._createCursor();
+  return this.cursor.toArray();
+};
+
+AQLGenerator.prototype.count = function() {
+  this._createCursor();
+  return this.cursor.count();
+};
+
+AQLGenerator.prototype.hasNext = function() {
+  this._createCursor();
+  return this.cursor.hasNext();
+};
+
+AQLGenerator.prototype.next = function() {
+  this._createCursor();
+  return this.cursor.next();
 };
 
 // -----------------------------------------------------------------------------
