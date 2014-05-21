@@ -27,7 +27,6 @@
 
 #include "VocbaseContext.h"
 
-#include "BasicsC/common.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Cluster/ServerState.h"

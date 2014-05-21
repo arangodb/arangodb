@@ -27,7 +27,6 @@
 
 #include "fulltext-index.h"
 
-#include "BasicsC/common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 

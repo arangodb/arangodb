@@ -25,11 +25,11 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "bitarray.h"
+
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 
-#include "bitarray.h"
 #include "VocBase/document-collection.h"
 
 #if BITARRAY_MASTER_TABLE_BLOCKSIZE==8

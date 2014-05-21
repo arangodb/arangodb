@@ -1,5 +1,4 @@
 
-%define api.pure
 %name-prefix "Ahuacatl"
 %locations 
 %defines
@@ -275,7 +274,11 @@ collect_statement:
 
       TRI_PushStackParseAql(context, node);
     } collect_list optional_into {
-      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), $4);
+      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(
+                context, 
+                static_cast<const TRI_aql_node_t* const>
+                           (TRI_PopStackParseAql(context)), 
+                $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -325,7 +328,8 @@ sort_statement:
 
       TRI_PushStackParseAql(context, node);
     } sort_list {
-      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* list 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
       if (node == NULL) {
         ABORT_OOM
@@ -541,8 +545,12 @@ function_call:
 
       TRI_PushStackParseAql(context, node);
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
-      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
+      TRI_aql_node_t* list 
+        = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
+      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, 
+                                    static_cast<char const* const>
+                                               (TRI_PopStackParseAql(context)),
+                                    list);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -743,7 +751,7 @@ list:
 
       TRI_PushStackParseAql(context, node);
     } optional_list_elements T_LIST_CLOSE {
-      $$ = TRI_PopStackParseAql(context);
+      $$ = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
     }
   ;
 
@@ -776,7 +784,7 @@ array:
 
       TRI_PushStackParseAql(context, node);
     } optional_array_elements T_DOC_CLOSE {
-      $$ = TRI_PopStackParseAql(context);
+      $$ = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
     }
   ;
 
@@ -833,10 +841,11 @@ reference:
       TRI_PushStackParseAql(context, node);
     } T_EXPAND expansion {
       // return from the "expansion" subrule
-      TRI_aql_node_t* expanded = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* expanded 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
       TRI_aql_node_t* expand;
       TRI_aql_node_t* nameNode;
-      char* varname = TRI_PopStackParseAql(context);
+      char* varname = static_cast<char*>(TRI_PopStackParseAql(context));
 
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, $4);
@@ -918,7 +927,8 @@ single_reference:
 expansion:
     '.' T_STRING %prec REFERENCE {
       // named variable access, continuation from * expansion, e.g. [*].variable.reference
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeAttributeAccessAql(context, node, $2);
 
@@ -928,7 +938,8 @@ expansion:
     }
   | '.' bind_parameter %prec REFERENCE {
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeBoundAttributeAccessAql(context, node, $2);
 
@@ -938,7 +949,8 @@ expansion:
     }
   | T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeIndexedAql(context, node, $2);
 

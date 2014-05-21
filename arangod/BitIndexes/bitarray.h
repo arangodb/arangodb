@@ -29,14 +29,10 @@
 #ifndef TRIAGENS_BIT_INDEXES_BITARRAY_H
 #define TRIAGENS_BIT_INDEXES_BITARRAY_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/vector.h"
 #include "BitIndexes/bitarrayIndex.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define BITARRAY_MASTER_TABLE_BLOCKSIZE 8
 
@@ -139,10 +135,6 @@ int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*,
                                   struct TRI_index_iterator_s*); 
 
 int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_s*);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

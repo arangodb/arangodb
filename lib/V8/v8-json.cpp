@@ -26,9 +26,7 @@
 /// @author Copyright 2011, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
-
-#include "V8/v8-globals.h"
+#include "V8/v8-json.h"
 
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/logging.h"

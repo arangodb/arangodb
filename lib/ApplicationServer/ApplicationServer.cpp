@@ -31,8 +31,6 @@
 
 #include "ApplicationServer.h"
 
-#include "BasicsC/common.h"
-
 #ifdef TRI_HAVE_POSIX_PWD_GRP
 #include <pwd.h>
 #include <grp.h>

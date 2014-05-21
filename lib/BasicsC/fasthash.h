@@ -26,8 +26,7 @@
 #ifndef _FASTHASH_H
 #define _FASTHASH_H
 
-#include <stdint.h>
-#include <stdio.h>
+#include "BasicsC/common.h"
 
 #ifdef __cplusplus
 extern "C" {

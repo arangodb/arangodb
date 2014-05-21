@@ -38,7 +38,6 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-#include "BasicsC/common.h"
 #include "BasicsC/logging.h"
 
 #include "Basics/InitialiseBasics.h"
