@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
   #include "BasicsC/win-utils.h"
 #endif

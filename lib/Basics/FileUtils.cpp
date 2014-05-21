@@ -27,12 +27,6 @@
 
 #include "FileUtils.h"
 
-#include <errno.h>
-#include <fstream>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
 #endif

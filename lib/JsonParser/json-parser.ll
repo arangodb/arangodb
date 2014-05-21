@@ -463,6 +463,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
+extern "C"
 TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** error) {
   TRI_json_t* object;
   YY_BUFFER_STATE buf;
@@ -470,7 +471,8 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
   struct yyguts_t * yyg;
   yyscan_t scanner;
 
-  object = TRI_Allocate(zone, sizeof(TRI_json_t), false);
+  object = static_cast<TRI_json_t*>
+                      (TRI_Allocate(zone, sizeof(TRI_json_t), false));
 
   if (object == NULL) {
     // out of memory
@@ -524,6 +526,7 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
+extern "C"
 TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
   return TRI_Json2String(zone, text, 0);
 }
@@ -532,6 +535,7 @@ TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
 /// @brief parses a json file
 ////////////////////////////////////////////////////////////////////////////////
 
+extern "C"
 TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** error) {
   FILE* in;
   TRI_json_t* object;
@@ -539,7 +543,8 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
   struct yyguts_t * yyg;
   yyscan_t scanner;
 
-  object = TRI_Allocate(zone, sizeof(TRI_json_t), false);
+  object = static_cast<TRI_json_t*>
+                      (TRI_Allocate(zone, sizeof(TRI_json_t), false));
   
   if (object == NULL) {
     // out of memory

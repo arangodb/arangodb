@@ -34,10 +34,6 @@
 #include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       JSON SHAPER
 // -----------------------------------------------------------------------------
@@ -172,6 +168,10 @@ TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
 static inline TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void) {
   return 7;
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises global basic shape types

@@ -28,10 +28,6 @@
 
 #include "SimpleHttpClient.h"
 
-#include <stdio.h>
-#include <string>
-#include <errno.h>
-
 #include "Basics/StringUtils.h"
 #include "BasicsC/logging.h"
 

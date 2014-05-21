@@ -29,8 +29,6 @@
 
 #include <v8.h>
 
-#include "BasicsC/common.h"
-
 #ifdef TRI_ENABLE_MRUBY
 #include "mruby.h"
 #include "mruby/compile.h"

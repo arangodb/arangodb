@@ -27,8 +27,6 @@
 
 #include "v8-cluster.h"
 
-#include "BasicsC/common.h"
-
 #include "VocBase/server.h"
 
 #include "Cluster/AgencyComm.h"
