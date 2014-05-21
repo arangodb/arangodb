@@ -46,8 +46,6 @@ Marker::Marker (TRI_df_marker_type_e type,
   : _buffer(new char[size]),
     _size(size) {
 
-  std::cout << "CREATING MARKER OF TYPE: " << type << "\n";
-
   TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(base());
   m->_type = type;
   m->_size = static_cast<TRI_voc_size_t>(size);
@@ -218,6 +216,8 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
     char* p = static_cast<char*>(base()) + m->_offsetJson;
     memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
   }
+  
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +225,21 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 DocumentMarker::~DocumentMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void DocumentMarker::dump () const {
+  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
+
+  std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId 
+            << ", REV: " << m->_rid 
+            << ", TRX: " << m->_tid 
+            << ", KEY: " << ((char*) base() + m->_offsetKey)  
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -250,8 +265,8 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_EDGE,
     sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legend.getSize() + shapedJson->_data.length) {
 
-  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
-  edge_marker_t* e     = reinterpret_cast<edge_marker_t*>(base());
+//  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
+  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(base());
 
   m->_databaseId    = databaseId;
   m->_collectionId  = collectionId;
@@ -259,17 +274,17 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_tid           = transactionId;
   m->_shape         = shapedJson->_sid;
   m->_offsetKey     = sizeof(edge_marker_t); // start position of key
-  e->_toCid         = edge->_toCid;
-  e->_fromCid       = edge->_fromCid;
-  e->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 1);
-  e->_offsetFromKey = e->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1);
-  m->_offsetLegend  = e->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1);
+  m->_toCid         = edge->_toCid;
+  m->_fromCid       = edge->_fromCid;
+  m->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 1);
+  m->_offsetFromKey = m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1);
+  m->_offsetLegend  = m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1);
   m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
           
   // store keys
   storeSizedString(m->_offsetKey, key.c_str(), key.size());
-  storeSizedString(e->_offsetFromKey, edge->_fromKey, strlen(edge->_fromKey));
-  storeSizedString(e->_offsetToKey, edge->_toKey, strlen(edge->_toKey));
+  storeSizedString(m->_offsetFromKey, edge->_fromKey, strlen(edge->_fromKey));
+  storeSizedString(m->_offsetToKey, edge->_toKey, strlen(edge->_toKey));
 
   // store legend 
   {
@@ -282,6 +297,8 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
     char* p = static_cast<char*>(base()) + m->_offsetJson;
     memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
   }
+  
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +306,25 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
         
 EdgeMarker::~EdgeMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void EdgeMarker::dump () const {
+  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(base());
+
+  std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId 
+            << ", REV: " << m->_rid 
+            << ", TRX: " << m->_tid 
+            << ", KEY: " << ((char*) base() + m->_offsetKey)
+            << ", FROMCID " << m->_fromCid 
+            << ", TOCID " << m->_toCid 
+            << ", FROMKEY: " << ((char*) base() + m->_offsetFromKey) 
+            << ", TOKEY: " << ((char*) base() + m->_offsetFromKey)
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -317,6 +353,8 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
   m->_tid = transactionId;
 
   storeSizedString(sizeof(remove_marker_t), key.c_str(), key.size());
+
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +362,21 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
       
 RemoveMarker::~RemoveMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void RemoveMarker::dump () const {
+  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(base());
+
+  std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId 
+            << ", REV: " << m->_rid 
+            << ", TRX: " << m->_tid 
+            << ", KEY: " << (((char*) base()) + sizeof(remove_marker_t)) 
+            << "\n";
 }
 
 // Local Variables:

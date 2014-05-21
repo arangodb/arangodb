@@ -47,9 +47,7 @@ namespace triagens {
 /// @brief wal transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_begin_marker_t {
-      TRI_df_marker_t base;
-
+    struct transaction_begin_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_tid_t   _transactionId;
     };
@@ -58,9 +56,7 @@ namespace triagens {
 /// @brief wal transaction commit marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_commit_marker_t {
-      TRI_df_marker_t base;
-
+    struct transaction_commit_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_tid_t   _transactionId;
     };
@@ -69,9 +65,7 @@ namespace triagens {
 /// @brief wal transaction abort marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_abort_marker_t {
-      TRI_df_marker_t base;
-
+    struct transaction_abort_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_tid_t   _transactionId;
     };
@@ -80,9 +74,7 @@ namespace triagens {
 /// @brief wal document marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct document_marker_t {
-      TRI_df_marker_t base;
-
+    struct document_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_cid_t   _collectionId;
 
@@ -100,9 +92,7 @@ namespace triagens {
 /// @brief wal edge marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct edge_marker_t {
-      document_marker_t base;
-
+    struct edge_marker_t : document_marker_t {
       TRI_voc_cid_t   _toCid;
       TRI_voc_cid_t   _fromCid;
 
@@ -118,9 +108,7 @@ namespace triagens {
 /// @brief wal remove marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct remove_marker_t {
-      TRI_df_marker_t base;
-
+    struct remove_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_cid_t   _collectionId;
 
@@ -247,6 +235,8 @@ namespace triagens {
                         TRI_shaped_json_t const*);
 
         ~DocumentMarker ();
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -267,6 +257,8 @@ namespace triagens {
                     TRI_shaped_json_t const*);
 
         ~EdgeMarker ();
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -295,6 +287,8 @@ namespace triagens {
           remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(base());
           return m->_rid;
         }
+
+        void dump () const;
     };
 
   }
