@@ -124,8 +124,11 @@ namespace triagens {
 
       protected:
 
-        Marker (Marker const&) = delete;
         Marker& operator= (Marker const&) = delete;
+
+        Marker (Marker&&); 
+        
+        Marker (Marker const&);
 
         Marker (TRI_df_marker_type_e,
                 size_t);
@@ -169,8 +172,10 @@ namespace triagens {
                                size_t);
  
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
+
+      protected:
 
         char*          _buffer;
         uint32_t const _size;
@@ -244,6 +249,14 @@ namespace triagens {
         }
         
         void dump () const;
+        
+        static DocumentMarker clone (TRI_df_marker_t const*,
+                                     TRI_voc_tick_t,
+                                     TRI_voc_cid_t,
+                                     TRI_voc_rid_t,
+                                     TRI_voc_tid_t,
+                                     triagens::basics::JsonLegend&,
+                                     TRI_shaped_json_t const*);
     };
 
 // -----------------------------------------------------------------------------
@@ -266,6 +279,14 @@ namespace triagens {
         ~EdgeMarker ();
         
         void dump () const;
+        
+        static EdgeMarker clone (TRI_df_marker_t const*,
+                                 TRI_voc_tick_t,
+                                 TRI_voc_cid_t,
+                                 TRI_voc_rid_t,
+                                 TRI_voc_tid_t,
+                                 triagens::basics::JsonLegend&,
+                                 TRI_shaped_json_t const*);
     };
 
 // -----------------------------------------------------------------------------

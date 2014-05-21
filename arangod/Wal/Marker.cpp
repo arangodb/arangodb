@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Marker.h"
+#include "VocBase/primary-collection.h"
 
 using namespace triagens::wal;
 
@@ -38,7 +39,29 @@ using namespace triagens::wal;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create marker
+/// @brief create a copy of a marker
+////////////////////////////////////////////////////////////////////////////////
+
+Marker::Marker (Marker&& other)  
+  : _buffer(other._buffer),
+    _size(other._size) {
+
+  other._buffer = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a copy of a marker
+////////////////////////////////////////////////////////////////////////////////
+
+Marker::Marker (Marker const& other)  
+  : _buffer(new char[other._size]),
+    _size(other._size) {
+
+  memcpy(_buffer, other._buffer, other._size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker with a sized buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 Marker::Marker (TRI_df_marker_type_e type, 
@@ -242,6 +265,48 @@ void DocumentMarker::dump () const {
             << "\n";
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a marker from another marker
+////////////////////////////////////////////////////////////////////////////////
+
+DocumentMarker DocumentMarker::clone (TRI_df_marker_t const* other,
+                                      TRI_voc_tick_t databaseId,
+                                      TRI_voc_cid_t collectionId,
+                                      TRI_voc_rid_t revisionId,
+                                      TRI_voc_tid_t transactionId,
+                                      triagens::basics::JsonLegend& legend,
+                                      TRI_shaped_json_t const* shapedJson) {
+  char const* base = reinterpret_cast<char const*>(other);
+
+  if (other->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    TRI_doc_document_key_marker_t const* original = reinterpret_cast<TRI_doc_document_key_marker_t const*>(other);
+    
+    return DocumentMarker(databaseId,
+                          collectionId,
+                          revisionId,
+                          transactionId,
+                          std::string(base + original->_offsetKey),
+                          legend,
+                          shapedJson);
+  }
+  else {
+    assert(other->_type == TRI_WAL_MARKER_DOCUMENT);
+
+    document_marker_t const* original = reinterpret_cast<document_marker_t const*>(other);
+
+    assert(original->_databaseId == databaseId);
+    assert(original->_collectionId == collectionId);
+
+    return DocumentMarker(original->_databaseId,
+                          original->_collectionId,
+                          revisionId,
+                          transactionId,
+                          std::string(base + original->_offsetKey),
+                          legend,
+                          shapedJson);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EdgeMarker
 // -----------------------------------------------------------------------------
@@ -265,7 +330,6 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_EDGE,
     sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legend.getSize() + shapedJson->_data.length) {
 
-//  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
   edge_marker_t* m = reinterpret_cast<edge_marker_t*>(base());
 
   m->_databaseId    = databaseId;
@@ -325,6 +389,64 @@ void EdgeMarker::dump () const {
             << ", FROMKEY: " << ((char*) base() + m->_offsetFromKey) 
             << ", TOKEY: " << ((char*) base() + m->_offsetFromKey)
             << "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a marker from another marker
+////////////////////////////////////////////////////////////////////////////////
+
+EdgeMarker EdgeMarker::clone (TRI_df_marker_t const* other,
+                              TRI_voc_tick_t databaseId,
+                              TRI_voc_cid_t collectionId,
+                              TRI_voc_rid_t revisionId,
+                              TRI_voc_tid_t transactionId,
+                              triagens::basics::JsonLegend& legend,
+                              TRI_shaped_json_t const* shapedJson) {
+  char const* base = reinterpret_cast<char const*>(other);
+
+  if (other->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t const* original = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(other);
+    
+    TRI_document_edge_t const edge = { 
+      ._fromCid    = original->_fromCid, 
+      ._toCid      = original->_toCid,
+      ._toKey      = (TRI_voc_key_t) base + original->_offsetToKey,
+      ._fromKey    = (TRI_voc_key_t) base + original->_offsetFromKey
+    };
+    
+    return EdgeMarker(databaseId,
+                      collectionId,
+                      revisionId,
+                      transactionId,
+                      std::string(base + original->base._offsetKey),
+                      &edge,
+                      legend,
+                      shapedJson);
+  }
+  else {
+    assert(other->_type == TRI_WAL_MARKER_EDGE);
+
+    edge_marker_t const* original = reinterpret_cast<edge_marker_t const*>(other);
+
+    assert(original->_databaseId == databaseId);
+    assert(original->_collectionId == collectionId);
+
+    TRI_document_edge_t const edge = { 
+      ._fromCid    = original->_fromCid, 
+      ._toCid      = original->_toCid,
+      ._toKey      = (TRI_voc_key_t) base + original->_offsetToKey,
+      ._fromKey    = (TRI_voc_key_t) base + original->_offsetFromKey
+    };
+
+    return EdgeMarker(original->_databaseId,
+                      original->_collectionId,
+                      revisionId,
+                      transactionId,
+                      std::string(base + original->_offsetKey),
+                      &edge,
+                      legend,
+                      shapedJson);
+  }
 }
 
 // -----------------------------------------------------------------------------
