@@ -1975,8 +1975,6 @@ static int RemoveIndexes (TRI_transaction_collection_t* trxCollection,
 
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
  
- std::cout << "DOCUMENT REMOVE: " << marker.key() << "\n";
-
   // get the existing header pointer
   TRI_doc_mptr_t* header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, marker.key()));
 
