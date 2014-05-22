@@ -33,6 +33,7 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
+using namespace std;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------

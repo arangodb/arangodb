@@ -32,7 +32,6 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  using namespace std;
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @addtogroup Shell
@@ -52,13 +51,13 @@ namespace triagens {
     /// @brief check if line is complete
     ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool isComplete(string const&, size_t lineno, size_t column) = 0;
+    virtual bool isComplete(std::string const&, size_t lineno, size_t column) = 0;
     
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief  computes all strings which begins with the given text
     ////////////////////////////////////////////////////////////////////////////////
 
-    virtual void getAlternatives(char const *, vector<string> &) = 0;
+    virtual void getAlternatives(char const *, std::vector<std::string> &) = 0;
       
   };
 }

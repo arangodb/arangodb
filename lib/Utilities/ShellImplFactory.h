@@ -32,7 +32,6 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  using namespace std;
   class ShellImplFactory {
 
      public:
@@ -41,7 +40,7 @@ namespace triagens {
     /// @brief check if line is complete
     ////////////////////////////////////////////////////////////////////////////////
 
-    ShellImplementation * buildShell (string const & history, Completer *);
+    ShellImplementation * buildShell (std::string const & history, Completer *);
       
   };
 }

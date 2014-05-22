@@ -33,10 +33,6 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
-
 namespace triagens {
   namespace arango {
 

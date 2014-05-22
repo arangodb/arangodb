@@ -39,6 +39,7 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/GeneralServer.h"
 
+using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
