@@ -15,9 +15,9 @@ corresponding language API.
 
 For example:
 
-@EXAMPLE_ARANGOSH_OUTPUT{HandlingDocumentsExample1}
-    db.demo.document("demo/schlonz")
-@END_EXAMPLE_ARANGOSH_OUTPUT
+@EXAMPLE_ARANGOSH_RUN{HandlingDocumentsExample1}
+    log(db.demo.document("demo/schlonz"));
+@END_EXAMPLE_ARANGOSH_RUN
 
 All documents contain special attributes: the document handle in `_id`, the
 document's unique key in `_key` and and the ETag aka document revision in
