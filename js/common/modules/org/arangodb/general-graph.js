@@ -564,6 +564,35 @@ var _exists = function(graphId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper for dropping collections of a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var checkIfMayBeDropped = function(colName, graphName, graphs) {
+  var result = true;
+  graphs.forEach(
+    function(graph) {
+      if (graph._key === graphName) {
+        return;
+      }
+      var edgeDefinitions = graph.edgeDefinitions;
+      if (graph.edgeDefinitions) {
+        edgeDefinitions.forEach(
+          function(edgeDefinition) {
+            var from = edgeDefinition.from;
+            var to = edgeDefinition.to;
+            var collection = edgeDefinition.collection;
+            if (collection === colName || from.indexOf(colName) !== -1 || to.indexOf(colName) !== -1) {
+              result = false;
+            }
+          }
+        );
+      }
+    }
+  );
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -582,16 +611,23 @@ var _drop = function(graphId, dropCollections) {
       function(edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
-        var edge = edgeDefinition.collection;
-        db._drop(edge);
+        var collection = edgeDefinition.collection;
+        var graphs = getGraphCollection().toArray();
+        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
+          db._drop(collection);
+        }
         from.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
         to.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
       }
