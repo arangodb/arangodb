@@ -599,7 +599,8 @@ function GeneralGraphAQLQueriesSuite() {
         fail();
       } catch (err) {
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
-        assertEqual(err.errorMessage, "edge collections: failed and unknown and foxxle are not known to the graph");
+        assertEqual(err.errorMessage,
+          "edge collections: failed and unknown and foxxle are not known to the graph");
       }
     },
 
@@ -750,31 +751,37 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
     }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: let construct on edges
-////////////////////////////////////////////////////////////////////////////////
-   
-/* Broken string replacement
-   test_letOnEdges: function() {
-      var query = g._edges("v1/1").let("myVal = e.val");
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + "@graphName,@startVertex_0,any) LET myVal = edges_0.val");
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, "graph");
-      assertEqual(bindVars.startVertex_0, "v1/1");
-      */
-      /*
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e3));
-      assertFalse(findIdInResult(result, e1));
-      assertFalse(findIdInResult(result, e2));
-      */
-     /*
-   }
-  */
+  };
+
+}
+
+function ChainedFluentAQLResultsSuite() {
+
+  var gn = "UnitTestGraph";
+  var g;
+
+  var edgeDef = [];
+  
+
+  var createTestData = function() {
+    g = graph._create(gn, edgeDef);
 
   };
+
+  var dropData = function() {
+    graph._drop(gn);
+  };
+
+  return {
+
+    setUp: function() {
+
+    },
+
+    tearDown: dropData
+
+  };
+
 
 }
 
