@@ -505,7 +505,6 @@ var _create = function (graphName, edgeDefinitions) {
 
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
@@ -521,13 +520,31 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
-      var myEdges = self._EDGES(vertexId);
-      myEdges.forEach(
-        function(edgeObj) {
-          var edgeId = edgeObj._id;
-          var edgeCollection = edgeId.split("/")[0];
-          if (db[edgeCollection] && db[edgeCollection].exists(edgeId)) {
-            db[edgeCollection].remove(edgeId);
+      var graphs = getGraphCollection().toArray();
+      var vertexCollectionName = vertexId.split("/")[0];
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                if (from.indexOf(vertexCollectionName) !== -1
+                  || to.indexOf(vertexCollectionName) !== -1
+                  ) {
+                  var edges = db._collection(collection).toArray();
+                  edges.forEach(
+                    function(edge) {
+                      if (edge._from === vertexId || edge._to === vertexId) {
+                        db._remove(edge._id);
+                      }
+                    }
+                  );
+                }
+              }
+            );
           }
         }
       );
@@ -537,6 +554,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       }
       return old_remove(vertexId, options);
     };
+
     self[key] = wrap;
   });
 
@@ -598,6 +616,38 @@ var _exists = function(graphId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper for dropping collections of a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var checkIfMayBeDropped = function(colName, graphName, graphs) {
+  var result = true;
+  graphs.forEach(
+    function(graph) {
+      if (graph._key === graphName) {
+        return;
+      }
+      var edgeDefinitions = graph.edgeDefinitions;
+      if (graph.edgeDefinitions) {
+        edgeDefinitions.forEach(
+          function(edgeDefinition) {
+            var from = edgeDefinition.from;
+            var to = edgeDefinition.to;
+            var collection = edgeDefinition.collection;
+            if (collection === colName
+              || from.indexOf(colName) !== -1
+              || to.indexOf(colName) !== -1
+              ) {
+              result = false;
+            }
+          }
+        );
+      }
+    }
+  );
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -616,16 +666,23 @@ var _drop = function(graphId, dropCollections) {
       function(edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
-        var edge = edgeDefinition.collection;
-        db._drop(edge);
+        var collection = edgeDefinition.collection;
+        var graphs = getGraphCollection().toArray();
+        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
+          db._drop(collection);
+        }
         from.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
         to.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
       }

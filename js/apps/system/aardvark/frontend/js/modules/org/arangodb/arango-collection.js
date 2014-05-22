@@ -1110,13 +1110,27 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     id = id._id;
   }
 
-  var policy = "";
+  var params = "";
 
-  if (overwrite) {
-    policy = "?policy=last";
+  if (typeof overwrite === "object") {
+    // we assume the caller uses new signature (id, data, options)
+    if (typeof waitForSync !== "undefined") {
+      throw "too many arguments";
+    }
+    var options = overwrite;
+    if (options.hasOwnProperty("overwrite") && options.overwrite) {
+      params += "?policy=last";
+    }
+    if (options.hasOwnProperty("waitForSync") ) {
+     waitForSync = options.waitForSync;
+    }
+  } else {
+    if (overwrite) {
+      params += "?policy=last";
+    }
   }
 
-  var url = this._documenturl(id) + policy;
+  var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
 
   if (rev === null) {
@@ -1158,15 +1172,26 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     id = id._id;
   }
 
-  var policy = "";
-
-  if (overwrite) {
-    policy = "?policy=last";
+  var params = "";
+  if (typeof overwrite === "object") {
+    if (typeof waitForSync !== "undefined") {
+      throw "too many arguments";
+    }
+    // we assume the caller uses new signature (id, data, options)
+    var options = overwrite;
+    if (options.hasOwnProperty("overwrite") && options.overwrite) {
+      params += "?policy=last";
+    }
+    if (options.hasOwnProperty("waitForSync") ) {
+     waitForSync = options.waitForSync;
+    }
+  } else {
+    if (overwrite) {
+      params += "?policy=last";
+    }
   }
-
-  var url = this._documenturl(id) + policy;
+  var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
-
   if (rev === null) {
     requestResult = this._database._connection.PUT(url, JSON.stringify(data));
   }
@@ -1202,6 +1227,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   var params = "";
   if (typeof overwrite === "object") { 
+    if (typeof keepNull !== "undefined") {
+      throw "too many arguments";
+    }
     // we assume the caller uses new signature (id, data, options)
     var options = overwrite; 
     if (! options.hasOwnProperty("keepNull")) {
