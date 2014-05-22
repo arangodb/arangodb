@@ -7361,12 +7361,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// If there is a conflict, i. e. if the revision of the @LIT{document} does not
 /// match the revision in the collection, then an error is thrown.
 ///
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)}
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)} or
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, {@FA{overwrite}: true})}
 ///
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
 ///
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true, @FA{waitForSync})}
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true, @FA{waitForSync})} or
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, {@FA{overwrite}: true, @FA{waitForSync}: true or false})} 
 ///
 /// The optional @FA{waitForSync} parameter can be used to force
 /// synchronisation of the document replacement operation to disk even in case
@@ -7541,7 +7543,9 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})} or
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, 
+/// { @FA{overwrite} : true or false, @FA{keepNull} : true or false, @FA{waitForSync} : true or false})} 
 ///
 /// Updates an existing @FA{document}. The @FA{document} must be a document in
 /// the current collection. This document is then patched with the
