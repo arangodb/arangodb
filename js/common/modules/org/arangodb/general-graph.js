@@ -748,7 +748,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 
 Graph.prototype._edges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "any");
+  return AQLStmt.edges(vertexId);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -757,7 +757,7 @@ Graph.prototype._edges = function(vertexId) {
 
 Graph.prototype._inEdges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "inbound");
+  return AQLStmt.inEdges(vertexId);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,7 +766,7 @@ Graph.prototype._inEdges = function(vertexId) {
 
 Graph.prototype._outEdges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "outbound");
+  return AQLStmt.outEdges(vertexId);
 };
 
 
