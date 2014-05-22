@@ -17,9 +17,9 @@ fashion. The collection `_users` contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-@EXAMPLE_ARANGOSH_OUTPUT{AuthenticationExample1}
-    db._users.firstExample("user", "root")
-@END_EXAMPLE_ARANGOSH_OUTPUT
+@EXAMPLE_ARANGOSH_RUN{AuthenticationExample1}
+    log(db._users.firstExample("user", "root"));
+@END_EXAMPLE_ARANGOSH_RUN
 
 Command-Line Options for the Authentication and Authorisation{#DbaManualAuthenticationCommandLine}
 --------------------------------------------------------------------------------------------------

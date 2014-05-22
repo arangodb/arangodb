@@ -858,12 +858,15 @@ function update_graph_vertex (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/vertex,update vertex}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/`vertex-name`,update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -933,12 +936,15 @@ function put_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/vertex,update vertex}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/`vertex-name`,update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
