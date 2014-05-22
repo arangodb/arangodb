@@ -345,7 +345,7 @@ var _directedRelationDefinition = function (
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var edgeDefinitions = function () {
+var _edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
@@ -684,7 +684,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
-exports.edgeDefinitions = edgeDefinitions;
+exports._edgeDefinitions = _edgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
