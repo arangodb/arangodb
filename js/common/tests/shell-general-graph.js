@@ -935,6 +935,22 @@ function EdgesAndVerticesSuite() {
       graph._drop(unitTestGraphName);
     },
 
+    test_dropGraph : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myEdgeColName = "unitTestEdgeCollection1";
+      var myVertexColName = "unitTestVertexCollection4711";
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+        )
+      );
+      graph._drop(myGraphName);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVertexColName) === null);
+      assertTrue(db._collection(myEdgeColName) !== null);
+    },
+
     test_edgeCollections : function () {
 
       var edgeCollections = g._edgeCollections();
