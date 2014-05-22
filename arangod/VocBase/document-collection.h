@@ -127,23 +127,6 @@ struct TRI_json_s;
   TRI_BroadcastCondition(&(a)->_journalsCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the shape identifier pointer from a marker
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(dst, src)                                     \
-  do {                                                                                    \
-    if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {         \
-      (dst) = ((TRI_doc_document_key_marker_t*) (src))->_shape;                           \
-    }                                                                                     \
-    else if (((TRI_df_marker_t const*) (src))->_type == TRI_DOC_MARKER_KEY_EDGE) {        \
-      (dst) = ((TRI_doc_edge_key_marker_t*) (src))->base._shape;                          \
-    }                                                                                     \
-    else {                                                                                \
-      (dst) = 0;                                                                          \
-    }                                                                                     \
-  } while (0)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
