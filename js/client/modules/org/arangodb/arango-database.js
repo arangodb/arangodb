@@ -704,13 +704,23 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
     id = id._id;
   }
 
-  var policy = "";
+  var params = "";
 
-  if (overwrite) {
-    policy = "?policy=last";
+  if (typeof overwrite === "object") {
+    // we assume the caller uses new signature (id, data, options)
+    var options = overwrite; 
+    if (options.hasOwnProperty("overwrite") && options.overwrite) {
+      params += "?policy=last";
+    }
+    if (options.hasOwnProperty("waitForSync") ) {
+     waitForSync = options.waitForSync;
+    }
+  } else {
+    if (overwrite) {
+      params += "?policy=last";
+    }
   }
-  
-  var url = this._documenturl(id) + policy;
+  var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
 
   if (rev === null) {
