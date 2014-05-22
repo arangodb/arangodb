@@ -88,7 +88,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       }
       graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
           graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
@@ -241,7 +241,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       }
       var g = graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
           graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
@@ -411,7 +411,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       }
       var g = graph._create(
         "werKenntWen",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition(KenntAnderenBerliner, "UnitTests_Berliner"),
           graph._directedRelationDefinition(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],

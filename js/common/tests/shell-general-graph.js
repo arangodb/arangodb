@@ -200,10 +200,10 @@ function GeneralGraphCreationSuite() {
 
 
       //with empty args
-      assertEqual(graph.edgeDefinitions(), []);
+      assertEqual(graph._edgeDefinitions(), []);
 
       //with args
-      assertEqual(graph.edgeDefinitions(
+      assertEqual(graph._edgeDefinitions(
         graph._undirectedRelationDefinition("relationName", "vertexC1"),
         graph._directedRelationDefinition("relationName",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
@@ -222,6 +222,39 @@ function GeneralGraphCreationSuite() {
 
     },
 
+    testExtendEdgeDefinitions : function () {
+
+
+      //with empty args
+      assertEqual(graph._edgeDefinitions(), []);
+
+      //with args
+      var ed =graph._edgeDefinitions(
+        graph._undirectedRelationDefinition("relationName", "vertexC1"),
+        graph._directedRelationDefinition("relationName",
+          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
+      );
+      graph._extendEdgeDefinitions(ed, graph._undirectedRelationDefinition("relationName", "vertexC1"));
+      assertEqual(ed,  [
+        {
+          collection: "relationName",
+          from: ["vertexC1"],
+          to: ["vertexC1"]
+        },
+        {
+          collection: "relationName",
+          from: ["vertexC1", "vertexC2"],
+          to: ["vertexC3", "vertexC4"]
+        },
+        {
+          collection: "relationName",
+          from: ["vertexC1"],
+          to: ["vertexC1"]
+        }
+      ]);
+
+    },
+
 
     test_create : function () {
       try {
@@ -230,7 +263,7 @@ function GeneralGraphCreationSuite() {
       }
       var a = graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -298,7 +331,7 @@ function GeneralGraphCreationSuite() {
       try {
         var a = graph._create(
           "",
-          graph.edgeDefinitions(
+          graph._edgeDefinitions(
             graph._undirectedRelationDefinition("relationName", "vertexC1"),
             graph._directedRelationDefinition("relationName2",
               ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -320,7 +353,7 @@ function GeneralGraphCreationSuite() {
       }
       graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
             ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -331,7 +364,7 @@ function GeneralGraphCreationSuite() {
       try {
         var a = graph._create(
           "bla3",
-          graph.edgeDefinitions(
+          graph._edgeDefinitions(
             graph._undirectedRelationDefinition("relationName", "vertexC1"),
             graph._directedRelationDefinition("relationName2",
               ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -354,7 +387,7 @@ function GeneralGraphCreationSuite() {
       }
       graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
             ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -789,7 +822,7 @@ function EdgesAndVerticesSuite() {
       }
       g = graph._create(
         "unitTestGraph",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
           graph._directedRelationDefinition("unitTestEdgeCollection2",
             ["unitTestVertexCollection1", "unitTestVertexCollection2"], ["unitTestVertexCollection3", "unitTestVertexCollection4"]
@@ -980,6 +1013,12 @@ function EdgesAndVerticesSuite() {
       assertEqual(result._id, ids.vId12);
       result = g._getOutVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
+    },
+
+    test_neighbors : function() {
+      var ids = fillCollections();
+      var result = g._neighbors(ids.vId11);
+      require("internal").print(result);
     }
 
   };

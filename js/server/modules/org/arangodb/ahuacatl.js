@@ -4242,6 +4242,17 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
+  "use strict";
+
+  result.push(CLONE({ vertex: vertex, edge: path.edges[0] }));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for tree traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -4440,7 +4451,6 @@ function TRAVERSAL_FUNC (func,
   }
 
   var result = [ ];
-
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v, e);
@@ -4833,9 +4843,21 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   examples) {
   "use strict";
 
+  var  params = TRAVERSAL_PARAMS();
+  params.minDepth = 1;
+  params.maxDepth = 1;
+  params.followEdges = examples;
+  params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+  require("internal").print(graphName, TO_ID(vertex), params, direction);
+
   vertex = TO_ID(vertex);
-  var edges = GENERAL_GRAPH_EDGES(graphName, vertex, direction);
-  return FILTERED_EDGES(edges, vertex, direction, examples);
+  var edges =  TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+    TRAVERSAL.generalGraphDatasourceFactory(graphName),
+    TO_ID(vertex),
+    undefined,
+    direction,
+    params);
+  return edges;
 }
 
 // -----------------------------------------------------------------------------

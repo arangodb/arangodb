@@ -180,6 +180,21 @@ AQLGenerator.prototype.edges = function(startVertex, direction) {
   return this;
 };
 
+
+AQLGenerator.prototype.neighbors = function(startVertex, direction) {
+  //var edgeName = "edges_" + this.stack.length;
+  var query = "FOR e"
+    + " IN GRAPH_NEIGHBORS(@graphName,@startVertex_"
+    + this.stack.length + ',"'
+    + direction + '")';
+  this.bindVars["startVertex_" + this.stack.length] = startVertex;
+  var stmt = new AQLStatement(query, true);
+  this.stack.push(stmt);
+  this.lastEdgeVar = "e";
+  return this;
+};
+
+
 AQLGenerator.prototype.getLastEdgeVar = function() {
   if (this.lastEdgeVar === "") {
     return false;
@@ -331,7 +346,7 @@ var _directedRelationDefinition = function (
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var edgeDefinitions = function () {
+var _edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
@@ -341,6 +356,25 @@ var edgeDefinitions = function () {
   return res;
 
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extend a list of edge definitions
+////////////////////////////////////////////////////////////////////////////////
+
+
+var _extendEdgeDefinitions = function (edgeDefinition) {
+
+  var args = arguments, i = 0;
+
+  Object.keys(args).forEach(function (x) {
+    i++;
+    if (i == 1) {return;}
+    edgeDefinition.push(args[x]);
+  });
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
@@ -662,6 +696,96 @@ Graph.prototype._getVertexCollectionByName = function(name) {
   throw "Collection " + name + " does not exist in graph.";
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get neighbors of a vertex in the graph.
+////////////////////////////////////////////////////////////////////////////////
+/*
+direction:
+  "inbound" -> consider only inbound edges
+"outbount" -> consider only outbound edges
+"any"(default) -> consider both directions
+weight: attribute-name -> use this attribute to determine edgeweight
+weight_function: function -> use this function to calculate the weight
+default-weight -> us this value if weight could not be calculated otherwise, default is Infinity
+only: function -> will be invoked on any edge, neighbors will only be included if this returns true or is not defined.*/
+
+Graph.prototype._neighbors = function(vertex, options) {
+  var current_vertex,
+    target_array = [],
+    addNeighborToList,
+    AQLStmt;
+
+  if (! options) {
+    options = { };
+  }
+
+  var direction = options.direction || 'any',
+    weight = options.weight,
+    weight_function = options.weight_function,
+    default_weight = options.default_weight || Infinity,
+    only = options.only;
+
+  addNeighborToList = function (current_edge, current_vertex) {
+    var neighbor_info;
+
+    neighbor_info = { id: current_vertex._id };
+    if (weight !== undefined) {
+      neighbor_info.weight = current_edge[weight] || default_weight;
+    } else if (weight_function !== undefined) {
+      neighbor_info.weight = weight_function(current_edge);
+    } else {
+      neighbor_info.weight = 1;
+    }
+
+    if ((only === undefined) || (only(current_edge))) {
+      target_array.push(neighbor_info);
+      }
+  };
+
+  AQLStmt = new AQLGenerator(this);
+  //require("internal").print(AQLStmt.neighbors(vertex, direction).toArray())
+  AQLStmt.neighbors(vertex, direction).toArray().forEach(function (n) {
+    addNeighborToList(n.edge, n.vertex);
+  });
+
+  return target_array;
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get common neighbors of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get amount of common neighbors of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._amountCommonNeighbors = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get common properties of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get amount of common properties of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._amountCommonProperties = function(vertex1, vertex2, options) {
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
@@ -669,7 +793,8 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
-exports.edgeDefinitions = edgeDefinitions;
+exports._edgeDefinitions = _edgeDefinitions;
+exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
