@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 
+using namespace std;
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
 

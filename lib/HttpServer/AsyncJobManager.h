@@ -33,9 +33,6 @@
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/GeneralServerJob.h"
 
-using namespace std;
-using namespace triagens::rest;
-
 namespace triagens {
   namespace rest {
 
@@ -84,7 +81,7 @@ namespace triagens {
 /// @brief gets the coordinator header
 ////////////////////////////////////////////////////////////////////////////////
 
-        string& getCoordinatorHeader () {
+        std::string& getCoordinatorHeader () {
           return _coordHeader;
         }
 
@@ -234,7 +231,7 @@ namespace triagens {
 /// @brief callback typedef
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef void (*callback_fptr)(string&, HttpResponse*);
+        typedef void (*callback_fptr)(std::string&, HttpResponse*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate typedef
