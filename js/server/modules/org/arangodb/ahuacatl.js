@@ -3971,13 +3971,11 @@ function DATE_MILLISECOND (value) {
 // --SECTION--                                                   graph functions
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph, INTERNAL part called recursively
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
-
   if (!Array.isArray(edgeCollections)) {
     edgeCollections = [edgeCollections];
   }
@@ -3994,10 +3992,9 @@ function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
       result = result.concat(edgeCollection.edges(vertexId));
     }
   });
+
   return result;
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph, INTERNAL part called recursively
@@ -4136,7 +4133,6 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -4149,7 +4145,6 @@ function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, max
   followCycles   = followCycles || false;
   minLength      = minLength || 0;
   maxLength      = maxLength !== undefined ? maxLength : 10;
-
 
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
@@ -4231,8 +4226,6 @@ function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, max
 
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
@@ -4329,7 +4322,6 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
   });
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tranform key to id
 ////////////////////////////////////////////////////////////////////////////////
@@ -4337,16 +4329,16 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
 function TO_ID (vertex, collection) {
   "use strict";
 
-  if (vertex === 'object' && vertex.hasOwnProperty('_id')) {
-    return  vertex._id;
+  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
+    return vertex._id;
   }
 
-  if (vertex.indexOf('/') === -1 && collection) {
-    return  collection + '/' + vertex;
+  if (typeof vertex === 'string' && vertex.indexOf('/') === -1 && collection) {
+    return collection + '/' + vertex;
   }
+
   return vertex;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
@@ -4456,19 +4448,15 @@ function TRAVERSAL_FUNC (func,
 
   return result;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path algorithm
-////////////////////////////////////////////////////////////////////////////////
-
-function GRAPH_SHORTEST_PATH (vertexCollection, 
-                              edgeCollection, 
-                              startVertex, 
-                              endVertex,
-                              direction, 
-                              params) {
-  "use strict";
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine parameters for SHORTEST_PATH and
+/// GRAPH_SHORTEST_PATH
+////////////////////////////////////////////////////////////////////////////////
+
+function SHORTEST_PATH_PARAMS (params) {
+  "use strict";
+
   if (params === undefined) {
     params = { };
   }
@@ -4488,6 +4476,23 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
     params.distance = undefined;
   }
 
+  return params;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path algorithm
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_SHORTEST_PATH (vertexCollection, 
+                              edgeCollection, 
+                              startVertex, 
+                              endVertex,
+                              direction, 
+                              params) {
+  "use strict";
+  
+  params = SHORTEST_PATH_PARAMS(params);
+
   return TRAVERSAL_FUNC("SHORTEST_PATH",
                         TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
                         TO_ID(startVertex, vertexCollection),
@@ -4501,32 +4506,15 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
-                              startVertex,
-                              endVertex,
-                              direction,
-                              params) {
+                                      startVertex,
+                                      endVertex,
+                                      direction,
+                                      params) {
   "use strict";
 
-  if (params === undefined) {
-    params = { };
-  }
+  params = SHORTEST_PATH_PARAMS(params);
 
-  params.strategy = "dijkstra";
-  params.itemorder = "forward";
-  params.visitor = TRAVERSAL_VISITOR;
-
-  if (typeof params.distance === "string") {
-    var name = params.distance.toUpperCase();
-
-    params.distance = function (config, vertex1, vertex2, edge) {
-      return FCALL_USER(name, [ config, vertex1, vertex2, edge ]);
-    };
-  }
-  else {
-    params.distance = undefined;
-  }
-
-  return TRAVERSAL_FUNC("SHORTEST_PATH",
+  return TRAVERSAL_FUNC("GRAPH_SHORTEST_PATH",
     TRAVERSAL.generalGraphDatasourceFactory(graphName),
     TO_ID(startVertex),
     TO_ID(endVertex),
@@ -4534,6 +4522,21 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     params);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine parameters for TRAVERSAL and
+/// GRAPH_TRAVERSAL
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_PARAMS (params) {
+  "use strict";
+  
+  if (params === undefined) {
+    params = { };
+  }
+
+  params.visitor  = TRAVERSAL_VISITOR;
+  return params;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
@@ -4545,12 +4548,8 @@ function GRAPH_TRAVERSAL (vertexCollection,
                           direction, 
                           params) {
   "use strict";
-  
-  if (params === undefined) {
-    params = { };
-  }
 
-  params.visitor  = TRAVERSAL_VISITOR;
+  params = TRAVERSAL_PARAMS(params);  
 
   return TRAVERSAL_FUNC("TRAVERSAL",
                         TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
@@ -4559,7 +4558,6 @@ function GRAPH_TRAVERSAL (vertexCollection,
                         direction, 
                         params);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
@@ -4571,13 +4569,9 @@ function GENERAL_GRAPH_TRAVERSAL (graphName,
                           params) {
   "use strict";
 
-  if (params === undefined) {
-    params = { };
-  }
+  params = TRAVERSAL_PARAMS(params);  
 
-  params.visitor  = TRAVERSAL_VISITOR;
-
-  return TRAVERSAL_FUNC("TRAVERSAL",
+  return TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
     TRAVERSAL.generalGraphDatasourceFactory(graphName),
     TO_ID(startVertex),
     undefined,
@@ -4585,6 +4579,27 @@ function GENERAL_GRAPH_TRAVERSAL (graphName,
     params);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine parameters for TRAVERSAL_TREE and
+/// GRAPH_TRAVERSAL_TREE
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
+  "use strict";
+  
+  if (params === undefined) {
+    params = { };
+  }
+
+  params.visitor  = TRAVERSAL_TREE_VISITOR;
+  params.connect  = connectName;
+  
+  if (params.connect === "") {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, funcName);
+  }
+
+  return params;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph and create a hierarchical result
@@ -4600,16 +4615,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
                                params) {
   "use strict";
 
-  if (connectName === "") {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSAL_TREE");
-  }
-
-  if (params === undefined) {
-    params = { };
-  }
-
-  params.visitor  = TRAVERSAL_TREE_VISITOR;
-  params.connect  = connectName;
+  params = TRAVERSAL_TREE_PARAMS(params, connectName, "TRAVERSAL_TREE");
 
   var result = TRAVERSAL_FUNC("TRAVERSAL_TREE",
                               TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
@@ -4631,24 +4637,15 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
-                               startVertex,
-                               direction,
-                               connectName,
-                               params) {
+                                       startVertex,
+                                       direction,
+                                       connectName,
+                                       params) {
   "use strict";
 
-  if (connectName === "") {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRAVERSAL_TREE");
-  }
+  params = TRAVERSAL_TREE_PARAMS(params, connectName, "GRAPH_TRAVERSAL_TREE");
 
-  if (params === undefined) {
-    params = { };
-  }
-
-  params.visitor  = TRAVERSAL_TREE_VISITOR;
-  params.connect  = connectName;
-
-  var result = TRAVERSAL_FUNC("TRAVERSAL_TREE",
+  var result = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
     TRAVERSAL.generalGraphDatasourceFactory(graphName),
     TO_ID(startVertex),
     undefined,
@@ -4660,7 +4657,6 @@ function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
   }
   return [ result[0][params.connect] ];
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected edges
@@ -4772,73 +4768,12 @@ function GENERAL_GRAPH_EDGES (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected neighbors
+/// @brief helper function to filter edges based on examples
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_NEIGHBORS (vertexCollection,
-                          edgeCollection, 
-                          vertex, 
-                          direction,
-                          examples) {
+function FILTERED_EDGES (edges, vertex, direction, examples) {
   "use strict";
 
-  var c = COLLECTION(vertexCollection);
-
-  if (typeof vertex === 'object' && vertex.hasOwnProperty('_id')) {
-    vertex = vertex._id;
-  }
-
-  if (vertex.indexOf('/') === -1) {
-    vertex = vertexCollection + '/' + vertex;
-  }
-
-  var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
-  var result = [ ];
-  
-  FILTER(edges, examples).forEach (function (e) {
-    var key;
-
-    if (direction === "inbound") {
-      key = e._from;
-    }
-    else if (direction === "outbound") {
-      key = e._to;
-    }
-    else if (direction === "any") {
-      key = e._from;
-      if (key === vertex) {
-        key = e._to;
-      }
-    }
-
-    if (key === vertex) {
-      // do not return the start vertex itself
-      return;
-    }
-
-    try {
-      result.push({ edge: CLONE(e), vertex: c.document(key) });
-    }
-    catch (err) {
-    }
-  });
-
-  return result;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected neighbors
-////////////////////////////////////////////////////////////////////////////////
-
-function GENERAL_GRAPH_NEIGHBORS (graphName,
-                          vertex,
-                          direction,
-                          examples) {
-  "use strict";
-
-
-  var edges = GENERAL_GRAPH_EDGES(graphName, TO_ID(vertex), direction);
   var result = [ ];
 
   FILTER(edges, examples).forEach (function (e) {
@@ -4872,6 +4807,36 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function GRAPH_NEIGHBORS (vertexCollection,
+                          edgeCollection, 
+                          vertex, 
+                          direction,
+                          examples) {
+  "use strict";
+
+  vertex = TO_ID(vertex, vertexCollection);
+  var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
+  return FILTERED_EDGES(edges, vertex, direction, examples);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_NEIGHBORS (graphName,
+                                  vertex,
+                                  direction,
+                                  examples) {
+  "use strict";
+
+  vertex = TO_ID(vertex);
+  var edges = GENERAL_GRAPH_EDGES(graphName, vertex, direction);
+  return FILTERED_EDGES(edges, vertex, direction, examples);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS

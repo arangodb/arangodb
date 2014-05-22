@@ -150,12 +150,16 @@ namespace triagens {
           return static_cast<void*>(_buffer);
         }
 
-        inline char* base () const {
+        inline char* begin () const {
           return _buffer;
+        }
+        
+        inline char* end () const {
+          return _buffer + _size;
         }
       
         inline char* payload () const {
-          return base() + sizeof(TRI_df_marker_t);
+          return begin() + sizeof(TRI_df_marker_t);
         }
 
         inline uint32_t size () const {
@@ -268,36 +272,41 @@ namespace triagens {
         ~DocumentMarker ();
 
       public: 
+        
+        inline TRI_voc_rid_t rid () const {
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
+          return m->_rid;
+        }
+        
+        inline TRI_voc_rid_t tid () const {
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
+          return m->_tid;
+        }
 
         inline char const* key () const {
           // pointer to key
-          return base() + sizeof(document_marker_t);
+          return begin() + sizeof(document_marker_t);
         }
 
-        inline size_t keyLength () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
-          return static_cast<size_t>(m->_offsetLegend - m->_offsetKey);
-        }
-        
         inline char const* legend () const {
           // pointer to legend
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
-          return base() + m->_offsetLegend;
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
+          return begin() + m->_offsetLegend;
         }
         
         inline size_t legendLength () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
           return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
         }
         
         inline char const* json () const {
           // pointer to json
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
-          return base() + m->_offsetJson;
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
+          return begin() + m->_offsetJson;
         }
         
         inline size_t jsonLength () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
           return static_cast<size_t>(size() - m->_offsetJson);
         }
          
@@ -330,6 +339,55 @@ namespace triagens {
                     TRI_shaped_json_t const*);
 
         ~EdgeMarker ();
+
+        inline TRI_voc_rid_t rid () const {
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return m->_rid;
+        }
+        
+        inline TRI_voc_rid_t tid () const {
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return m->_tid;
+        }
+
+        inline char const* key () const {
+          // pointer to key
+          return begin() + sizeof(edge_marker_t);
+        }
+
+        inline char const* fromKey () const {
+          // pointer to _from key
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return begin() + m->_offsetFromKey;
+        }
+        
+        inline char const* toKey () const {
+          // pointer to _to key
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return begin() + m->_offsetToKey;
+        }
+
+        inline char const* legend () const {
+          // pointer to legend
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return begin() + m->_offsetLegend;
+        }
+        
+        inline size_t legendLength () const {
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
+        }
+        
+        inline char const* json () const {
+          // pointer to json
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return begin() + m->_offsetJson;
+        }
+        
+        inline size_t jsonLength () const {
+          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+          return static_cast<size_t>(size() - m->_offsetJson);
+        }
         
         void dump () const;
         
@@ -362,11 +420,16 @@ namespace triagens {
 
         inline char const* key () const {
           // pointer to key
-          return base() + sizeof(remove_marker_t);
+          return begin() + sizeof(remove_marker_t);
+        }
+
+        inline TRI_voc_rid_t tid () const {
+          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
+          return m->_tid;
         }
 
         inline TRI_voc_rid_t rid () const {
-          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(base());
+          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
           return m->_rid;
         }
 
