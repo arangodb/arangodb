@@ -34,7 +34,6 @@
 #include "Completer.h"
 
 namespace triagens {
-  using namespace std;
 
   class Completer;
 
