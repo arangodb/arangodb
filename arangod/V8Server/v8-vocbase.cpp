@@ -10009,10 +10009,16 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(document->_data);
 
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+  }
+  else if (type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(document->_data);
+
+    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
   }
 
   return scope.Close(result);
