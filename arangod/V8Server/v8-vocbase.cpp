@@ -2333,7 +2333,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true);
 
   if (shaped == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -2401,7 +2401,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
   trx->lockWrite();
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true);
 
   if (shaped == 0) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -2519,7 +2519,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   trx->lockWrite();
   // extract shaped data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true);
 
   if (shaped == 0) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);

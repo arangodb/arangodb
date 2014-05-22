@@ -95,6 +95,15 @@ Marker::~Marker () {
 ////////////////////////////////////////////////////////////////////////////////
       
 void Marker::storeSizedString (size_t offset,
+                               std::string const& value) {
+  return storeSizedString(offset, value.c_str(), value.size());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a null-terminated string and length inside the marker
+////////////////////////////////////////////////////////////////////////////////
+      
+void Marker::storeSizedString (size_t offset,
                                char const* value,
                                size_t length) {
   char* p = static_cast<char*>(begin()) + offset;
@@ -103,6 +112,72 @@ void Marker::storeSizedString (size_t offset,
   memcpy(p, value, length);
   // append NUL byte
   p[length] = '\0';
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AttributeMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
+                                  TRI_voc_cid_t collectionId,
+                                  TRI_shape_aid_t attributeId,
+                                  std::string const& attributeName) 
+  : Marker(TRI_WAL_MARKER_ATTRIBUTE, sizeof(attribute_marker_t) + alignedSize(attributeName.size() + 1)) {
+
+  attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
+
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
+  m->_attributeId = attributeId;
+
+  storeSizedString(sizeof(attribute_marker_t), attributeName);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+AttributeMarker::~AttributeMarker () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       ShapeMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
+                          TRI_voc_cid_t collectionId,
+                          TRI_shape_t const* shape) 
+  : Marker(TRI_WAL_MARKER_SHAPE, sizeof(shape_marker_t) + shape->_size) {
+
+  shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
+
+  m->_databaseId = databaseId;
+  m->_collectionId = collectionId;
+
+  memcpy(this->shape(), shape, shape->_size); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+ShapeMarker::~ShapeMarker () {
 }
 
 // -----------------------------------------------------------------------------
@@ -119,8 +194,7 @@ void Marker::storeSizedString (size_t offset,
       
 BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
                                                 TRI_voc_tid_t transactionId) 
-  : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, 
-    sizeof(transaction_begin_marker_t)) {
+  : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, sizeof(transaction_begin_marker_t)) {
 
   transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
 
@@ -149,8 +223,7 @@ BeginTransactionMarker::~BeginTransactionMarker () {
       
 CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
                                                   TRI_voc_tid_t transactionId) 
-  : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, 
-    sizeof(transaction_commit_marker_t)) {
+  : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, sizeof(transaction_commit_marker_t)) {
 
   transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
 
@@ -179,8 +252,7 @@ CommitTransactionMarker::~CommitTransactionMarker () {
       
 AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
                                                 TRI_voc_tid_t transactionId) 
-  : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, 
-    sizeof(transaction_abort_marker_t)) {
+  : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, sizeof(transaction_abort_marker_t)) {
 
   transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
 
@@ -226,7 +298,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 1);
   m->_offsetJson   = m->_offsetLegend + alignedSize(legend.getSize());
           
-  storeSizedString(m->_offsetKey, key.c_str(), key.size());
+  storeSizedString(m->_offsetKey, key);
 
   // store legend 
   {
@@ -356,7 +428,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
           
   // store keys
-  storeSizedString(m->_offsetKey, key.c_str(), key.size());
+  storeSizedString(m->_offsetKey, key.c_str());
   storeSizedString(m->_offsetFromKey, edge->_fromKey, strlen(edge->_fromKey));
   storeSizedString(m->_offsetToKey, edge->_toKey, strlen(edge->_toKey));
 
@@ -488,15 +560,14 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
                             TRI_voc_rid_t revisionId,
                             TRI_voc_tid_t transactionId,
                             std::string const& key) 
-  : Marker(TRI_WAL_MARKER_REMOVE,
-    sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
+  : Marker(TRI_WAL_MARKER_REMOVE, sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
   remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_rid = revisionId;
   m->_tid = transactionId;
 
-  storeSizedString(sizeof(remove_marker_t), key.c_str(), key.size());
+  storeSizedString(sizeof(remove_marker_t), key);
 
   dump();
 }
