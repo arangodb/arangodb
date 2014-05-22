@@ -1125,8 +1125,8 @@ function CollectionDocumentSuite () {
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
-// falsch
-      var a2 = collection.update(a1, { a : 2 }, true, false);
+                               //document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a : 2 }, true, true, false);
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1156,8 +1156,9 @@ function CollectionDocumentSuite () {
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
-// falsch, TODO
-      var a2 = collection.update(a1, { a : 2 }, true, true);
+
+                               //document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a : 2 }, true, true, true);
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
