@@ -33,6 +33,57 @@ using namespace triagens;
 using namespace triagens::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Data format of a legend in memory:
+/// 
+/// Rough overview description:
+/// 
+///   - attribute-ID table
+///   - shape table
+///   - attribute-ID string data
+///   - padding to achieve 8-byte alignment
+///   - shape data
+///   - padding to achieve 8-byte alignment
+/// 
+/// Description of the attribute-ID table (actual binary types in 
+/// [square brackets]):
+/// 
+///   - number of entries [TRI_shape_size_t]
+///   - each entry consists of:
+///   
+///       - attribute ID (aid) [TRI_shape_aid_t]
+///       - offset to string value, measured from the beginning of the legend
+///         [TRI_shape_size_t]
+/// 
+/// The entries in the attribute-ID table are sorted by ascending order of 
+/// shape IDs to allow for binary search if needed.
+///
+/// Description of the shape table:
+/// 
+///   - number of entries [TRI_shape_size_t]
+///   - each entry consists of:
+/// 
+///       - shape ID (sid) [TRI_shape_sid_t]
+///       - offset to shape data, measured from the beginning of the legend
+///         [TRI_shape_size_t]
+///       - size in bytes of the shape data for this shape ID [TRI_shape_size_t]
+/// 
+/// The entries in the shape table are sorted by ascending order of 
+/// shape IDs to allow for binary search if needed.
+///
+/// The strings for the attribute IDs are stored one after another, each 
+/// including a terminating zero byte. At the end of the string data follow
+/// zero bytes to pad to a total length that is divisible by 8.
+/// 
+/// The actual entries of the shape data is stored one after another. Alignment
+/// for each entry is automatically given by the length of the shape data. At 
+/// the end there is padding to make the length of the total legend divisible
+/// by 8.
+/// 
+/// Note that the builtin shapes are never dumped and that proper legends
+/// contain all attribute IDs
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clear all data to build a new legend, keep shaper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,19 +282,37 @@ void JsonLegend::dump (void* buf) {
   // Then sort the sids in ascending order:
   sort(_shapes.begin(), _shapes.end(), ShapeComparerObject);
 
+  // Total length of table data to add to offsets:
+  TRI_shape_size_t socle =   sizeof(TRI_shape_size_t)
+                           + sizeof(AttributeId) * _attribs.size()
+                           + sizeof(TRI_shape_size_t)
+                           + sizeof(Shape) * _shapes.size();
+
+  // Attribute ID table:
   TRI_shape_size_t* p = reinterpret_cast<TRI_shape_size_t*>(buf);
   TRI_shape_size_t i;
   *p++ = _attribs.size();
   AttributeId* a = reinterpret_cast<AttributeId*>(p);
   for (i = 0; i < _attribs.size(); i++) {
+    _attribs[i].offset += socle;
     *a++ = _attribs[i];
+    _attribs[i].offset -= socle;
   }
+
+  // Add the length of the string data to socle for second table:
+  socle += roundup8(_att_data.length());
+
+  // shape table:
   p = reinterpret_cast<TRI_shape_size_t*>(a);
   *p++ = _shapes.size();
   Shape* s = reinterpret_cast<Shape*>(p);
   for (i = 0; i < _shapes.size(); i++) {
+    _shapes[i].offset += socle;
     *s++ = _shapes[i];
+    _shapes[i].offset -= socle;
   }
+
+  // Attribute ID string data:
   char* c = reinterpret_cast<char*>(s);
   memcpy(c, _att_data.c_str(), _att_data.length());
   i = roundup8(_att_data.length());
@@ -251,6 +320,8 @@ void JsonLegend::dump (void* buf) {
     memset( c + _att_data.length(), 0, i-_att_data.length());
   }
   c += i;
+
+  // Shape data:
   memcpy(c, _shape_data.c_str(), _shape_data.length());
   i = roundup8(_shape_data.length());
   if (i > _shape_data.length()) {
