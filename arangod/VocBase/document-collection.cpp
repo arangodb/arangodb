@@ -449,13 +449,10 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   TRI_doc_document_key_marker_t* marker;
   TRI_key_generator_t* keyGenerator;
   char* position;
-  char keyBuffer[TRI_VOC_KEY_MAX_LENGTH + 1]; 
   TRI_voc_size_t keyBodySize;
   size_t markerSize;
-  size_t keySize;
   size_t fromSize;
   size_t toSize;
-  int res;
 
   *result = NULL;
 
@@ -468,21 +465,26 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
   TRI_ASSERT_MAINTAINER(keyGenerator != NULL);
   
   // create key using key generator
-  res = keyGenerator->generate(keyGenerator, 
-                               TRI_VOC_KEY_MAX_LENGTH, 
-                               tick,
-                               key, 
-                               (char*) &keyBuffer, 
-                               &keySize,
-                               isRestore);
+  std::string keyString;
+
+  if (key == NULL) {
+    keyString = keyGenerator->generateKey(keyGenerator, tick);
+  }
+  else {
+    keyString = std::string(key);
+    int res = keyGenerator->validateKey(keyGenerator, keyString);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
   
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (keyString.empty()) {
     // key generation failed
-    return res;
+    return TRI_ERROR_ARANGO_OUT_OF_KEYS;
   }
    
   // add 0 byte 
-  keySize += 1;
+  size_t keySize = keyString.size() + 1;
   
   // calculate the basic marker size
   if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
@@ -537,7 +539,7 @@ static int CreateDocumentMarker (TRI_primary_collection_t* primary,
 
   // copy the key into the marker
   position = *keyBody;
-  memcpy(position, (char*) &keyBuffer, keySize);
+  memcpy(position, (char*) keyString.c_str(), keySize);
 
   if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // additional attributes for an edge marker
@@ -1616,7 +1618,6 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
   TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary->_keyGenerator);
 
-  // TODO: write-lock the key generator!
   std::string keyString;
 
   if (key == nullptr) {
@@ -2543,8 +2544,8 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 #endif
   
   key = ((char*) d) + d->_offsetKey;
-  if (primary->_keyGenerator->track != NULL) {
-    primary->_keyGenerator->track(primary->_keyGenerator, key);
+  if (primary->_keyGenerator->trackKey != nullptr) {
+    primary->_keyGenerator->trackKey(primary->_keyGenerator, key);
   }
 
   found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
@@ -2675,8 +2676,8 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
             (unsigned long long) d->_rid,
             (unsigned long long) marker->_tick);
 
-  if (primary->_keyGenerator->track != NULL) {
-    primary->_keyGenerator->track(primary->_keyGenerator, key);
+  if (primary->_keyGenerator->trackKey != nullptr) {
+    primary->_keyGenerator->trackKey(primary->_keyGenerator, key);
   }
 
   found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));

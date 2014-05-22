@@ -45,11 +45,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief available key generators
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,18 +55,9 @@ typedef enum {
 }
 generator_type_e;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
@@ -126,10 +112,6 @@ static bool ValidateNumericKey (char const* key) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        SPECIALIZED KEY GENERATORS
 // -----------------------------------------------------------------------------
@@ -141,11 +123,6 @@ static bool ValidateNumericKey (char const* key) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traditional keygen private data
@@ -162,46 +139,35 @@ traditional_keygen_t;
 
 static const char* TraditionalName = "traditional";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the traditional key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TraditionalInit (TRI_key_generator_t* const generator,
-                            const TRI_json_t* const options) {
-  traditional_keygen_t* data;
+static int TraditionalInit (TRI_key_generator_t* generator,
+                            TRI_json_t const* options) {
+  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(traditional_keygen_t), false));
 
-  data = (traditional_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(traditional_keygen_t), false);
-
-  if (data == NULL) {
+  if (data == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // defaults
   data->_allowUserKeys = true;
 
-  if (options != NULL) {
+  if (options != nullptr) {
     TRI_json_t* option;
 
     option = TRI_LookupArrayJson(options, "allowUserKeys");
-    if (option != NULL && option->_type == TRI_JSON_BOOLEAN) {
+    if (option != nullptr && option->_type == TRI_JSON_BOOLEAN) {
       data->_allowUserKeys = option->_value._boolean;
     }
   }
 
-  generator->_data = (void*) data;
+  generator->_data = static_cast<void*>(data);
 
   LOG_TRACE("created traditional key-generator with options (allowUserKeys: %d)",
             (int) data->_allowUserKeys);
@@ -213,11 +179,10 @@ static int TraditionalInit (TRI_key_generator_t* const generator,
 /// @brief free the traditional key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void TraditionalFree (TRI_key_generator_t* const generator) {
-  traditional_keygen_t* data;
+static void TraditionalFree (TRI_key_generator_t* generator) {
+  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
 
-  data = (traditional_keygen_t*) generator->_data;
-  if (data != NULL) {
+  if (data != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
@@ -226,10 +191,10 @@ static void TraditionalFree (TRI_key_generator_t* const generator) {
 /// @brief create a new document key
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string TraditionalGenerateKey (TRI_key_generator_t* const generator,
+static std::string TraditionalGenerateKey (TRI_key_generator_t* generator,
                                            TRI_voc_tick_t revision) {
   traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
-  assert(data != 0);
+  assert(data != nullptr);
 
   // user has not specified a key, generate one based on tick
   return triagens::basics::StringUtils::itoa(revision);
@@ -239,10 +204,10 @@ static std::string TraditionalGenerateKey (TRI_key_generator_t* const generator,
 /// @brief validate a document key
 ////////////////////////////////////////////////////////////////////////////////
 
-static int TraditionalValidateKey (TRI_key_generator_t* const generator,
+static int TraditionalValidateKey (TRI_key_generator_t const* generator,
                                    std::string const& key) {
   traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
-  assert(data != 0);
+  assert(data != nullptr);
 
   // user has specified a key
   if (! key.empty() && ! data->_allowUserKeys) {
@@ -269,94 +234,22 @@ static int TraditionalValidateKey (TRI_key_generator_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a new key
-/// the caller must make sure that the outBuffer is big enough to hold at least
-/// maxLength + 1 bytes
-////////////////////////////////////////////////////////////////////////////////
-
-static int TraditionalGenerate (TRI_key_generator_t* const generator,
-                                const size_t maxLength,
-                                const TRI_voc_tick_t tick,
-                                const char* const userKey,
-                                char* const outBuffer,
-                                size_t* const outLength,
-                                bool isRestore) {
-  traditional_keygen_t* data;
-  char* current;
-
-  data = (traditional_keygen_t*) generator->_data;
-  assert(data != NULL);
-
-  current = outBuffer;
-
-  if (userKey != NULL) {
-    size_t userKeyLength;
-
-    // user has specified a key
-    if (! data->_allowUserKeys && ! isRestore) {
-      // we do not allow user-generated keys
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
-    }
-
-    userKeyLength = strlen(userKey);
-    if (userKeyLength > maxLength) {
-      // user key is too long
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
-    else if (userKeyLength == 0) {
-      // user key is empty
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
-
-    // validate user-supplied key
-    if (! ValidateKey(userKey)) {
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
-
-    memcpy(outBuffer, userKey, userKeyLength);
-    current += userKeyLength;
-  }
-  else {
-    // user has not specified a key, generate one based on tick
-    current += TRI_StringUInt64InPlace(tick, outBuffer);
-  }
-
-  // add 0 byte
-  *current = '\0';
-
-  if (current - outBuffer > (int) maxLength) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  *outLength = (current - outBuffer);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* TraditionalToJson (const TRI_key_generator_t* const generator) {
-  TRI_json_t* json;
+static TRI_json_t* TraditionalToJson (TRI_key_generator_t const* generator) {
+  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
+  assert(data != nullptr);
 
-  traditional_keygen_t* data;
-  data = (traditional_keygen_t*) generator->_data;
-  assert(data != NULL);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json != NULL) {
+  if (json != nullptr) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TraditionalName));
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
   }
 
   return json;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AUTO-INCREMENT KEY GENERATOR
@@ -367,31 +260,16 @@ static TRI_json_t* TraditionalToJson (const TRI_key_generator_t* const generator
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum allowed value for increment value
-////////////////////////////////////////////////////////////////////////////////
-
-#define AUTOINCREMENT_MAX_INCREMENT (1ULL << 16)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum value for offset value
-////////////////////////////////////////////////////////////////////////////////
-
-#define AUTOINCREMENT_MAX_OFFSET    (UINT64_MAX)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief autoincrement keygen private data
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct autoincrement_keygen_s {
-  uint64_t _lastValue;     // last value assigned
-  uint64_t _offset;        // start value
-  uint64_t _increment;     // increment value
-  bool     _allowUserKeys; // allow keys supplied by user?
+  uint64_t    _lastValue;     // last value assigned
+  uint64_t    _offset;        // start value
+  uint64_t    _increment;     // increment value
+  bool        _allowUserKeys; // allow keys supplied by user?
+
+  TRI_mutex_t _lock;
 }
 autoincrement_keygen_t;
 
@@ -401,30 +279,19 @@ autoincrement_keygen_t;
 
 static const char* AutoIncrementName = "autoincrement";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the autoincrement key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AutoIncrementInit (TRI_key_generator_t* const generator,
-                              const TRI_json_t* const options) {
-  autoincrement_keygen_t* data;
+static int AutoIncrementInit (TRI_key_generator_t* generator,
+                              TRI_json_t const* options) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(autoincrement_keygen_t), false));
 
-  data = (autoincrement_keygen_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(autoincrement_keygen_t), false);
-
-  if (data == NULL) {
+  if (data == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -434,18 +301,21 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
   data->_offset        = 0;
   data->_increment     = 1;
 
-  if (options != NULL) {
+  if (options != nullptr) {
     TRI_json_t* option;
 
     option = TRI_LookupArrayJson(options, "allowUserKeys");
-    if (option != NULL && option->_type == TRI_JSON_BOOLEAN) {
+
+    if (TRI_IsBooleanJson(option)) {
       data->_allowUserKeys = option->_value._boolean;
     }
 
     option = TRI_LookupArrayJson(options, "increment");
-    if (option != NULL && option->_type == TRI_JSON_NUMBER) {
+
+    if (TRI_IsNumberJson(option)) {
       data->_increment = (uint64_t) option->_value._number;
-      if (data->_increment == 0 || data->_increment >= AUTOINCREMENT_MAX_INCREMENT) {
+
+      if (data->_increment == 0 || data->_increment >= (1ULL << 16)) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
         return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
@@ -453,9 +323,11 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
     }
 
     option = TRI_LookupArrayJson(options, "offset");
-    if (option != NULL && option->_type == TRI_JSON_NUMBER) {
+
+    if (TRI_IsNumberJson(option)) {
       data->_offset = (uint64_t) option->_value._number;
-      if (data->_offset >= AUTOINCREMENT_MAX_OFFSET) {
+
+      if (data->_offset >= UINT64_MAX) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
 
         return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
@@ -463,7 +335,9 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
     }
   }
 
-  generator->_data = (void*) data;
+  TRI_InitMutex(&data->_lock);
+
+  generator->_data = static_cast<void*>(data);
 
   LOG_TRACE("created autoincrement key-generator with options (allowUserKeys: %d, increment: %llu, offset: %llu)",
             (int) data->_allowUserKeys,
@@ -477,11 +351,11 @@ static int AutoIncrementInit (TRI_key_generator_t* const generator,
 /// @brief free the autoincrement key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AutoIncrementFree (TRI_key_generator_t* const generator) {
-  autoincrement_keygen_t* data;
+static void AutoIncrementFree (TRI_key_generator_t* generator) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
 
-  data = (autoincrement_keygen_t*) generator->_data;
-  if (data != NULL) {
+  if (data != nullptr) {
+    TRI_DestroyMutex(&data->_lock);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
   }
 }
@@ -493,16 +367,14 @@ static void AutoIncrementFree (TRI_key_generator_t* const generator) {
 /// - offset (start value)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t AutoIncrementNext (const uint64_t lastValue,
-                                   const uint64_t increment,
-                                   const uint64_t offset) {
-  uint64_t next;
-
+static uint64_t AutoIncrementNext (uint64_t lastValue,
+                                   uint64_t increment,
+                                   uint64_t offset) {
   if (lastValue < offset) {
     return offset;
   }
 
-  next = lastValue + increment - ((lastValue - offset) % increment);
+  uint64_t next = lastValue + increment - ((lastValue - offset) % increment);
 
   // TODO: check if we can remove the following if
   if (next < offset) {
@@ -516,22 +388,27 @@ static uint64_t AutoIncrementNext (const uint64_t lastValue,
 /// @brief generate a new key
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string AutoIncrementGenerateKey (TRI_key_generator_t* const generator,
+static std::string AutoIncrementGenerateKey (TRI_key_generator_t* generator,
                                              TRI_voc_tick_t revision) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != 0);
-    
+  assert(data != nullptr);
+   
+  TRI_LockMutex(&data->_lock);
+   
   // user has not specified a key, generate one based on algorithm
   uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
 
   // bounds and sanity checks
   if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
+    TRI_UnlockMutex(&data->_lock);
     return "";
   }
 
   assert(keyValue > data->_lastValue);
   // update our last value
   data->_lastValue = keyValue;
+
+  TRI_UnlockMutex(&data->_lock);
 
   return triagens::basics::StringUtils::itoa(keyValue);
 }
@@ -540,10 +417,10 @@ static std::string AutoIncrementGenerateKey (TRI_key_generator_t* const generato
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AutoIncrementValidateKey (TRI_key_generator_t* const generator,
+static int AutoIncrementValidateKey (TRI_key_generator_t const* generator,
                                      std::string const& key) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != 0);
+  assert(data != nullptr);
 
   if (! key.empty() && ! data->_allowUserKeys) {
     // we do not allow user-generated keys
@@ -565,6 +442,7 @@ static int AutoIncrementValidateKey (TRI_key_generator_t* const generator,
   }
 
   uint64_t intValue = triagens::basics::StringUtils::uint64(key);
+
   if (intValue > data->_lastValue) {
     // update our last value
     data->_lastValue = intValue;
@@ -574,99 +452,18 @@ static int AutoIncrementValidateKey (TRI_key_generator_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a new key
-/// the caller must make sure that the outBuffer is big enough to hold at least
-/// maxLength + 1 bytes
-////////////////////////////////////////////////////////////////////////////////
-
-static int AutoIncrementGenerate (TRI_key_generator_t* const generator,
-                                  const size_t maxLength,
-                                  const TRI_voc_tick_t tick,
-                                  const char* const userKey,
-                                  char* const outBuffer,
-                                  size_t* const outLength,
-                                  bool isRestore) {
-  autoincrement_keygen_t* data;
-  char* current;
-
-  data = (autoincrement_keygen_t*) generator->_data;
-  assert(data != NULL);
-
-  current = outBuffer;
-
-  if (userKey != NULL) {
-    uint64_t userKeyValue;
-    size_t userKeyLength;
-
-    // user has specified a key
-    if (! data->_allowUserKeys && ! isRestore) {
-      // we do not allow user-generated keys
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
-    }
-
-    userKeyLength = strlen(userKey);
-    if (userKeyLength > maxLength) {
-      // user key is too long
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
-
-    // validate user-supplied key
-    if (! ValidateNumericKey(userKey)) {
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-    }
-
-    memcpy(outBuffer, userKey, userKeyLength);
-    current += userKeyLength;
-
-    userKeyValue = TRI_UInt64String2(userKey, userKeyLength);
-    if (userKeyValue > data->_lastValue) {
-      // update our last value
-      data->_lastValue = userKeyValue;
-    }
-  }
-  else {
-    // user has not specified a key, generate one based on algorithm
-    uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
-
-    // bounds and sanity checks
-    if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-    }
-
-    assert(keyValue > data->_lastValue);
-    // update our last value
-    data->_lastValue = keyValue;
-
-    current += TRI_StringUInt64InPlace(keyValue, outBuffer);
-  }
-
-  // add 0 byte
-  *current = '\0';
-
-  if (current - outBuffer > (int) maxLength) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  *outLength = (current - outBuffer);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief track a key while a collection is opened
 /// this function is used to update the _lastValue value
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AutoIncrementTrack (TRI_key_generator_t* const generator,
-                                const TRI_voc_key_t key) {
-  autoincrement_keygen_t* data;
-  uint64_t value;
-
-  data = (autoincrement_keygen_t*) generator->_data;
-  assert(data != NULL);
+static void AutoIncrementTrack (TRI_key_generator_t* generator,
+                                TRI_voc_key_t key) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
+  assert(data != nullptr);
 
   // check the numeric key part
-  value = TRI_UInt64String(key);
+  uint64_t value = TRI_UInt64String(key);
+
   if (value > data->_lastValue) {
     // and update our last value
     data->_lastValue = value;
@@ -677,16 +474,13 @@ static void AutoIncrementTrack (TRI_key_generator_t* const generator,
 /// @brief return a JSON representation of the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generator) {
-  TRI_json_t* json;
+static TRI_json_t* AutoIncrementToJson (TRI_key_generator_t const* generator) {
+  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
+  assert(data != nullptr);
 
-  autoincrement_keygen_t* data;
-  data = (autoincrement_keygen_t*) generator->_data;
-  assert(data != NULL);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json != NULL) {
+  if (json != nullptr) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, AutoIncrementName));
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, data->_allowUserKeys));
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) data->_offset));
@@ -695,10 +489,6 @@ static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generat
 
   return json;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       GENERAL GENERATOR FUNCTIONS
@@ -709,29 +499,21 @@ static TRI_json_t* AutoIncrementToJson (const TRI_key_generator_t* const generat
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the generator type from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-static generator_type_e GeneratorType (const TRI_json_t* const parameters) {
-  TRI_json_t* type;
-  const char* typeName;
-
-  if (parameters == NULL || parameters->_type != TRI_JSON_ARRAY) {
+static generator_type_e GeneratorType (TRI_json_t const* parameters) {
+  if (! TRI_IsArrayJson(parameters)) {
     return TYPE_TRADITIONAL;
   }
 
-  type = TRI_LookupArrayJson(parameters, "type");
+  TRI_json_t const* type = TRI_LookupArrayJson(parameters, "type");
 
   if (! TRI_IsStringJson(type)) {
     return TYPE_TRADITIONAL;
   }
 
-  typeName = type->_value._string.data;
+  const char* typeName = type->_value._string.data;
 
   if (TRI_CaseEqualString(typeName, TraditionalName)) {
     return TYPE_TRADITIONAL;
@@ -749,83 +531,66 @@ static generator_type_e GeneratorType (const TRI_json_t* const parameters) {
 /// @brief create a new generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_key_generator_t* CreateGenerator (const TRI_json_t* const parameters) {
-  TRI_key_generator_t* generator;
-  generator_type_e     type;
-
-  type = GeneratorType(parameters);
+static TRI_key_generator_t* CreateGenerator (TRI_json_t const* parameters) {
+  generator_type_e type = GeneratorType(parameters);
 
   if (type == TYPE_UNKNOWN) {
-    return NULL;
+    return nullptr;
   }
 
-  generator = (TRI_key_generator_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_key_generator_t), false);
+  TRI_key_generator_t* generator = static_cast<TRI_key_generator_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_key_generator_t), false));
 
-  if (generator == NULL) {
-    return NULL;
+  if (generator == nullptr) {
+    return nullptr;
   }
 
-  generator->_data         = NULL;
+  generator->_data         = nullptr;
 
   if (type == TYPE_TRADITIONAL) {
     generator->init        = &TraditionalInit;
-    generator->generate    = &TraditionalGenerate;
     generator->generateKey = &TraditionalGenerateKey;
     generator->validateKey = &TraditionalValidateKey;
+    generator->trackKey    = nullptr;
     generator->free        = &TraditionalFree;
-    generator->track       = NULL;
     generator->toJson      = &TraditionalToJson;
   }
   else if (type == TYPE_AUTOINCREMENT) {
     generator->init        = &AutoIncrementInit;
-    generator->generate    = &AutoIncrementGenerate;
     generator->generateKey = &AutoIncrementGenerateKey;
     generator->validateKey = &AutoIncrementValidateKey;
+    generator->trackKey    = &AutoIncrementTrack;
     generator->free        = &AutoIncrementFree;
-    generator->track       = &AutoIncrementTrack;
     generator->toJson      = &AutoIncrementToJson;
   }
 
   return generator;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateKeyGenerator (const TRI_json_t* const parameters,
+int TRI_CreateKeyGenerator (TRI_json_t const* parameters,
                             TRI_key_generator_t** dst) {
-  TRI_key_generator_t* generator;
-  const TRI_json_t* options;
-  int res;
-
   *dst = NULL;
 
-  options = NULL;
-  if (parameters != NULL && parameters->_type == TRI_JSON_ARRAY) {
+  TRI_json_t const* options = nullptr;
+
+  if (TRI_IsArrayJson(parameters)) {
     options = parameters;
   }
 
-  generator = CreateGenerator(options);
+  TRI_key_generator_t* generator = CreateGenerator(options);
 
   if (generator == NULL) {
     return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
   }
 
-  res = generator->init(generator, options);
+  int res = generator->init(generator, options);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeKeyGenerator(generator);
@@ -843,7 +608,7 @@ int TRI_CreateKeyGenerator (const TRI_json_t* const parameters,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeKeyGenerator (TRI_key_generator_t* generator) {
-  if (generator->free != NULL) {
+  if (generator->free != nullptr) {
     generator->free(generator);
   }
 
@@ -900,10 +665,6 @@ bool TRI_ValidateDocumentIdKeyGenerator (char const* key,
   // validate document key
   return ValidateKey(p);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
