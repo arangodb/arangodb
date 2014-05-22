@@ -47,12 +47,10 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_json_s;
-  struct TRI_primary_collection_s;
-  struct TRI_vocbase_col_s;
-  struct TRI_vocbase_s;
-}
+struct TRI_json_s;
+struct TRI_primary_collection_s;
+struct TRI_vocbase_col_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestVocbaseBaseHandler

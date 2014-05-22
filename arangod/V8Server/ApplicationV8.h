@@ -41,10 +41,8 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_server_s;
-  struct TRI_vocbase_s;
-}
+struct TRI_server_s;
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace basics {
