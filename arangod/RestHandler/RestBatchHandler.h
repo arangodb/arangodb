@@ -32,10 +32,6 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class RestBatchHandler
 // -----------------------------------------------------------------------------

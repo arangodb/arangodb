@@ -36,11 +36,6 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
-
 struct TRI_json_s;
 struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
