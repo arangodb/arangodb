@@ -43,10 +43,8 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
-extern "C" {
-  struct TRI_json_s;
-  struct TRI_vector_pointer_s;
-}
+struct TRI_json_s;
+struct TRI_vector_pointer_s;
 
 namespace triagens {
   namespace arango {
