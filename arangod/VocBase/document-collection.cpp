@@ -3350,7 +3350,7 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   }
 
   TRI_FreeVocShaper(document->base._shaper);
-  document->base._shaper = NULL;
+  document->base._shaper = nullptr;
 
   return TRI_ERROR_NO_ERROR;
 }
