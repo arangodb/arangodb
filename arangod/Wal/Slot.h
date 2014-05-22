@@ -32,9 +32,7 @@
 #include "ShapedJson/Legends.h"
 #include "Wal/Logfile.h"
 
-extern "C" {
-  struct TRI_df_marker_s;
-}
+struct TRI_df_marker_s;
 
 namespace triagens {
   namespace wal {

@@ -34,9 +34,7 @@
 
 #include "VocBase/vocbase.h"
 
-extern "C" {
-  struct TRI_json_s;
-}
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8TimerTask

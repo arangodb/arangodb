@@ -34,10 +34,8 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 
-extern "C" {
-  struct TRI_server_s;
-  struct TRI_vocbase_s;
-}
+struct TRI_server_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
