@@ -32,6 +32,9 @@ using namespace std;
 using namespace triagens;
 using namespace triagens::basics;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear all data to build a new legend, keep shaper
+////////////////////////////////////////////////////////////////////////////////
 
 void JsonLegend::clear () {
   _have_attribute.clear();
@@ -41,6 +44,10 @@ void JsonLegend::clear () {
   _shapes.clear();
   _shape_data.clear();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add an attribute ID to the legend
+////////////////////////////////////////////////////////////////////////////////
 
 int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   unordered_set<TRI_shape_aid_t>::const_iterator it = _have_attribute.find(aid);
@@ -59,6 +66,10 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   _att_data.appendText(p, len+1);   // including the zero byte
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a shape to the legend
+////////////////////////////////////////////////////////////////////////////////
 
 int JsonLegend::addShape (TRI_shape_sid_t sid, 
                           char const* data, uint32_t len) {
@@ -192,6 +203,10 @@ static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
   return (x + 7) - ((x + 7) & 7);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the total size in bytes of the legend
+////////////////////////////////////////////////////////////////////////////////
+
 size_t JsonLegend::getSize () const {
   // Add string pool size and shape pool size and add space for header
   // and tables in bytes.
@@ -202,6 +217,10 @@ size_t JsonLegend::getSize () const {
          + roundup8(_att_data.length())             // string data, padded
          + roundup8(_shape_data.length());          // shape data, padded
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the legend to the buffer pointed to by buf
+////////////////////////////////////////////////////////////////////////////////
 
 void JsonLegend::dump (void* buf) {
   // Dump the resulting legend to a given buffer.
