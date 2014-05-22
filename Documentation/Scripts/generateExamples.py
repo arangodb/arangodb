@@ -60,12 +60,18 @@ OutputDir = "/tmp/"
 
 ################################################################################
 ### @brief arangosh output
+###
+### A list of commands that are executed in order to produce the output. The
+### commands and there output is logged.
 ################################################################################
 
 ArangoshOutput = {}
 
 ################################################################################
 ### @brief arangosh run
+###
+### A list of commands that are executed in order to produce the output. This
+### is mostly used for HTTP request examples.
 ################################################################################
 
 ArangoshRun = {}
@@ -150,7 +156,7 @@ for filename in argv:
                         print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
                         
                     ArangoshFiles[name] = True
-                    ArangoshOutput[name] = ""
+                    ArangoshOutput[name] = []
                     state = STATE_ARANGOSH_OUTPUT
                     continue
 
@@ -179,7 +185,7 @@ for filename in argv:
 
                 line = line[len(strip):]
 
-                ArangoshOutput[name] += line + "\n"
+                ArangoshOutput[name].append(line)
 
             elif state == STATE_ARANGOSH_RUN:
                 m = r4.match(line)
@@ -221,6 +227,8 @@ for filename in argv:
 ### @brief generate arangosh example
 ################################################################################
 
+gr1 = re.compile(r'^[ \n]*var ')
+
 def generateArangoshOutput():
     print "var internal = require('internal');"
     print "var fs = require('fs');"
@@ -242,7 +250,21 @@ def generateArangoshOutput():
 
         print "(function() {"
         print "internal.startCaptureMode();";
-        print "try { var value = %s; print(value); } catch (err) { print(err); }" % value
+        print "try {"
+        print "  var XXX;"
+
+        for l in value:
+            m = gr1.match(l)
+
+            print "print('arangosh> %s');" % l.replace("\\", "\\\\").replace("'", "\\'")
+
+            if m:
+                print "%s" % l
+            else:
+                print "XXX = %s" % l
+                print "print(XXX);"
+
+        print "} catch (err) { print(err); }"
         print "var output = internal.stopCaptureMode();";
         print "ArangoshOutput['%s'] = output;" % key
         if JS_DEBUG:
@@ -279,12 +301,13 @@ def generateArangoshRun():
         print "internal.output('RUN STARTING:  %s\\n');" % key
         print "var output = '';"
         print "var appender = function(text) { output += text; };"
-        print "var logCurlRequestRaw = require('internal').appendCurlRequest(appender);"
+        print "var log = function (a) { internal.startCaptureMode(); print(a); appender(internal.stopCaptureMode()); };"
+        print "var logCurlRequestRaw = internal.appendCurlRequest(appender);"
         print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
-        print "var curlRequestRaw = require('internal').appendCurlRequest(function (text) { });"
+        print "var curlRequestRaw = internal.appendCurlRequest(function (text) {});"
         print "var curlRequest = function () { return curlRequestRaw.apply(curlRequestRaw, arguments); };"
-        print "var logJsonResponse = require('internal').appendJsonResponse(appender);"
-        print "var logRawResponse = require('internal').appendRawResponse(appender);"
+        print "var logJsonResponse = internal.appendJsonResponse(appender);"
+        print "var logRawResponse = internal.appendRawResponse(appender);"
         print "var assert = function(a) { if (! a) { internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); throw new Error('assertion failed'); } };" % ('#' * 80, key, '#' * 80)
         print "try { %s internal.output('RUN SUCCEEDED: %s\\n'); } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, key, '#' * 80, key, '#' * 80)
         print "ArangoshRun['%s'] = output;" % key
