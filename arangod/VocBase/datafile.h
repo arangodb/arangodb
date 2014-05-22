@@ -173,13 +173,14 @@ typedef enum {
   TRI_DOC_MARKER_ABORT_TRANSACTION   = 3102,
   TRI_DOC_MARKER_PREPARE_TRANSACTION = 3103,
   
-  TRI_WAL_MARKER_DOCUMENT            = 4000,
-  TRI_WAL_MARKER_EDGE                = 4001,
-  TRI_WAL_MARKER_REMOVE              = 4002,
-
-  TRI_WAL_MARKER_BEGIN_TRANSACTION   = 4010,
-  TRI_WAL_MARKER_COMMIT_TRANSACTION  = 4011,
-  TRI_WAL_MARKER_ABORT_TRANSACTION   = 4012,
+  TRI_WAL_MARKER_ATTRIBUTE           = 4000,
+  TRI_WAL_MARKER_SHAPE               = 4001,
+  TRI_WAL_MARKER_DOCUMENT            = 4010,
+  TRI_WAL_MARKER_EDGE                = 4011,
+  TRI_WAL_MARKER_REMOVE              = 4012,
+  TRI_WAL_MARKER_BEGIN_TRANSACTION   = 4020,
+  TRI_WAL_MARKER_COMMIT_TRANSACTION  = 4021,
+  TRI_WAL_MARKER_ABORT_TRANSACTION   = 4022,
 
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
