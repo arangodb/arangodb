@@ -261,8 +261,20 @@ void DocumentMarker::dump () const {
             << ", COLLECTION " << m->_collectionId 
             << ", REV: " << m->_rid 
             << ", TRX: " << m->_tid 
-            << ", KEY: " << ((char*) base() + m->_offsetKey)  
+            << ", KEY: " << key()
+            << ", OFFSETKEY: " << m->_offsetKey 
+            << ", OFFSETLEGEND: " << m->_offsetLegend 
+            << ", OFFSETJSON: " << m->_offsetJson 
+            << ", KEYLENGTH: " << keyLength()
+            << ", SIZE: " << size()
             << "\n";
+
+  std::cout << "BINARY:     '" << stringifyPart(base(), size()) << "'\n";
+  std::cout << "KEY:        '" << stringifyPart(key(), keyLength()) << "'\n";
+  std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
+  std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
+  std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
+  std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

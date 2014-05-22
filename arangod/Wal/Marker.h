@@ -29,6 +29,7 @@
 #define TRIAGENS_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
+#include "BasicsC/tri-strings.h"
 #include "ShapedJson/Legends.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
@@ -160,6 +161,31 @@ namespace triagens {
         inline uint32_t size () const {
           return _size;
         }
+        
+        inline std::string hexifyPart (char const* offset, size_t length) const {
+          size_t destLength;
+          char* s = TRI_EncodeHexString(offset, length, &destLength);
+
+          if (s != nullptr) {
+            std::string result(s);
+            TRI_Free(TRI_CORE_MEM_ZONE, s);
+            return result;
+          }
+
+          return "ERROR";
+        }
+  
+        inline std::string stringifyPart (char const* offset, size_t length) const {
+          char* s = TRI_PrintableString(offset, length);
+
+          if (s != nullptr) {
+            std::string result(s);
+            TRI_Free(TRI_CORE_MEM_ZONE, s);
+            return result;
+          }
+
+          return "ERROR";
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -247,7 +273,34 @@ namespace triagens {
           // pointer to key
           return base() + sizeof(document_marker_t);
         }
+
+        inline size_t keyLength () const {
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          return static_cast<size_t>(m->_offsetLegend - m->_offsetKey);
+        }
         
+        inline char const* legend () const {
+          // pointer to legend
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          return base() + m->_offsetLegend;
+        }
+        
+        inline size_t legendLength () const {
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
+        }
+        
+        inline char const* json () const {
+          // pointer to json
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          return base() + m->_offsetJson;
+        }
+        
+        inline size_t jsonLength () const {
+          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(base());
+          return static_cast<size_t>(size() - m->_offsetJson);
+        }
+         
         void dump () const;
         
         static DocumentMarker clone (TRI_df_marker_t const*,
