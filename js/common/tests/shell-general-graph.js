@@ -873,7 +873,6 @@ function ChainedFluentAQLResultsSuite() {
     tearDown: dropData,
 
     test_getAllVerticies: function() {
-      fail("Not yet testable");
       var result = g._verticies().toArray();
       assertEqual(result.length, 7);
       var sorted = _.sort(result, "name");
@@ -887,7 +886,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getVertexById: function() {
-      fail("Not yet testable");
       var a_id = g[user].byExample({name: uaName})._id;
       var result = g._verticies(a_id).toArray();
       assertEqual(result.length, 1);
@@ -895,7 +893,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getVerticiesById: function() {
-      fail("Not yet testable");
       var a_id = g[user].byExample({name: uaName})._id;
       var b_id = g[user].byExample({name: ubName})._id;
       var result = g._verticies([a_id, b_id]).toArray();
@@ -906,7 +903,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getVertexByExample: function() {
-      fail("Not yet testable");
       var result = g._verticies({
         name: uaName
       }).toArray();
@@ -915,7 +911,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getVerticiesByExample: function() {
-      fail("Not yet testable");
       var result = g._verticies([{
         name: uaName
       },{
@@ -928,7 +923,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getVerticiesByExampleAndIdMix: function() {
-      fail("Not yet testable");
       var b_id = g[user].byExample({name: ubName})._id;
       var result = g._verticies([{
         name: uaName
@@ -945,7 +939,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getAllEdges: function() {
-      fail("Not yet testable");
       var result = g._edges().toArray();
       assertEqual(result.length, 9);
       findFriends(result, [ud1, ud2, ud3, ud4]);
@@ -953,7 +946,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgeById: function() {
-      fail("Not yet testable");
       var a_id = g[hasBought].byExample({date: d1})._id;
       var result = g._edges(a_id).toArray();
       assertEqual(result.length, 1);
@@ -961,7 +953,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgesById: function() {
-      fail("Not yet testable");
       var a_id = g[hasBought].byExample({date: d1})._id;
       var b_id = g[isFriend].byExample({since: ud2})._id;
       var result = g._edges([a_id, b_id]).toArray();
@@ -971,7 +962,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgeByExample: function() {
-      fail("Not yet testable");
       var result = g._edges({
         date: d2
       }).toArray();
@@ -980,7 +970,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgesByExample: function() {
-      fail("Not yet testable");
       var result = g._edges([{
         since: ud3
       },{
@@ -992,7 +981,6 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgesByExampleAndIdMix: function() {
-      fail("Not yet testable");
       var b_id = g[hasBought].byExample({date: d1})._id;
       var result = g._edges([{
         date: d5
@@ -1004,10 +992,73 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 3);
       findBoughts(result, [d1, d5]);
       findFriends(result, [ud1]);
+    },
+
+    test_getEdgesForSelectedVertex: function() {
+      var result = g._verticies({name: uaName})
+        .edges()
+        .toArray();
+      assertEqual(result.length, 3);
+      findBoughts(result, [d1]);
+      findFriends(result, [ud1, ud2]);
+    },
+
+    test_getInEdgesForSelectedVertex: function() {
+      var result = g._verticies({name: ubName})
+        .inEdges()
+        .toArray();
+      assertEqual(result.length, 1);
+      findFriends(result, [ud1]);
+    },
+
+    test_getOutEdgesForSelectedVertex: function() {
+      var result = g._verticies({name: ubName})
+        .outEdges()
+        .toArray();
+      assertEqual(result.length, 3);
+      findBoughts(result, [d2, d3]);
+      findFriends(result, [ud3]);
+    },
+
+    test_getVerticesForSelectedEdge: function() {
+      var result = g._edges({since: ud1})
+        .verticies()
+        .toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sortBy(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, ubName);
+    },
+
+    test_getToVertexForSelectedEdge: function() {
+      var result = g._edges({since: ud1})
+        .toVerticies()
+        .toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, ubName);
+    },
+
+    test_getFromVertexForSelectedEdge: function() {
+      var result = g._edges({since: ud1})
+        .fromVerticies()
+        .toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, uaName);
+    },
+
+    test_getAllVerticesThroughOutgoingEdges: function() {
+      var result = g._verticies({name: uaName})
+        .outEdges()
+        .toVerticies()
+        .toArray();
+      assertEqual(result.length, 3);
+      var sorted = _.sortBy(result, "name");
+      assertEqual(sorted[0].name, ubName);
+      assertEqual(sorted[1].name, ucName);
+      assertEqual(sorted[2].name, p1Name);
     }
+
   };
-
-
 }
 
 function EdgesAndVerticesSuite() {
