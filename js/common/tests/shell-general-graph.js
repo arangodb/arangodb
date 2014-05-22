@@ -789,6 +789,31 @@ function ChainedFluentAQLResultsSuite() {
   edgeDef.push(graph._undirectedRelationDefinition(isFriend, user));
   edgeDef.push(graph._directedRelationDefinition(hasBought, user, product));
 
+
+  var findBoughts = function(result, list) {
+    var boughts = _.sortBy(
+      _.filter(result, function(e) {
+        return e._id.split("/")[0] === hasBought;
+      }),
+      "date"
+    );
+    _.each(list.sort(), function(v, i) {
+      assertEqual(boughts[i].since, v);
+    });
+  };
+
+  var findFriends = function(result, list) {
+    var friends = _.sortBy(
+      _.filter(result, function(e) {
+        return e._id.split("/")[0] === isFriend;
+      }),
+      "since"
+    );
+    _.each(list.sort(), function(v, i) {
+      assertEqual(friends[i].since, v);
+    });
+  };
+
   var dropData = function() {
     try {
       graph._drop(gn);
@@ -921,94 +946,65 @@ function ChainedFluentAQLResultsSuite() {
 
     test_getAllEdges: function() {
       fail("Not yet testable");
-      var result = g.edges().toArray();
+      var result = g._edges().toArray();
       assertEqual(result.length, 9);
-      var friends = _.sort(
-        _.filter(result, function(e) {
-          return e._id.split("/")[0] === isFriend;
-        }),
-        "since"
-      );
-      var bought = _.sort(
-        _.filter(result, function(e) {
-          return e._id.split("/")[0] === hasBought;
-        }),
-        "date"
-      );
-      assertEqual(friends[0].since, ud1);
-      assertEqual(friends[1].since, ud2);
-      assertEqual(friends[2].since, ud3);
-      assertEqual(friends[3].since, ud4);
-
-      assertEqual(bought[0].date, d1);
-      assertEqual(bought[1].date, d2);
-      assertEqual(bought[2].date, d3);
-      assertEqual(bought[3].date, d4);
-      assertEqual(bought[4].date, d5);
+      findFriends(result, [ud1, ud2, ud3, ud4]);
+      findBoughts(result, [d1, d2, d3, d4, d5]);
     },
 
     test_getEdgeById: function() {
       fail("Not yet testable");
       var a_id = g[hasBought].byExample({date: d1})._id;
-      var result = g.edges(a_id).toArray();
+      var result = g._edges(a_id).toArray();
       assertEqual(result.length, 1);
-      assertEqual(result[0].date, d1);
+      findBoughts(result, [d1]);
     },
 
     test_getEdgesById: function() {
       fail("Not yet testable");
       var a_id = g[hasBought].byExample({date: d1})._id;
       var b_id = g[isFriend].byExample({since: ud2})._id;
-      var result = g._verticies([a_id, b_id]).toArray();
+      var result = g._edges([a_id, b_id]).toArray();
       assertEqual(result.length, 2);
-      if (result[0].date) {
-        assertEqual(result[0].date, d1);
-        assertEqual(result[1].since, ud2);
-      } else {
-        assertEqual(result[0].since, ud2);
-        assertEqual(result[1].date, d1);
-      }
+      findBoughts(result, [d1]);
+      findFriends(result, [ud2]);
     },
-    /*
-    test_getVertexByExample: function() {
+
+    test_getEdgeByExample: function() {
       fail("Not yet testable");
-      var result = g._verticies({
-        name: uaName
+      var result = g._edges({
+        date: d2
       }).toArray();
       assertEqual(result.length, 1);
-      assertEqual(result[0].name, uaName);
+      findBoughts(result, d2);
     },
 
-    test_getVerticiesByExample: function() {
+    test_getEdgesByExample: function() {
       fail("Not yet testable");
-      var result = g._verticies([{
-        name: uaName
+      var result = g._edges([{
+        since: ud3
       },{
-        name: p1Name
+        date: d3
       }]).toArray();
       assertEqual(result.length, 2);
-      var sorted = _.sort(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, p1Name);
+      findBoughts(result, [d3]);
+      findFriends(result, [ud3]);
     },
 
-    test_getVerticiesByExampleAndIdMix: function() {
+    test_getEdgesByExampleAndIdMix: function() {
       fail("Not yet testable");
-      var b_id = g[user].byExample({name: ubName})._id;
-      var result = g._verticies([{
-        name: uaName
+      var b_id = g[hasBought].byExample({date: d1})._id;
+      var result = g._edges([{
+        date: d5
       },
       b_id,
       {
-        name: ucName
+        since: ud1
       }]).toArray();
       assertEqual(result.length, 3);
-      var sorted = _.sort(result, "name");
-      assertEqual(sorted[0].name, uaName);
-      assertEqual(sorted[1].name, ubName);
-      assertEqual(sorted[2].name, ucName);
+      findBoughts(result, [d1, d5]);
+      findFriends(result, [ud1]);
     }
-    */
   };
 
 
