@@ -154,6 +154,14 @@ var transformExample = function(example) {
     return {_id: example};
   }
   if (typeof example === "object") {
+    if (Array.isArray(example)) {
+      return _.map(example, function(e) {
+        if (typeof e === "string") {
+          return {_id: e};
+        }
+        return e;
+      });
+    }
     return example;
   }
   throw "Invalid example type. Has to be String, Array or Object";
@@ -172,6 +180,55 @@ var AQLStatement = function(query, type) {
   this.query = query;
   if (type) {
     this.type = type;
+    if (this.isEdgeQuery()) {
+      this.appendRestriction = function(rest) {
+        var unknown = [];
+        var g = this.graph;
+        _.each(rest, function(r) {
+          if (!g.__edgeCollections[r]) {
+            unknown.push(r);
+          }
+        });
+        if (unknown.length > 0) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+          err.errorMessage = "edge collections: "
+          + unknown.join(" and ")
+          + " are not known to the graph";
+          throw err;
+        }
+        /*
+          lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
+          lastQuery.edgeQuery = false;
+          this.bindVars["restrictions_" + this.stack.length] = rest;
+        */
+
+      };
+    } else if (this.isVertexQuery()) {
+      this.appendRestriction = function(rest) {
+        var unknown = [];
+        var g = this.graph;
+        _.each(rest, function(r) {
+          if (!g.__vertexCollections[r]) {
+            unknown.push(r);
+          }
+        });
+        if (unknown.length > 0) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+          err.errorMessage = "vertex collections: "
+            + unknown.join(" and ")
+            + " are not known to the graph";
+          throw err;
+        }
+        /*
+          lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
+          lastQuery.edgeQuery = false;
+          this.bindVars["restrictions_" + this.stack.length] = rest;
+        */
+
+      };
+    }
   }
 };
 
@@ -240,7 +297,7 @@ AQLGenerator.prototype.inEdges = function(example) {
   return this._edges(example, "inbound");
 };
 
-AQLGenerator.prototype._vertices = function(example, direction) {
+AQLGenerator.prototype._verticies = function(example, direction) {
   this._clearCursor();
   var ex = transformExample(example);
   var vertexName = "vertices_" + this.stack.length;
@@ -260,6 +317,14 @@ AQLGenerator.prototype.verticies = function(example) {
   return this._verticies(example, "both");
 };
 
+AQLGenerator.prototype.fromVerticies = function(example) {
+  return this._verticies(example, "from");
+};
+
+AQLGenerator.prototype.toVerticies = function(example) {
+  return this._verticies(example, "to");
+};
+
 AQLGenerator.prototype.getLastVar = function() {
   if (this.lastVar === "") {
     return false;
@@ -270,27 +335,12 @@ AQLGenerator.prototype.getLastVar = function() {
 AQLGenerator.prototype.restrict = function(restrictions) {
   this._clearCursor();
   var rest = stringToArray(restrictions);
-  var unknown = [];
-  var g = this.graph;
-  _.each(rest, function(r) {
-    if (!g.__edgeCollections[r]) {
-      unknown.push(r);
-    }
-  });
-  if (unknown.length > 0) {
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
-    err.errorMessage = "edge collections: " + unknown.join(" and ") + " are not known to the graph";
-    throw err;
-  }
   var lastQuery = this.stack.pop();
-  if (!lastQuery.isEdgeQuery()) {
+  if (!lastQuery.appendRestriction) {
     this.stack.push(lastQuery);
-    throw "Restrict can only be applied directly after edge selectors";
+    throw "Restrict can only be applied directly after edge or vertex selectors";
   }
-  lastQuery.query = lastQuery.query.replace(")", ",{},@restrictions_" + this.stack.length + ")");
-  lastQuery.edgeQuery = false;
-  this.bindVars["restrictions_" + this.stack.length] = rest;
+  lastQuery.appendRestriction(rest);
   this.stack.push(lastQuery);
   return this;
 };
@@ -743,14 +793,15 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _edges(vertexId).
+/// @brief _edges(edgeExample || id).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(vertexId) {
+Graph.prototype._edges = function(example) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId);
+  return AQLStmt.edges(example);
 };
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
@@ -759,7 +810,9 @@ Graph.prototype._inEdges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
   return AQLStmt.inEdges(vertexId);
 };
+*/
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
@@ -768,7 +821,7 @@ Graph.prototype._outEdges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
   return AQLStmt.outEdges(vertexId);
 };
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _vertices(edgeExample||edgeId).

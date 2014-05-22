@@ -1056,7 +1056,21 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[0].name, ubName);
       assertEqual(sorted[1].name, ucName);
       assertEqual(sorted[2].name, p1Name);
+    },
+
+    test_getAllVerticesThroughOutgoingEdgesWithFilter: function() {
+      var result = g._verticies({name: uaName})
+      .outEdges([
+        {since: ud1},
+        {date: d1}
+      ]).toVerticies()
+        .toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sortBy(result, "name");
+      assertEqual(sorted[0].name, ubName);
+      assertEqual(sorted[2].name, p1Name);
     }
+
 
   };
 }
