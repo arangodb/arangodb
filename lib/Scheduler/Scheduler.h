@@ -40,9 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_json_s;
-}
+struct TRI_json_s;
 
 namespace triagens {
   namespace basics {

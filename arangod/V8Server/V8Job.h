@@ -33,9 +33,7 @@
 #include "Dispatcher/Job.h"
 #include "BasicsC/json.h"
 
-extern "C" {
-  struct TRI_vocbase_s;
-}
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class V8Job

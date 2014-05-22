@@ -39,10 +39,8 @@
 
 #include "VocBase/vocbase.h"
 
-extern "C" {
-  struct TRI_server_s;
-  struct TRI_vocbase_defaults_s;
-}
+struct TRI_server_s;
+struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

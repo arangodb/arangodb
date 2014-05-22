@@ -36,9 +36,7 @@
 #include "Basics/Mutex.h"
 #include "Rest/Handler.h"
 
-extern "C" {
-  struct TRI_server_s;
-}
+struct TRI_server_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ServerJob
