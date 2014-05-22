@@ -9634,9 +9634,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
 static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g;
-
-  v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // sanity check
   v8::Handle<v8::Object> self = info.Holder();
