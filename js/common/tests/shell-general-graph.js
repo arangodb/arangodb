@@ -52,6 +52,13 @@ function GeneralGraphCreationSuite() {
   var vn2 = "UnitTestVerticies2";
   var vn3 = "UnitTestVerticies3";
   var vn4 = "UnitTestVerticies4";
+  var gn = "UnitTestGraph";
+  var edgeDef = graph._edgeDefinitions(
+    graph._undirectedRelationDefinition(rn, vn1),
+    graph._directedRelationDefinition(rn1,
+      [vn1, vn2], [vn3, vn4]
+    )
+  );
 
   return {
 
@@ -150,7 +157,7 @@ function GeneralGraphCreationSuite() {
       try {
         var param = {};
         param[vn1] = vn2;
-        graph._directedRelationDefinition(rn, param, "");
+        graph._directedRelationDefinition(rn, param, vn3);
         fail();
       }
       catch (err) {
@@ -164,7 +171,7 @@ function GeneralGraphCreationSuite() {
       try {
         var param = {};
         param[vn1] = vn2;
-        graph._directedRelationDefinition(rn, "", param);
+        graph._directedRelationDefinition(rn, vn3, param);
         fail();
       }
       catch (err) {
@@ -180,7 +187,7 @@ function GeneralGraphCreationSuite() {
       //with args
       assertEqual(graph._edgeDefinitions(
         graph._undirectedRelationDefinition(rn, vn1),
-        graph._directedRelationDefinition(rn,
+        graph._directedRelationDefinition(rn1,
           [vn1, vn2], [vn3, vn4])
       ), [
         {
@@ -196,46 +203,42 @@ function GeneralGraphCreationSuite() {
       ]);
     },
 
-
     test_create : function () {
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
       var a = graph._create(
-        "bla3",
+        gn,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
+          graph._undirectedRelationDefinition(rn, vn1),
+          graph._directedRelationDefinition(rn1, [vn1, vn2], [vn3, vn4])
         )
       );
-    assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn1));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn2));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn3));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn4));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
         {
-          "collection" : "relationName",
+          "collection" : rn,
           "from" : [
-            "vertexC1"
+            vn1
           ],
           "to" : [
-            "vertexC1"
+            vn1
           ]
         },
         {
-          "collection" : "relationName2",
+          "collection" : rn1,
           "from" : [
-            "vertexC1",
-            "vertexC2"
+            vn1,
+            vn2
           ],
           "to" : [
-            "vertexC3",
-            "vertexC4"
+            vn3,
+            vn4
           ]
         }
       ]
@@ -243,126 +246,79 @@ function GeneralGraphCreationSuite() {
     },
 
     test_create_WithOut_EdgeDefiniton : function () {
-      var msg;
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-
       try {
-        var a = graph._create(
-          "bla3",
+        graph._create(
+          gn,
           []
         );
+        fail();
       } catch (err) {
-        msg = err;
+        assertEqual(err, "at least one edge definition is required to create a graph.");
       }
-
-      assertEqual(msg, "at least one edge definition is required to create a graph.");
-
     },
 
     test_create_WithOut_Name : function () {
-      var msg;
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-
       try {
-        var a = graph._create(
+        graph._create(
           "",
-          graph._edgeDefinitions(
-            graph._undirectedRelationDefinition("relationName", "vertexC1"),
-            graph._directedRelationDefinition("relationName2",
-              ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-            )
-          )
+          edgeDef
         );
+        fail();
       } catch (err) {
-        msg = err;
+        assertEqual(err, "a graph name is required to create a graph.");
       }
-
-      assertEqual(msg, "a graph name is required to create a graph.");
-
     },
 
     test_create_With_Already_Existing_Graph : function () {
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-      graph._create(
-        "bla3",
-        graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-            ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
-        )
-      );
-      var msg;
+      graph._create(gn, edgeDef);
       try {
-        var a = graph._create(
-          "bla3",
-          graph._edgeDefinitions(
-            graph._undirectedRelationDefinition("relationName", "vertexC1"),
-            graph._directedRelationDefinition("relationName2",
-              ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-            )
-          )
-        );
+        graph._create(gn, edgeDef);
       } catch (err) {
-        msg = err;
+        assertEqual(err, "graph " + gn + " already exists.");
       }
-
-      assertEqual(msg, "graph bla3 already exists.");
-
     },
 
     test_get_graph : function () {
-
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-      graph._create(
-        "bla3",
-        graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-            ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
-        )
-      );
+      graph._create(gn, edgeDef);
+      var a = graph._graph(gn);
 
-      var a = graph._graph("bla3");
-
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn1));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn2));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn3));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn4));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
         {
-          "collection" : "relationName",
+          "collection" : rn,
           "from" : [
-            "vertexC1"
+            vn1
           ],
           "to" : [
-            "vertexC1"
+            vn1
           ]
         },
         {
-          "collection" : "relationName2",
+          "collection" : rn1,
           "from" : [
-            "vertexC1",
-            "vertexC2"
+            vn1,
+            vn2
           ],
           "to" : [
-            "vertexC3",
-            "vertexC4"
+            vn3,
+            vn4
           ]
         }
       ]
