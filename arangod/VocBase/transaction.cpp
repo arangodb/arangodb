@@ -500,7 +500,7 @@ static int InsertTrxCallback (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = primary->insert(trxCollection, 
+  res = primary->insertDocument(trxCollection, 
                         coordinator->_key, 
                         0, 
                         &coordinator->_mptr, 
@@ -529,7 +529,7 @@ static int RemoveTrxCallback (TRI_transaction_collection_t* trxCollection,
   primary = (TRI_primary_collection_t*) trxCollection->_collection->_collection;
   coordinator = static_cast<trx_coordinator_t*>(data);
 
-  res = primary->remove(trxCollection, coordinator->_key, 0, NULL, false, true);
+  res = primary->removeDocument(trxCollection, coordinator->_key, 0, NULL, false, true);
 
   return res;
 }

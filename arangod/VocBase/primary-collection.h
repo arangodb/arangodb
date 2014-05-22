@@ -331,14 +331,8 @@ typedef struct TRI_primary_collection_s {
   // WAL-based CRUD methods
   int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, bool, bool);
   int (*removeDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, struct TRI_doc_update_policy_s const*, bool, bool);
-  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_df_marker_type_e, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, struct TRI_document_edge_s const*, TRI_shaped_json_t const*, bool, bool, bool);
-
-  // old non-WAL-based CRUD methods
-  int (*insert) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, void const*, const bool, const bool, const bool);
-  int (*read) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, const bool);
-
-  int (*update) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, const bool, const bool);
-  int (*remove) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_voc_rid_t, struct TRI_doc_update_policy_s const*, const bool, const bool);
+  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, struct TRI_document_edge_s const*, bool, bool, bool);
+  int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, bool);
 
   TRI_doc_collection_info_t* (*figures) (struct TRI_primary_collection_s* collection);
   TRI_voc_size_t (*size) (struct TRI_primary_collection_s* collection);
