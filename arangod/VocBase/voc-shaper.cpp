@@ -141,12 +141,12 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   void const* p;
   void* f;
 
-  assert(name != NULL);
+  assert(name != nullptr);
 
   s = (voc_shaper_t*) shaper;
   p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
-  if (p != NULL) {
+  if (p != nullptr) {
     return ((TRI_df_attribute_marker_t const*) p)->_aid;
   }
 
@@ -156,7 +156,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   totalSize = (TRI_voc_size_t) (sizeof(TRI_df_attribute_marker_t) + n);
   mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
 
-  if (mem == NULL) {
+  if (mem == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return 0;
@@ -164,7 +164,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
   // marker points to mem, but has a different type
   marker = (TRI_df_attribute_marker_t*) mem;
-  assert(marker != NULL);
+  assert(marker != nullptr);
 
   // init attribute marker
   TRI_InitMarker(mem, TRI_DF_MARKER_ATTRIBUTE, totalSize);
@@ -179,7 +179,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
   p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   // if the element appeared, return the aid
-  if (p != NULL) {
+  if (p != nullptr) {
     TRI_UnlockMutex(&s->_attributeLock);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
 
@@ -212,22 +212,22 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     return 0;
   }
   
-  assert(result != NULL);
+  assert(result != nullptr);
 
   // update datafile info
   dfi = TRI_FindDatafileInfoPrimaryCollection(&s->_collection->base, fid, true);
 
-  if (dfi != NULL) {
+  if (dfi != nullptr) {
     dfi->_numberAttributes++;
     dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
   }
   
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result, false);
-  assert(f == NULL);
+  assert(f == nullptr);
   
   // enter into the dictionaries
   f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result, false);
-  assert(f == NULL);
+  assert(f == nullptr);
 
   // ...........................................................................
   // and release the lock
@@ -279,8 +279,8 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper,
 
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
 
-  if (p == NULL) {
-    return NULL;
+  if (p == nullptr) {
+    return nullptr;
   }
 
   return static_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);

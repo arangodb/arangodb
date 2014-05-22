@@ -47,60 +47,40 @@ struct TRI_json_s;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of a key in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_VOC_KEY_MAX_LENGTH (254)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief general key generator type
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_key_generator_s {
-  void*                _data;
-
-  int (*init)(struct TRI_key_generator_s* const, const struct TRI_json_s* const);
-  int (*generate)(struct TRI_key_generator_s* const, const size_t, const TRI_voc_tick_t, const char* const, char* const, size_t* const, bool);
-  std::string (*generateKey)(struct TRI_key_generator_s* const, TRI_voc_tick_t);
-  int (*validateKey)(struct TRI_key_generator_s* const, std::string const&);
-  void (*track)(struct TRI_key_generator_s* const, const TRI_voc_key_t);
-  void (*free)(struct TRI_key_generator_s* const);
-  struct TRI_json_s* (*toJson)(const struct TRI_key_generator_s* const);
+  void* _data;
+  
+  int (*init)(struct TRI_key_generator_s*, struct TRI_json_s const*);
+  std::string (*generateKey)(struct TRI_key_generator_s*, TRI_voc_tick_t);
+  int (*validateKey)(struct TRI_key_generator_s const*, std::string const&);
+  void (*trackKey)(struct TRI_key_generator_s*, TRI_voc_key_t);
+  void (*free)(struct TRI_key_generator_s*);
+  struct TRI_json_s* (*toJson)(struct TRI_key_generator_s const*);
 }
 TRI_key_generator_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a key generator
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateKeyGenerator (const struct TRI_json_s* const,
+int TRI_CreateKeyGenerator (struct TRI_json_s const*,
                             struct TRI_key_generator_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +101,6 @@ bool TRI_ValidateKeyKeyGenerator (char const*);
 
 bool TRI_ValidateDocumentIdKeyGenerator (char const*,
                                          size_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

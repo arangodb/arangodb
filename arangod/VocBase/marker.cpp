@@ -72,31 +72,26 @@ char const* TRI_NameMarker (TRI_df_marker_t const* marker) {
     case TRI_DOC_MARKER_DELETION:
       return "deprecated";
 
+    case TRI_WAL_MARKER_ATTRIBUTE:
+      return "attribute (wal)";
+    case TRI_WAL_MARKER_SHAPE:
+      return "shape (wal)";
+    case TRI_WAL_MARKER_DOCUMENT:
+      return "document (wal)";
+    case TRI_WAL_MARKER_EDGE:
+      return "edge (wal)";
+    case TRI_WAL_MARKER_REMOVE:
+      return "deletion (wal)";
+    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
+      return "begin transaction (wal)";
+    case TRI_WAL_MARKER_COMMIT_TRANSACTION:
+      return "commit transaction (wal)";
+    case TRI_WAL_MARKER_ABORT_TRANSACTION:
+      return "abort transaction (wal)";
+
     default:
       return "unused/unknown";
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clones a marker
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CloneMarker (TRI_df_marker_t* dst,
-                      TRI_df_marker_t const* src,
-                      TRI_voc_size_t copyLength,
-                      TRI_voc_size_t newSize) {
-  TRI_ASSERT_MAINTAINER(src != NULL);
-  TRI_ASSERT_MAINTAINER(dst != NULL);
-  TRI_ASSERT_MAINTAINER(copyLength > 0);
-  TRI_ASSERT_MAINTAINER(newSize > 0);
-
-  memcpy(dst, src, copyLength);
-
-  dst->_size = newSize;
-
-  // these values will be set later, so wipe them
-  dst->_crc  = 0;
-  dst->_tick = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

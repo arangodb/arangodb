@@ -714,6 +714,48 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with the new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+      // important test, the server has to compute the overwrite policy in correct wise
+      var a2 = collection.replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        collection.replace(a1, { a : 3 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var doc2 = collection.document(a1._id);
+
+      assertEqual(a1._id, doc2._id);
+      assertEqual(a2._rev, doc2._rev);
+      assertEqual(2, doc2.a);
+      // new signature
+      var a4 = collection.replace(a1, { a : 4 }, {"overwrite" : true});
+
+      assertEqual(a1._id, a4._id);
+      assertNotEqual(a1._rev, a4._rev);
+      assertNotEqual(a2._rev, a4._rev);
+
+      var doc4 = collection.document(a1._id);
+
+      assertEqual(a1._id, doc4._id);
+      assertEqual(a4._rev, doc4._rev);
+      assertEqual(4, doc4.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a document, waitForSync=false
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -724,6 +766,21 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, false);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with new signature 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceWithNewSignatureDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": false});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -740,6 +797,22 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with new signature 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": true});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1400,6 +1473,47 @@ function DatabaseDocumentSuite () {
       assertEqual(2, doc2.a);
 
       var a4 = db._replace(a1, { a : 4 }, true);
+
+      assertEqual(a1._id, a4._id);
+      assertNotEqual(a1._rev, a4._rev);
+      assertNotEqual(a2._rev, a4._rev);
+
+      var doc4 = db._document(a1._id);
+
+      assertEqual(a1._id, doc4._id);
+      assertEqual(a4._rev, doc4._rev);
+      assertEqual(4, doc4.a);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the _replace function with new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    test_ReplaceWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = db._replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        db._replace(a1, { a : 3 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var doc2 = db._document(a1._id);
+
+      assertEqual(a1._id, doc2._id);
+      assertEqual(a2._rev, doc2._rev);
+      assertEqual(2, doc2.a);
+
+      var a4 = db._replace(a1, { a : 4 }, {"overwrite": true});
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
