@@ -48,18 +48,14 @@
         },
 
         mapStatToFigure : {
-            numberOfThreads : ["times", "numberOfThreads"],
             residentSize : ["times", "residentSizePercent"],
-            virtualSize : ["times", "virtualSize"],
             pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
             systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
-            httpConnections : ["times", "clientConnections"],
             totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
             dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
             requests : ["times", "getsPerSecond", "putsPerSecond", "postsPerSecond",
                 "deletesPerSecond", "patchesPerSecond", "headsPerSecond",
-                "optionsPerSecond", "othersPerSecond"],
-            requestsAsync : ["times", "asyncPerSecond"]
+                "optionsPerSecond", "othersPerSecond"]
         },
 
         //colors for dygraphs
@@ -67,7 +63,7 @@
             "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
 
-        //figure dependend options
+        // figure dependend options
         figureDependedOptions: {
             clusterAverageRequestTime : {
                 showLabelsOnHighlight : true,
@@ -87,9 +83,6 @@
                 }
             },
 
-            numberOfThreads: {
-                header: "Number of Threads"
-            },
             residentSize: {
                 header: "Resident Size",
                 axes: {
@@ -104,9 +97,7 @@
                     }
                 }
             },
-            virtualSize: {
-                header: "Virtual Size"
-            },
+
             pageFaults: {
                 header : "Page Faults",
                 visibility: [true, false],
@@ -114,6 +105,7 @@
                 div: "pageFaultsChart",
                 labelsKMG2: false
             },
+
             systemUserTime: {
                 div: "systemUserTimeChart",
                 header: "System and User Time",
@@ -134,9 +126,7 @@
                     }
                 }
             },
-            httpConnections: {
-                header: "Client Connections"
-            },
+
             totalTime: {
                 div: "totalTimeChart",
                 header: "Total Time",
@@ -157,20 +147,19 @@
                 },
                 stackedGraph: true
             },
+
             dataTransfer: {
                 header: "Data Transfer",
                 labels: ["datetime", "Bytes sent", "Bytes received"],
                 stackedGraph: true,
                 div: "dataTransferChart"
             },
+
             requests: {
                 header: "Requests",
                 labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
                 stackedGraph: true,
                 div: "requestsChart"
-            },
-            requestsAsync: {
-                header: "Async Requests"
             }
         },
 

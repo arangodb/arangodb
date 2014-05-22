@@ -71,10 +71,10 @@
   var versionFile = internal.db._path() + "/VERSION";
 
   function runUpgrade (currentVersion) {
-    var allTasks = [ ];
-    var activeTasks = [ ];
+    var allTasks = [];
+    var activeTasks = [];
     var lastVersion = null;
-    var lastTasks   = { };
+    var lastTasks = {};
   
     function getCollection (name) {
       return db._collection(name);
@@ -90,7 +90,7 @@
         return true;
       }
 
-      var realAttributes = attributes || { };
+      var realAttributes = attributes || {};
       realAttributes.isSystem = true;
 
       if (db._create(name, realAttributes)) {
@@ -120,6 +120,7 @@
       if (cluster.isCoordinator()) {
         return;
       }
+
       if (isInitialisation) {
         // if we are initialising a new database, set the task to completed
         // without executing it. this saves unnecessary migrations for empty
@@ -132,7 +133,7 @@
       }
     }
 
-    if (!cluster.isCoordinator() && fs.exists(versionFile)) {
+    if (! cluster.isCoordinator() && fs.exists(versionFile)) {
       // VERSION file exists, read its contents
       var versionInfo = fs.read(versionFile);
 
@@ -144,7 +145,7 @@
         }
 
         if (versionValues && versionValues.tasks && typeof(versionValues.tasks) === 'object') {
-          lastTasks   = versionValues.tasks || { };
+          lastTasks = versionValues.tasks || {};
         }
       }
 
@@ -318,7 +319,7 @@
         args.users.forEach(function(user) {
           foundUser = true;
           try {
-            userManager.save(user.username, user.passwd, user.active, user.extra || { });
+            userManager.save(user.username, user.passwd, user.active, user.extra || {});
           }
           catch (err) {
             logger.error("could not add database user '" + user.username + "': " + 
@@ -652,46 +653,42 @@
 /// @brief createStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-    // create the _statistics collection
-    addTask("createStatistics", "setup _statistics collection", function () {
-      var name = "_statistics";
-      var result = createSystemCollection(name, { waitForSync: false });
+    var StatisticsNames = [ "_statisticsRaw", "_statistics", "_statistics15" ];
 
-      if (result) {
+    // create the _statistics collection
+    addTask("createStatistics3", "setup _statistics collection", function () {
+      var result = true;
+      var i;
+
+      for (i = 0;  i < StatisticsNames.length;  ++i) {
+        var name = StatisticsNames[i];
         var collection = getCollection(name);
 
-        collection.ensureSkiplist("time");
-        collection.ensureCapConstraint(6 * 60 * 24 * 30); // approx. 30 days of data
+        if (collection === null) {
+          var r = createSystemCollection(name, { waitForSync: false });
+
+          if (r) {
+            collection = getCollection(name);
+          }
+          else {
+            result = false;
+          }
+        }
+
+        if (collection !== null) {
+          collection.getIndexes().forEach(function (idx) {
+            if (idx.type === "cap") {
+              collection.dropIndex(idx.id);
+            }
+          });
+
+          collection.ensureSkiplist("time");
+        }
       }
 
       return result;
     });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createStatisticsCap
-////////////////////////////////////////////////////////////////////////////////
-
-    // create the _statistics collection
-    addTask("createStatisticsCap", "restrict _statistics collection", function () {
-      var collection = getCollection("_statistics");
-
-      if (! collection) {
-        return false;
-      }
-
-      // find existing cap constraint and drop it
-      collection.getIndexes().forEach(function (idx) {
-        if (idx.type === "cap") {
-          collection.dropIndex(idx.id);
-        }
-      });
-               
-      // re-create proper cap constraint
-      collection.ensureCapConstraint(6 * 60 * 12); // 1/2 day (every 10 secs);
-
-      return true;
-    });
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createConfiguration
 ////////////////////////////////////////////////////////////////////////////////
