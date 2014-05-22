@@ -1,27 +1,36 @@
 <script id="dashboardView.ejs" type="text/template">
+  <% var subBar = function(title, arrows, name) { %>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title"><%= title %></div>
+      <% if (arrows) { %>
+        <div class="dashboard-sub-bar-menu">
+          <i class="fa fa-arrows-alt dashboard-sub-bar-menu-sign" id="<%= name %>Button"></i>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
   <% var largeChart = function(name, title) { %>
     <div class="dashboard-large-chart">
       <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
-        <!-- <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
       </div>
-      <div class="dashboard-sub-bar""><%= title %></div>
+      <% subBar(title, true, name) %>
     </div>
   <% } %>
 
   <% var mediumChart = function(name, title) { %>
     <div class="dashboard-medium-chart">
       <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
-        <!-- <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
       </div>
-      <div class="dashboard-sub-bar""><%= title %></div>
+      <% subBar(title, true, name) %>
     </div>
   <% } %>
 
@@ -32,7 +41,7 @@
           <svg></svg>
         </div>
       </div>
-      <div class="dashboard-sub-bar"><%= title %></div>
+      <% subBar(title, false, name) %>
     </div>
   <% } %>
 

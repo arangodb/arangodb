@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, vars: true, continue: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,8 +28,6 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
-
 var internal = require("internal");
 var cluster = require("org/arangodb/cluster");
 var actions = require("org/arangodb/actions");
@@ -39,816 +37,406 @@ var FoxxController = require("org/arangodb/foxx").Controller;
 var controller = new FoxxController(applicationContext);
 var db = require("org/arangodb").db;
 
-var STATISTICS_INTERVALL = 10;
+var STATISTICS_INTERVALL = require("org/arangodb/statistics").STATISTICS_INTERVALL;
+var STATISTICS_HISTORY_INTERVALL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVALL;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cluster id or undefined for standalone
+////////////////////////////////////////////////////////////////////////////////
+
+var clusterId;
+
+if (cluster.isCluster()) {
+  clusterId = ArangoServerState.id();
+}
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avgPerSlice
+/// @brief percentChange
 ////////////////////////////////////////////////////////////////////////////////
 
-function avgPerSlice (now, last) {
-  var d = now.count - last.count;
+function percentChange (current, prev, section, src) {
+  'use strict';
 
-  if (d === 0) {
+  if (prev === null) {
     return 0;
   }
 
-  return (now.sum - last.sum) / d;
+  var p = prev[section][src];
+
+  if (p !== 0) {
+    return (current[section][src] - p) / p;
+  }
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief avgPerTimeSlice
+/// @brief percentChange2
 ////////////////////////////////////////////////////////////////////////////////
 
-function avgPerTimeSlice (duration, now, last) {
-  if (duration === 0) {
+function percentChange2 (current, prev, section, src1, src2) {
+  'use strict';
+
+  if (prev === null) {
     return 0;
   }
 
-  return (now.sum - last.sum) / duration;
-}
+  var p = prev[section][src1] - prev[section][src2];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perTimeSlice
-////////////////////////////////////////////////////////////////////////////////
-
-function perTimeSlice (duration, now, last) {
-  if (duration === 0) {
-    return 0;
+  if (p !== 0) {
+    return (current[section][src1] -current[section][src2] - p) / p;
   }
 
-  return (now - last) / duration;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief avgDistributon
-////////////////////////////////////////////////////////////////////////////////
-
-function avgPercentDistributon (now, last, cuts) {
-  var n = cuts.length + 1;
-  var result = new Array(n);
-  var count = 0;
-  var i;
-
-  if (last === null) {
-    count = now.count;
-  }
-  else {
-    count = now.count - last.count;
-  }
-
-  if (count === 0) {
-    for (i = 0;  i < n;  ++i) {
-      result[i] = 0;
-    }
-  }
-
-  else if (last === null) {
-    for (i = 0;  i < n;  ++i) {
-      result[i] = now.counts[i] / count;
-    }
-  }
-
-  else  {
-    for (i = 0;  i < n;  ++i) {
-      result[i] = (now.counts[i] - last.counts[i]) / count;
-    }
-  }
-
-  return { values: result, cuts: cuts };
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computeStatisticsRaw
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeStatisticsRaw (start, dbServer) {
-  var values;
-  var hasStart = false;
-  var serverFilter = "";
+var STAT_SERIES = {
+  avgTotalTime: [ "client", "avgTotalTime" ],
+  avgRequestTime: [ "client", "avgRequestTime" ],
+  avgQueueTime: [ "client", "avgQueueTime" ],
+  avgIoTime: [ "client", "avgIoTime" ],
 
-  if (dbServer === undefined) {
-    if (cluster.isCluster()) {
-      if (cluster.isCoordinator()) {
-        serverFilter = "FILTER s.clusterId == @server";
-        dbServer = cluster.coordinatorId();
-      }
+  bytesSentPerSecond: [ "client", "bytesSentPerSecond" ],
+  bytesReceivedPerSecond: [ "client", "bytesReceivedPerSecond" ],
+
+  asyncPerSecond: [ "http", "requestsAsyncPerSecond" ],
+  optionsPerSecond: [ "http", "requestsOptionsPerSecond" ],
+  putsPerSecond: [ "http", "requestsPutPerSecond" ],
+  headsPerSecond: [ "http", "requestsHeadPerSecond" ],
+  postsPerSecond: [ "http", "requestsPostPerSecond" ],
+  getsPerSecond: [ "http", "requestsGetPerSecond" ],
+  deletesPerSecond: [ "http", "requestsDeletePerSecond" ],
+  othersPerSecond: [ "http", "requestsOptionsPerSecond" ],
+  patchesPerSecond: [ "http", "requestsPatchPerSecond" ],
+
+  systemTimePerSecond: [ "system", "systemTimePerSecond" ],
+  userTimePerSecond: [ "system", "userTimePerSecond" ],
+  majorPageFaultsPerSecond: [ "system", "majorPageFaultsPerSecond" ],
+  minorPageFaultsPerSecond: [ "system", "minorPageFaultsPerSecond" ]
+};
+
+var STAT_DISTRIBUTION = {
+  totalTimeDistributionPercent: [ "client", "totalTimePercent" ],
+  requestTimeDistributionPercent: [ "client", "requestTimePercent" ],
+  queueTimeDistributionPercent: [ "client", "queueTimePercent" ],
+  bytesSentDistributionPercent: [ "client", "bytesSentPercent" ],
+  bytesReceivedDistributionPercent: [ "client", "bytesReceivedPercent" ]
+};
+
+function computeStatisticsRaw (result, start, clusterId) {
+  'use strict';
+
+  var filter = "";
+
+  if (clusterId !== undefined) {
+    filter = " FILTER s.clusterId == @clusterId ";
+  }
+
+  var values = db._query(
+        "FOR s IN _statistics "
+      + "  FILTER s.time > @start "
+      +    filter
+      + "  SORT s.time "
+      + "  return s",
+    { start: start - 2 * STATISTICS_INTERVALL, clusterId: clusterId });
+  
+  result.times = [];
+
+  var key;
+
+  for (key in STAT_SERIES) {
+    if (STAT_SERIES.hasOwnProperty(key)) {
+      result[key] = [];
     }
   }
-  else {
-    serverFilter = "FILTER s.clusterId == @server";
-  }
 
-  if (start === null || start === undefined) {
-    values = db._query(
-        "FOR s IN _statistics "
-      +    serverFilter
-      + "  SORT s.time "
-      + "  return s",
-      { server: dbServer });
-  }
-  else {
-    values = db._query(
-        "FOR s IN _statistics "
-      + "  FILTER s.time >= @start "
-      +    serverFilter
-      + "  SORT s.time "
-      + "  return s",
-      { start: start - 2 * STATISTICS_INTERVALL, server: dbServer });
-
-    hasStart = true;
-  }
-
-  var times = [];
-  var series = [];
-
-  var lastTime = null;
   var lastRaw = null;
-  var last2Raw = null;
-  var last3Raw = null;
+  var lastRaw2 = null;
+  var path;
 
+  // read the last entries
   while (values.hasNext()) {
-    var raw = values.next();
-    var t = raw.time;
+    var stat = values.next();
 
-    if (lastTime !== null && (! hasStart || t >= start)) {
-      if (lastTime + STATISTICS_INTERVALL * 1.5 < t || raw.server.uptime < lastRaw.server.uptime) {
-        while (lastTime + STATISTICS_INTERVALL * 1.1 < t) {
-          lastTime += STATISTICS_INTERVALL;
+    lastRaw2 = lastRaw;
+    lastRaw = stat;
 
-          times.push(lastTime);
-          series.push({});
-        }
+    if (stat.time <= start) {
+      continue;
+    }
+
+    result.times.push(stat.time);
+
+    for (key in STAT_SERIES) {
+      if (STAT_SERIES.hasOwnProperty(key)) {
+        path = STAT_SERIES[key];
+
+        result[key].push(stat[path[0]][path[1]]);
       }
-      else {
-        var d = t - lastTime;
-        var data = {};
+    }
+  }
 
-        // x (aka time) axis
-        times.push(t);
+  // have at least one entry, use it
+  if (lastRaw !== null) {
+    for (key in STAT_DISTRIBUTION) {
+      if (STAT_DISTRIBUTION.hasOwnProperty(key)) {
+        path = STAT_DISTRIBUTION[key];
 
-        // y axis
-        series.push(data);
-
-        // time figures
-        data.totalTime = avgPerSlice(
-          raw.client.totalTime,
-          lastRaw.client.totalTime);
-
-        data.requestTime = avgPerSlice(
-          raw.client.requestTime,
-          lastRaw.client.requestTime);
-
-        data.queueTime = avgPerSlice(
-          raw.client.queueTime,
-          lastRaw.client.queueTime);
-
-        // there is a chance that the request and queue do not fit perfectly
-        // if io time get negative, simple ignore it
-
-        data.ioTime = data.totalTime - data.requestTime - data.queueTime;
-
-        if (data.ioTime < 0.0) {
-          data.ioTime = 0;
-        }
-
-        // data transfer figures
-        data.bytesSent = avgPerTimeSlice(
-          d,
-          raw.client.bytesSent,
-          lastRaw.client.bytesSent);
-
-        data.bytesReceived = avgPerTimeSlice(
-          d,
-          raw.client.bytesReceived,
-          lastRaw.client.bytesReceived);
-
-        // requests
-        data.optionsPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsOptions, 
-          lastRaw.http.requestsOptions);
-
-        data.putsPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsPut, 
-          lastRaw.http.requestsPut);
-
-        data.headsPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsHead, 
-          lastRaw.http.requestsHead);
-
-        data.postsPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsPost, 
-          lastRaw.http.requestsPost);
-
-        data.getsPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsGet, 
-          lastRaw.http.requestsGet);
-
-        data.deletesPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsDelete, 
-          lastRaw.http.requestsDelete);
-
-        data.othersPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsOther, 
-          lastRaw.http.requestsOther);
-
-        data.patchesPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsPatch, 
-          lastRaw.http.requestsPatch);
-
-        data.asyncPerSecond = perTimeSlice(
-          d,
-          raw.http.requestsAsync,
-          lastRaw.http.requestsAsync);
-
-        // memory size
-        data.virtualSize = raw.system.virtualSize;
-        data.residentSize = raw.system.residentSize;
-        data.residentSizePercent = raw.system.residentSizePercent;
-
-        data.numberOfThreads = raw.system.numberOfThreads;
-        data.clientConnections = raw.client.httpConnections;
-
-        // page faults
-        data.majorPageFaultsPerSecond = perTimeSlice(
-          d,
-          raw.system.majorPageFaults,
-          lastRaw.system.majorPageFaults);
-
-        data.minorPageFaultsPerSecond = perTimeSlice(
-          d,
-          raw.system.minorPageFaults,
-          lastRaw.system.minorPageFaults);
-
-        // cpu time
-        data.userTimePerSecond = perTimeSlice(
-          d,
-          raw.system.userTime,
-          lastRaw.http.userTime);
-
-        data.systemTimePerSecond = perTimeSlice(
-          d,
-          raw.system.systemTime,
-          lastRaw.system.systemTime);
+        result[key] = lastRaw[path[0]][path[1]];
       }
     }
 
-    // update last
-    lastTime = t;
+    result.numberOfThreadsCurrent = lastRaw.system.numberOfThreads;
+    result.numberOfThreadsPercentChange = percentChange(lastRaw, lastRaw2, 'system', 'numberOfThreads');
 
-    last3Raw = last2Raw;
-    last2Raw = lastRaw;
-    lastRaw = raw;
+    result.virtualSizeCurrent = lastRaw.system.virtualSize;
+    result.virtualSizePercentChange = percentChange(lastRaw, lastRaw2, 'system', 'virtualSize');
+
+    result.residentSizeCurrent = lastRaw.system.residentSize;
+    result.residentSizePercent = lastRaw.system.residentSizePercent;
+
+    result.asyncPerSecondCurrent = lastRaw.http.requestsAsyncPerSecond;
+    result.asyncPerSecondPercentChange = percentChange(lastRaw, lastRaw2, 'http', 'requestsAsyncPerSecond');
+
+    result.syncPerSecondCurrent = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
+    result.syncPerSecondPercentChange
+        = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+
+    result.clientConnectionsCurrent = lastRaw.client.httpConnections;
+    result.clientConnectionsPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
   }
 
-  var distribution;
-  var server;
-  var current;
+  // have no entry, add nulls
+  else {
+    for (key in STAT_DISTRIBUTION) {
+      if (STAT_DISTRIBUTION.hasOwnProperty(key)) {
+        result[key] = { values: [0,0,0,0,0,0,0], cuts: [0,0,0,0,0,0] };
+      }
+    }
 
+    var ps = internal.processStatistics();
+
+    result.numberOfThreadsCurrent = ps.numberOfThreads;
+    result.numberOfThreadsPercentChange = 0;
+
+    result.virtualSizeCurrent = ps.virtualSize;
+    result.virtualSizePercentChange = 0;
+
+    result.residentSizeCurrent = ps.residentSize;
+    result.residentSizePercent = ps.residentSizePercent;
+
+    result.asyncPerSecondCurrent = 0;
+    result.asyncPerSecondPercentChange = 0;
+
+    result.syncPerSecondCurrent = 0;
+    result.syncPerSecondPercentChange = 0;
+
+    result.clientConnectionsCurrent = 0;
+    result.clientConnectionsPercentChange = 0;
+  }
+
+  // add physical memory
+  var ss = internal.serverStatistics();
+
+  result.physicalMemory = ss.physicalMemory;
+
+  // add next start time
   if (lastRaw === null) {
-    distribution = {};
-    server = {};
-    current = {};
+    result.nextStart = internal.time();
+    result.waitFor = STATISTICS_INTERVALL;
   }
   else {
-    server = {
-      physicalMemory: lastRaw.server.physicalMemory,
-      uptime: lastRaw.server.uptime
-    };
-
-    if (last2Raw === null) {
-      var dt = lastRaw.time;
-      var http = lastRaw.http;
-
-      current = {
-        asyncPerSecond: http.requestsAsync / dt,
-        asyncPerSecondPercentChange: 0,
-        syncPerSecond: (http.requestsTotal - http.requestsAsync) / dt,
-        syncPerSecondPercentChange: 0,
-        clientConnections: lastRaw.client.httpConnections,
-        clientConnectionsPercentChange: 0,
-        numberOfThreads: lastRaw.system.numberOfThreads,
-        numberOfThreadsPercentChange: 0,
-        virtualSize: lastRaw.system.virtualSize,
-        virtualSizePercentChange: 0
-      };
-
-      distribution = {
-        bytesSentPercent: avgPercentDistributon(
-          lastRaw.client.bytesSent,
-          null,
-          internal.bytesSentDistribution),
-
-        bytesReceivedPercent: avgPercentDistributon(
-          lastRaw.client.bytesReceived,
-          null,
-          internal.bytesReceivedDistribution),
-
-        totalTimePercent: avgPercentDistributon(
-          lastRaw.client.totalTime,
-          null,
-          internal.requestTimeDistribution),
-
-        requestTimePercent: avgPercentDistributon(
-          lastRaw.client.requestTime,
-          null,
-          internal.requestTimeDistribution),
-
-        queueTimePercent: avgPercentDistributon(
-          lastRaw.client.queueTime,
-          null,
-          internal.requestTimeDistribution)
-      };
-    }
-    else {
-      var dt = lastRaw.time - last2Raw.time;
-      var http = lastRaw.http;
-      var http2 = last2Raw.http;
-
-      var dt2 = 0;
-      var http3 = null;
-
-      if (last3Raw !== null) {
-        dt2 = last2Raw.time - last3Raw.time;
-        http3 = last3Raw.http;
-      }
-
-      // async requests
-      var n1 = (http.requestsAsync - http2.requestsAsync) / dt;
-      var m1 = 0;
-
-      if (last3Raw !== null) {
-        m1 = (http2.requestsAsync - http3.requestsAsync) / dt2;
-      }
-
-      if (n1 < 0) {
-        n1 = 0;
-      }
-
-      if (m1 < 0) {
-        m1 = 0;
-      }
-
-      var d1 = 0;
-
-      if (m1 !== 0) {
-        d1 = (n1 - m1) / m1;
-      }
-
-      // sync requests
-      var n5 = ((http.requestsTotal - http.requestsAsync)
-              - (http2.requestsTotal - http2.requestsAsync))
-              / dt;
-      var m5 = 0;
-
-      if (last3Raw !== null) {
-        m5 = ((http2.requestsTotal - http2.requestsAsync) 
-            - (http3.requestsTotal - http3.requestsAsync))
-            / dt2;
-      }
-
-      if (n5 < 0) {
-        n5 = 0;
-      }
-
-      if (m5 < 0) {
-        m5 = 0;
-      }
-
-      var d5 = 0;
-
-      if (m5 !== 0) {
-        d5 = (n5 - m5) / m5;
-      }
-
-      // http client connections
-      var n2 = lastRaw.client.httpConnections;
-      var m2 = last2Raw.client.httpConnections;
-      var d2 = 0;
-
-      if (m2 !== 0) {
-        d2 = (n2 - m2) / n2;
-      }
-
-      // number of threads
-      var n3 = lastRaw.system.numberOfThreads;
-      var m3 = last2Raw.system.numberOfThreads;
-      var d3 = 0;
-
-      if (m3 !== 0) {
-        d3 = (n3 - m3) / n3;
-      }
-
-      // virtual size
-      var n4 = lastRaw.system.virtualSize;
-      var m4 = last2Raw.system.virtualSize;
-      var d4 = 0;
-
-      if (m4 !== 0) {
-        d4 = (n4 - m4) / n4;
-      }
-
-      // current summary
-      current = {
-        asyncPerSecond: n1,
-        asyncPerSecondPercentChange: d1,
-        syncPerSecond: n5,
-        syncPerSecondPercentChange: d5,
-        clientConnections: n2,
-        clientConnectionsPercentChange: d2,
-        numberOfThreads: n3,
-        numberOfThreadsPercentChange: d3,
-        virtualSize: n4,
-        virtualSizePercentChange: d4
-      };
-
-      // distribution summary
-      distribution = {
-        bytesSentPercent: avgPercentDistributon(
-          lastRaw.client.bytesSent,
-          last2Raw.client.bytesSent,
-          internal.bytesSentDistribution),
-
-        bytesReceivedPercent: avgPercentDistributon(
-          lastRaw.client.bytesReceived,
-          last2Raw.client.bytesReceived,
-          internal.bytesReceivedDistribution),
-
-        totalTimePercent: avgPercentDistributon(
-          lastRaw.client.totalTime,
-          last2Raw.client.totalTime,
-          internal.requestTimeDistribution),
-
-        requestTimePercent: avgPercentDistributon(
-          lastRaw.client.requestTime,
-          last2Raw.client.requestTime,
-          internal.requestTimeDistribution),
-
-        queueTimePercent: avgPercentDistributon(
-          lastRaw.client.queueTime,
-          last2Raw.client.queueTime,
-          internal.requestTimeDistribution)
-      };
-    }
+    result.nextStart = lastRaw.time;
+    result.waitFor = (lastRaw.time + STATISTICS_INTERVALL) - internal.time();
   }
-
-  return {
-    next: lastTime,
-    times: times,
-    series: series,
-    distribution: distribution,
-    current: current,
-    server: server
-  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computeStatisticsRaw15M
 ////////////////////////////////////////////////////////////////////////////////
 
-function computeStatisticsRaw15M (start, dbServer) {
-  var serverFilter = "";
+function computeStatisticsRaw15M (result, start, clusterId) {
+  'use strict';
 
-  if (dbServer === undefined) {
-    if (cluster.isCluster()) {
-      if (cluster.isCoordinator()) {
-        serverFilter = "FILTER s.clusterId == @server";
-        dbServer = cluster.coordinatorId();
-      }
-    }
-  }
-  else {
-    serverFilter = "FILTER s.clusterId == @server";
+  var filter = "";
+
+  if (clusterId !== undefined) {
+    filter = " FILTER s.clusterId == @clusterId ";
   }
 
   var values = db._query(
-        "FOR s IN _statistics "
-      + "  FILTER s.time >= @m15 "
-      +    serverFilter
+        "FOR s IN _statistics15 "
+      + "  FILTER s.time > @start "
+      +    filter
       + "  SORT s.time "
-      + "  return { time: s.time, "
-      + "           clientConnections: s.client.httpConnections, "
-      + "           numberOfThreads: s.system.numberOfThreads, "
-      + "           virtualSize: s.system.virtualSize }",
-    { m15: start - 15 * 60, server: dbServer });
-
+      + "  return s",
+    { start: start - 2 * STATISTICS_HISTORY_INTERVALL, clusterId: clusterId });
+  
   var lastRaw = null;
-  var count = 0;
-  var sumConnections = 0;
-  var sumThreads = 0;
-  var sumVirtualSize = 0;
+  var lastRaw2 = null;
 
-  var firstAsync = null;
-  var firstConnections = null;
-  var firstThreads = null;
-  var firstVirtualSize = null;
+  // read the last entries
+  while (values.hasNext()) {
+    var stat = values.next();
+
+    lastRaw2 = lastRaw;
+    lastRaw = stat;
+  }
+
+  // have at least one entry, use it
+  if (lastRaw !== null) {
+    result.numberOfThreads15M = lastRaw.system.numberOfThreads;
+    result.numberOfThreads15MPercentChange = percentChange(lastRaw, lastRaw2, 'system', 'numberOfThreads');
+
+    result.virtualSize15M = lastRaw.system.virtualSize;
+    result.virtualSize15MPercentChange = percentChange(lastRaw, lastRaw2, 'system', 'virtualSize');
+
+    result.asyncPerSecond15M = lastRaw.http.requestsAsyncPerSecond;
+    result.asyncPerSecond15MPercentChange = percentChange(lastRaw, lastRaw2, 'http', 'requestsAsyncPerSecond');
+
+    result.syncPerSecond15M = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
+    result.syncPerSecond15MPercentChange
+      = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+
+    result.clientConnections15M = lastRaw.client.httpConnections;
+    result.clientConnections15MPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
+  }
+
+  // have no entry, add nulls
+  else {
+    var ps = internal.processStatistics();
+
+    result.numberOfThreads15M = ps.numberOfThreads;
+    result.numberOfThreads15MPercentChange = 0;
+
+    result.virtualSize15M = ps.virtualSize;
+    result.virtualSize15MPercentChange = 0;
+
+    result.asyncPerSecond15M = 0;
+    result.asyncPerSecond15MPercentChange = 0;
+
+    result.syncPerSecond15M = 0;
+    result.syncPerSecond15MPercentChange = 0;
+
+    result.clientConnections15M = 0;
+    result.clientConnections15MPercentChange = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computeStatisticsShort
+////////////////////////////////////////////////////////////////////////////////
+
+function computeStatisticsShort (start, clusterId) {
+  'use strict';
+
+  var result = {};
+
+  computeStatisticsRaw(result, start, clusterId);
+  computeStatisticsRaw15M(result, start, clusterId);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computeStatisticsValues
+////////////////////////////////////////////////////////////////////////////////
+
+function computeStatisticsValues (result, values, attrs) {
+  'use strict';
+
+  var key;
+
+  for (key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      result[key] = [];
+    }
+  }
 
   while (values.hasNext()) {
-    var raw = values.next();
+    var stat = values.next();
 
-    if (lastRaw === null) {
-      lastRaw = raw;
-    }
-    else {
-      var d = raw.time - lastRaw.time;
+    result.times.push(stat.time);
 
-      if (d !== 0) {
-        var n2 = raw.clientConnections;
-        var n3 = raw.numberOfThreads;
-        var n4 = raw.virtualSize;
+    for (key in attrs) {
+      if (attrs.hasOwnProperty(key) && STAT_SERIES.hasOwnProperty(key)) {
+        var path = STAT_SERIES[key];
 
-        count++;
-        sumConnections += n2;
-        sumThreads += n3;
-        sumVirtualSize += n4;
-
-        if (firstConnections === null) {
-          firstConnections = n2;
-        }
-
-        if (firstThreads === null) {
-          firstThreads = n3;
-        }
-
-        if (firstVirtualSize === null) {
-          firstVirtualSize = n4;
-        }
+        result[key].push(stat[path[0]][path[1]]);
       }
     }
   }
-
-  if (count !== 0) {
-    sumConnections /= count;
-    sumThreads /= count;
-    sumVirtualSize /= count;
-  }
-
-  if (firstConnections === null) {
-    firstConnections = 0;
-  }
-  else if (firstConnections !== 0) {
-    firstConnections = (sumConnections - firstConnections) / firstConnections;
-  }
-
-  if (firstThreads === null) {
-    firstThreads = 0;
-  }
-  else if (firstThreads !== 0) {
-    firstThreads = (sumThreads - firstThreads) / firstThreads;
-  }
-
-  if (firstVirtualSize === null) {
-    firstVirtualSize = 0;
-  }
-  else if (firstVirtualSize !== 0) {
-    firstVirtualSize = (sumVirtualSize - firstVirtualSize) / firstVirtualSize;
-  }
-
-  return {
-    clientConnections: sumConnections,
-    clientConnectionsPercentChange: firstConnections,
-    numberOfThreads: sumThreads,
-    numberOfThreadsPercentChange: firstThreads,
-    virtualSize: sumVirtualSize,
-    virtualSizePercentChange: firstVirtualSize
-  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convertSeries
+/// @brief computeStatisticsLong
 ////////////////////////////////////////////////////////////////////////////////
 
-function convertSeries (series, name) {
-  var result = [];
-  var i;
+function computeStatisticsLong (attrs, clusterId) {
+  'use strict';
 
-  for (i = 0;  i < series.length;  ++i) {
-    result.push(series[i][name]);
+  var short = { times: [] };
+
+  var filter = "";
+
+  if (clusterId !== undefined) {
+    filter = " FILTER s.clusterId == @clusterId ";
   }
 
-  return result;
-}
+  var values = db._query(
+      "FOR s IN _statistics "
+    +    filter
+    + "  SORT s.time "
+      + "  return s",
+    { clusterId: clusterId });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsSeries
-////////////////////////////////////////////////////////////////////////////////
+  computeStatisticsValues(short, values, attrs);
 
-function computeStatisticsSeries (start, attrs, dbServer) {
-  var result = {};
-  var raw = computeStatisticsRaw(start, dbServer);
+  var filter2 = "";
+  var end = 0;
 
-  result.nextStart = raw.next;
-  result.waitFor = (raw.next + STATISTICS_INTERVALL) - internal.time();
-  result.times = raw.times;
-
-  if (result.waitFor < 1) {
-    result.waitFor = 1;
+  if (short.times.length !== 0) {
+    filter2 = " FILTER s.time < @end ";
+    end = short.times[0];
   }
 
-  if (attrs === null || attrs.avgTotalTime) {
-    result.avgTotalTime = convertSeries(raw.series, "totalTime");
-  }
+  values = db._query(
+    "FOR s IN _statistics15 "
+    +    filter
+    +    filter2
+    + "  SORT s.time "
+    + "  return s",
+    { end: end, clusterId: clusterId });
+  
+  var long = { times: [] };
 
-  if (attrs === null || attrs.totalTimeDistributionPercent) {
-    result.totalTimeDistributionPercent = raw.distribution.totalTimePercent;
-  }
+  computeStatisticsValues(long, values, attrs);
 
-  if (attrs === null || attrs.avgRequestTime) {
-    result.avgRequestTime = convertSeries(raw.series, "requestTime");
-  }
+  var key;
 
-  if (attrs === null || attrs.requestTimeDistribution) {
-    result.requestTimeDistributionPercent = raw.distribution.requestTimePercent;
-  }
-
-  if (attrs === null || attrs.avgQueueTime) {
-    result.avgQueueTime = convertSeries(raw.series, "queueTime");
-  }
-
-  if (attrs === null || attrs.queueTimeDistributionPercent) {
-    result.queueTimeDistributionPercent = raw.distribution.queueTimePercent;
-  }
-
-  if (attrs === null || attrs.avgIoTime) {
-    result.avgIoTime = convertSeries(raw.series, "ioTime");
-  }
-
-  if (attrs === null || attrs.bytesSentPerSecond) {
-    result.bytesSentPerSecond = convertSeries(raw.series, "bytesSent");
-  }
-
-  if (attrs === null || attrs.bytesSentDistributionPercent) {
-    result.bytesSentDistributionPercent = raw.distribution.bytesSentPercent;
-  }
-
-  if (attrs === null || attrs.bytesReceivedPerSecond) {
-    result.bytesReceivedPerSecond = convertSeries(raw.series, "bytesReceived");
-  }
-
-  if (attrs === null || attrs.bytesReceivedDistributionPercent) {
-    result.bytesReceivedDistributionPercent = raw.distribution.bytesReceivedPercent;
-  }
-
-  if (attrs === null || attrs.optionsPerSecond) {
-    result.optionsPerSecond = convertSeries(raw.series, "optionsPerSecond");
-  }
-
-  if (attrs === null || attrs.putsPerSecond) {
-    result.putsPerSecond = convertSeries(raw.series, "putsPerSecond");
-  }
-
-  if (attrs === null || attrs.headsPerSecond) {
-    result.headsPerSecond = convertSeries(raw.series, "headsPerSecond");
-  }
-
-  if (attrs === null || attrs.postsPerSecond) {
-    result.postsPerSecond = convertSeries(raw.series, "postsPerSecond");
-  }
-
-  if (attrs === null || attrs.getsPerSecond) {
-    result.getsPerSecond = convertSeries(raw.series, "getsPerSecond");
-  }
-
-  if (attrs === null || attrs.deletesPerSecond) {
-    result.deletesPerSecond = convertSeries(raw.series, "deletesPerSecond");
-  }
-
-  if (attrs === null || attrs.othersPerSecond) {
-    result.othersPerSecond = convertSeries(raw.series, "othersPerSecond");
-  }
-
-  if (attrs === null || attrs.patchesPerSecond) {
-    result.patchesPerSecond = convertSeries(raw.series, "patchesPerSecond");
-  }
-
-  if (attrs === null || attrs.asyncPerSecond) {
-    result.asyncPerSecond = convertSeries(raw.series, "asyncPerSecond");
-  }
-
-  if (attrs === null || attrs.asyncPerSecondCurrent) {
-    result.asyncPerSecondCurrent = raw.current.asyncPerSecond;
-  }
-
-  if (attrs === null || attrs.asyncPerSecondCurrentPercentChange) {
-    result.asyncPerSecondCurrentPercentChange = raw.current.asyncPerSecondPercentChange;
-  }
-
-  if (attrs === null || attrs.syncPerSecondCurrent) {
-    result.syncPerSecondCurrent = raw.current.syncPerSecond;
-  }
-
-  if (attrs === null || attrs.syncPerSecondCurrentPercentChange) {
-    result.syncPerSecondCurrentPercentChange = raw.current.syncPerSecondPercentChange;
-  }
-
-  if (attrs === null || attrs.clientConnections) {
-      result.clientConnections = convertSeries(raw.series, "clientConnections");
-  }
-
-  if (attrs === null || attrs.clientConnectionsCurrent) {
-    result.clientConnectionsCurrent = raw.current.clientConnections;
-  }
-
-  if (attrs === null || attrs.clientConnectionsCurrentPercentChange) {
-    result.clientConnectionsCurrentPercentChange = raw.current.clientConnectionsPercentChange;
-  }
-
-  if (attrs === null || attrs.numberOfThreads) {
-      result.numberOfThreads = convertSeries(raw.series, "numberOfThreads");
-  }
-
-  if (attrs === null || attrs.numberOfThreadsCurrent) {
-    result.numberOfThreadsCurrent = raw.current.numberOfThreads;
-  }
-
-  if (attrs === null || attrs.numberOfThreadsCurrentPercentChange) {
-    result.numberOfThreadsCurrentPercentChange = raw.current.numberOfThreadsPercentChange;
-  }
-
-  if (attrs === null || attrs.residentSize) {
-    result.residentSize = convertSeries(raw.series, "residentSize");
-  }
-
-  if (attrs === null || attrs.residentSizePercent) {
-    result.residentSizePercent = convertSeries(raw.series, "residentSizePercent");
-  }
-
-  if (attrs === null || attrs.virtualSize) {
-    result.virtualSize = convertSeries(raw.series, "virtualSize");
-  }
-
-  if (attrs === null || attrs.virtualSizeCurrent) {
-    result.virtualSizeCurrent = raw.current.virtualSize;
-  }
-
-  if (attrs === null || attrs.virtualSizePercentChange) {
-    result.virtualSizePercentChange = raw.current.virtualSizePercentChange;
-  }
-
-  if (attrs === null || attrs.majorPageFaultsPerSecond) {
-    result.majorPageFaultsPerSecond = convertSeries(raw.series, "majorPageFaultsPerSecond");
-  }
-
-  if (attrs === null || attrs.minorPageFaultsPerSecond) {
-    result.minorPageFaultsPerSecond = convertSeries(raw.series, "minorPageFaultsPerSecond");
-  }
-
-  if (attrs === null || attrs.userTimePerSecond) {
-    result.userTimePerSecond = convertSeries(raw.series, "userTimePerSecond");
-  }
-
-  if (attrs === null || attrs.systemTimePerSecond) {
-    result.systemTimePerSecond = convertSeries(raw.series, "systemTimePerSecond");
-  }
-
-  if (attrs === null || attrs.uptime) {
-    result.uptime = raw.server.uptime;
-  }
-
-  if (attrs === null || attrs.physicalMemory) {
-    result.physicalMemory = raw.server.physicalMemory;
-  }
-
-  if (result.next !== null) {
-    var raw15 = computeStatisticsRaw15M(raw.next, dbServer);
-
-    if (attrs === null || attrs.clientConnections15M) {
-      result.clientConnections15M = raw15.clientConnections;
-    }
-
-    if (attrs === null || attrs.clientConnectionsPercentChange15M) {
-      result.clientConnectionsPercentChange15M = raw15.clientConnectionsPercentChange;
-    }
-
-    if (attrs === null || attrs.numberOfThreads15M) {
-      result.numberOfThreads15M = raw15.numberOfThreads;
-    }
-
-    if (attrs === null || attrs.numberOfThreadsPercentChange15M) {
-      result.numberOfThreadsPercentChange15M = raw15.numberOfThreadsPercentChange;
-    }
-
-    if (attrs === null || attrs.virtualSize15M) {
-      result.virtualSize15M = raw15.virtualSize;
-    }
-
-    if (attrs === null || attrs.virtualSizePercentChange15M) {
-      result.virtualSizePercentChange15M = raw15.virtualSizePercentChange;
+  for (key in attrs) {
+    if (attrs.hasOwnProperty(key) && long.hasOwnProperty(key)) {
+      long[key] = long[key].concat(short[key]);
     }
   }
 
-  return result;
+  if (! attrs.times) {
+    delete long.times;
+  }
+
+  return long;
 }
 
 // -----------------------------------------------------------------------------
@@ -856,49 +444,51 @@ function computeStatisticsSeries (start, attrs, dbServer) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full statistics history
+/// @brief short term history
 ////////////////////////////////////////////////////////////////////////////////
 
-controller.get("full", function (req, res) {
+controller.get("short", function (req, res) {
+  'use strict';
+
   var start = req.params("start");
   var dbServer = req.params("DBserver");
-  var attrs = null;
 
   if (start !== null && start !== undefined) {
-    start = parseInt(start, 10);
+    start = parseFloat(start, 10);
+  }
+  else {
+    start = internal.time() - STATISTICS_INTERVALL * 10;
   }
 
-  var series = computeStatisticsSeries(start, attrs, dbServer);
+  var series = computeStatisticsShort(start, clusterId);
 
   res.json(series);
 }).summary("Returns the statistics")
   .notes("This function is used to get the statistics history.");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full statistics history
+/// @brief long term history
 ////////////////////////////////////////////////////////////////////////////////
 
-controller.get("history", function (req, res) {
-  var start = req.params("start");
+controller.get("long", function (req, res) {
+  'use strict';
+
   var filter = req.params("filter");
   var dbServer = req.params("DBserver");
+
+  if (filter === undefined) {
+    actions.resultError(req, res, actions.HTTP_BAD, "required parameter 'filter' was not given");
+  }
+
   var attrs = {};
   var s = filter.split(",");
   var i;
-
-  if (start !== null && start !== undefined) {
-    start = parseInt(start, 10);
-  }
 
   for (i = 0;  i < s.length;  ++i) {
     attrs[s[i]] = true;
   }
 
-  if (dbServer === null) {
-    dbServer = undefined;
-  }
-
-  var series = computeStatisticsSeries(start, attrs, dbServer);
+  var series = computeStatisticsLong(attrs, clusterId);
 
   res.json(series);
 }).summary("Returns the aggregated history")
@@ -909,6 +499,8 @@ controller.get("history", function (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 controller.get("cluster", function (req, res) {
+  'use strict';
+
   if (! cluster.isCoordinator()) {
     actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0, "only allowed on coordinator");
     return;
