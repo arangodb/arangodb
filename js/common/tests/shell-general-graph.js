@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true */
 /*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,6 +46,20 @@ var _ = require("underscore");
 
 function GeneralGraphCreationSuite() {
 
+  var rn = "UnitTestRelationName";
+  var rn1 = "UnitTestRelationName1";
+  var vn1 = "UnitTestVerticies1";
+  var vn2 = "UnitTestVerticies2";
+  var vn3 = "UnitTestVerticies3";
+  var vn4 = "UnitTestVerticies4";
+  var gn = "UnitTestGraph";
+  var edgeDef = graph._edgeDefinitions(
+    graph._undirectedRelationDefinition(rn, vn1),
+    graph._directedRelationDefinition(rn1,
+      [vn1, vn2], [vn3, vn4]
+    )
+  );
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,173 +67,140 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     test_undirectedRelationDefinition : function () {
-      var r;
-
-      try {
-        r = graph._undirectedRelationDefinition("relationName", ["vertexC1", "vertexC2"]);
-      }
-      catch (err) {
-      }
+      var r = graph._undirectedRelationDefinition(rn, [vn1, vn2]);
 
       assertEqual(r, {
-        collection: "relationName",
-        from: ["vertexC1", "vertexC2"],
-        to: ["vertexC1", "vertexC2"]
+        collection: rn,
+        from: [vn1, vn2],
+        to: [vn1, vn2]
       });
 
     },
 
     test_undirectedRelationDefinitionWithSingleCollection : function () {
-      var r;
-
-      try {
-        r = graph._undirectedRelationDefinition("relationName", "vertexC1");
-      }
-      catch (err) {
-      }
+      var r = graph._undirectedRelationDefinition(rn, vn1);
 
       assertEqual(r, {
-        collection: "relationName",
-        from: ["vertexC1"],
-        to: ["vertexC1"]
+        collection: rn,
+        from: [vn1],
+        to: [vn1]
       });
 
     },
 
     test_undirectedRelationDefinitionWithMissingName : function () {
-      var r, exception;
       try {
-        r = graph._undirectedRelationDefinition("", ["vertexC1", "vertexC2"]);
+        graph._undirectedRelationDefinition("", [vn1, vn2]);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "<relationName> must be a not empty string");
       }
-
-      assertEqual(exception, "<relationName> must be a not empty string");
-
     },
 
     test_undirectedRelationDefinitionWithTooFewArgs : function () {
-      var r, exception;
       try {
-        r = graph._undirectedRelationDefinition(["vertexC1", "vertexC2"]);
+        graph._undirectedRelationDefinition([vn1, vn2]);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "method _undirectedRelationDefinition expects 2 arguments");
       }
-
-      assertEqual(exception, "method _undirectedRelationDefinition expects 2 arguments");
-
     },
 
     test_undirectedRelationDefinitionWithInvalidSecondArg : function () {
-      var r, exception;
       try {
-        r = graph._undirectedRelationDefinition("name", {"vertexC1" : "vertexC2"});
+        var param = {};
+        param[vn1] = vn2;
+        graph._undirectedRelationDefinition(rn, param);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "<vertexCollections> must be a not empty string or array");
       }
-
-      assertEqual(exception, "<vertexCollections> must be a not empty string or array");
-
     },
 
     test_directedRelationDefinition : function () {
-      var r;
-
-      try {
-        r = graph._directedRelationDefinition("relationName",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]);
-      }
-      catch (err) {
-      }
+      var r = graph._directedRelationDefinition(rn,
+          [vn1, vn2], [vn3, vn4]);
 
       assertEqual(r, {
-        collection: "relationName",
-        from: ["vertexC1", "vertexC2"],
-        to: ["vertexC3", "vertexC4"]
+        collection: rn,
+        from: [vn1, vn2],
+        to: [vn3, vn4]
       });
 
     },
 
     test_directedRelationDefinitionWithMissingName : function () {
-      var r, exception;
       try {
-        r = graph._directedRelationDefinition("",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]);
+        graph._directedRelationDefinition("",
+          [vn1, vn2], [vn3, vn4]);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "<relationName> must be a not empty string");
       }
-
-      assertEqual(exception, "<relationName> must be a not empty string");
-
     },
 
     test_directedRelationDefinitionWithTooFewArgs : function () {
-      var r, exception;
       try {
-        r = graph._directedRelationDefinition(["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]);
+        graph._directedRelationDefinition([vn1, vn2], [vn3, vn4]);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "method _directedRelationDefinition expects 3 arguments");
       }
-
-      assertEqual(exception, "method _directedRelationDefinition expects 3 arguments");
-
     },
 
     test_directedRelationDefinitionWithInvalidSecondArg : function () {
-      var r, exception;
       try {
-        r = graph._directedRelationDefinition("name", {"vertexC1" : "vertexC2"}, "");
+        var param = {};
+        param[vn1] = vn2;
+        graph._directedRelationDefinition(rn, param, vn3);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "<fromVertexCollections> must be a not empty string or array");
       }
 
-      assertEqual(exception, "<fromVertexCollections> must be a not empty string or array");
 
     },
 
     test_directedRelationDefinitionWithInvalidThirdArg : function () {
-      var r, exception;
       try {
-        r = graph._directedRelationDefinition("name", ["vertexC1", "vertexC2"], []);
+        var param = {};
+        param[vn1] = vn2;
+        graph._directedRelationDefinition(rn, vn3, param);
+        fail();
       }
       catch (err) {
-        exception = err;
+        assertEqual(err, "<toVertexCollections> must be a not empty string or array");
       }
-
-      assertEqual(exception, "<toVertexCollections> must be a not empty string or array");
-
     },
 
     testEdgeDefinitions : function () {
-
 
       //with empty args
       assertEqual(graph._edgeDefinitions(), []);
 
       //with args
       assertEqual(graph._edgeDefinitions(
-        graph._undirectedRelationDefinition("relationName", "vertexC1"),
-        graph._directedRelationDefinition("relationName",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
+        graph._undirectedRelationDefinition(rn, vn1),
+        graph._directedRelationDefinition(rn1,
+          [vn1, vn2], [vn3, vn4])
       ), [
         {
-          collection: "relationName",
-          from: ["vertexC1"],
-          to: ["vertexC1"]
+          collection: rn,
+          from: [vn1],
+          to: [vn1]
         },
         {
-          collection: "relationName",
-          from: ["vertexC1", "vertexC2"],
-          to: ["vertexC3", "vertexC4"]
+          collection: rn1,
+          from: [vn1, vn2],
+          to: [vn3, vn4]
         }
       ]);
-
     },
 
     testExtendEdgeDefinitions : function () {
@@ -257,44 +238,41 @@ function GeneralGraphCreationSuite() {
 
 
     test_create : function () {
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
       var a = graph._create(
-        "bla3",
+        gn,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
+          graph._undirectedRelationDefinition(rn, vn1),
+          graph._directedRelationDefinition(rn1, [vn1, vn2], [vn3, vn4])
         )
       );
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn1));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn2));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn3));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn4));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
         {
-          "collection" : "relationName",
+          "collection" : rn,
           "from" : [
-            "vertexC1"
+            vn1
           ],
           "to" : [
-            "vertexC1"
+            vn1
           ]
         },
         {
-          "collection" : "relationName2",
+          "collection" : rn1,
           "from" : [
-            "vertexC1",
-            "vertexC2"
+            vn1,
+            vn2
           ],
           "to" : [
-            "vertexC3",
-            "vertexC4"
+            vn3,
+            vn4
           ]
         }
       ]
@@ -302,34 +280,26 @@ function GeneralGraphCreationSuite() {
     },
 
     test_create_WithOut_EdgeDefiniton : function () {
-      var msg;
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-
       try {
-        var a = graph._create(
-          "bla3",
+        graph._create(
+          gn,
           []
         );
+        fail();
       } catch (err) {
-        msg = err;
+        assertEqual(err, "at least one edge definition is required to create a graph.");
       }
-
-      assertEqual(msg, "at least one edge definition is required to create a graph.");
-
     },
 
     test_create_WithOut_Name : function () {
-      var msg;
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-
       try {
-        var a = graph._create(
+        graph._create(
           "",
           graph._edgeDefinitions(
             graph._undirectedRelationDefinition("relationName", "vertexC1"),
@@ -338,90 +308,56 @@ function GeneralGraphCreationSuite() {
             )
           )
         );
+        fail();
       } catch (err) {
-        msg = err;
+        assertEqual(err, "a graph name is required to create a graph.");
       }
-
-      assertEqual(msg, "a graph name is required to create a graph.");
-
     },
 
     test_create_With_Already_Existing_Graph : function () {
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-      graph._create(
-        "bla3",
-        graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-            ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
-        )
-      );
-      var msg;
+      graph._create(gn, edgeDef);
       try {
-        var a = graph._create(
-          "bla3",
-          graph._edgeDefinitions(
-            graph._undirectedRelationDefinition("relationName", "vertexC1"),
-            graph._directedRelationDefinition("relationName2",
-              ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-            )
-          )
-        );
+        graph._create(gn, edgeDef);
       } catch (err) {
-        msg = err;
+        assertEqual(err, "graph " + gn + " already exists.");
       }
-
-      assertEqual(msg, "graph bla3 already exists.");
-
     },
 
     test_get_graph : function () {
-
-      try {
-        arangodb.db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
       }
-      graph._create(
-        "bla3",
-        graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("relationName", "vertexC1"),
-          graph._directedRelationDefinition("relationName2",
-            ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
-          )
-        )
-      );
+      graph._create(gn, edgeDef);
+      var a = graph._graph(gn);
 
-      var a = graph._graph("bla3");
-
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC1'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC2'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC3'));
-      assertTrue(a.__vertexCollections.hasOwnProperty('vertexC4'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName'));
-      assertTrue(a.__edgeCollections.hasOwnProperty('relationName2'));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn1));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn2));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn3));
+      assertTrue(a.__vertexCollections.hasOwnProperty(vn4));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn));
+      assertTrue(a.__edgeCollections.hasOwnProperty(rn1));
       assertEqual(a.__edgeDefinitions, [
         {
-          "collection" : "relationName",
+          "collection" : rn,
           "from" : [
-            "vertexC1"
+            vn1
           ],
           "to" : [
-            "vertexC1"
+            vn1
           ]
         },
         {
-          "collection" : "relationName2",
+          "collection" : rn1,
           "from" : [
-            "vertexC1",
-            "vertexC2"
+            vn1,
+            vn2
           ],
           "to" : [
-            "vertexC3",
-            "vertexC4"
+            vn3,
+            vn4
           ]
         }
       ]
@@ -429,56 +365,51 @@ function GeneralGraphCreationSuite() {
     },
 
     test_get_graph_without_hit : function () {
-      var msg;
       try {
-        var a = graph._graph("bla4");
+        graph._graph(gn + "UnknownExtension");
+        fail();
       } catch (e) {
-        msg = e;
+        assertEqual(e, "graph " + gn + "UnknownExtension" + " does not exists.");
       }
-      assertEqual(msg, "graph bla4 does not exists.");
     },
 
     test_creationOfGraphShouldNotAffectCollections: function() {
-      var en = "UnitTestsEdges";
-      var vn1 = "UnitTestsVertices";
-      var vn2 = "UnitTestsVertices2";
-      var gn = "UnitTestsGraph";
       if(graph._exists(gn)) {
         graph._drop(gn);
       }
-      var edgeDef = [graph._directedRelationDefinition(en, vn1, vn2)];
-      var g = graph._create(gn, edgeDef);
+      var edgeDef2 = [graph._directedRelationDefinition(rn, vn1, vn2)];
+      var g = graph._create(gn, edgeDef2);
       var v1 = g[vn1].save({_key: "1"})._id;
       var v2 = g[vn2].save({_key: "2"})._id;
       var v3 = g[vn1].save({_key: "3"})._id;
 
-      g[en].save(v1, v2, {});
+      g[rn].save(v1, v2, {});
       assertEqual(g[vn1].count(), 2);
       assertEqual(g[vn2].count(), 1);
-      assertEqual(g[en].count(), 1);
+      assertEqual(g[rn].count(), 1);
       try {
-        g[en].save(v2, v3, {});
+        g[rn].save(v2, v3, {});
         fail();
       } catch (e) {
         // This should create an error
-        assertEqual(g[en].count(), 1);
+        assertEqual(g[rn].count(), 1);
       }
 
       try {
-        db[en].save(v2, v3, {});
+        db[rn].save(v2, v3, {});
       } catch (e) {
         // This should not create an error
         fail();
       }
-      assertEqual(g[en].count(), 2);
+      assertEqual(g[rn].count(), 2);
 
       db[vn2].remove(v2);
       // This should not remove edges
-      assertEqual(g[en].count(), 2);
+      assertEqual(g[rn].count(), 2);
 
       g[vn1].remove(v1);
       // This should remove edges
-      assertEqual(g[en].count(), 1);
+      assertEqual(g[rn].count(), 1);
       graph._drop(gn, true);
     }
 
@@ -707,7 +638,8 @@ function GeneralGraphAQLQueriesSuite() {
         fail();
       } catch (err) {
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
-        assertEqual(err.errorMessage, "edge collections: failed and unknown and foxxle are not known to the graph");
+        assertEqual(err.errorMessage,
+          "edge collections: failed and unknown and foxxle are not known to the graph");
       }
     },
 
@@ -857,31 +789,37 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
     }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: let construct on edges
-////////////////////////////////////////////////////////////////////////////////
-   
-/* Broken string replacement
-   test_letOnEdges: function() {
-      var query = g._edges("v1/1").let("myVal = e.val");
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + "@graphName,@startVertex_0,any) LET myVal = edges_0.val");
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, "graph");
-      assertEqual(bindVars.startVertex_0, "v1/1");
-      */
-      /*
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e3));
-      assertFalse(findIdInResult(result, e1));
-      assertFalse(findIdInResult(result, e2));
-      */
-     /*
-   }
-  */
+  };
+
+}
+
+function ChainedFluentAQLResultsSuite() {
+
+  var gn = "UnitTestGraph";
+  var g;
+
+  var edgeDef = [];
+  
+
+  var createTestData = function() {
+    g = graph._create(gn, edgeDef);
 
   };
+
+  var dropData = function() {
+    graph._drop(gn);
+  };
+
+  return {
+
+    setUp: function() {
+
+    },
+
+    tearDown: dropData
+
+  };
+
 
 }
 
@@ -891,6 +829,7 @@ function EdgesAndVerticesSuite() {
   var vertexIds = [];
   var vertexId1, vertexId2;
   var edgeId1, edgeId2;
+  var unitTestGraphName = "unitTestGraph";
 
   fillCollections = function() {
     var ids = {};
@@ -948,11 +887,11 @@ function EdgesAndVerticesSuite() {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove("_graphs/unitTestGraph")
+        arangodb.db._collection("_graphs").remove("_graphs/" + unitTestGraphName)
       } catch (err) {
       }
       g = graph._create(
-        "unitTestGraph",
+        unitTestGraphName,
         graph._edgeDefinitions(
           graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
           graph._directedRelationDefinition("unitTestEdgeCollection2",
@@ -963,7 +902,23 @@ function EdgesAndVerticesSuite() {
     },
 
     tearDown : function() {
-      graph._drop("unitTestGraph");
+      graph._drop(unitTestGraphName);
+    },
+
+    test_dropGraph : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myEdgeColName = "unitTestEdgeCollection1";
+      var myVertexColName = "unitTestVertexCollection4711";
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+        )
+      );
+      graph._drop(myGraphName);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVertexColName) === null);
+      assertTrue(db._collection(myEdgeColName) !== null);
     },
 
     test_edgeCollections : function () {
