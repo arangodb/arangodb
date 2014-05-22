@@ -416,6 +416,20 @@ var _edgeDefinitions = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extend an edge definitions
+////////////////////////////////////////////////////////////////////////////////
+
+
+var _extendEdgeDefinitions = function () {
+
+  var args = arguments;
+  var res = args[0];
+  args = args.slice(1);
+  res.concat(args);
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -744,6 +758,7 @@ exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
+exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
