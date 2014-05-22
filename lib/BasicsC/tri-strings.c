@@ -1032,7 +1032,7 @@ char* TRI_EncodeHexString (char const* source, size_t sourceLen, size_t* dstLen)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts from hex reqpresentation
+/// @brief converts from hex representation
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_DecodeHexString (char const* source, size_t sourceLen, size_t* dstLen) {
