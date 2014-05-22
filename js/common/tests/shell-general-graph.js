@@ -758,28 +758,257 @@ function GeneralGraphAQLQueriesSuite() {
 function ChainedFluentAQLResultsSuite() {
 
   var gn = "UnitTestGraph";
+  var user = "UnitTestUsers";
+  var product = "UnitTestProducts";
+  var isFriend = "UnitTestIsFriend";
+  var hasBought = "UnitTestHasBought";
+  var uaName = "Alice";
+  var ubName = "Bob";
+  var ucName = "Charly";
+  var udName = "Diana";
+  var p1Name = "HiFi";
+  var p2Name = "Shirt";
+  var p3Name = "TV";
+  var pTypeElec = "Electro";
+  var pTypeCloth = "Cloth";
+
+    var ud1 = 2000;
+    var ud2 = 2001;
+    var ud3 = 2002;
+    var ud4 = 2003;
+
+    var d1 = 2004;
+    var d2 = 2005;
+    var d3 = 2006;
+    var d4 = 2007;
+    var d5 = 2008;
+
   var g;
 
   var edgeDef = [];
-  
-
-  var createTestData = function() {
-    g = graph._create(gn, edgeDef);
-
-  };
+  edgeDef.push(graph._undirectedRelationDefinition(isFriend, user));
+  edgeDef.push(graph._directedRelationDefinition(hasBought, user, product));
 
   var dropData = function() {
-    graph._drop(gn);
+    try {
+      graph._drop(gn);
+    } catch(e) {
+
+    }
+  };
+
+  var createTestData = function() {
+    dropData();
+    g = graph._create(gn, edgeDef);
+    var ua = g[user].save({name: uaName})._id;
+    var ub = g[user].save({name: ubName})._id;
+    var uc = g[user].save({name: ucName})._id;
+    var ud = g[user].save({name: udName})._id;
+
+    var p1 = g[product].save({name: p1Name, type: pTypeElec})._id;
+    var p2 = g[product].save({name: p2Name, type: pTypeCloth})._id;
+    var p3 = g[product].save({name: p3Name, type: pTypeElec})._id;
+
+    g[isFriend].save(ua, ub, {
+      since: ud1
+    });
+    g[isFriend].save(ua, uc, {
+      since: ud2
+    });
+    g[isFriend].save(ub, ud, {
+      since: ud3
+    });
+    g[isFriend].save(uc, ud, {
+      since: ud4
+    });
+
+    g[hasBought].save(ua, p1, {
+      date: d1
+    });
+    g[hasBought].save(ub, p1, {
+      date: d2
+    });
+    g[hasBought].save(ub, p3, {
+      date: d3
+    });
+
+    g[hasBought].save(ud, p1, {
+      date: d4
+    });
+    g[hasBought].save(ud, p2, {
+      date: d5
+    });
+
   };
 
   return {
 
-    setUp: function() {
+    setUp: createTestData,
 
+    tearDown: dropData,
+
+    test_getAllVerticies: function() {
+      fail("Not yet testable");
+      var result = g._verticies().toArray();
+      assertEqual(result.length, 7);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, ubName);
+      assertEqual(sorted[2].name, ucName);
+      assertEqual(sorted[3].name, udName);
+      assertEqual(sorted[4].name, p1Name);
+      assertEqual(sorted[5].name, p2Name);
+      assertEqual(sorted[6].name, p3Name);
     },
 
-    tearDown: dropData
+    test_getVertexById: function() {
+      fail("Not yet testable");
+      var a_id = g[user].byExample({name: uaName})._id;
+      var result = g._verticies(a_id).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, uaName);
+    },
 
+    test_getVerticiesById: function() {
+      fail("Not yet testable");
+      var a_id = g[user].byExample({name: uaName})._id;
+      var b_id = g[user].byExample({name: ubName})._id;
+      var result = g._verticies([a_id, b_id]).toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, ubName);
+    },
+
+    test_getVertexByExample: function() {
+      fail("Not yet testable");
+      var result = g._verticies({
+        name: uaName
+      }).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, uaName);
+    },
+
+    test_getVerticiesByExample: function() {
+      fail("Not yet testable");
+      var result = g._verticies([{
+        name: uaName
+      },{
+        name: p1Name
+      }]).toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, p1Name);
+    },
+
+    test_getVerticiesByExampleAndIdMix: function() {
+      fail("Not yet testable");
+      var b_id = g[user].byExample({name: ubName})._id;
+      var result = g._verticies([{
+        name: uaName
+      },
+      b_id,
+      {
+        name: ucName
+      }]).toArray();
+      assertEqual(result.length, 3);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, ubName);
+      assertEqual(sorted[2].name, ucName);
+    },
+
+    test_getAllEdges: function() {
+      fail("Not yet testable");
+      var result = g.edges().toArray();
+      assertEqual(result.length, 9);
+      var friends = _.sort(
+        _.filter(result, function(e) {
+          return e._id.split("/")[0] === isFriend;
+        }),
+        "since"
+      );
+      var bought = _.sort(
+        _.filter(result, function(e) {
+          return e._id.split("/")[0] === hasBought;
+        }),
+        "date"
+      );
+      assertEqual(friends[0].since, ud1);
+      assertEqual(friends[1].since, ud2);
+      assertEqual(friends[2].since, ud3);
+      assertEqual(friends[3].since, ud4);
+
+      assertEqual(bought[0].date, d1);
+      assertEqual(bought[1].date, d2);
+      assertEqual(bought[2].date, d3);
+      assertEqual(bought[3].date, d4);
+      assertEqual(bought[4].date, d5);
+    },
+
+    test_getEdgeById: function() {
+      fail("Not yet testable");
+      var a_id = g[hasBought].byExample({date: d1})._id;
+      var result = g.edges(a_id).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].date, d1);
+    },
+
+    test_getEdgesById: function() {
+      fail("Not yet testable");
+      var a_id = g[hasBought].byExample({date: d1})._id;
+      var b_id = g[isFriend].byExample({since: ud2})._id;
+      var result = g._verticies([a_id, b_id]).toArray();
+      assertEqual(result.length, 2);
+      if (result[0].date) {
+        assertEqual(result[0].date, d1);
+        assertEqual(result[1].since, ud2);
+      } else {
+        assertEqual(result[0].since, ud2);
+        assertEqual(result[1].date, d1);
+      }
+    },
+    /*
+    test_getVertexByExample: function() {
+      fail("Not yet testable");
+      var result = g._verticies({
+        name: uaName
+      }).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, uaName);
+    },
+
+    test_getVerticiesByExample: function() {
+      fail("Not yet testable");
+      var result = g._verticies([{
+        name: uaName
+      },{
+        name: p1Name
+      }]).toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, p1Name);
+    },
+
+    test_getVerticiesByExampleAndIdMix: function() {
+      fail("Not yet testable");
+      var b_id = g[user].byExample({name: ubName})._id;
+      var result = g._verticies([{
+        name: uaName
+      },
+      b_id,
+      {
+        name: ucName
+      }]).toArray();
+      assertEqual(result.length, 3);
+      var sorted = _.sort(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, ubName);
+      assertEqual(sorted[2].name, ucName);
+    }
+    */
   };
 
 
@@ -1072,6 +1301,7 @@ function EdgesAndVerticesSuite() {
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
+jsunity.run(ChainedFluentAQLResultsSuite);
 
 return jsunity.done();
 

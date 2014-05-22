@@ -146,6 +146,19 @@ var wrapCollection = function(col) {
 };
 
 
+var transformExample = function(example) {
+  if (example === undefined) {
+    return {};
+  }
+  if (typeof example === "string") {
+    return {_id: example};
+  }
+  if (typeof example === "object") {
+    return example;
+  }
+  throw "Invalid example type. Has to be String, Array or Object";
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -155,9 +168,11 @@ var wrapCollection = function(col) {
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
-var AQLStatement = function(query, isEdgeQuery) {
+var AQLStatement = function(query, type) {
   this.query = query;
-  this.edgeQuery = isEdgeQuery || false;
+  if (type) {
+    this.type = type;
+  }
 };
 
 AQLStatement.prototype.printQuery = function() {
@@ -165,7 +180,11 @@ AQLStatement.prototype.printQuery = function() {
 };
 
 AQLStatement.prototype.isEdgeQuery = function() {
-  return this.edgeQuery;
+  return this.type === "edge";
+};
+
+AQLStatement.prototype.isVertexQuery = function() {
+  return this.type === "vertex";
 };
 
 // -----------------------------------------------------------------------------
@@ -179,7 +198,7 @@ var AQLGenerator = function(graph) {
   };
   this.graph = graph;
   this.cursor = null;
-  this.lastEdgeVar = "";
+  this.lastVar = "";
 };
 
 AQLGenerator.prototype._clearCursor = function() {
@@ -195,7 +214,7 @@ AQLGenerator.prototype._createCursor = function() {
   }
 };
 
-AQLGenerator.prototype.edges = function(startVertex, direction) {
+AQLGenerator.prototype._edges = function(startVertex, direction) {
   this._clearCursor();
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
@@ -203,17 +222,49 @@ AQLGenerator.prototype.edges = function(startVertex, direction) {
     + this.stack.length + ',"'
     + direction + '")';
   this.bindVars["startVertex_" + this.stack.length] = startVertex;
-  var stmt = new AQLStatement(query, true);
+  var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
-  this.lastEdgeVar = edgeName;
+  this.lastVar = edgeName;
   return this;
 };
 
-AQLGenerator.prototype.getLastEdgeVar = function() {
-  if (this.lastEdgeVar === "") {
+AQLGenerator.prototype.edges = function(example) {
+  return this._edges(example, "any");
+};
+
+AQLGenerator.prototype.outEdges = function(example) {
+  return this._edges(example, "outbound");
+};
+
+AQLGenerator.prototype.inEdges = function(example) {
+  return this._edges(example, "inbound");
+};
+
+AQLGenerator.prototype._vertices = function(example, direction) {
+  this._clearCursor();
+  var ex = transformExample(example);
+  var vertexName = "vertices_" + this.stack.length;
+  var query = "FOR " + vertexName
+    + " IN GRAPH_VERTICIES(@graphName,@startEdge_"
+    + this.stack.length + ','
+    + '"' + direction + '")';
+  this.bindVars["startEdge_" + this.stack.length] = ex;
+  var stmt = new AQLStatement(query, "vertex");
+  this.stack.push(stmt);
+  this.lastVar = vertexName;
+  return this;
+
+};
+
+AQLGenerator.prototype.verticies = function(example) {
+  return this._verticies(example, "both");
+};
+
+AQLGenerator.prototype.getLastVar = function() {
+  if (this.lastVar === "") {
     return false;
   }
-  return this.lastEdgeVar;
+  return this.lastVar;
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
@@ -255,28 +306,10 @@ AQLGenerator.prototype.filter = function(example) {
   } else {
     ex = example;
   }
-  var query = "FILTER MATCHES(" + this.getLastEdgeVar() + "," + JSON.stringify(ex) + ")";
+  var query = "FILTER MATCHES(" + this.getLastVar() + "," + JSON.stringify(ex) + ")";
   this.stack.push(new AQLStatement(query));
   return this;
 };
-
-/* Old Filter version, string replacements broxen
-AQLGenerator.prototype.filter = function(condition) {
-  var con = condition.replace("e.", this.getLastEdgeVar() + "."); 
-  var query = "FILTER " + con;
-  this.stack.push(new AQLStatement(query));
-  return this;
-};
-*/
-
-/* Old LET version, string replacements broxen
-AQLGenerator.prototype.let = function(assignment) {
-  var asg = assignment.replace("e.", this.getLastEdgeVar() + "."); 
-  var query = "LET " + asg;
-  this.stack.push(new AQLStatement(query));
-  return this;
-};
-*/
 
 AQLGenerator.prototype.printQuery = function() {
   return this.stack.map(function(stmt) {
@@ -288,7 +321,7 @@ AQLGenerator.prototype.execute = function() {
   this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
-  query += " RETURN " + this.getLastEdgeVar();
+  query += " RETURN " + this.getLastVar();
   return db._query(query, bindVars, {count: true});
 };
 
@@ -735,6 +768,19 @@ Graph.prototype._outEdges = function(vertexId) {
   var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexId, "outbound");
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vertices(edgeExample||edgeId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._verticies = function(example) {
+  var AQLStmt = new AQLGenerator(this);
+  return AQLStmt.verticies(example);
+};
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get ingoing vertex of an edge.
 ////////////////////////////////////////////////////////////////////////////////
