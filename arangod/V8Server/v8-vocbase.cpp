@@ -438,6 +438,19 @@ static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
   return policy;
 }
 
+TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
+  TRI_doc_update_policy_e policy ;
+
+  if (overwrite) {
+    // overwrite!
+    policy = TRI_DOC_UPDATE_LAST_WRITE;
+  }
+  else {
+    policy = TRI_DOC_UPDATE_CONFLICT;
+  }
+
+  return policy;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
@@ -2509,24 +2522,60 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+///        parameters for the update function
+////////////////////////////////////////////////////////////////////////////////
+
+struct UpdateOptions {
+  bool overwrite = true;
+  bool keepNull = true;
+  bool waitForSync = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief updates (patches) a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
+  UpdateOptions options;
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
   if (argv.Length() < 2 || argv.Length() > 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepnull>, <waitForSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)");
   }
 
-  const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 3);
+  if (argv.Length() > 2) {
+    if (argv[2]->IsObject()) {
+      v8::Handle<v8::Object> optionsObject = argv[2].As<v8::Object>();
+      if (optionsObject->Has(v8::String::New("overwrite"))) {
+        options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("overwrite")));
+        policy = ExtractUpdatePolicy(options.overwrite);
+      } 
+      if (optionsObject->Has(v8::String::New("keepNull"))) {
+        options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("keepNull")));
+      } 
+      if (optionsObject->Has(v8::String::New("waitForSync"))) {
+        options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      } 
+    } else { // old variant update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)
+      if (argv.Length() > 2 ) {
+        options.overwrite = TRI_ObjectToBoolean(argv[2]);
+        policy = ExtractUpdatePolicy(options.overwrite);
+      }
+      if (argv.Length() > 3 ) {
+        options.keepNull = TRI_ObjectToBoolean(argv[3]);
+      }
+      if (argv.Length() > 4 ) {
+        options.waitForSync = TRI_ObjectToBoolean(argv[4]);
+      }
+    }
+  }
+// LOG_ERROR ( "overwrite %d  keepNull %d waitForSync %d" , options.overwrite , options.keepNull , options.waitForSync);
   // delete null attributes
   // default value: null values are saved as Null
-  const bool nullMeansRemove = (argv.Length() >= 4 && ! TRI_ObjectToBoolean(argv[3]));
-  const bool forceSync = ExtractForceSync(argv, 5);
-
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
@@ -2573,9 +2622,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
                                                    policy, 
-                                                   forceSync,
+                                                   options.waitForSync,
                                                    true,  // isPatch
-                                                   ! nullMeansRemove,     // keepNull
+                                                   ! options.keepNull,
                                                    argv));
   }
 
@@ -2641,7 +2690,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     } 
   }
 
-  TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
+  TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, ! options.keepNull);
   TRI_FreeJson(zone, old);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -2650,7 +2699,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  res = trx.updateDocument(key, &document, patchedJson, policy, forceSync, rid, &actualRevision);
+  res = trx.updateDocument(key, &document, patchedJson, policy, options.waitForSync, rid, &actualRevision);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
@@ -9960,10 +10009,16 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(document->_data);
 
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+  }
+  else if (type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(document->_data);
+
+    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
   }
 
   return scope.Close(result);

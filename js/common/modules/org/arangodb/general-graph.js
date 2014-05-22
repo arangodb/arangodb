@@ -24,7 +24,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Florian Bartels
+/// @author Florian Bartels, Michael Hackstein, Guido Schwab
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,12 +123,26 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 /// @brief internal function to get graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var _getGraphCollection = function() {
+var getGraphCollection = function() {
   var gCol = db._graphs;
   if (gCol === null || gCol === undefined) {
     throw "_graphs collection does not exist.";
   }
   return gCol;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to wrap arango collections for overwrite
+////////////////////////////////////////////////////////////////////////////////
+
+var wrapCollection = function(col) {
+  var wrapper = {};
+  _.each(_.functions(col), function(func) {
+    wrapper[func] = function() {
+      return col[func].apply(col, arguments);
+    };
+  });
+  return wrapper;
 };
 
 
@@ -164,10 +178,25 @@ var AQLGenerator = function(graph) {
     "graphName": graph.__name
   };
   this.graph = graph;
+  this.cursor = null;
   this.lastEdgeVar = "";
 };
 
+AQLGenerator.prototype._clearCursor = function() {
+  if (this.cursor) {
+    this.cursor.dispose();
+    this.cursor = null;
+  }
+};
+
+AQLGenerator.prototype._createCursor = function() {
+  if (!this.cursor) {
+    this.cursor = this.execute();
+  }
+};
+
 AQLGenerator.prototype.edges = function(startVertex, direction) {
+  this._clearCursor();
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertex_"
@@ -188,6 +217,7 @@ AQLGenerator.prototype.getLastEdgeVar = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  this._clearCursor();
   var rest = stringToArray(restrictions);
   var unknown = [];
   var g = this.graph;
@@ -215,6 +245,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 AQLGenerator.prototype.filter = function(example) {
+  this._clearCursor();
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
     if (Object.prototype.toString.call(example) !== "[object Object]") {
@@ -254,14 +285,31 @@ AQLGenerator.prototype.printQuery = function() {
 };
 
 AQLGenerator.prototype.execute = function() {
+  this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
   query += " RETURN " + this.getLastEdgeVar();
-  return db._query(query, bindVars);
+  return db._query(query, bindVars, {count: true});
 };
 
 AQLGenerator.prototype.toArray = function() {
-  return this.execute().toArray();
+  this._createCursor();
+  return this.cursor.toArray();
+};
+
+AQLGenerator.prototype.count = function() {
+  this._createCursor();
+  return this.cursor.count();
+};
+
+AQLGenerator.prototype.hasNext = function() {
+  this._createCursor();
+  return this.cursor.hasNext();
+};
+
+AQLGenerator.prototype.next = function() {
+  this._createCursor();
+  return this.cursor.next();
 };
 
 // -----------------------------------------------------------------------------
@@ -269,7 +317,32 @@ AQLGenerator.prototype.toArray = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_undirectedRelationDefinition
 /// @brief define an undirected relation.
+/// 
+/// @FUN{general-graph._undirectedRelationDefinition(@FA{relationName}, @FA{vertexCollections})}
+///
+/// Defines an undirected relation with the name @FA{relationName} using the
+/// list of @FA{vertexCollections}. This relation allows the user to store
+/// edges in any direction between any pair of vertices within the
+/// @FA{vertexCollections}.
+///
+/// @EXAMPLES
+///
+/// To define simple relation with only one vertex collection:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._undirectedRelationDefinition("friend", "user");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To define a relation between several vertex collections:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._undirectedRelationDefinition("marriage", ["female", "male"]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -331,7 +404,7 @@ var _directedRelationDefinition = function (
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var edgeDefinitions = function () {
+var _edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
@@ -343,13 +416,27 @@ var edgeDefinitions = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extend an edge definitions
+////////////////////////////////////////////////////////////////////////////////
+
+
+var _extendEdgeDefinitions = function () {
+
+  var args = arguments;
+  var res = args[0];
+  args = args.slice(1);
+  res.concat(args);
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
 
 
 var _create = function (graphName, edgeDefinitions) {
 
-  var gdb = _getGraphCollection(),
+  var gdb = getGraphCollection(),
     g,
     graphAlreadyExists = true,
     collections;
@@ -396,11 +483,10 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
 
-
   _.each(vertexCollections, function(obj, key) {
-    self[key] = obj;
-    var old_remove = obj.remove.bind(obj);
-    obj.remove = function(vertexId, options) {
+    var wrap = wrapCollection(obj);
+    var old_remove = wrap.remove;
+    wrap.remove = function(vertexId, options) {
       var myEdges = self._EDGES(vertexId);
       myEdges.forEach(
         function(edgeObj) {
@@ -417,12 +503,13 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       }
       return old_remove(vertexId, options);
     };
+    self[key] = wrap;
   });
 
   _.each(edgeCollections, function(obj, key) {
-    self[key] = obj;
-    var old_save = obj.save.bind(obj);
-    obj.save = function(from, to, data) {
+    var wrap = wrapCollection(obj);
+    var old_save = wrap.save;
+    wrap.save = function(from, to, data) {
       edgeDefinitions.forEach(
         function(edgeDefinition) {
           if (edgeDefinition.collection === key) {
@@ -437,6 +524,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       );
       return old_save(from, to, data);
     };
+    self[key] = wrap;
   });
 };
 
@@ -448,7 +536,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 var _graph = function(graphName) {
 
-  var gdb = _getGraphCollection(),
+  var gdb = getGraphCollection(),
     g, collections;
 
   try {
@@ -471,8 +559,37 @@ var _graph = function(graphName) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _exists = function(graphId) {
-  var gCol = _getGraphCollection();
+  var gCol = getGraphCollection();
   return gCol.exists(graphId);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper for dropping collections of a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+var checkIfMayBeDropped = function(colName, graphName, graphs) {
+  var result = true;
+  graphs.forEach(
+    function(graph) {
+      if (graph._key === graphName) {
+        return;
+      }
+      var edgeDefinitions = graph.edgeDefinitions;
+      if (graph.edgeDefinitions) {
+        edgeDefinitions.forEach(
+          function(edgeDefinition) {
+            var from = edgeDefinition.from;
+            var to = edgeDefinition.to;
+            var collection = edgeDefinition.collection;
+            if (collection === colName || from.indexOf(colName) !== -1 || to.indexOf(colName) !== -1) {
+              result = false;
+            }
+          }
+        );
+      }
+    }
+  );
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +598,7 @@ var _exists = function(graphId) {
 
 var _drop = function(graphId, dropCollections) {
 
-  var gdb = _getGraphCollection();
+  var gdb = getGraphCollection();
 
   if (!gdb.exists(graphId)) {
     throw "Graph " + graphId + " does not exist.";
@@ -494,16 +611,23 @@ var _drop = function(graphId, dropCollections) {
       function(edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
-        var edge = edgeDefinition.collection;
-        db._drop(edge);
+        var collection = edgeDefinition.collection;
+        var graphs = getGraphCollection().toArray();
+        if (checkIfMayBeDropped(collection, graph._key, graphs)) {
+          db._drop(collection);
+        }
         from.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
         to.forEach(
           function(col) {
-            db._drop(col);
+            if (checkIfMayBeDropped(col, graph._key, graphs)) {
+              db._drop(col);
+            }
           }
         );
       }
@@ -669,7 +793,8 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 exports._undirectedRelationDefinition = _undirectedRelationDefinition;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
-exports.edgeDefinitions = edgeDefinitions;
+exports._edgeDefinitions = _edgeDefinitions;
+exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;

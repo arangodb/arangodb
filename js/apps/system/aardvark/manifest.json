@@ -47,7 +47,6 @@
         "frontend/js/templates/modalCollectionInfo.ejs",
         "frontend/js/templates/modalGraph.ejs",
         "frontend/js/templates/modalNewVersion.ejs",
-        "frontend/js/templates/modalWarning.ejs",
         "frontend/js/templates/modalTable.ejs",
         "frontend/js/templates/modalHotkeys.ejs",
         "frontend/js/templates/navigationView.ejs",

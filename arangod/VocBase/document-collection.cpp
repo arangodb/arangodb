@@ -2209,6 +2209,11 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool lock,
                                      bool forceSync) {
   assert(key != nullptr);
+  
+  if (rid == 0) {
+    // generate new revision id
+    rid = static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
+  }
 
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
