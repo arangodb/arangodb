@@ -175,10 +175,10 @@ function GeneralGraphCreationSuite() {
     testEdgeDefinitions : function () {
 
       //with empty args
-      assertEqual(graph.edgeDefinitions(), []);
+      assertEqual(graph._edgeDefinitions(), []);
 
       //with args
-      assertEqual(graph.edgeDefinitions(
+      assertEqual(graph._edgeDefinitions(
         graph._undirectedRelationDefinition(rn, vn1),
         graph._directedRelationDefinition(rn,
           [vn1, vn2], [vn3, vn4])
@@ -204,7 +204,7 @@ function GeneralGraphCreationSuite() {
       }
       var a = graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -272,7 +272,7 @@ function GeneralGraphCreationSuite() {
       try {
         var a = graph._create(
           "",
-          graph.edgeDefinitions(
+          graph._edgeDefinitions(
             graph._undirectedRelationDefinition("relationName", "vertexC1"),
             graph._directedRelationDefinition("relationName2",
               ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -294,7 +294,7 @@ function GeneralGraphCreationSuite() {
       }
       graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
             ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -305,7 +305,7 @@ function GeneralGraphCreationSuite() {
       try {
         var a = graph._create(
           "bla3",
-          graph.edgeDefinitions(
+          graph._edgeDefinitions(
             graph._undirectedRelationDefinition("relationName", "vertexC1"),
             graph._directedRelationDefinition("relationName2",
               ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -328,7 +328,7 @@ function GeneralGraphCreationSuite() {
       }
       graph._create(
         "bla3",
-        graph.edgeDefinitions(
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("relationName", "vertexC1"),
           graph._directedRelationDefinition("relationName2",
             ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
@@ -833,6 +833,7 @@ function EdgesAndVerticesSuite() {
   var vertexIds = [];
   var vertexId1, vertexId2;
   var edgeId1, edgeId2;
+  var unitTestGraphName = "unitTestGraph";
 
   fillCollections = function() {
     var ids = {};
@@ -890,12 +891,12 @@ function EdgesAndVerticesSuite() {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove("_graphs/unitTestGraph")
+        arangodb.db._collection("_graphs").remove("_graphs/" + unitTestGraphName)
       } catch (err) {
       }
       g = graph._create(
-        "unitTestGraph",
-        graph.edgeDefinitions(
+        unitTestGraphName,
+        graph._edgeDefinitions(
           graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
           graph._directedRelationDefinition("unitTestEdgeCollection2",
             ["unitTestVertexCollection1", "unitTestVertexCollection2"], ["unitTestVertexCollection3", "unitTestVertexCollection4"]
@@ -905,7 +906,7 @@ function EdgesAndVerticesSuite() {
     },
 
     tearDown : function() {
-      graph._drop("unitTestGraph");
+      graph._drop(unitTestGraphName);
     },
 
     test_edgeCollections : function () {
