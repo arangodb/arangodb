@@ -2458,8 +2458,9 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
+      memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
-      int res = primary->read(trxCollection, key, &mptr, false);
+      int res = primary->readDocument(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -2489,7 +2490,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -2498,7 +2499,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
@@ -2508,7 +2509,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         // init the update policy
         TRI_doc_update_policy_t policy;
         TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
-        res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+        res = primary->updateDocument(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2529,7 +2530,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
 
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    int res = primary->remove(trxCollection, key, rid, &policy, false, false);
+    int res = primary->removeDocument(trxCollection, key, rid, &policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {

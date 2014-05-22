@@ -537,11 +537,12 @@ namespace triagens {
                         const string& key) {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
-          int res = primary->read(trxCollection,
-                                  (TRI_voc_key_t) key.c_str(), 
-                                  mptr,
-                                  ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+          int res = primary->readDocument(trxCollection,
+                                          (TRI_voc_key_t) key.c_str(), 
+                                          mptr,
+                                          ! isLocked(trxCollection, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -880,12 +881,12 @@ namespace triagens {
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
           int res = primary->insertDocument(trxCollection,
-                                            markerType,
                                             key, 
                                             rid, 
                                             mptr,
-                                            static_cast<TRI_document_edge_t const*>(data),
+                                            markerType,
                                             shaped,
+                                            static_cast<TRI_document_edge_t const*>(data),
                                             lock,
                                             forceSync,
                                             false);
