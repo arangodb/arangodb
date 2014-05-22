@@ -512,12 +512,15 @@ function delete_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a graph vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/vertex,create vertex}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/`vertex-name`,create vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -600,7 +603,7 @@ function post_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the vertex properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`/vertex,get vertex}
+/// @RESTHEADER{GET /_api/graph/`graph-name`/`vertex-name`,get vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -694,12 +697,15 @@ function get_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/vertex,delete vertex}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/`vertex-name`,delete vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -867,6 +873,8 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///
 /// @RESTURLPARAM{vertex-name,string,required}
 /// The name of the vertex
+///
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until vertex has been sync to disk.
@@ -1393,12 +1401,15 @@ function post_graph_vertex_vertices (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/edge,create edge}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/`edge-name`,create edge}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1591,12 +1602,15 @@ function get_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/edge,delete edge}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/`edge-name`,delete edge}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1758,12 +1772,15 @@ function update_graph_edge (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/edge,update edge}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/`edge-name`,update edge}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1837,12 +1854,15 @@ function put_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/edge,update edge}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/`edge-name`,update edge}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
