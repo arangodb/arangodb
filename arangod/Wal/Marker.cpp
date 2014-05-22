@@ -69,7 +69,7 @@ Marker::Marker (TRI_df_marker_type_e type,
   : _buffer(new char[size]),
     _size(size) {
 
-  TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(base());
+  TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
   m->_type = type;
   m->_size = static_cast<TRI_voc_size_t>(size);
   m->_crc  = 0;
@@ -97,7 +97,7 @@ Marker::~Marker () {
 void Marker::storeSizedString (size_t offset,
                                char const* value,
                                size_t length) {
-  char* p = static_cast<char*>(base()) + offset;
+  char* p = static_cast<char*>(begin()) + offset;
 
   // store actual key 
   memcpy(p, value, length);
@@ -122,7 +122,7 @@ BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_BEGIN_TRANSACTION, 
     sizeof(transaction_begin_marker_t)) {
 
-  transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(base());
+  transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
@@ -152,7 +152,7 @@ CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_COMMIT_TRANSACTION, 
     sizeof(transaction_commit_marker_t)) {
 
-  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(base());
+  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
@@ -182,7 +182,7 @@ AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_ABORT_TRANSACTION, 
     sizeof(transaction_abort_marker_t)) {
 
-  transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(base());
+  transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
@@ -216,7 +216,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
                                 TRI_shaped_json_t const* shapedJson) 
   : Marker(TRI_WAL_MARKER_DOCUMENT, 
     sizeof(document_marker_t) + alignedSize(key.size() + 1) + legend.getSize() + shapedJson->_data.length) {
-  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
+  document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
   m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   m->_rid          = revisionId;
@@ -230,13 +230,13 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
 
   // store legend 
   {
-    char* p = static_cast<char*>(base()) + m->_offsetLegend;
+    char* p = static_cast<char*>(begin()) + m->_offsetLegend;
     legend.dump(p);
   }
 
   // store shapedJson
   {
-    char* p = static_cast<char*>(base()) + m->_offsetJson;
+    char* p = static_cast<char*>(begin()) + m->_offsetJson;
     memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
   }
   
@@ -255,7 +255,7 @@ DocumentMarker::~DocumentMarker () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DocumentMarker::dump () const {
-  document_marker_t* m = reinterpret_cast<document_marker_t*>(base());
+  document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
 
   std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
@@ -265,12 +265,10 @@ void DocumentMarker::dump () const {
             << ", OFFSETKEY: " << m->_offsetKey 
             << ", OFFSETLEGEND: " << m->_offsetLegend 
             << ", OFFSETJSON: " << m->_offsetJson 
-            << ", KEYLENGTH: " << keyLength()
             << ", SIZE: " << size()
             << "\n";
 
-  std::cout << "BINARY:     '" << stringifyPart(base(), size()) << "'\n";
-  std::cout << "KEY:        '" << stringifyPart(key(), keyLength()) << "'\n";
+  std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
   std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
   std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
   std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
@@ -342,7 +340,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_EDGE,
     sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legend.getSize() + shapedJson->_data.length) {
 
-  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(base());
+  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
 
   m->_databaseId    = databaseId;
   m->_collectionId  = collectionId;
@@ -364,13 +362,13 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 
   // store legend 
   {
-    char* p = static_cast<char*>(base()) + m->_offsetLegend;
+    char* p = static_cast<char*>(begin()) + m->_offsetLegend;
     legend.dump(p);
   }
 
   // store shapedJson
   {
-    char* p = static_cast<char*>(base()) + m->_offsetJson;
+    char* p = static_cast<char*>(begin()) + m->_offsetJson;
     memcpy(p, shapedJson->_data.data, static_cast<size_t>(shapedJson->_data.length));
   }
   
@@ -389,18 +387,30 @@ EdgeMarker::~EdgeMarker () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void EdgeMarker::dump () const {
-  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(base());
+  edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
 
   std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
-            << ", REV: " << m->_rid 
-            << ", TRX: " << m->_tid 
-            << ", KEY: " << ((char*) base() + m->_offsetKey)
+            << ", REV: " << rid()
+            << ", TRX: " << tid() 
+            << ", KEY: " << key() 
             << ", FROMCID " << m->_fromCid 
             << ", TOCID " << m->_toCid 
-            << ", FROMKEY: " << ((char*) base() + m->_offsetFromKey) 
-            << ", TOKEY: " << ((char*) base() + m->_offsetFromKey)
+            << ", FROMKEY: " << fromKey() 
+            << ", TOKEY: " << toKey()
+            << ", OFFSETKEY: " << m->_offsetKey 
+            << ", OFFSETFROM: " << m->_offsetFromKey 
+            << ", OFFSETTO: " << m->_offsetToKey 
+            << ", OFFSETLEGEND: " << m->_offsetLegend 
+            << ", OFFSETJSON: " << m->_offsetJson 
+            << ", SIZE: " << size()
             << "\n";
+
+  std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
+  std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
+  std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
+  std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
+  std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +490,7 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
                             std::string const& key) 
   : Marker(TRI_WAL_MARKER_REMOVE,
     sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
-  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(base());
+  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_rid = revisionId;
@@ -503,14 +513,16 @@ RemoveMarker::~RemoveMarker () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RemoveMarker::dump () const {
-  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(base());
+  remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
 
   std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
             << ", REV: " << m->_rid 
             << ", TRX: " << m->_tid 
-            << ", KEY: " << (((char*) base()) + sizeof(remove_marker_t)) 
+            << ", KEY: " << key()
             << "\n";
+  
+  std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
 }
 
 // Local Variables:
