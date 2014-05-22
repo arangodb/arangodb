@@ -581,7 +581,10 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
             var from = edgeDefinition.from;
             var to = edgeDefinition.to;
             var collection = edgeDefinition.collection;
-            if (collection === colName || from.indexOf(colName) !== -1 || to.indexOf(colName) !== -1) {
+            if (collection === colName
+              || from.indexOf(colName) !== -1
+              || to.indexOf(colName) !== -1
+              ) {
               result = false;
             }
           }
