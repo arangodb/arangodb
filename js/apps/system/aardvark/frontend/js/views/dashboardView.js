@@ -6,6 +6,10 @@
   "use strict";
 
   function fmtNumber (n, nk) {
+    if (n === undefined || n === null) {
+      n = 0;
+    }
+
     return n.toFixed(nk);
   }
 
@@ -18,33 +22,40 @@
     graphs: {},
 
     events: {
-      "click .dashboard-large-chart-menu": "showDetail"
+      // will be filled in initialize
     },
 
     tendencies: {
       asyncPerSecondCurrent: [
-        "asyncPerSecondCurrent", "asyncPerSecondCurrentPercentChange"
+        "asyncPerSecondCurrent", "asyncPerSecondPercentChange"
       ],
+
       syncPerSecondCurrent: [
-        "syncPerSecondCurrent", "syncPerSecondCurrentPercentChange"
+        "syncPerSecondCurrent", "syncPerSecondPercentChange"
       ],
+
       clientConnectionsCurrent: [
-        "clientConnectionsCurrent", "clientConnectionsCurrentPercentChange"
+        "clientConnectionsCurrent", "clientConnectionsPercentChange"
       ],
+
       clientConnectionsAverage: [
-        "clientConnections15M", "clientConnectionsPercentChange15M"
+        "clientConnections15M", "clientConnections15MPercentChange"
       ],
+
       numberOfThreadsCurrent: [
-        "numberOfThreadsCurrent", "numberOfThreadsCurrentPercentChange"
+        "numberOfThreadsCurrent", "numberOfThreadsPercentChange"
       ],
+
       numberOfThreadsAverage: [
-        "numberOfThreads15M", "numberOfThreadsPercentChange15M"
+        "numberOfThreads15M", "numberOfThreads15MPercentChange"
       ],
+
       virtualSizeCurrent: [
         "virtualSizeCurrent", "virtualSizePercentChange"
       ],
+
       virtualSizeAverage: [
-        "virtualSize15M", "virtualSizePercentChange15M"
+        "virtualSize15M", "virtualSize15MPercentChange"
       ]
     },
 
@@ -66,25 +77,18 @@
     },
 
     getDetailFigure : function (e) {
-      // var figure = $(e.currentTarget).attr("id").replace(/ChartContainer/g, "");
-      var figure = $(e.currentTarget.parentNode).attr("id").replace(/ChartContainer/g, "");
-      figure = figure.replace(/DistributionContainer/g, "");
-      figure = figure.replace(/Container/g, "");
-      if (figure === "asyncRequests") {
-        figure = "requestsAsync";
-      } else if (figure === "clientConnections") {
-        figure = "httpConnections";
-      }
+      var figure = $(e.currentTarget).attr("id").replace(/ChartButton/g, "");
       return figure;
     },
+
     showDetail: function (e) {
       var self = this,
-          figure = this.getDetailFigure(e), 
-					options;
+          figure = this.getDetailFigure(e),
+          options;
 
-		  options = this.dygraphConfig.getDetailChartConfig(figure);
+      options = this.dygraphConfig.getDetailChartConfig(figure);
       
-			this.getHistoryStatistics(figure);
+      this.getHistoryStatistics(figure);
       this.detailGraphFigure = figure;
 
       window.modalView.hideFooter = true;
@@ -109,7 +113,7 @@
       options.height = $(window).height() * 0.7;
       options.width = $('.modal-inner-detail').width();
       
-			this.detailGraph = new Dygraph(
+      this.detailGraph = new Dygraph(
         document.getElementById("lineChartDetail"),
         this.history[figure],
         options
@@ -156,7 +160,7 @@
       this.dygraphConfig = this.options.dygraphConfig;
       this.server = this.options.serverToShow;
       this.d3NotInitialised = true;
-      this.events["click .dashboard-large-chart-menu"] = this.showDetail.bind(this);
+      this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
     },
@@ -180,14 +184,18 @@
       
       var tempColor = "";
       Object.keys(map).forEach(function (a) {
-        if (self.history[a][1] < 0) {
+        var v = self.history[a][1];
+        var p = "";
+
+        if (v < 0) {
           tempColor = "red";
         }
         else {
           tempColor = "green";
+          p = "+";
         }
         $("#" + a).html(self.history[a][0] + '<br/><span class="dashboard-figurePer" style="color: ' 
-				  + tempColor +';">' + self.history[a][1] + '%</span>');
+          + tempColor +';">' + p + v + '%</span>');
       });
     },
 
@@ -240,7 +248,8 @@
 
           if (a === "times") {
             valueList.push(new Date(newData[a][i] * 1000));
-          } else {
+          }
+          else {
             valueList.push(newData[a][i]);
           }
         });
@@ -324,6 +333,8 @@
 
       // update physical memory
       self.history.physicalMemory = newData.physicalMemory;
+      self.history.residentSizeCurrent = newData.residentSizeCurrent;
+      self.history.residentSizePercent = newData.residentSizePercent;
 
       // generate chart description
       self.history.residentSizeChart =
@@ -334,8 +345,7 @@
           "values": [
             {
               label: "used",
-              value: newData.residentSizePercent[
-                newData.residentSizePercent.length - 1] * 100
+              value: newData.residentSizePercent * 100
             }
           ]
         },
@@ -345,8 +355,7 @@
           "values": [
             {
               label: "used",
-              value: 100 - newData.residentSizePercent[
-                newData.residentSizePercent.length - 1] * 100
+              value: 100 - newData.residentSizePercent * 100
             }
           ]
         }
@@ -390,12 +399,13 @@
 
     getStatistics: function () {
       var self = this;
-      var url = "statistics/full";
+      var url = "statistics/short";
       var urlParams = "?start=";
 
       if (this.nextStart) {
         urlParams += this.nextStart;
-      } else {
+      }
+      else {
         urlParams += (new Date().getTime() - this.defaultTimeFrame) / 1000;
       }
 
@@ -419,13 +429,10 @@
 
     getHistoryStatistics: function (figure) {
       var self = this;
-      var url = "statistics/history";
-      var urlParams = "?start=";
+      var url = "statistics/long";
 
-      this.history[figure] = [];
-
-      urlParams += (new Date().getTime() - this.defaultDetailFrame) / 1000;
-      urlParams += "&filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
+      var urlParams 
+        = "?filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
 
       if (this.server) {
         url = this.server.endpoint + "/_admin/aardvark/statistics/cluster";
@@ -439,8 +446,10 @@
         function (d) {
           var i;
 
+          self.history[figure] = [];
+
           for (i = 0;  i < d.times.length;  ++i) {
-            self.mergeDygraphHistory(d, i);
+            self.mergeDygraphHistory(d, i, true);
           }
         }
       );
@@ -451,18 +460,18 @@
 
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
-      var current = fmtNumber((self.history.physicalMemory * 100  / 1024 / 1024 / 100) * 
-			  (self.history.residentSizeChart[0].values[0].value / 100), 1);
+      var current = self.history.residentSizeCurrent / 1024 / 1024;
       var currentA = "";
-			if (current < 1025) {
-        currentA = current + " MB";
+
+      if (current < 1025) {
+        currentA = fmtNumber(current, 2) + " MB";
       }
       else {
-        currentA = fmtNumber((current / 1024), 2) + " GB";
+        currentA = fmtNumber(current / 1024, 2) + " GB";
       }
-      var currentP = Math.round(self.history.residentSizeChart[0].values[0].value * 100) / 100;
 
-      var data = [fmtNumber(self.history.physicalMemory * 100  / 1024 / 1024 / 1024, 1) / 100 + " GB"];
+      var currentP = fmtNumber(self.history.residentSizePercent * 100, 2);
+      var data = [fmtNumber(self.history.physicalMemory / 1024 / 1024 / 1024, 0) + " GB"];
 
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
@@ -551,33 +560,33 @@
         var dist = dists[k];
 
         nv.addGraph(function () {
-					var tickMarks = [0, 0.25, 0.5, 0.75, 1];  
-					var marginLeft = 75;
-					var marginBottom = 23;
-					var bottomSpacer = 6;
+          var tickMarks = [0, 0.25, 0.5, 0.75, 1];  
+          var marginLeft = 75;
+          var marginBottom = 23;
+          var bottomSpacer = 6;
 
-					if (dimensions.width < 219) {
-						tickMarks = [0, 0.5, 1];  
-						marginLeft = 72;
-						marginBottom = 21;
-						bottomSpacer = 5;
-					}
-					else if (dimensions.width < 299) {
-						tickMarks = [0, 0.3334, 0.6667, 1];  
-						marginLeft = 75;
-					}
-					else if (dimensions.width < 379) {
-						marginLeft = 83;
-					}
-					else if (dimensions.width < 459) {
-						marginLeft = 85;
-					}
-					else if (dimensions.width < 539) {
-						marginLeft = 95;
-					}
-					else if (dimensions.width < 619) {
-						marginLeft = 98;
-					}
+          if (dimensions.width < 219) {
+            tickMarks = [0, 0.5, 1];  
+            marginLeft = 72;
+            marginBottom = 21;
+            bottomSpacer = 5;
+          }
+          else if (dimensions.width < 299) {
+            tickMarks = [0, 0.3334, 0.6667, 1];  
+            marginLeft = 75;
+          }
+          else if (dimensions.width < 379) {
+            marginLeft = 83;
+          }
+          else if (dimensions.width < 459) {
+            marginLeft = 85;
+          }
+          else if (dimensions.width < 539) {
+            marginLeft = 95;
+          }
+          else if (dimensions.width < 619) {
+            marginLeft = 98;
+          }
 
           var chart = nv.models.multiBarHorizontalChart()
             .x(function (d) {
@@ -601,20 +610,20 @@
             .tooltips(false)
             .showLegend(false)
             .showControls(false)
-						.forceY([0,1]);
-          
-					chart.yAxis
-						.showMaxMin(false);
-					
-					var yTicks2 = d3.select('.nv-y.nv-axis')
-						.selectAll('text')
-						.attr('transform', 'translate (0, ' + bottomSpacer + ')') ;
+            .forceY([0,1]);
           
           chart.yAxis
-						.tickValues(tickMarks)
-						.tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 0) + "%";});
+            .showMaxMin(false);
+          
+          var yTicks2 = d3.select('.nv-y.nv-axis')
+            .selectAll('text')
+            .attr('transform', 'translate (0, ' + bottomSpacer + ')') ;
+          
+          chart.yAxis
+            .tickValues(tickMarks)
+            .tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 0) + "%";});
 
-					d3.select(selector)
+          d3.select(selector)
             .datum(self.history[k])
             .call(chart);
 
