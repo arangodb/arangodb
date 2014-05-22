@@ -1,15 +1,36 @@
 %dashboard-chart-box {
   @extend %pull-left;
-  border-left: 0 solid $c-black;
-	
+  border-left: 0px solid $c-black;
+
   &:first-child {
     margin-left: 0;
   }
 }
 
+
 .detail-chart {
   @extend %clear-float;
 }
+
+
+.dashboard-sub-bar {
+  @extend %clear-float;
+
+  .dashboard-sub-bar-title {
+    @extend %pull-left;
+  }
+
+  .dashboard-sub-bar-menu {
+    @extend %pull-right;
+    color: $c-e1grey;
+    cursor: pointer;
+  }
+
+  .dashboard-sub-bar-menu:hover {
+    color: $c-white;
+  }
+}
+
 
 .dashboard-large-chart {
   @extend %pull-left;
@@ -29,21 +50,6 @@
     .dashboard-interior-chart {
       @extend %pull-left;
       margin-bottom: 0;
-    }
-
-    .dashboard-large-chart-menu {
-      @extend %clear-float;
-      @include border-radius(2px);
-      border: 0 solid $c-halfsemi-transp;
-      color: $c-halfsemi-transp;
-      cursor: pointer;
-      padding: 0 4px;
-      position: absolute;
-      z-index: 1000;
-    }
-
-    .dashboard-large-chart-menu:hover {
-      color: $c-low-transp;
     }
   }
 }
@@ -72,6 +78,7 @@
     }
   }
 }
+
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
@@ -130,8 +137,8 @@
     .dashboard-tendency {
       @extend %pull-left;
       background-color: $c-white;
+      padding: 0px 8px 0px 8px;
       margin-top: 5px;
-      padding: 0 8px;
       
       &:first-child {
         border-right: 1px solid $c-e1grey;
@@ -150,6 +157,7 @@
     }
   }
 }
+
 
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
@@ -191,6 +199,7 @@
   }
 }
 
+
 .dashboard-legend {
   @extend %pull-left;
 
@@ -199,23 +208,27 @@
   }
 }
 
+
 .dashboard-sub-bar {
   @extend %pull-left;
   background-color: $c-bar-bg;
   color: $c-white;
   height: 24px;
   line-height: 24px;
-  margin: 0;
-  padding: 0 0 0 6px;
+  margin: 0px 0px 0px 0px;
+  padding: 0px 6px 0px 6px;
 }
+
 
 .dashboard-spacer {
   margin: 0 12px;
 }
 
+
 .headerBar.dashboard-headerbar {
   margin: 15px 0 10px;
 }
+
 
 .modal-chart-detail {
   @extend %pull-left;
@@ -238,6 +251,7 @@
   }
 }
 
+
 .dashboard-half-height-legend {
   @extend %pull-left;
 
@@ -245,6 +259,7 @@
     padding-top: 20px;
   }
 }
+
 
 .dashboard-title-bar {
   background-color: $c-bar-bg;
@@ -268,6 +283,7 @@
   }
 }
 
+
 .dashboard-row {
   @extend %clear-float;
   margin-bottom: 0;
@@ -275,10 +291,10 @@
   margin-right: 0;
 }
 
+
 .dygraph-axis-label {
   &.dygraph-axis-label-y, 
   &.dygraph-axis-label-x {
     color: $c-darker-grey;
   }
 }
-
