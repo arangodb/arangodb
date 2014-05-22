@@ -47,6 +47,7 @@ var _ = require("underscore");
 function GeneralGraphCreationSuite() {
 
   var rn = "UnitTestRelationName";
+  var rn1 = "UnitTestRelationName1";
   var vn1 = "UnitTestVerticies1";
   var vn2 = "UnitTestVerticies2";
   var vn3 = "UnitTestVerticies3";
@@ -178,22 +179,21 @@ function GeneralGraphCreationSuite() {
 
       //with args
       assertEqual(graph.edgeDefinitions(
-        graph._undirectedRelationDefinition("relationName", "vertexC1"),
-        graph._directedRelationDefinition("relationName",
-          ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
+        graph._undirectedRelationDefinition(rn, vn1),
+        graph._directedRelationDefinition(rn,
+          [vn1, vn2], [vn3, vn4])
       ), [
         {
-          collection: "relationName",
-          from: ["vertexC1"],
-          to: ["vertexC1"]
+          collection: rn,
+          from: [vn1],
+          to: [vn1]
         },
         {
-          collection: "relationName",
-          from: ["vertexC1", "vertexC2"],
-          to: ["vertexC3", "vertexC4"]
+          collection: rn1,
+          from: [vn1, vn2],
+          to: [vn3, vn4]
         }
       ]);
-
     },
 
 
