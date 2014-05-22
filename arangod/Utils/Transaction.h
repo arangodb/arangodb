@@ -537,6 +537,7 @@ namespace triagens {
                         const string& key) {
           
           TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
           int res = primary->readDocument(trxCollection,
                                           (TRI_voc_key_t) key.c_str(), 

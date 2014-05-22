@@ -37,6 +37,7 @@
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
+#include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
@@ -1283,35 +1284,22 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    bool lock) {
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
 
-  if (lock) {
-    primary->beginRead(primary);
-  }
+  {
+    triagens::arango::CollectionReadLocker collectionLocker(primary, lock);
 
-  TRI_doc_mptr_t const* header = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+    TRI_doc_mptr_t const* header = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
 
-  if (! IsVisible(header)) {
-    if (lock) {
-      primary->endRead(primary);
+    if (! IsVisible(header)) {
+      return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
 
-    // make an empty result
-    memset(mptr, 0, sizeof(TRI_doc_mptr_t));
-
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    // we found a document, now copy it over
+    *mptr = *header;
   }
 
-  // we found a document, now copy it over
-  *mptr = *((TRI_doc_mptr_t*) header);
-
-  if (lock) {
-    primary->endRead(primary);
-  }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT_MAINTAINER(mptr->_key != NULL);
-  TRI_ASSERT_MAINTAINER(mptr->_data != NULL);
-  TRI_ASSERT_MAINTAINER(mptr->_rid > 0);
-#endif
+  assert(mptr->_key != nullptr);
+  assert(mptr->_data != nullptr);
+  assert(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2152,6 +2140,7 @@ static int OpenIteratorPrepareTransaction (open_iterator_state_t* state) {
 static int ReadTrxCallback (TRI_transaction_collection_t* trxCollection,
                              void* data) {
   TRI_doc_mptr_t mptr;
+  memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
  
   open_iterator_state_t* state = static_cast<open_iterator_state_t*>(data);
   TRI_voc_key_t key = TRI_StringUInt64(state->_tid);

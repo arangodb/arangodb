@@ -32,6 +32,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/voc-errors.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 
 #include "VocBase/vocbase.h"
@@ -149,11 +151,7 @@ static const char* TraditionalName = "traditional";
 
 static int TraditionalInit (TRI_key_generator_t* generator,
                             TRI_json_t const* options) {
-  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(traditional_keygen_t), false));
-
-  if (data == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  traditional_keygen_t* data = new traditional_keygen_t;
 
   // defaults
   data->_allowUserKeys = true;
@@ -183,7 +181,7 @@ static void TraditionalFree (TRI_key_generator_t* generator) {
   traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
 
   if (data != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+    delete data;
   }
 }
 
@@ -193,9 +191,6 @@ static void TraditionalFree (TRI_key_generator_t* generator) {
 
 static std::string TraditionalGenerateKey (TRI_key_generator_t* generator,
                                            TRI_voc_tick_t revision) {
-  traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
-  assert(data != nullptr);
-
   // user has not specified a key, generate one based on tick
   return triagens::basics::StringUtils::itoa(revision);
 }
@@ -269,7 +264,7 @@ typedef struct autoincrement_keygen_s {
   uint64_t    _increment;     // increment value
   bool        _allowUserKeys; // allow keys supplied by user?
 
-  TRI_mutex_t _lock;
+  triagens::basics::Mutex _lock;
 }
 autoincrement_keygen_t;
 
@@ -289,11 +284,7 @@ static const char* AutoIncrementName = "autoincrement";
 
 static int AutoIncrementInit (TRI_key_generator_t* generator,
                               TRI_json_t const* options) {
-  autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(autoincrement_keygen_t), false));
-
-  if (data == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  autoincrement_keygen_t* data = new autoincrement_keygen_t;
 
   // defaults
   data->_allowUserKeys = true;
@@ -316,7 +307,7 @@ static int AutoIncrementInit (TRI_key_generator_t* generator,
       data->_increment = (uint64_t) option->_value._number;
 
       if (data->_increment == 0 || data->_increment >= (1ULL << 16)) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+        delete data;
 
         return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
       }
@@ -328,14 +319,12 @@ static int AutoIncrementInit (TRI_key_generator_t* generator,
       data->_offset = (uint64_t) option->_value._number;
 
       if (data->_offset >= UINT64_MAX) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+        delete data;
 
         return TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
       }
     }
   }
-
-  TRI_InitMutex(&data->_lock);
 
   generator->_data = static_cast<void*>(data);
 
@@ -355,8 +344,7 @@ static void AutoIncrementFree (TRI_key_generator_t* generator) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
 
   if (data != nullptr) {
-    TRI_DestroyMutex(&data->_lock);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+    delete data;
   }
 }
 
@@ -392,23 +380,24 @@ static std::string AutoIncrementGenerateKey (TRI_key_generator_t* generator,
                                              TRI_voc_tick_t revision) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
   assert(data != nullptr);
+ 
+  uint64_t keyValue;
    
-  TRI_LockMutex(&data->_lock);
+  {
+    MUTEX_LOCKER(data->_lock); 
    
-  // user has not specified a key, generate one based on algorithm
-  uint64_t keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
+    // user has not specified a key, generate one based on algorithm
+    keyValue = AutoIncrementNext(data->_lastValue, data->_increment, data->_offset);
 
-  // bounds and sanity checks
-  if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
-    TRI_UnlockMutex(&data->_lock);
-    return "";
+    // bounds and sanity checks
+    if (keyValue == UINT64_MAX || keyValue < data->_lastValue) {
+      return "";
+    }
+
+    assert(keyValue > data->_lastValue);
+    // update our last value
+    data->_lastValue = keyValue;
   }
-
-  assert(keyValue > data->_lastValue);
-  // update our last value
-  data->_lastValue = keyValue;
-
-  TRI_UnlockMutex(&data->_lock);
 
   return triagens::basics::StringUtils::itoa(keyValue);
 }
@@ -454,6 +443,7 @@ static int AutoIncrementValidateKey (TRI_key_generator_t const* generator,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief track a key while a collection is opened
 /// this function is used to update the _lastValue value
+/// no lock is required while this function is called!!
 ////////////////////////////////////////////////////////////////////////////////
 
 static void AutoIncrementTrack (TRI_key_generator_t* generator,
@@ -463,7 +453,7 @@ static void AutoIncrementTrack (TRI_key_generator_t* generator,
 
   // check the numeric key part
   uint64_t value = TRI_UInt64String(key);
-
+  
   if (value > data->_lastValue) {
     // and update our last value
     data->_lastValue = value;

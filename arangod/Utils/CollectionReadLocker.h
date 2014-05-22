@@ -104,7 +104,7 @@ namespace triagens {
 /// @brief lock flag
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const _doLock;
+        bool _doLock;
 
     };
   }
