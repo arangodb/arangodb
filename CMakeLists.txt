@@ -438,7 +438,7 @@ elseif (BUILD_PACKAGE STREQUAL "raspbian")
 else ()
   set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/include CACHE path "ICU include path")
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/icu/BUILD/libs CACHE path "ICU library path")
-  set(ICU_LIBS icui18n;icuuc;icudata;pthread;m CACHE path "ICU libraries")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
   set(ICU_VERSION "52.1" CACHE string "ICU version")
 endif ()
 
