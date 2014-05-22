@@ -65,7 +65,7 @@ int Ahuacatllex_destroy (void *);
 /// @brief forward for the context function provided by the lexer (.l)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ahuacatlset_extra (TRI_aql_context_t* const, void*);
+void Ahuacatlset_extra (TRI_aql_context_t*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -84,7 +84,7 @@ void Ahuacatlset_extra (TRI_aql_context_t* const, void*);
 /// @brief init the lexer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InitParserAql (TRI_aql_context_t* const);
+bool TRI_InitParserAql (TRI_aql_context_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string

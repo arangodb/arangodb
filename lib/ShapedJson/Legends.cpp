@@ -269,6 +269,9 @@ size_t JsonLegend::getSize () const {
          + roundup8(_shape_data.length());          // shape data, padded
 }
 
+JsonLegend::AttributeComparerClass JsonLegend::AttributeComparerObject;
+JsonLegend::ShapeComparerClass JsonLegend::ShapeComparerObject;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the legend to the buffer pointed to by buf
 ////////////////////////////////////////////////////////////////////////////////

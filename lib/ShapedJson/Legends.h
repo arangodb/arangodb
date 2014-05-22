@@ -39,6 +39,7 @@
 
 namespace triagens {
   namespace basics {
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a legend for one or more shaped json objects

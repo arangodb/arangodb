@@ -42,7 +42,7 @@
 /// @brief init the lexer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InitParserAql (TRI_aql_context_t* const context) {
+bool TRI_InitParserAql (TRI_aql_context_t* context) {
   assert(context);
   assert(context->_parser);
 
