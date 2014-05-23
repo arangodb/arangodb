@@ -251,8 +251,13 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   var ex = transformExample(edgeExample);
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
-    + ' IN GRAPH_EDGES(@graphName,{}'
-    + ',@options_'
+    + ' IN GRAPH_EDGES(@graphName';
+  if (!this.getLastVar()) {
+    query += ',{}';
+  } else {
+    query += ',' + this.getLastVar();
+  }
+  query += ',@options_'
     + this.stack.length + ')';
 
   if (!Array.isArray(ex)) {
@@ -297,18 +302,50 @@ AQLGenerator.prototype._vertices = function(example, options) {
 };
 
 AQLGenerator.prototype.vertices = function(example) {
-  return this._vertices(example);
-  //TODO ADD filter
+  if (!this.getLastVar()) {
+    return this._vertices(example);
+  }
+  var edgeVar = this.getLastVar();
+  this._vertices(example);
+  var vertexVar = this.getLastVar();
+  var query = "FILTER " + edgeVar
+    + "._from == " + vertexVar
+    + "._id || " + edgeVar
+    + "._to == " + vertexVar
+    + "._id";
+  var stmt = new AQLStatement(query);
+  this.stack.push(stmt);
+  return this;
 };
 
-AQLGenerator.prototype.fromVerticies = function(example) {
-  return this._vertices(example);
-  //TODO ADD filter
+AQLGenerator.prototype.fromVertices = function(example) {
+  if (!this.getLastVar()) {
+    return this._vertices(example);
+  }
+  var edgeVar = this.getLastVar();
+  this._vertices(example);
+  var vertexVar = this.getLastVar();
+  var query = "FILTER " + edgeVar
+    + "._from == " + vertexVar
+    + "._id";
+  var stmt = new AQLStatement(query);
+  this.stack.push(stmt);
+  return this;
 };
 
-AQLGenerator.prototype.toVerticies = function(example) {
-  return this._vertices(example);
-  //TODO ADD filter
+AQLGenerator.prototype.toVertices = function(example) {
+  if (!this.getLastVar()) {
+    return this._vertices(example);
+  }
+  var edgeVar = this.getLastVar();
+  this._vertices(example);
+  var vertexVar = this.getLastVar();
+  var query = "FILTER " + edgeVar
+    + "._to == " + vertexVar
+    + "._id";
+  var stmt = new AQLStatement(query);
+  this.stack.push(stmt);
+  return this;
 };
 
 AQLGenerator.prototype.getLastVar = function() {
