@@ -4902,7 +4902,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   if (!options.direction) {
     options.direction =  'any';
   }
-  //require("internal").print(options);
 
   var neighbors = [],match,
   params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
@@ -4914,12 +4913,8 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-  //require("internal").print(options);
-  //require("internal").print(options.direction, graph);
 
   params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
-
-  //require("internal").print(params);
 
   graph.fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
@@ -4929,8 +4924,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.direction,
       params);
 
-    //require("internal").print(v);
-    //require("internal").print(e);
     neighbors = neighbors.concat(e);
   });
   return neighbors;

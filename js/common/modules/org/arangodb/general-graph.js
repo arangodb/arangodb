@@ -212,7 +212,7 @@ AQLGenerator.prototype.edges = function(startVertexExamples, options) {
 
 AQLGenerator.prototype.vertices = function(vertexExamples, options) {
   this._clearCursor();
-  var resultName = "vertex_" + this.stack.length;
+  var resultName = "vertices_" + this.stack.length;
   var query = "FOR " + resultName
     + " IN GRAPH_VERTICES(@graphName,@startVertexExample_"
     + this.stack.length + ',@options_'
