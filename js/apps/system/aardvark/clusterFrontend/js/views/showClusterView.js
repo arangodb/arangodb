@@ -549,16 +549,20 @@
 
       dashboard: function(e) {
         this.stopUpdating();
+
         var tar = $(e.currentTarget);
         var serv = {};
         var cur;
         var coord;
+
         var ip_port = tar.attr("id");
         ip_port = ip_port.replace(/\-/g,'.');
         ip_port = ip_port.replace(/\_/g,':');
         ip_port = ip_port.substr(2);
+
         serv.raw = ip_port;
         serv.isDBServer = tar.hasClass("dbserver");
+
         if (serv.isDBServer) {
           cur = this.dbservers.findWhere({
             address: serv.raw
@@ -577,6 +581,7 @@
           + "://"
           + cur.get("address");
         }
+
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
         window.App.dashboard();
