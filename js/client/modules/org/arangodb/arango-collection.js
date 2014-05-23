@@ -1303,12 +1303,23 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 ArangoCollection.prototype.removeByExample = function (example, 
                                                        waitForSync, 
                                                        limit) {
-  var data = { 
+  var data = {
     collection: this._name,
     example: example, 
     waitForSync: waitForSync,
     limit: limit
   };
+
+  if (typeof waitForSync === "object") {
+    if (typeof limit !== "undefined") {
+      throw "too many parameters";
+    }
+    data = { 
+      collection: this._name,
+      example: example, 
+      options: waitForSync
+    };
+  }
 
   var requestResult = this._database._connection.PUT(
     this._prefixurl("/_api/simple/remove-by-example"),
@@ -1335,6 +1346,16 @@ ArangoCollection.prototype.replaceByExample = function (example,
     limit: limit
   };
 
+  if (typeof waitForSync === "object") {
+    if (typeof limit !== "undefined") {
+      throw "too many parameters";
+    }
+    data = { 
+      collection: this._name,
+      example: example, 
+      options: waitForSync
+    };
+  }
   var requestResult = this._database._connection.PUT(
     this._prefixurl("/_api/simple/replace-by-example"),
     JSON.stringify(data));
@@ -1361,6 +1382,17 @@ ArangoCollection.prototype.updateByExample = function (example,
     waitForSync: waitForSync,
     limit: limit
   };
+  if (typeof keepNull === "object") {
+    if (typeof waitForSync !== "undefined") {
+      throw "too many parameters";
+    }
+    data = { 
+      collection: this._name,
+      example: example, 
+      newValue: newValue,
+      options: keepNull
+    };
+  }
 
   var requestResult = this._database._connection.PUT(
     this._prefixurl("/_api/simple/update-by-example"),
