@@ -539,6 +539,45 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ value : 4 });
       assertEqual(0, deleted);
     },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: removeByExample with new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveByExampleWithNewSignature : function () {
+      var deleted;
+
+      collection.save({ b: 1, value : 2222 });
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ a: 1, value : i });
+      }
+      // test default parameter
+      deleted = collection.removeByExample({ b : 1 });
+      assertEqual(1, deleted);
+
+      deleted = collection.removeByExample({ a : 1 }, {limit: 10});
+      assertEqual(10, deleted);
+
+      deleted = collection.removeByExample({ a : 1 }, {waitForSync: true, limit:15});
+      assertEqual(15, deleted);
+      
+      // not existing documents
+      deleted = collection.removeByExample({ value : 500 });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ value : null });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ value : "5" });
+      assertEqual(0, deleted);
+      
+      deleted = collection.removeByExample({ peter : "meow" });
+      assertEqual(0, deleted);
+
+      collection.truncate();
+      deleted = collection.removeByExample({ value : 4 });
+      assertEqual(0, deleted);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: removeByExample
@@ -647,6 +686,40 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ value : 6 }, { });
       assertEqual(0, replaced);
     },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: replaceByExampleWithNewSignature
+////////////////////////////////////////////////////////////////////////////////
+
+    replaceByExampleWithNewSignature : function () {
+      var replaced;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value: 2, a: i, b: i + 1 });
+      }
+
+      replaced = collection.replaceByExample({ value : 2 }, { foo : "bar", bar : "baz" }, {limit: 20, waitForSync: true});
+      assertEqual(20, replaced);
+
+      assertEqual(50, collection.count());
+
+      var doc = collection.firstExample({ foo : "bar", bar : "baz" });
+      assertEqual("bar", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(undefined, doc.value);
+      assertEqual(undefined, doc.a);
+      assertEqual(undefined, doc.b);
+
+      // not existing documents
+      replaced = collection.replaceByExample({ meow : true }, { });
+      assertEqual(0, replaced);
+      
+      replaced = collection.replaceByExample({ value : null }, { });
+      assertEqual(0, replaced);
+      
+      collection.truncate();
+      replaced = collection.replaceByExample({ value : 6 }, { });
+      assertEqual(0, replaced);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: replaceByExample
@@ -741,6 +814,73 @@ function SimpleQueryByExampleSuite () {
       assertEqual("baz", doc.bar);
       assertEqual(9, doc.value);
 
+      // not existing documents
+      updated = collection.updateByExample({ meow : true }, { });
+      assertEqual(0, updated);
+      
+      updated = collection.updateByExample({ value : null }, { });
+      assertEqual(0, updated);
+      
+      collection.truncate();
+      updated = collection.updateByExample({ value : 6 }, { });
+      assertEqual(0, updated);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample with new Signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleWithNewSignature : function () {
+      var updated;
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ value : i });
+      }
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ a: 1, value : i });
+      }
+
+      // update and keep old values
+      updated = collection.updateByExample({ value : 2 }, { foo : "bar", bar : "baz" });
+      assertEqual(2, updated);
+
+      assertEqual(50, collection.count());
+
+      var doc = collection.firstExample({ foo : "bar", bar : "baz" });
+      assertEqual("bar", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(2, doc.value);
+      
+      // update and remove old values
+      updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, {keepNull: false});
+      assertEqual(1, updated);
+      
+      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
+      assertEqual("bart", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(undefined, doc.value);
+      
+      // update and overwrite old values
+      updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, {keepNull: false});
+      assertEqual(1, updated);
+      
+      var doc = collection.firstExample({ foo : "barw", bar : "baz" });
+      assertEqual("barw", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(9, doc.value);
+      
+      // update and remove old values keep null values
+      updated = collection.updateByExample({ value : 6 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true});
+      assertEqual(1, updated);
+      
+      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
+      assertEqual("bart", doc.foo);
+      assertEqual("baz", doc.bar);
+      assertEqual(null, doc.value);
+
+      // update and remove old values keep null values
+      updated = collection.updateByExample({ a : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit: 30});
+      assertEqual(30, updated);
+      
       // not existing documents
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
