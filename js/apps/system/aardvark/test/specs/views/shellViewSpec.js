@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jQuery, _, jqconsole, $*/
 /*global arangoHelper*/
 
 
@@ -82,7 +82,7 @@
     it("should execute a command using enter-keypress", function () {
       var e = jQuery.Event("keydown");
       e.which = 13; // # Some key code value
-      e.keyCode = 13
+      e.keyCode = 13;
       $(".jqconsole").trigger(e);
     });
 
