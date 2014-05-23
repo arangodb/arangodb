@@ -1113,6 +1113,9 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   if (typeof overwrite === "object") {
     // we assume the caller uses new signature (id, data, options)
+    if (typeof waitForSync !== "undefined") {
+      throw "too many arguments";
+    }
     var options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       params += "?policy=last";
@@ -1170,6 +1173,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 
   var params = "";
   if (typeof overwrite === "object") {
+    if (typeof waitForSync !== "undefined") {
+      throw "too many arguments";
+    }
     // we assume the caller uses new signature (id, data, options)
     var options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
@@ -1220,6 +1226,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   var params = "";
   if (typeof overwrite === "object") { 
+    if (typeof keepNull !== "undefined") {
+      throw "too many arguments";
+    }
     // we assume the caller uses new signature (id, data, options)
     var options = overwrite; 
     if (! options.hasOwnProperty("keepNull")) {

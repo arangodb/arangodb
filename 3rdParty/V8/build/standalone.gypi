@@ -196,7 +196,7 @@
           'GCC_THREADSAFE_STATICS': 'NO',           # -fno-threadsafe-statics
           'GCC_TREAT_WARNINGS_AS_ERRORS': 'NO',    # -Werror
           'GCC_VERSION': 'com.apple.compilers.llvmgcc42',
-          'GCC_WARN_ABOUT_MISSING_NEWLINE': 'YES',  # -Wnewline-eof
+          'GCC_WARN_ABOUT_MISSING_NEWLINE': 'NO',  # -Wnewline-eof
           # MACOSX_DEPLOYMENT_TARGET maps to -mmacosx-version-min
           'MACOSX_DEPLOYMENT_TARGET': '<(mac_deployment_target)',
           'PREBINDING': 'NO',                       # No -Wl,-prebind

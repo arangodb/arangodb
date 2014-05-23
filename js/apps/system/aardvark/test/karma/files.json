@@ -260,6 +260,7 @@
   "test/specs/views/newLogsViewSpec.js",
   "test/specs/views/notificationViewSpec.js",
   "test/specs/views/statisticBarViewSpec.js",
+  "test/specs/views/shellViewSpec.js",
 
 
   "test/specs/router/routerSpec.js",
