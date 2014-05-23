@@ -430,31 +430,6 @@ static bool ExtractForceSync (v8::Arguments const& argv,
   return forceSync;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the update policy from the arguments
-/// must specify the argument index starting from 1
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
-                                                    const int index) {
-  assert(index > 0);
-
-  // default value
-  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
-
-  if (argv.Length() >= index) {
-    if (TRI_ObjectToBoolean(argv[index - 1])) {
-      // overwrite!
-      policy = TRI_DOC_UPDATE_LAST_WRITE;
-    }
-    else {
-      policy = TRI_DOC_UPDATE_CONFLICT;
-    }
-  }
-
-  return policy;
-}
-
 TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
   TRI_doc_update_policy_e policy ;
 
@@ -2212,6 +2187,15 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
 }
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+///        parameters for the replace function
+////////////////////////////////////////////////////////////////////////////////
+
+struct ReplaceOptions {
+  bool overwrite = true;
+  bool waitForSync = false;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
@@ -2220,10 +2204,14 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
 static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                 v8::Arguments const& argv) {
   v8::HandleScope scope;
+  ReplaceOptions options;
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, <overwrite>, <waitForSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, <overwrite>, <waitForSync>) or"
+                                  "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})"
+                          );
   }
   
   // we're only accepting "real" object documents
@@ -2231,8 +2219,26 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 3);
-  const bool forceSync = ExtractForceSync(argv, 4);
+  if (argv.Length() > 2) {
+    if (argv[2]->IsObject()) {
+      v8::Handle<v8::Object> optionsObject = argv[2].As<v8::Object>();
+      if (optionsObject->Has(v8::String::New("overwrite"))) {
+        options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("overwrite")));
+        policy = ExtractUpdatePolicy(options.overwrite);
+      } 
+      if (optionsObject->Has(v8::String::New("waitForSync"))) {
+        options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      } 
+    } else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
+      if (argv.Length() > 2 ) {
+        options.overwrite = TRI_ObjectToBoolean(argv[2]);
+        policy = ExtractUpdatePolicy(options.overwrite);
+      }
+      if (argv.Length() > 3 ) {
+        options.waitForSync = TRI_ObjectToBoolean(argv[3]);
+      }
+    }
+  }
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
@@ -2281,7 +2287,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
                                                    policy, 
-                                                   forceSync,
+                                                   options.waitForSync,
                                                    false,  // isPatch
                                                    true,   // keepNull, does not matter
                                                    argv));
@@ -2355,7 +2361,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  res = trx.updateDocument(key, &document, shaped, policy, forceSync, rid, &actualRevision);
+  res = trx.updateDocument(key, &document, shaped, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
   
@@ -2848,20 +2854,52 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+///        parameters for the remove function
+////////////////////////////////////////////////////////////////////////////////
+
+struct RemoveOptions {
+  bool overwrite = true;
+  bool waitForSync = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
+  ReplaceOptions options;
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>) or"
+                                  "remove(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})"
+        );
   }
 
-  const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 2);
-  const bool forceSync = ExtractForceSync(argv, 3);
+  if (argv.Length() > 1) {
+    if (argv[1]->IsObject()) {
+      v8::Handle<v8::Object> optionsObject = argv[1].As<v8::Object>();
+      if (optionsObject->Has(v8::String::New("overwrite"))) {
+        options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("overwrite")));
+        policy = ExtractUpdatePolicy(options.overwrite);
+      } 
+      if (optionsObject->Has(v8::String::New("waitForSync"))) {
+        options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      } 
+    } else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
+      if (argv.Length() > 1 ) {
+        options.overwrite = TRI_ObjectToBoolean(argv[1]);
+        policy = ExtractUpdatePolicy(options.overwrite);
+      }
+      if (argv.Length() > 2 ) {
+        options.waitForSync = TRI_ObjectToBoolean(argv[2]);
+      }
+    }
+  }
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
@@ -2907,7 +2945,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
+    return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
   }
 #endif
 
@@ -2919,7 +2957,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
+  res = trx.deleteDocument(key, policy, options.waitForSync, rid, &actualRevision);
   res = trx.finish(res);
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -7330,12 +7368,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// If there is a conflict, i. e. if the revision of the @LIT{document} does not
 /// match the revision in the collection, then an error is thrown.
 ///
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)}
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)} or
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, {@FA{overwrite}: true})}
 ///
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
 ///
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true, @FA{waitForSync})}
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true, @FA{waitForSync})} or
+/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, {@FA{overwrite}: true, @FA{waitForSync}: true or false})} 
 ///
 /// The optional @FA{waitForSync} parameter can be used to force
 /// synchronisation of the document replacement operation to disk even in case
@@ -7510,7 +7550,9 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
 ///
-/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})}
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, @FA{overwrite}, @FA{keepNull}, @FA{waitForSync})} or
+/// @FUN{@FA{collection}.update(@FA{document}, @FA{data}, 
+/// { @FA{overwrite} : true or false, @FA{keepNull} : true or false, @FA{waitForSync} : true or false})} 
 ///
 /// Updates an existing @FA{document}. The @FA{document} must be a document in
 /// the current collection. This document is then patched with the
@@ -8697,7 +8739,9 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// existed and was deleted. It returns @LIT{false}, if the document was already
 /// deleted.
 ///
-/// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})}
+/// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})} or
+/// @FUN{@FA{db}._remove(@FA{document}, 
+///          {@FA{overwrite}: true or false, @FA{waitForSynca}: true or false})}
 ///
 /// The optional @FA{waitForSync} parameter can be used to force synchronisation
 /// of the document deletion operation to disk even in case that the
@@ -8749,6 +8793,17 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
 /// !db._document(a1);
 /// !   ^
+/// @endcode
+/// Remove a document using new signature:
+/// @code
+/// arangod> db.example.save({ a:  1 } );
+/// { 
+//     "_id" : "example/11265325374", 
+//    "_rev" : "11265325374", 
+//    "_key" : "11265325374" 
+//  }
+//  arangod> db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
+//  true
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 

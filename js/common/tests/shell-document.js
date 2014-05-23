@@ -714,6 +714,48 @@ function CollectionDocumentSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with the new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+      // important test, the server has to compute the overwrite policy in correct wise
+      var a2 = collection.replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        collection.replace(a1, { a : 3 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var doc2 = collection.document(a1._id);
+
+      assertEqual(a1._id, doc2._id);
+      assertEqual(a2._rev, doc2._rev);
+      assertEqual(2, doc2.a);
+      // new signature
+      var a4 = collection.replace(a1, { a : 4 }, {"overwrite" : true});
+
+      assertEqual(a1._id, a4._id);
+      assertNotEqual(a1._rev, a4._rev);
+      assertNotEqual(a2._rev, a4._rev);
+
+      var doc4 = collection.document(a1._id);
+
+      assertEqual(a1._id, doc4._id);
+      assertEqual(a4._rev, doc4._rev);
+      assertEqual(4, doc4.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a document, waitForSync=false
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -724,6 +766,21 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, false);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with new signature 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceWithNewSignatureDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": false});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -740,6 +797,22 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.replace(a1, { a : 2 }, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the replace function with new signature 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": true});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1011,6 +1084,37 @@ function CollectionDocumentSuite () {
 
       assertEqual(a4, false);
     },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document using new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        collection.remove(a1);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var a3 = collection.remove(a1, {"overwrite": true});
+
+      assertEqual(a3, true);
+
+      var a4 = collection.remove(a1, {"overwrite": true});
+
+      assertEqual(a4, false);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document, waitForSync=false
@@ -1021,8 +1125,23 @@ function CollectionDocumentSuite () {
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
+                               //document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a : 2 }, true, true, false);
 
-      var a2 = collection.update(a1, { a : 2 }, true, false);
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document, waitForSync=false; using new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWithNewSignatureDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.update(a1, { a : 2 }, {"overwrite": true, "waitForSync" : false});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1038,7 +1157,23 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.update(a1, { a : 2 }, true, true);
+                               //document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a : 2 }, true, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document, waitForSync=true,new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWithNewSignatureDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.update(a1, { a : 2 }, {"overwrite": true, "waitForSync" : true});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1057,6 +1192,19 @@ function CollectionDocumentSuite () {
       var a2 = collection.remove(a1, true, false);
       assertEqual(a2, true);
     },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, waitForSync=false , using new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteWithNewSignatureDocumentSyncFalse : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": false});
+      assertEqual(a2, true);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, waitForSync=true
@@ -1069,6 +1217,19 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, true);
+      assertEqual(a2, true);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document, waitForSync=true , using new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteWithNewSignatureDocumentSyncTrue : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": true});
       assertEqual(a2, true);
     },
 
@@ -1411,6 +1572,47 @@ function DatabaseDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
     },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests the _replace function with new signature
+////////////////////////////////////////////////////////////////////////////////
+
+    test_ReplaceWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = db._replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        db._replace(a1, { a : 3 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var doc2 = db._document(a1._id);
+
+      assertEqual(a1._id, doc2._id);
+      assertEqual(a2._rev, doc2._rev);
+      assertEqual(2, doc2.a);
+
+      var a4 = db._replace(a1, { a : 4 }, {"overwrite": true});
+
+      assertEqual(a1._id, a4._id);
+      assertNotEqual(a1._rev, a4._rev);
+      assertNotEqual(a2._rev, a4._rev);
+
+      var doc4 = db._document(a1._id);
+
+      assertEqual(a1._id, doc4._id);
+      assertEqual(a4._rev, doc4._rev);
+      assertEqual(4, doc4.a);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document
@@ -1670,11 +1872,43 @@ function DatabaseDocumentSuite () {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = db._remove(a1, true);
+      var a3 = db._remove(a1, {"overwrite" : true});
 
       assertEqual(a3, true);
 
-      var a4 = db._remove(a1, true);
+      var a4 = db._remove(a1, {"overwrite" : true});
+
+      assertEqual(a4, false);
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a document using new signature of the remove function
+///       of the remove function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeleteWithNewSignatureDocument : function () {
+      var a1 = collection.save({ a : 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = db._replace(a1, { a : 2 });
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+
+      try {
+        db._remove(a1);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      }
+
+      var a3 = db._remove(a1, {"overwrite" : true});
+
+      assertEqual(a3, true);
+
+      var a4 = db._remove(a1, {"overwrite" : true});
 
       assertEqual(a4, false);
     },
