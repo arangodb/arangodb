@@ -445,12 +445,12 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   int res;
 
   // create the init object
-  TRI_vocbase_col_t init = {
-    vocbase,
-    cid, 
-    0,
-    (TRI_col_type_t) type
-  };
+  TRI_vocbase_col_t init;
+
+  init._vocbase = vocbase;
+  init._cid = cid;
+  init._planId = 0;
+  init._type = static_cast<TRI_col_type_t>(type);
 
   init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
   init._collection  = NULL;
