@@ -67,7 +67,7 @@ Marker::Marker (Marker const& other)
 Marker::Marker (TRI_df_marker_type_e type, 
                 size_t size) 
   : _buffer(new char[size]),
-    _size(size) {
+    _size(static_cast<uint32_t>(size)) {
 
   TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
   m->_type = type;
@@ -501,12 +501,11 @@ EdgeMarker EdgeMarker::clone (TRI_df_marker_t const* other,
   if (other->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* original = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(other);
     
-    TRI_document_edge_t const edge = { 
-      ._fromCid    = original->_fromCid, 
-      ._toCid      = original->_toCid,
-      ._toKey      = (TRI_voc_key_t) base + original->_offsetToKey,
-      ._fromKey    = (TRI_voc_key_t) base + original->_offsetFromKey
-    };
+    TRI_document_edge_t edge;
+    edge._fromCid = original->_fromCid;
+    edge._toCid   = original->_toCid;
+    edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
+    edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
     
     return EdgeMarker(databaseId,
                       collectionId,
@@ -525,12 +524,11 @@ EdgeMarker EdgeMarker::clone (TRI_df_marker_t const* other,
     assert(original->_databaseId == databaseId);
     assert(original->_collectionId == collectionId);
 
-    TRI_document_edge_t const edge = { 
-      ._fromCid    = original->_fromCid, 
-      ._toCid      = original->_toCid,
-      ._toKey      = (TRI_voc_key_t) base + original->_offsetToKey,
-      ._fromKey    = (TRI_voc_key_t) base + original->_offsetFromKey
-    };
+    TRI_document_edge_t edge;
+    edge._fromCid = original->_fromCid;
+    edge._toCid   = original->_toCid;
+    edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
+    edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
 
     return EdgeMarker(original->_databaseId,
                       original->_collectionId,
