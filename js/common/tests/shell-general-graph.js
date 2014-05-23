@@ -921,12 +921,47 @@ function ChainedFluentAQLResultsSuite() {
       + "@options_" + depth + ")";
   };
 
-  var plainEdgesQueryStmt = function(depth) {
-    return "FOR edges_" + depth + " IN "
+  var vertexFilterStmt = function(direction, eDepth, vDepth) {
+    switch(direction) {
+      case "both":
+        return "FILTER edges_"
+          + eDepth
+          + "._from == vertices_"
+          + vDepth
+          + "._id || edges_"
+          + eDepth
+          + "._to == vertices_"
+          + vDepth
+          + "._id";
+      case "from":
+        return "FILTER edges_"
+          + eDepth
+          + "._from == vertices_"
+          + vDepth
+          + "._id";
+      case "to":
+        return "FILTER edges_"
+          + eDepth
+          + "._to == vertices_"
+          + vDepth
+          + "._id";
+      default:
+        fail("Helper function does not know direction:" + direction);
+    }
+
+  };
+
+  var plainEdgesQueryStmt = function(depth, vDepth) {
+    var q = "FOR edges_" + depth + " IN "
       + "GRAPH_EDGES("
-      + "@graphName,"
-      + "{},"
-      + "@options_" + depth + ")";
+      + "@graphName,";
+    if(vDepth > -1) {
+      q += "vertices_" + vDepth + ",";
+    } else {
+      q += "{},";
+    }
+    q += "@options_" + depth + ")";
+    return q;
   };
 
   return {
@@ -1225,6 +1260,23 @@ function ChainedFluentAQLResultsSuite() {
       findFriends(result, [ud1]);
     },
 
+    test_getEdgesForSelectedVertexResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .edges();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainEdgesQueryStmt(1, 0));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.vertexExample_0, {name: uaName});
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        direction: "any",
+        edgeExamples: [{}]
+      });
+    },
+
+    /*
     test_getEdgesForSelectedVertex: function() {
       var result = g._vertices({name: uaName})
         .edges()
@@ -1233,7 +1285,25 @@ function ChainedFluentAQLResultsSuite() {
       findBoughts(result, [d1]);
       findFriends(result, [ud1, ud2]);
     },
+    */
 
+    test_getInEdgesForSelectedVertexResultingAQL: function() {
+      var query = g._vertices({name: ubName})
+        .inEdges();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainEdgesQueryStmt(1, 0));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.vertexExample_0, {name: ubName});
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        direction: "inbound",
+        edgeExamples: [{}]
+      });
+    },
+
+    /*
     test_getInEdgesForSelectedVertex: function() {
       var result = g._vertices({name: ubName})
         .inEdges()
@@ -1241,7 +1311,25 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 1);
       findFriends(result, [ud1]);
     },
+    */
 
+    test_getOutEdgesForSelectedVertexResultingAQL: function() {
+      var query = g._vertices({name: ubName})
+        .outEdges();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainEdgesQueryStmt(1, 0));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.vertexExample_0, {name: ubName});
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        direction: "outbound",
+        edgeExamples: [{}]
+      });
+    },
+
+    /*
     test_getOutEdgesForSelectedVertex: function() {
       var result = g._vertices({name: ubName})
         .outEdges()
@@ -1250,7 +1338,25 @@ function ChainedFluentAQLResultsSuite() {
       findBoughts(result, [d2, d3]);
       findFriends(result, [ud3]);
     },
+    */
 
+    test_getVerticesForSelectedEdgeResultingAQL: function() {
+      var query = g._edges({since: ud1})
+        .vertices();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainEdgesQueryStmt(0));
+      expected.push(plainVertexQueryStmt(1));
+      expected.push(vertexFilterStmt("both", 0, 1));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [{since: ud1}]
+      });
+      assertEqual(query.bindVars.options_1, {});
+    },
+
+    /*
     test_getVerticesForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .vertices()
@@ -1260,7 +1366,25 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, ubName);
     },
+    */
 
+    test_getToVertexForSelectedEdgeResultingAQL: function() {
+      var query = g._edges({since: ud1})
+        .toVertices();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainEdgesQueryStmt(0));
+      expected.push(plainVertexQueryStmt(1));
+      expected.push(vertexFilterStmt("to", 0, 1));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [{since: ud1}]
+      });
+      assertEqual(query.bindVars.options_1, {});
+    },
+
+    /*
     test_getToVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .toVerticies()
@@ -1268,7 +1392,25 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0].name, ubName);
     },
+    */
 
+    test_getFromVertexForSelectedEdgeResultingAQL: function() {
+      var query = g._edges({since: ud1})
+        .fromVertices();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainEdgesQueryStmt(0));
+      expected.push(plainVertexQueryStmt(1));
+      expected.push(vertexFilterStmt("from", 0, 1));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [{since: ud1}]
+      });
+      assertEqual(query.bindVars.options_1, {});
+    },
+
+    /*
     test_getFromVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .fromVerticies()
@@ -1276,11 +1418,35 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0].name, uaName);
     },
+    */
 
+    test_getAllVerticesThroughOutgoingEdgeResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .outEdges()
+        .toVertices();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainEdgesQueryStmt(1, 0));
+      expected.push(plainVertexQueryStmt(2));
+      expected.push(vertexFilterStmt("to", 1, 2));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.vertexExample_0, {
+        name: uaName
+      });
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        direction: "outbound",
+        edgeExamples: [{}]
+      });
+      assertEqual(query.bindVars.options_2, {});
+    },
+
+    /*
     test_getAllVerticesThroughOutgoingEdges: function() {
       var result = g._vertices({name: uaName})
         .outEdges()
-        .toVerticies()
+        .toVertices()
         .toArray();
       assertEqual(result.length, 3);
       var sorted = _.sortBy(result, "name");
@@ -1288,21 +1454,50 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, ucName);
       assertEqual(sorted[2].name, p1Name);
     },
+    */
 
+    test_getAllVerticesThroughOutgoingEdgesWithFilterResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .outEdges([
+        {since: ud1},
+        {date: d1}
+      ])
+        .toVertices();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainEdgesQueryStmt(1, 0));
+      expected.push(plainVertexQueryStmt(2));
+      expected.push(vertexFilterStmt("to", 1, 2));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.vertexExample_0, {
+        name: uaName
+      });
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        direction: "outbound",
+        edgeExamples: [
+          {since: ud1},
+          {date: d1}
+        ]
+      });
+      assertEqual(query.bindVars.options_2, {});
+    }
+
+    /*
     test_getAllVerticesThroughOutgoingEdgesWithFilter: function() {
       var result = g._vertices({name: uaName})
       .outEdges([
         {since: ud1},
         {date: d1}
-      ]).toVerticies()
+      ]).toVertices()
         .toArray();
       assertEqual(result.length, 2);
       var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, ubName);
       assertEqual(sorted[2].name, p1Name);
     }
-
-
+    */
   };
 }
 
