@@ -491,7 +491,7 @@ function GeneralGraphAQLQueriesSuite() {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setUp: query creation for edges
+/// @brief setUp: query creation for edges and vertices
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function() {
@@ -499,7 +499,7 @@ function GeneralGraphAQLQueriesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for edges
+/// @brief test: query creation for edges and vertices
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function() {
@@ -613,6 +613,56 @@ function GeneralGraphAQLQueriesSuite() {
       assertFalse(findIdInResult(result, e2), "e2 is not excluded");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
    },*/
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for Vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_vertices: function() {
+      var query = g._vertices(v1 + "/1");
+      assertEqual(query.printQuery(), 'FOR vertices_0 IN GRAPH_VERTICES('
+        + '@graphName,@startVertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for outVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_outVertices: function() {
+      var query = g._outVertices(v1 + "/1");
+      assertEqual(query.printQuery(), "FOR vertices_0 IN GRAPH_VERTICES("
+        + '@graphName,@startVertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for inVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_inVertices: function() {
+      var query = g._inVertices(v1 + "/1");
+      assertEqual(query.printQuery(), "FOR vertices_0 IN GRAPH_VERTICES("
+        + '@graphName,@startVertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: restrict error handling
