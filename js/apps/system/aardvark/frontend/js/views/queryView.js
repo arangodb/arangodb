@@ -45,8 +45,13 @@
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
+      'click #queryDiv .showHotkeyHelp' : 'shortcutModal'
 
+    },
+
+    shortcutModal: function() {
+      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     createCustomQueryModal: function(){
