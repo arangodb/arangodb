@@ -75,7 +75,7 @@ Please note that by default, _arangoimp_ will import data into the specified
 collection in the default database (`_system`). To specify a different database, 
 use the `--server.database` option when invoking _arangoimp_. 
 
-An _arangoimp_ import will print out the final results on the command line.
+An _arangoimp_ import run will print out the final results on the command line.
 By default, it shows the number of documents created, the number of errors that
 occurred on the server side, and the total number of input file lines/documents
 that it processed. Additionally, _arangoimp_ will print out details about errors 
@@ -86,6 +86,45 @@ Example:
     created:          2
     errors:           0
     total:            2
+
+
+Please note that _arangoimp_ supports two formats when importing JSON data from 
+a file. The first format requires the input file to contain one JSON document
+in each line, e.g.
+
+    { "_key": "one", "value": 1 }
+    { "_key": "two", "value": 2 }
+    { "_key": "foo", "value": "bar" }
+    ...
+
+The above format can be imported sequentially by _arangoimp_. It will read data
+from the input file in chunks and send it in batches to the server. Each batch
+will be about as big as specified in the command-line parameter `--batch-size`.
+
+An alternative is to put one big JSON document into the input file like this:
+
+    [
+      { "_key": "one", "value": 1 },
+      { "_key": "two", "value": 2 },
+      { "_key": "foo", "value": "bar" },
+      ...
+    ]
+
+This format allows line breaks within the input file as required. The downside 
+is that the whole input file will need to be read by _arangoimp_ before it can
+send the first batch. This might be a problem if the input file is big. By
+default, _arangoimp_ will allow importing such files up to a size of about 16 MB.
+
+If you want to allow your _arangoimp_ instance to use more memory, you may want
+to increase the maximum file size by specifying the command-line option
+`--batch-size`. For example, to set the batch size to 32 MB, use the following
+command:
+
+    unix> arangoimp --file "data.json" --type json --collection "users" --batch-size 33554432
+
+Please also note that you may need to increase the value of `--batch-size` if
+a single document inside the input file is bigger than the value of `--batch-size`.
+
 
 Importing CSV Data {#ImpManualCsv}
 ==================================
