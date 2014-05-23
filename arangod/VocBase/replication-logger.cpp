@@ -1272,7 +1272,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
                                        buffer, 
                                        document, 
                                        trxOperation->_type, 
-                                       trxOperation->_marker, 
+                                       nullptr, // TODO: fix this: replication is broken otherwise!! trxOperation->_marker, 
                                        trxOperation->_oldHeader, 
                                        true)) {
         ReturnBuffer(logger, buffer);
