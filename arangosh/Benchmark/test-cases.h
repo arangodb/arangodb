@@ -865,6 +865,64 @@ struct HashTest : public BenchmarkOperation {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              document import test
+// -----------------------------------------------------------------------------
+
+struct DocumentImportTest : public BenchmarkOperation {
+  DocumentImportTest ()
+    : BenchmarkOperation (),
+      _url(),
+      _buffer(0) {
+    _url = "/_api/import?collection=" + Collection + "&type=documents";
+
+    const uint64_t n = Complexity;
+
+    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 16384);
+    for (uint64_t i = 0; i < n; ++i) {
+      TRI_AppendStringStringBuffer(_buffer, "{\"key1\":\"");
+      TRI_AppendUInt64StringBuffer(_buffer, i);
+      TRI_AppendStringStringBuffer(_buffer, "\",\"key2\":");
+      TRI_AppendUInt64StringBuffer(_buffer, i);
+      TRI_AppendStringStringBuffer(_buffer, "}\n");
+    }
+
+    _length = TRI_LengthStringBuffer(_buffer);
+  }
+
+  ~DocumentImportTest () {
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return _url;
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    *mustFree = false;
+    *length = _length;
+    return (const char*) _buffer->_buffer;
+  }
+
+  string _url;
+
+  TRI_string_buffer_t* _buffer;
+
+  size_t _length;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            document creation test
 // -----------------------------------------------------------------------------
 
@@ -928,7 +986,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            document creation test
+// --SECTION--                                           collection creation test
 // -----------------------------------------------------------------------------
   
 struct CollectionCreationTest : public BenchmarkOperation {
@@ -1352,6 +1410,9 @@ static bool CreateDocument (SimpleHttpClient* client,
 static BenchmarkOperation* GetTestCase (const string& name) {
   if (name == "version") {
     return new VersionTest();
+  }
+  if (name == "import-document") {
+    return new DocumentImportTest();
   }
   if (name == "document") {
     return new DocumentCreationTest();
