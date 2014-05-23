@@ -195,14 +195,14 @@ AQLGenerator.prototype._createCursor = function() {
   }
 };
 
-AQLGenerator.prototype.edges = function(startVertexExample, options) {
+AQLGenerator.prototype.edges = function(startVertexExamples, options) {
   this._clearCursor();
   var resultName = "edges_" + this.stack.length;
   var query = "FOR " + resultName
     + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
     + this.stack.length + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = startVertexExample;
+  this.bindVars["startVertexExample_" + this.stack.length] = startVertexExamples;
   this.bindVars["options_" + this.stack.length] = options;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
@@ -210,14 +210,14 @@ AQLGenerator.prototype.edges = function(startVertexExample, options) {
   return this;
 };
 
-AQLGenerator.prototype.vertices = function(startEdgeExample, options) {
+AQLGenerator.prototype.vertices = function(vertexExamples, options) {
   this._clearCursor();
   var resultName = "vertex_" + this.stack.length;
   var query = "FOR " + resultName
-    + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
+    + " IN GRAPH_VERTICES(@graphName,@startVertexExample_"
     + this.stack.length + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = startEdgeExample;
+  this.bindVars["startVertexExample_" + this.stack.length] = vertexExamples;
   this.bindVars["options_" + this.stack.length] = options;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
@@ -773,17 +773,6 @@ Graph.prototype._edges = function(vertexExample) {
   return AQLStmt.edges(vertexExample, {direction : "any"});
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _vertices(edgeExample).
-////////////////////////////////////////////////////////////////////////////////
-
-Graph.prototype._vertices = function(edgeExample) {
-  var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.vertices(edgeExample, {direction : "any"});
-};
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +789,34 @@ Graph.prototype._inEdges = function(vertexExample) {
 Graph.prototype._outEdges = function(vertexExample) {
   var AQLStmt = new AQLGenerator(this);
   return AQLStmt.edges(vertexExample, {direction : "outbound"});
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vertices(edgeExample).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._vertices = function(vertexExamples) {
+  var AQLStmt = new AQLGenerator(this);
+  return AQLStmt.vertices(vertexExamples, {direction : "any"});
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._inVertices = function(vertexExamples) {
+  var AQLStmt = new AQLGenerator(this);
+  return AQLStmt.vertices(vertexExamples, {direction : "inbound"});
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outEdges(vertexId).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._outVertices = function(vertexExamples) {
+  var AQLStmt = new AQLGenerator(this);
+  return AQLStmt.vertices(vertexExamples, {direction : "outbound"});
 };
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get ingoing vertex of an edge.
