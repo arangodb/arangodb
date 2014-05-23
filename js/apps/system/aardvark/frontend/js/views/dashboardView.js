@@ -115,7 +115,7 @@
       
       this.detailGraph = new Dygraph(
         document.getElementById("lineChartDetail"),
-        this.history[figure],
+        this.history[this.server][figure],
         options
       );
     },
@@ -150,7 +150,7 @@
         options.width = dimensions.width;
         self.graphs[f] = new Dygraph(
           document.getElementById(options.div),
-          self.history[f] || [],
+          self.history[self.server][f] || [],
           options
         );
       });
@@ -158,11 +158,18 @@
 
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
-      this.server = this.options.serverToShow;
       this.d3NotInitialised = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
+
+      this.server = this.options.serverToShow;
+
+      if (! this.server) {
+        this.server = "-local-";
+      }
+
+      this.history[this.server] = {};
     },
 
     updateCharts: function () {
@@ -184,7 +191,7 @@
       
       var tempColor = "";
       Object.keys(map).forEach(function (a) {
-        var v = self.history[a][1];
+        var v = self.history[self.server][a][1];
         var p = "";
 
         if (v < 0) {
@@ -194,7 +201,7 @@
           tempColor = "green";
           p = "+";
         }
-        $("#" + a).html(self.history[a][0] + '<br/><span class="dashboard-figurePer" style="color: ' 
+        $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: ' 
           + tempColor +';">' + p + v + '%</span>');
       });
     },
@@ -217,7 +224,7 @@
     updateLineChart: function (figure, isDetailChart) {
       var g = isDetailChart ? this.detailGraph : this.graphs[figure],
       opts = {
-        file: this.history[figure],
+        file: this.history[this.server][figure],
         dateWindow: this.updateDateWindow(g, isDetailChart)
       };
       g.updateOptions(opts);
@@ -234,8 +241,8 @@
         }
 
         // need at least an empty history
-        if (! self.history[f]) {
-          self.history[f] = [];
+        if (! self.history[self.server][f]) {
+          self.history[self.server][f] = [];
         }
 
         // generate values for this key
@@ -256,7 +263,7 @@
 
         // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
-          self.history[f].push(valueList);
+          self.history[self.server][f].push(valueList);
         }
       });
     },
@@ -264,14 +271,14 @@
     cutOffHistory: function (f, cutoff) {
       var self = this;
 
-      while (self.history[f].length !== 0) {
-        var v = self.history[f][0][0];
+      while (self.history[self.server][f].length !== 0) {
+        var v = self.history[self.server][f][0][0];
 
         if (v >= cutoff) {
           break;
         }
 
-        self.history[f].shift();
+        self.history[self.server][f].shift();
       }
     },
 
@@ -287,7 +294,7 @@
         }
 
         // history must be non-empty
-        if (! self.history[f]) {
+        if (! self.history[self.server][f]) {
           return;
         }
 
@@ -320,7 +327,7 @@
           n1 = 0;
         }
 
-        self.history[a] = [
+        self.history[self.server][a] = [
           fmtNumber(newData[self.tendencies[a][0]], n1),
           fmtNumber(newData[self.tendencies[a][1]] * 100, n2)
         ];
@@ -328,16 +335,16 @@
 
       // update distribution
       Object.keys(this.barCharts).forEach(function (a) {
-        self.history[a] = self.mergeBarChartData(self.barCharts[a], newData);
+        self.history[self.server][a] = self.mergeBarChartData(self.barCharts[a], newData);
       });
 
       // update physical memory
-      self.history.physicalMemory = newData.physicalMemory;
-      self.history.residentSizeCurrent = newData.residentSizeCurrent;
-      self.history.residentSizePercent = newData.residentSizePercent;
+      self.history[self.server].physicalMemory = newData.physicalMemory;
+      self.history[self.server].residentSizeCurrent = newData.residentSizeCurrent;
+      self.history[self.server].residentSizePercent = newData.residentSizePercent;
 
       // generate chart description
-      self.history.residentSizeChart =
+      self.history[self.server].residentSizeChart =
       [
         {
           "key": "",
@@ -402,16 +409,20 @@
       var url = "statistics/short";
       var urlParams = "?start=";
 
-      if (this.nextStart) {
-        urlParams += this.nextStart;
+      if (self.nextStart) {
+        urlParams += self.nextStart;
       }
       else {
-        urlParams += (new Date().getTime() - this.defaultTimeFrame) / 1000;
+        urlParams += (new Date().getTime() - self.defaultTimeFrame) / 1000;
       }
 
-      if (this.server) {
-        url = this.server.endpoint + "/_admin/aardvark/statistics/cluster";
-        urlParams +=  "&DBserver=" + this.server.target;
+      if (self.server !== "-local-") {
+        url = self.server.endpoint + "/_admin/aardvark/statistics/cluster";
+        urlParams += "&type=short&DBserver=" + self.server.target;
+
+        if (! self.history.hasOwnProperty(self.server)) {
+          self.history[self.server] = {};
+        }
       }
 
       $.ajax(
@@ -434,9 +445,13 @@
       var urlParams 
         = "?filter=" + this.dygraphConfig.mapStatToFigure[figure].join();
 
-      if (this.server) {
-        url = this.server.endpoint + "/_admin/aardvark/statistics/cluster";
-        urlParams +=  "&DBserver=" + this.server.target;
+      if (self.server !== "-local-") {
+        url = self.server.endpoint + "/_admin/aardvark/statistics/cluster";
+        urlParams += "&type=long&DBserver=" + self.server.target;
+
+        if (! self.history.hasOwnProperty(self.server)) {
+          self.history[self.server] = {};
+        }
       }
 
       $.ajax(
@@ -446,7 +461,7 @@
         function (d) {
           var i;
 
-          self.history[figure] = [];
+          self.history[self.server][figure] = [];
 
           for (i = 0;  i < d.times.length;  ++i) {
             self.mergeDygraphHistory(d, i, true);
@@ -460,7 +475,7 @@
 
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
-      var current = self.history.residentSizeCurrent / 1024 / 1024;
+      var current = self.history[self.server].residentSizeCurrent / 1024 / 1024;
       var currentA = "";
 
       if (current < 1025) {
@@ -470,8 +485,8 @@
         currentA = fmtNumber(current / 1024, 2) + " GB";
       }
 
-      var currentP = fmtNumber(self.history.residentSizePercent * 100, 2);
-      var data = [fmtNumber(self.history.physicalMemory / 1024 / 1024 / 1024, 0) + " GB"];
+      var currentP = fmtNumber(self.history[self.server].residentSizePercent * 100, 2);
+      var data = [fmtNumber(self.history[self.server].physicalMemory / 1024 / 1024 / 1024, 0) + " GB"];
 
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
@@ -504,7 +519,7 @@
         chart.xAxis.showMaxMin(false);
         
         d3.select('#residentSizeChart svg')
-          .datum(self.history.residentSizeChart)
+          .datum(self.history[self.server].residentSizeChart)
           .call(chart);
         
         d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
@@ -624,7 +639,7 @@
             .tickFormat(function (d) {return fmtNumber(((d * 100 * 100) / 100), 0) + "%";});
 
           d3.select(selector)
-            .datum(self.history[k])
+            .datum(self.history[self.server][k])
             .call(chart);
 
           nv.utils.windowResize(chart.update);
