@@ -52,8 +52,7 @@ namespace triagens {
       TRI_voc_tick_t   _databaseId;
       TRI_voc_cid_t    _collectionId;
 
-      TRI_shape_aid_t  _aid;
-      TRI_shape_size_t _size;
+      TRI_shape_aid_t  _attributeId;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +216,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
         
       protected:
+        
+        void storeSizedString (size_t,
+                               std::string const&);
 
         void storeSizedString (size_t,
                                char const*,
@@ -230,6 +232,50 @@ namespace triagens {
 
         char*          _buffer;
         uint32_t const _size;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AttributeMarker
+// -----------------------------------------------------------------------------
+
+    class AttributeMarker : public Marker {
+
+      public:
+
+        AttributeMarker (TRI_voc_tick_t,
+                         TRI_voc_cid_t,
+                         TRI_shape_aid_t,
+                         std::string const&); 
+
+        ~AttributeMarker ();
+
+      public:
+
+        inline char* attributeName () const {
+          // pointer to attribute name
+          return begin() + sizeof(attribute_marker_t);
+        }
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       ShapeMarker
+// -----------------------------------------------------------------------------
+
+    class ShapeMarker : public Marker {
+
+      public:
+
+        ShapeMarker (TRI_voc_tick_t,
+                     TRI_voc_cid_t,
+                     TRI_shape_t const*);
+
+        ~ShapeMarker ();
+        
+      public:
+
+        inline char* shape () const {
+          return begin() + sizeof(shape_marker_t);
+        }
     };
 
 // -----------------------------------------------------------------------------
@@ -304,7 +350,7 @@ namespace triagens {
           return m->_tid;
         }
 
-        inline char const* key () const {
+        inline char* key () const {
           // pointer to key
           return begin() + sizeof(document_marker_t);
         }

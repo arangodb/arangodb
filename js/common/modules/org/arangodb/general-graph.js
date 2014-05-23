@@ -195,19 +195,51 @@ AQLGenerator.prototype._createCursor = function() {
   }
 };
 
-AQLGenerator.prototype.edges = function(startVertex, direction) {
+AQLGenerator.prototype.edges = function(startVertexExample, options) {
   this._clearCursor();
-  var edgeName = "edges_" + this.stack.length;
-  var query = "FOR " + edgeName
-    + " IN GRAPH_EDGES(@graphName,@startVertex_"
-    + this.stack.length + ',"'
-    + direction + '")';
-  this.bindVars["startVertex_" + this.stack.length] = startVertex;
+  var resultName = "edges_" + this.stack.length;
+  var query = "FOR " + resultName
+    + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
+    + this.stack.length + ',@options_'
+    + this.stack.length + ')';
+  this.bindVars["startVertexExample_" + this.stack.length] = startVertexExample;
+  this.bindVars["options_" + this.stack.length] = options;
   var stmt = new AQLStatement(query, true);
   this.stack.push(stmt);
-  this.lastEdgeVar = edgeName;
+  this.lastEdgeVar = resultName;
   return this;
 };
+
+AQLGenerator.prototype.vertices = function(startEdgeExample, options) {
+  this._clearCursor();
+  var resultName = "vertex_" + this.stack.length;
+  var query = "FOR " + resultName
+    + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
+    + this.stack.length + ',@options_'
+    + this.stack.length + ')';
+  this.bindVars["startVertexExample_" + this.stack.length] = startEdgeExample;
+  this.bindVars["options_" + this.stack.length] = options;
+  var stmt = new AQLStatement(query, true);
+  this.stack.push(stmt);
+  this.lastEdgeVar = resultName;
+  return this;
+};
+
+
+AQLGenerator.prototype.neighbors = function(startVertexExample, options) {
+  var resultName = "neighbors_" + this.stack.length + ".vertices";
+  var query = "FOR " + resultName
+    + " IN GRAPH_NEIGHBORS(@graphName,@startVertexExample_"
+    + this.stack.length + ',@options_'
+    + this.stack.length + ')';
+  this.bindVars["startVertexExample_" + this.stack.length] = startVertexExample;
+  this.bindVars["options_" + this.stack.length] = options;
+  var stmt = new AQLStatement(query, true);
+  this.stack.push(stmt);
+  this.lastEdgeVar = resultName;
+  return this;
+};
+
 
 AQLGenerator.prototype.getLastEdgeVar = function() {
   if (this.lastEdgeVar === "") {
@@ -415,20 +447,22 @@ var _edgeDefinitions = function () {
 
 };
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extend an edge definitions
+/// @brief extend a list of edge definitions
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _extendEdgeDefinitions = function () {
+var _extendEdgeDefinitions = function (edgeDefinition) {
 
-  var args = arguments;
-  var res = args[0];
-  args = args.slice(1);
-  res.concat(args);
+  var args = arguments, i = 0;
 
+  Object.keys(args).forEach(function (x) {
+    i++;
+    if (i === 1) {return;}
+    edgeDefinition.push(args[x]);
+  });
 };
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,7 +505,6 @@ var _create = function (graphName, edgeDefinitions) {
 
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,13 +520,31 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
-      var myEdges = self._EDGES(vertexId);
-      myEdges.forEach(
-        function(edgeObj) {
-          var edgeId = edgeObj._id;
-          var edgeCollection = edgeId.split("/")[0];
-          if (db[edgeCollection] && db[edgeCollection].exists(edgeId)) {
-            db[edgeCollection].remove(edgeId);
+      var graphs = getGraphCollection().toArray();
+      var vertexCollectionName = vertexId.split("/")[0];
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                if (from.indexOf(vertexCollectionName) !== -1
+                  || to.indexOf(vertexCollectionName) !== -1
+                  ) {
+                  var edges = db._collection(collection).toArray();
+                  edges.forEach(
+                    function(edge) {
+                      if (edge._from === vertexId || edge._to === vertexId) {
+                        db._remove(edge._id);
+                      }
+                    }
+                  );
+                }
+              }
+            );
           }
         }
       );
@@ -503,6 +554,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       }
       return old_remove(vertexId, options);
     };
+
     self[key] = wrap;
   });
 
@@ -581,9 +633,10 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
             var from = edgeDefinition.from;
             var to = edgeDefinition.to;
             var collection = edgeDefinition.collection;
-            if (collection === colName || 
-                from.indexOf(colName) !== -1 || 
-                to.indexOf(colName) !== -1) {
+            if (collection === colName
+              || from.indexOf(colName) !== -1
+              || to.indexOf(colName) !== -1
+              ) {
               result = false;
             }
           }
@@ -712,30 +765,41 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _edges(vertexId).
+/// @brief _edges(vertexExample).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(vertexId) {
+Graph.prototype._edges = function(vertexExample) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "any");
+  return AQLStmt.edges(vertexExample, {direction : "any"});
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vertices(edgeExample).
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._vertices = function(edgeExample) {
+  var AQLStmt = new AQLGenerator(this);
+  return AQLStmt.vertices(edgeExample, {direction : "any"});
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._inEdges = function(vertexId) {
+Graph.prototype._inEdges = function(vertexExample) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "inbound");
+  return AQLStmt.edges(vertexExample, {direction : "inbound"});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._outEdges = function(vertexId) {
+Graph.prototype._outEdges = function(vertexExample) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexId, "outbound");
+  return AQLStmt.edges(vertexExample, {direction : "outbound"});
 };
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get ingoing vertex of an edge.
@@ -786,6 +850,60 @@ Graph.prototype._getVertexCollectionByName = function(name) {
     return this.__vertexCollections[name];
   }
   throw "Collection " + name + " does not exist in graph.";
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get neighbors of a vertex in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._neighbors = function(vertexExample, options) {
+  var current_vertex,
+    target_array = [],
+    addNeighborToList,
+    AQLStmt;
+
+  if (! options) {
+    options = { };
+  }
+
+  AQLStmt = new AQLGenerator(this);
+
+  return AQLStmt.neighbors(vertexExample, options);
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get common neighbors of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get amount of common neighbors of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._amountCommonNeighbors = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get common properties of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get amount of common properties of two vertices in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._amountCommonProperties = function(vertex1, vertex2, options) {
+
 };
 
 // -----------------------------------------------------------------------------

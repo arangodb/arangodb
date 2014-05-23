@@ -712,9 +712,9 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("GRAPH_TRAVERSAL_TREE", "GENERAL_GRAPH_TRAVERSAL_TREE", false, false, "s,s,s,s|a", NULL);
   REGISTER_FUNCTION("EDGES", "GRAPH_EDGES", false, false, "h,s,s|l", NULL);
-  REGISTER_FUNCTION("GRAPH_EDGES", "GENERAL_GRAPH_EDGES", false, false, "s,s,s|lza,ls", NULL);
+  REGISTER_FUNCTION("GRAPH_EDGES", "GENERAL_GRAPH_EDGES", false, false, "s,as|a", NULL);
   REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
-  REGISTER_FUNCTION("GRAPH_NEIGHBORS", "GENERAL_GRAPH_NEIGHBORS", false, false, "s,s,s|l", NULL);
+  REGISTER_FUNCTION("GRAPH_NEIGHBORS", "GENERAL_GRAPH_NEIGHBORS", false, false, "s,as|a", NULL);
   
   // date functions
   REGISTER_FUNCTION("DATE_NOW", "DATE_NOW", false, false, "", NULL); // NOW is non-deterministic

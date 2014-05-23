@@ -200,15 +200,15 @@ void TRI_IncreaseWritesCollectionTransaction (TRI_transaction_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const*,
-                                              const TRI_voc_cid_t);
+                                              TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection from a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t const*,
-                                                            const TRI_voc_cid_t,
-                                                            const TRI_transaction_type_e);
+                                                            TRI_voc_cid_t,
+                                                            TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to a transaction
@@ -259,36 +259,13 @@ int TRI_AddOperationTransaction (TRI_transaction_collection_t*,
                                  struct TRI_doc_mptr_s*,
                                  struct TRI_doc_mptr_s*,
                                  struct TRI_doc_mptr_s*,
-                                 void const*,
-                                 TRI_voc_rid_t,
                                  bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a marker to a transaction collection
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AddOperationCollectionTransaction (TRI_transaction_collection_t*,
-                                           TRI_voc_document_operation_e,
-                                           struct TRI_doc_mptr_s*,
-                                           struct TRI_doc_mptr_s*,
-                                           struct TRI_doc_mptr_s*,
-                                           TRI_df_marker_t*,
-                                           TRI_voc_rid_t,
-                                           bool,
-                                           bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a transaction's id
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_tid_t TRI_GetIdTransaction (TRI_transaction_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a transaction's id for writing into a marker
-/// this will return 0 if the operation is standalone
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_tid_t TRI_GetMarkerIdTransaction (TRI_transaction_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction
@@ -311,111 +288,6 @@ int TRI_CommitTransaction (TRI_transaction_t*,
 
 int TRI_AbortTransaction (TRI_transaction_t*,
                           int);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               TRANSACTION HELPERS
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a single operation wrapped in a transaction
-/// the actual operation can be specified using a callback function
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ExecuteSingleOperationTransaction (struct TRI_vocbase_s*,
-                                           const char*,
-                                           TRI_transaction_type_e,
-                                           int (*callback)(TRI_transaction_collection_t*, void*),
-                                           void*,
-                                           bool);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               TRANSACTION MARKERS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_begin_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-  uint32_t        _numCollections;
-#ifdef TRI_PADDING_32
-  char            _padding_begin_marker[4];
-#endif
-}
-TRI_doc_begin_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief commit transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_commit_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-}
-TRI_doc_commit_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_abort_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-}
-TRI_doc_abort_transaction_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare transaction marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_prepare_transaction_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_tid_t   _tid;
-}
-TRI_doc_prepare_transaction_marker_t;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a "begin" marker
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CreateMarkerBeginTransaction (TRI_transaction_t*,
-                                      struct TRI_doc_begin_transaction_marker_s**,
-                                      uint32_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a "commit" marker
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CreateMarkerCommitTransaction (TRI_transaction_t*,
-                                       struct TRI_doc_commit_transaction_marker_s**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an "abort" marker
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CreateMarkerAbortTransaction (TRI_transaction_t*,
-                                      struct TRI_doc_abort_transaction_marker_s**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a "prepare" marker
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CreateMarkerPrepareTransaction (TRI_transaction_t*,
-                                        struct TRI_doc_prepare_transaction_marker_s**);
 
 #endif
 
