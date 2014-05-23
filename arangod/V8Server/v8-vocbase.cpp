@@ -413,31 +413,6 @@ static bool ExtractForceSync (v8::Arguments const& argv,
   return forceSync;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the update policy from the arguments
-/// must specify the argument index starting from 1
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_update_policy_e ExtractUpdatePolicy (v8::Arguments const& argv,
-                                                    const int index) {
-  assert(index > 0);
-
-  // default value
-  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
-
-  if (argv.Length() >= index) {
-    if (TRI_ObjectToBoolean(argv[index - 1])) {
-      // overwrite!
-      policy = TRI_DOC_UPDATE_LAST_WRITE;
-    }
-    else {
-      policy = TRI_DOC_UPDATE_CONFLICT;
-    }
-  }
-
-  return policy;
-}
-
 TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
   TRI_doc_update_policy_e policy ;
 
@@ -2333,7 +2308,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true);
 
   if (shaped == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -2401,7 +2376,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
   trx->lockWrite();
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true);
 
   if (shaped == 0) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -2519,7 +2494,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   trx->lockWrite();
   // extract shaped data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true);
 
   if (shaped == 0) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -2827,20 +2802,52 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+///        parameters for the remove function
+////////////////////////////////////////////////////////////////////////////////
+
+struct RemoveOptions {
+  bool overwrite = true;
+  bool waitForSync = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
+  ReplaceOptions options;
+  TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>) or"
+                                  "remove(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})"
+        );
   }
 
-  const TRI_doc_update_policy_e policy = ExtractUpdatePolicy(argv, 2);
-  const bool forceSync = ExtractForceSync(argv, 3);
+  if (argv.Length() > 1) {
+    if (argv[1]->IsObject()) {
+      v8::Handle<v8::Object> optionsObject = argv[1].As<v8::Object>();
+      if (optionsObject->Has(v8::String::New("overwrite"))) {
+        options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("overwrite")));
+        policy = ExtractUpdatePolicy(options.overwrite);
+      } 
+      if (optionsObject->Has(v8::String::New("waitForSync"))) {
+        options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      } 
+    } else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
+      if (argv.Length() > 1 ) {
+        options.overwrite = TRI_ObjectToBoolean(argv[1]);
+        policy = ExtractUpdatePolicy(options.overwrite);
+      }
+      if (argv.Length() > 2 ) {
+        options.waitForSync = TRI_ObjectToBoolean(argv[2]);
+      }
+    }
+  }
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
@@ -2885,7 +2892,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   assert(key != 0);
 
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(RemoveVocbaseColCoordinator(col, policy, forceSync, argv));
+    return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
   }
 
   SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
@@ -2896,7 +2903,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.deleteDocument(key, policy, forceSync, rid, &actualRevision);
+  res = trx.deleteDocument(key, policy, options.waitForSync, rid, &actualRevision);
   res = trx.finish(res);
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -8578,7 +8585,9 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// existed and was deleted. It returns @LIT{false}, if the document was already
 /// deleted.
 ///
-/// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})}
+/// @FUN{@FA{db}._remove(@FA{document}, true, @FA{waitForSync})} or
+/// @FUN{@FA{db}._remove(@FA{document}, 
+///          {@FA{overwrite}: true or false, @FA{waitForSynca}: true or false})}
 ///
 /// The optional @FA{waitForSync} parameter can be used to force synchronisation
 /// of the document deletion operation to disk even in case that the
@@ -8630,6 +8639,17 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
 /// !db._document(a1);
 /// !   ^
+/// @endcode
+/// Remove a document using new signature:
+/// @code
+/// arangod> db.example.save({ a:  1 } );
+/// { 
+//     "_id" : "example/11265325374", 
+//    "_rev" : "11265325374", 
+//    "_key" : "11265325374" 
+//  }
+//  arangod> db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
+//  true
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -281,7 +281,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const example,
         return TRI_RESULT_ELEMENT_NOT_FOUND;
       }
       
-      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false);
 
       if (values[i] == 0) {
         CleanupExampleObject(shaper->_memoryZone, i, pids, values);
@@ -995,10 +995,10 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false, false); 
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false); 
     }
     else {
-      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false, false); 
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false); 
     }
 
     if (res != TRI_ERROR_NO_ERROR) {

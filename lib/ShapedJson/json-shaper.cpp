@@ -243,7 +243,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev, isLocked);
+          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev);
         }
         else {
           aids[count] = shaper->lookupAttributeByName(shaper, prev);
@@ -395,15 +395,14 @@ int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyShaper (TRI_shaper_t* shaper) {
-  size_t n = shaper->_attributePathsByName._nrAlloc;
-  size_t i;
+  size_t const n = shaper->_attributePathsByName._nrAlloc;
 
   // only free pointers in attributePathsByName
   // (attributePathsByPid contains the same pointers!)
-  for (i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     void* data = shaper->_attributePathsByName._table[i];
 
-    if (data) {
+    if (data != nullptr) {
       TRI_Free(shaper->_memoryZone, data);
     }
   }

@@ -581,7 +581,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
-    found = shaper->findShape(shaper, &shape->base, create, isLocked);
+    found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -648,7 +648,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
-    found = shaper->findShape(shaper, &shape->base, create, isLocked);
+    found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -830,7 +830,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     // first find an identifier for the name
-    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data, isLocked);
+    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data);
 
     // convert value
     if (p->_aid == 0) {
@@ -986,7 +986,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, values);
 
   // lookup this shape
-  found = shaper->findShape(shaper, &a->base, create, isLocked);
+  found = shaper->findShape(shaper, &a->base, create);
 
   if (found == NULL) {
     TRI_Free(shaper->_memoryZone, a);
