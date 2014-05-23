@@ -636,12 +636,11 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude})}
 /////////////////////////////////////////////////////////////
 ///
-/// The default will find at most 100 documents near the coordinate
-/// (@FA{latitude}, @FA{longitude}). The returned list is sorted according to
-/// the distance, with the nearest document coming first. If there are near
-/// documents of equal distance, documents are chosen randomly from this set
-/// until the limit is reached. It is possible to change the limit using the
-/// @FA{limit} operator.
+/// The returned list is sorted according to the distance, with the nearest 
+/// document to the coordinate (@FA{latitude}, @FA{longitude}) coming first. 
+/// If there are near documents of equal distance, documents are chosen randomly 
+/// from this set until the limit is reached. It is possible to change the limit 
+/// using the @FA{limit} operator.
 ///
 /// In order to use the @FN{near} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
@@ -693,8 +692,9 @@ ArangoCollection.prototype.near = function (lat, lon) {
 /// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})}
 ////////////////////////////////////////////////////////////////////////////
 ///
-/// This will find all documents with in a given radius around the coordinate
-/// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance.
+/// This will find all documents within a given radius around the coordinate
+/// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance,
+/// beginning with the nearest document. 
 ///
 /// In order to use the @FN{within} operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
