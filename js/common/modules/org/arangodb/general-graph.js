@@ -835,7 +835,11 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 
 Graph.prototype._edges = function(vertexExample) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexExample, {direction : "any"});
+  if (!vertexExample || _.isEmpty(vertexExample)) {
+    // If no vertexExample is given a direction has to be specified
+    return AQLStmt.outEdges(vertexExample);
+  }
+  return AQLStmt.edges(vertexExample);
 };
 
 
