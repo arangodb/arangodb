@@ -718,7 +718,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
                     function (edge) {
                       // if from is
                       if (edge._from === edgeId || edge._to === edgeId) {
-                        var newGraph = _graph(graph._key);
+                        var newGraph = exports._graph(graph._key);
                         newGraph[collection].remove(edge._id, options);
                       }
                     }
