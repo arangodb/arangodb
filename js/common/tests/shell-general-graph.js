@@ -215,7 +215,9 @@ function GeneralGraphCreationSuite() {
         graph._directedRelationDefinition("relationName",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
       );
-      graph._extendEdgeDefinitions(ed, graph._undirectedRelationDefinition("relationName", "vertexC1"));
+      graph._extendEdgeDefinitions(ed,
+        graph._undirectedRelationDefinition("relationName", "vertexC1")
+      );
       assertEqual(ed,  [
         {
           collection: "relationName",
@@ -736,7 +738,7 @@ function ChainedFluentAQLResultsSuite() {
   var dropData = function() {
     try {
       graph._drop(gn);
-    } catch(e) {
+    } catch(ignore) {
 
     }
   };
@@ -1376,76 +1378,82 @@ function ChainedFluentAQLResultsSuite() {
 function EdgesAndVerticesSuite() {
 
   var g;
-  var vertexIds = [];
   var vertexId1, vertexId2;
-  var edgeId1, edgeId2;
   var unitTestGraphName = "unitTestGraph";
 
-  fillCollections = function() {
-    var ids = {};
-    var vertex = g.unitTestVertexCollection1.save({first_name: "Tam"});
-    ids["vId11"] = vertex._id;
-    vertex = g.unitTestVertexCollection1.save({first_name: "Tem"});
-    ids["vId12"] = vertex._id;
-    vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
-    ids["vId13"] = vertex._id;
-    vertex = g.unitTestVertexCollection1.save({first_name: "Tom"});
-    ids["vId14"] = vertex._id;
-    vertex = g.unitTestVertexCollection1.save({first_name: "Tum"});
-    ids["vId15"] = vertex._id;
-    vertex = g.unitTestVertexCollection3.save({first_name: "Tam"});
-    ids["vId31"] = vertex._id;
-    vertex = g.unitTestVertexCollection3.save({first_name: "Tem"});
-    ids["vId32"] = vertex._id;
-    vertex = g.unitTestVertexCollection3.save({first_name: "Tim"});
-    ids["vId33"] = vertex._id;
-    vertex = g.unitTestVertexCollection3.save({first_name: "Tom"});
-    ids["vId34"] = vertex._id;
-    vertex = g.unitTestVertexCollection3.save({first_name: "Tum"});
-    ids["vId35"] = vertex._id;
+  var ec1 = "UnitTestEdgeCollection1";
+  var ec2 = "UnitTestEdgeCollection2";
+  var vc1 = "UnitTestVertexCollection1";
+  var vc2 = "UnitTestVertexCollection2";
+  var vc3 = "UnitTestVertexCollection3";
+  var vc4 = "UnitTestVertexCollection4";
 
-    var edge = g.unitTestEdgeCollection1.save(ids.vId11, ids.vId12, {});
-    ids["eId11"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId11, ids.vId13, {});
-    ids["eId12"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId11, ids.vId14, {});
-    ids["eId13"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId11, ids.vId15, {});
-    ids["eId14"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId12, ids.vId11, {});
-    ids["eId15"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId13, ids.vId11, {});
-    ids["eId16"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId14, ids.vId11, {});
-    ids["eId17"] = edge._id;
-    edge = g.unitTestEdgeCollection1.save(ids.vId15, ids.vId11, {});
-    ids["eId18"] = edge._id;
-    edge = g.unitTestEdgeCollection2.save(ids.vId11, ids.vId31, {});
-    ids["eId21"] = edge._id;
-    edge = g.unitTestEdgeCollection2.save(ids.vId11, ids.vId32, {});
-    ids["eId22"] = edge._id;
-    edge = g.unitTestEdgeCollection2.save(ids.vId11, ids.vId33, {});
-    ids["eId23"] = edge._id;
-    edge = g.unitTestEdgeCollection2.save(ids.vId11, ids.vId34, {});
-    ids["eId24"] = edge._id;
-    edge = g.unitTestEdgeCollection2.save(ids.vId11, ids.vId35, {});
-    ids["eId25"] = edge._id;
+
+  var fillCollections = function() {
+    var ids = {};
+    var vertex = g[vc1].save({first_name: "Tam"});
+    ids.vId11 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tem"});
+    ids.vId12 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tim"});
+    ids.vId13 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tom"});
+    ids.vId14 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tum"});
+    ids.vId15 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tam"});
+    ids.vId31 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tem"});
+    ids.vId32 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tim"});
+    ids.vId33 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tom"});
+    ids.vId34 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tum"});
+    ids.vId35 = vertex._id;
+
+    var edge = g[ec1].save(ids.vId11, ids.vId12, {});
+    ids.eId11 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId13, {});
+    ids.eId12 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId14, {});
+    ids.eId13 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId15, {});
+    ids.eId14 = edge._id;
+    edge = g[ec1].save(ids.vId12, ids.vId11, {});
+    ids.eId15 = edge._id;
+    edge = g[ec1].save(ids.vId13, ids.vId11, {});
+    ids.eId16 = edge._id;
+    edge = g[ec1].save(ids.vId14, ids.vId11, {});
+    ids.eId17 = edge._id;
+    edge = g[ec1].save(ids.vId15, ids.vId11, {});
+    ids.eId18 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId31, {});
+    ids.eId21 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId32, {});
+    ids.eId22 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId33, {});
+    ids.eId23 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId34, {});
+    ids.eId24 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId35, {});
+    ids.eId25 = edge._id;
     return ids;
-  }
+  };
 
   return {
 
     setUp : function() {
       try {
-        arangodb.db._collection("_graphs").remove("_graphs/" + unitTestGraphName)
-      } catch (err) {
+        arangodb.db._collection("_graphs").remove(unitTestGraphName);
+      } catch (ignore) {
       }
       g = graph._create(
         unitTestGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("unitTestEdgeCollection1", "unitTestVertexCollection1"),
-          graph._directedRelationDefinition("unitTestEdgeCollection2",
-            ["unitTestVertexCollection1", "unitTestVertexCollection2"], ["unitTestVertexCollection3", "unitTestVertexCollection4"]
+          graph._undirectedRelationDefinition(ec1, vc1),
+          graph._directedRelationDefinition(ec2,
+            [vc1, vc2], [vc3, vc4]
           )
         )
       );
@@ -1457,7 +1465,7 @@ function EdgesAndVerticesSuite() {
 
     test_dropGraph : function () {
       var myGraphName = unitTestGraphName + "2";
-      var myEdgeColName = "unitTestEdgeCollection1";
+      var myEdgeColName = ec1;
       var myVertexColName = "unitTestVertexCollection4711";
       graph._create(
         myGraphName,
@@ -1474,143 +1482,142 @@ function EdgesAndVerticesSuite() {
     test_edgeCollections : function () {
 
       var edgeCollections = g._edgeCollections();
-      assertEqual(edgeCollections[0].name(), 'unitTestEdgeCollection1');
-      assertEqual(edgeCollections[1].name(), 'unitTestEdgeCollection2');
+      assertEqual(edgeCollections[0].name(), ec1);
+      assertEqual(edgeCollections[1].name(), ec2);
     },
 
     test_vertexCollections : function () {
 
       var vertexCollections = g._vertexCollections();
-      assertEqual(vertexCollections[0].name(), 'unitTestVertexCollection1');
-      assertEqual(vertexCollections[1].name(), 'unitTestVertexCollection2');
-      assertEqual(vertexCollections[2].name(), 'unitTestVertexCollection3');
-      assertEqual(vertexCollections[3].name(), 'unitTestVertexCollection4');
+      assertEqual(vertexCollections[0].name(), vc1);
+      assertEqual(vertexCollections[1].name(), vc2);
+      assertEqual(vertexCollections[2].name(), vc3);
+      assertEqual(vertexCollections[3].name(), vc4);
     },
 
     test_vC_save : function () {
-      var vertex = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex = g[vc1].save({first_name: "Tom"});
       assertFalse(vertex.error);
       vertexId1 = vertex._id;
-      var vertexObj = g.unitTestVertexCollection1.document(vertexId1);
+      var vertexObj = g[vc1].document(vertexId1);
       assertEqual(vertexObj.first_name, "Tom");
     },
 
     test_vC_replace : function () {
-      var vertex = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex = g[vc1].save({first_name: "Tom"});
       var vertexId = vertex._id;
-      vertex = g.unitTestVertexCollection1.replace(vertexId, {first_name: "Tim"});
+      vertex = g[vc1].replace(vertexId, {first_name: "Tim"});
       assertFalse(vertex.error);
-      var vertexObj = g.unitTestVertexCollection1.document(vertexId);
+      var vertexObj = g[vc1].document(vertexId);
       assertEqual(vertexObj.first_name, "Tim");
     },
 
     test_vC_update : function () {
-      var vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex = g[vc1].save({first_name: "Tim"});
       var vertexId = vertex._id;
-      vertex = g.unitTestVertexCollection1.update(vertexId, {age: 42});
+      vertex = g[vc1].update(vertexId, {age: 42});
       assertFalse(vertex.error);
-      var vertexObj = g.unitTestVertexCollection1.document(vertexId);
+      var vertexObj = g[vc1].document(vertexId);
       assertEqual(vertexObj.first_name, "Tim");
       assertEqual(vertexObj.age, 42);
     },
 
     test_vC_remove : function () {
-      var vertex = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex = g[vc1].save({first_name: "Tim"});
       var vertexId = vertex._id;
-      var result = g.unitTestVertexCollection1.remove(vertexId);
+      var result = g[vc1].remove(vertexId);
       assertTrue(result);
     },
 
     test_vC_removeWithEdge : function () {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tim"});
-      var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tom"});
-      var vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var vertex1 = g[vc1].save({first_name: "Tim"});
+      var vId1 = vertex1._id;
+      var vertex2 = g[vc1].save({first_name: "Tom"});
+      var vId2 = vertex2._id;
+      var edge = g[ec1].save(vId1, vId2, {});
       var edgeId = edge._id;
-      var result = g.unitTestVertexCollection1.remove(vertexId1);
+      var result = g[vc1].remove(vId1);
       assertTrue(result);
-      assertFalse(db.unitTestEdgeCollection1.exists(edgeId));
-      result = g.unitTestVertexCollection1.remove(vertexId2);
+      assertFalse(db[ec1].exists(edgeId));
+      result = g[vc1].remove(vId2);
       assertTrue(result);
     },
 
     test_eC_save_undirected : function() {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
-      var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
-      var vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
+      var vId1 = vertex1._id;
+      var vertex2 = g[vc1].save({first_name: "Tim"});
+      var vId2 = vertex2._id;
+      var edge = g[ec1].save(vertexId1, vId2, {});
       assertFalse(edge.error);
-      edgeId1 = edge._id;
-      g.unitTestVertexCollection1.remove(vertexId1);
-      g.unitTestVertexCollection1.remove(vertexId2);
+      g[vc1].remove(vId1);
+      g[vc1].remove(vId2);
     },
 
     test_eC_save_directed : function() {
-      var vertex1 = g.unitTestVertexCollection2.save({first_name: "Tom"});
+      var vertex1 = g[vc2].save({first_name: "Tom"});
       vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection4.save({first_name: "Tim"});
+      var vertex2 = g[vc4].save({first_name: "Tim"});
       vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection2.save(vertexId1, vertexId2, {});
+      var edge = g[ec2].save(vertexId1, vertexId2, {});
       assertFalse(edge.error);
-      edgeId2 = edge._id;
-      g.unitTestVertexCollection2.remove(vertexId1);
-      g.unitTestVertexCollection4.remove(vertexId2);
+      g[vc2].remove(vertexId1);
+      g[vc4].remove(vertexId2);
     },
 
     test_eC_save_withError : function() {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
       vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection2.save({first_name: "Tim"});
+      var vertex2 = g[vc2].save({first_name: "Tim"});
       vertexId2 = vertex2._id;
       try {
-        var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+        g[ec1].save(vertexId1, vertexId2, {});
+        fail();
       } catch (e) {
-        assertEqual(e, "Edge is not allowed between " + vertexId1 + " and " + vertexId2 + ".")
+        assertEqual(e, "Edge is not allowed between " + vertexId1 + " and " + vertexId2 + ".");
       }
-      g.unitTestVertexCollection1.remove(vertexId1);
-      g.unitTestVertexCollection2.remove(vertexId2);
+      g[vc1].remove(vertexId1);
+      g[vc2].remove(vertexId2);
     },
 
     test_eC_replace : function() {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex2 = g[vc1].save({first_name: "Tim"});
       var vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g.unitTestEdgeCollection1.replace(edgeId1, {label: "knows"});
+      edge = g[ec1].replace(edgeId1, {label: "knows"});
       assertFalse(edge.error);
-      var edgeObj = g.unitTestEdgeCollection1.document(edgeId1);
+      var edgeObj = g[ec1].document(edgeId1);
       assertEqual(edgeObj.label, "knows");
       assertEqual(edgeObj._id, edgeId1);
     },
 
     test_eC_update : function () {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex2 = g[vc1].save({first_name: "Tim"});
       var vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g.unitTestEdgeCollection1.replace(edgeId1, {label: "knows"});
-      edge = g.unitTestEdgeCollection1.update(edgeId1, {blub: "blub"});
+      edge = g[ec1].replace(edgeId1, {label: "knows"});
+      edge = g[ec1].update(edgeId1, {blub: "blub"});
       assertFalse(edge.error);
-      var edgeObj = g.unitTestEdgeCollection1.document(edgeId1);
+      var edgeObj = g[ec1].document(edgeId1);
       assertEqual(edgeObj.label, "knows");
       assertEqual(edgeObj.blub, "blub");
       assertEqual(edgeObj._id, edgeId1);
     },
 
     test_eC_remove : function () {
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex2 = g[vc1].save({first_name: "Tim"});
       var vertexId2 = vertex2._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g.unitTestEdgeCollection1.remove(edgeId1);
+      edge = g[ec1].remove(edgeId1);
       assertTrue(edge);
     },
 
