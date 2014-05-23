@@ -4250,7 +4250,7 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   "use strict";
 
-  result.push(CLONE({ vertex: vertex, edge: path.edges[0] }));
+  result.push(CLONE({ vertex: vertex, path: path }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4780,13 +4780,18 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
 
   var res = [];
   if (!example) {
-    example = {};
+    example = [{}];
   }
   if (typeof example === "string") {
     example = {_id : example};
   }
+  if (!Array.isArray(example)) {
+    example = [example];
+  }
   collectionList.forEach(function (c) {
-    res = res.concat(COLLECTION(c).byExample(example).toArray());
+    example.forEach(function (e) {
+      res = res.concat(COLLECTION(c).byExample(e).toArray());
+    });
   });
   return res;
 
@@ -4861,6 +4866,27 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge list of edges with list of examples
+////////////////////////////////////////////////////////////////////////////////
+function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
+
+  var result = [],filter;
+  if (examples.length === 0) {
+    return edges;
+  }
+  edges.forEach(function(edge) {
+    examples.forEach(function(example) {
+      filter = CLONE(example);
+      if (!(filter._id || filter._key)) {
+        filter._id = edge._id;
+      }
+      result.push(filter);
+    });
+  });
+  return result;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
@@ -4879,27 +4905,32 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     options.direction =  'any';
   }
 
-  var neighbors = [],
+  var neighbors = [],match,
   params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-  params.minDepth = options.minDepth || 1;
-  params.maxDepth = options.maxDepth || 1;
-  params.followEdges = options.edgeExamples;
+  params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
+  params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
+  params.paths = true;
+  options.edgeExamples = options.edgeExamples || [];
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-
 
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
+  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
+
   graph.fromVertices.forEach(function (v) {
-    neighbors = neighbors.concat(TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+    var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
       v._id,
       undefined,
       options.direction,
-      params));
+      params);
+
+    neighbors = neighbors.concat(e);
   });
   return neighbors;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected edges
@@ -4916,11 +4947,36 @@ function GENERAL_GRAPH_EDGES (
     options), result = [];
 
   neighbors.forEach(function (n) {
-    result.push(n.edge);
+    n.path.edges.forEach(function (e) {
+      result = result.concat(e);
+    });
   });
 
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected edges
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_VERTICES (
+  graphName,
+  vertexExamples,
+  options) {
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (!options.direction) {
+    options.direction =  'any';
+  }
+
+  options.fromVertexExample = vertexExamples;
+
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  return graph.fromVertices;
+}
+
 
 
 // -----------------------------------------------------------------------------
@@ -5035,6 +5091,7 @@ exports.GENERAL_GRAPH_TRAVERSAL = GENERAL_GRAPH_TRAVERSAL;
 exports.GENERAL_GRAPH_TRAVERSAL_TREE = GENERAL_GRAPH_TRAVERSAL_TREE;
 exports.GRAPH_EDGES = GRAPH_EDGES;
 exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
+exports.GENERAL_GRAPH_VERTICES = GENERAL_GRAPH_VERTICES;
 exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
 exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;

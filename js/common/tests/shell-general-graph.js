@@ -493,7 +493,7 @@ function GeneralGraphAQLQueriesSuite() {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setUp: query creation for edges
+/// @brief setUp: query creation for edges and vertices
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function() {
@@ -501,7 +501,7 @@ function GeneralGraphAQLQueriesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for edges
+/// @brief test: query creation for edges and vertices
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function() {
@@ -512,7 +512,6 @@ function GeneralGraphAQLQueriesSuite() {
 /// @brief test: restrict construct on edges
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
     test_restrictOnEdges: function() {
       var query = g._edges().restrict(included);
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
@@ -533,7 +532,55 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
     },
-*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for Vertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_vertices: function() {
+      var query = g._vertices(v1 + "/1");
+      assertEqual(query.printQuery(), 'FOR vertices_0 IN GRAPH_VERTICES('
+        + '@graphName,@vertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.vertexExample_0, {_id: v1 + "/1"});
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for outVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_outVertices: function() {
+      var query = g._outVertices(v1 + "/1");
+      assertEqual(query.printQuery(), "FOR vertices_0 IN GRAPH_VERTICES("
+        + '@graphName,@vertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.vertexExample_0, {_id: v1 + "/1"});
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: query creation for inVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    test_inVertices: function() {
+      var query = g._inVertices(v1 + "/1");
+      assertEqual(query.printQuery(), "FOR vertices_0 IN GRAPH_VERTICES("
+        + '@graphName,@vertexExample_0,@options_0)');
+      var bindVars = query.bindVars;
+      assertEqual(bindVars.graphName, graphName);
+      assertEqual(bindVars.vertexExample_0, {_id: v1 + "/1"});
+      var result = query.toArray();
+      assertEqual(result.length, 1);
+      assertTrue(findIdInResult(result,  v1 + "/1"), "Did not include " +  v1 + "/1");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: restrict error handling
@@ -589,10 +636,12 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: counting of query results
 ////////////////////////////////////////////////////////////////////////////////
+//
     test_queryCount: function() {
       var query = g._edges();
       assertEqual(query.count(), 3);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Cursor iteration
 ////////////////////////////////////////////////////////////////////////////////
@@ -851,11 +900,11 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.vertexExample_0, {});
       assertEqual(query.bindVars.options_0, {});
     },
-    /*
+
     test_getAllVerticies: function() {
       var result = g._vertices().toArray();
       assertEqual(result.length, 7);
-      var sorted = _.sort(result, "name");
+      var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, ubName);
       assertEqual(sorted[2].name, ucName);
@@ -864,7 +913,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[5].name, p2Name);
       assertEqual(sorted[6].name, p3Name);
     },
-    */
 
     test_getVertexByIdResultingAQL: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
@@ -875,14 +923,12 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    /*
     test_getVertexById: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
       var result = g._vertices(a_id).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0].name, uaName);
     },
-    */
 
     test_getVerticesByIdResultingAQL: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
@@ -893,17 +939,16 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.vertexExample_0, [{_id: a_id}, {_id: b_id}]);
       assertEqual(query.bindVars.options_0, {});
     },
-    /*
+
     test_getVerticiesById: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([a_id, b_id]).toArray();
       assertEqual(result.length, 2);
-      var sorted = _.sort(result, "name");
+      var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, ubName);
     },
-    */
 
     test_getVertexByExampleResultingAQL: function() {
       var query = g._vertices({
@@ -915,7 +960,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    /*
     test_getVertexByExample: function() {
       var result = g._vertices({
         name: uaName
@@ -923,7 +967,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 1);
       assertEqual(result[0].name, uaName);
     },
-    */
 
     test_getVerticiesByExampleResultingAQL: function() {
       var query = g._vertices([{
@@ -939,7 +982,7 @@ function ChainedFluentAQLResultsSuite() {
       ]);
       assertEqual(query.bindVars.options_0, {});
     },
-    /*
+
     test_getVerticiesByExample: function() {
       var result = g._vertices([{
         name: uaName
@@ -947,11 +990,10 @@ function ChainedFluentAQLResultsSuite() {
         name: p1Name
       }]).toArray();
       assertEqual(result.length, 2);
-      var sorted = _.sort(result, "name");
+      var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, p1Name);
     },
-    */
 
     test_getVerticiesByExampleAndIdMix: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
@@ -972,7 +1014,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    /*
     test_getVerticiesByExampleAndIdMix: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([{
@@ -983,12 +1024,11 @@ function ChainedFluentAQLResultsSuite() {
         name: ucName
       }]).toArray();
       assertEqual(result.length, 3);
-      var sorted = _.sort(result, "name");
+      var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, ubName);
       assertEqual(sorted[2].name, ucName);
     },
-    */
 
     test_getAllEdgesResultingAQL: function() {
       var query = g._edges();
@@ -1150,7 +1190,6 @@ function ChainedFluentAQLResultsSuite() {
       });
     },
 
-    /*
     test_getEdgesForSelectedVertex: function() {
       var result = g._vertices({name: uaName})
         .edges()
@@ -1159,7 +1198,6 @@ function ChainedFluentAQLResultsSuite() {
       findBoughts(result, [d1]);
       findFriends(result, [ud1, ud2]);
     },
-    */
 
     test_getInEdgesForSelectedVertexResultingAQL: function() {
       var query = g._vertices({name: ubName})
@@ -1177,7 +1215,6 @@ function ChainedFluentAQLResultsSuite() {
       });
     },
 
-    /*
     test_getInEdgesForSelectedVertex: function() {
       var result = g._vertices({name: ubName})
         .inEdges()
@@ -1185,7 +1222,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 1);
       findFriends(result, [ud1]);
     },
-    */
 
     test_getOutEdgesForSelectedVertexResultingAQL: function() {
       var query = g._vertices({name: ubName})
@@ -1203,7 +1239,6 @@ function ChainedFluentAQLResultsSuite() {
       });
     },
 
-    /*
     test_getOutEdgesForSelectedVertex: function() {
       var result = g._vertices({name: ubName})
         .outEdges()
@@ -1212,7 +1247,6 @@ function ChainedFluentAQLResultsSuite() {
       findBoughts(result, [d2, d3]);
       findFriends(result, [ud3]);
     },
-    */
 
     test_getVerticesForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
@@ -1230,7 +1264,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    /*
     test_getVerticesForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .vertices()
@@ -1240,7 +1273,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[0].name, uaName);
       assertEqual(sorted[1].name, ubName);
     },
-    */
 
     test_getToVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
@@ -1258,15 +1290,13 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    /*
     test_getToVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
-        .toVerticies()
+        .toVertices()
         .toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0].name, ubName);
     },
-    */
 
     test_getFromVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
@@ -1284,15 +1314,13 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    /*
     test_getFromVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
-        .fromVerticies()
+        .fromVertices()
         .toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0].name, uaName);
     },
-    */
 
     test_getAllVerticesThroughOutgoingEdgeResultingAQL: function() {
       var query = g._vertices({name: uaName})
@@ -1316,7 +1344,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_2, {});
     },
 
-    /*
     test_getAllVerticesThroughOutgoingEdges: function() {
       var result = g._vertices({name: uaName})
         .outEdges()
@@ -1328,7 +1355,6 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, ucName);
       assertEqual(sorted[2].name, p1Name);
     },
-    */
 
     test_getAllVerticesThroughOutgoingEdgesWithFilterResultingAQL: function() {
       var query = g._vertices({name: uaName})
@@ -1356,9 +1382,8 @@ function ChainedFluentAQLResultsSuite() {
         ]
       });
       assertEqual(query.bindVars.options_2, {});
-    }
+    },
 
-    /*
     test_getAllVerticesThroughOutgoingEdgesWithFilter: function() {
       var result = g._vertices({name: uaName})
       .outEdges([
@@ -1369,9 +1394,8 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 2);
       var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, ubName);
-      assertEqual(sorted[2].name, p1Name);
+      assertEqual(sorted[1].name, p1Name);
     }
-    */
   };
 }
 
