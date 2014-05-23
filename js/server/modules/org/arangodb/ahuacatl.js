@@ -4242,6 +4242,17 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for neighbors
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
+  "use strict";
+
+  result.push(CLONE({ vertex: vertex, edge: path.edges[0] }));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for tree traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -4440,7 +4451,6 @@ function TRAVERSAL_FUNC (func,
   }
 
   var result = [ ];
-
   if (v !== null) {
     var traverser = new TRAVERSAL.Traverser(config);
     traverser.traverse(result, v, e);
@@ -4688,86 +4698,6 @@ function GRAPH_EDGES (edgeCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected edges
-////////////////////////////////////////////////////////////////////////////////
-
-function GENERAL_GRAPH_EDGES (
-  graphname, startvertex, direction, edgeexamples, collectionRestrictions) {
-  "use strict";
-
-  // check graph exists and load edgeDefintions
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
-  if (!graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
-  }
-
-  // check startvertex exists and parse identifier
-  var start = DOCUMENT_HANDLE(startvertex);
-  if (!start) {
-    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "GRAPH_EDGES");
-  }
-  var startCollection = startvertex.split("/")[0];
-
-  var edgeCollections = [], func;
-
-  // validate direction and create edgeCollection array.
-  if (direction === "outbound") {
-    func = "outEdges";
-    graph.edgeDefinitions.forEach(function (def) {
-      if (def.from.indexOf(startCollection) !== -1 &&
-        edgeCollections.indexOf(def.collection) === -1) {
-        edgeCollections.push(def.collection);
-      }
-    });
-  }
-  else if (direction === "inbound") {
-    func = "inEdges";
-    graph.edgeDefinitions.forEach(function (def) {
-      if (def.to.indexOf(startCollection) !== -1 &&
-        edgeCollections.indexOf(def.collection) === -1) {
-        edgeCollections.push(def.collection);
-      }
-    });
-  }
-  else if (direction === "any") {
-    func = "edges";
-    graph.edgeDefinitions.forEach(function (def) {
-      if ((def.from.indexOf(startCollection) !== -1 ||
-        def.to.indexOf(startCollection) !== -1) &&
-        edgeCollections.indexOf(def.collection) === -1) {
-        edgeCollections.push(def.collection);
-      }
-    });
-  }
-  else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
-  }
-
-  if (collectionRestrictions) {
-    if (typeof collectionRestrictions === "string") {
-      collectionRestrictions = [collectionRestrictions];
-    }
-
-    if (Array.isArray(collectionRestrictions)) {
-      edgeCollections = edgeCollections.filter(function (element) {
-        return collectionRestrictions.indexOf(element) !== -1;
-      });
-    }
-  }
-
-  // Now get the result.
-
-  var result = [];
-
-  edgeCollections.forEach(function (c) {
-    c = COLLECTION(c);
-    result = result.concat(c[func](startvertex));
-  });
-
-  return FILTER(result, edgeexamples);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to filter edges based on examples
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4823,20 +4753,175 @@ function GRAPH_NEIGHBORS (vertexCollection,
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief CHECK IF RESTRICTION LIST MATCHES
+////////////////////////////////////////////////////////////////////////////////
+function FILTER_RESTRICTION (list, restrictionList) {
+  if (!restrictionList) {
+    return list;
+  }
+  if (typeof restrictionList === "string") {
+    restrictionList =  [restrictionList];
+  }
+  var result = [];
+  restrictionList.forEach(function (r) {
+     if (list.indexOf(r) !== -1) {
+        result.push(r);
+     }
+  });
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getAllDocsByExample
+////////////////////////////////////////////////////////////////////////////////
+function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
+
+  var res = [];
+  if (!example) {
+    example = {};
+  }
+  if (typeof example === "string") {
+    example = {_id : example};
+  }
+  collectionList.forEach(function (c) {
+    res = res.concat(COLLECTION(c).byExample(example).toArray());
+  });
+  return res;
+
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
+////////////////////////////////////////////////////////////////////////////////
+
+function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
+
+  // check graph exists and load edgeDefintions
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
+  if (!graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  var fromCollections = [], toCollection = [],edgeCollections = [];
+  graph.edgeDefinitions.forEach(function (def) {
+    if (options.direction === "outbound") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
+      );
+    }
+    else if (options.direction === "inbound") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
+      );
+    }
+    else if (options.direction === "any") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
+      );
+    }
+    else {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
+    }
+  });
+
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return {
+    fromVertices :DOCUMENTS_BY_EXAMPLE(
+      fromCollections.filter(removeDuplicates), options.fromVertexExample
+    ),
+    toVertices : DOCUMENTS_BY_EXAMPLE(
+      toCollection.filter(removeDuplicates), options.toVertexExample
+    ),
+    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample)
+  };
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_NEIGHBORS (graphName,
-                                  vertex,
-                                  direction,
-                                  examples) {
+                                  vertexExample,
+                                  options) {
   "use strict";
 
-  vertex = TO_ID(vertex);
-  var edges = GENERAL_GRAPH_EDGES(graphName, vertex, direction);
-  return FILTERED_EDGES(edges, vertex, direction, examples);
+  if (! options) {
+    options = {  };
+  }
+  options.fromVertexExample = vertexExample;
+  if (!options.direction) {
+    options.direction =  'any';
+  }
+
+  var neighbors = [],
+  params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  params.minDepth = options.minDepth || 1;
+  params.maxDepth = options.maxDepth || 1;
+  params.followEdges = options.edgeExamples;
+  params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+
+
+
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+
+  graph.fromVertices.forEach(function (v) {
+    neighbors = neighbors.concat(TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+      factory,
+      v._id,
+      undefined,
+      options.direction,
+      params));
+  });
+  return neighbors;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return connected edges
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_EDGES (
+  graphName,
+  vertexExample,
+  options) {
+  "use strict";
+
+
+  var neighbors = GENERAL_GRAPH_NEIGHBORS(graphName,
+    vertexExample,
+    options), result = [];
+
+  neighbors.forEach(function (n) {
+    result.push(n.edge);
+  });
+
+  return result;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
