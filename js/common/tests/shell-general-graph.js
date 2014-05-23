@@ -507,73 +507,23 @@ function GeneralGraphAQLQueriesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for edges
+/// @brief test: restrict construct on edges
 ////////////////////////////////////////////////////////////////////////////////
 
-    test_edges: function() {
-      var query = g._edges(v1 + "/1");
-      assertEqual(query.printQuery(), 'FOR edges_0 IN GRAPH_EDGES('
-        + '@graphName,@startVertexExample_0,@options_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      var result = query.toArray();
-      assertEqual(result.length, 3);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertTrue(findIdInResult(result, e2), "Did not include e2");
-      assertTrue(findIdInResult(result, e3), "Did not include e3");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for outEdges
-////////////////////////////////////////////////////////////////////////////////
 /*
-    test_outEdges: function() {
-      var query = g._outEdges(v1 + "/1");
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      var result = query.toArray();
-      assertEqual(result.length, 2);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertTrue(findIdInResult(result, e3), "Did not include e3");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-    },
-    */
-    /*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: query creation for inEdges
-////////////////////////////////////////////////////////////////////////////////
-
-    test_inEdges: function() {
-      var query = g._inEdges(v1 + "/1");
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e2), "Did not include e2");
-      assertFalse(findIdInResult(result, e1), "e1 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-    */
     test_restrictOnEdges: function() {
-      var query = g._edges(v1 + "/1").restrict(included);
+      var query = g._edges().restrict(included);
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0)');
+        + '@graphName,{},@options_0)');
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
       assertEqual(bindVars
         .options_0
         .edgeCollectionRestriction, [included]);
       assertEqual(bindVars
         .options_0
-        .direction, "any");
+        .direction, "outbound"
+      );
 
       var result = query.toArray();
       assertEqual(result.length, 2);
@@ -581,47 +531,7 @@ function GeneralGraphAQLQueriesSuite() {
       assertTrue(findIdInResult(result, e2), "Did not include e2");
       assertFalse(findIdInResult(result, e3), "e3 is not excluded");
     },
-
-    /*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict construct on inEdges
-////////////////////////////////////////////////////////////////////////////////
-
-    test_restrictOnInEdges: function() {
-      var query = g._inEdges(v1 + "/1").restrict(included);
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0,{},@restrictions_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      assertEqual(bindVars.restrictions_0, [included]);
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e2), "Did not include e2");
-      assertFalse(findIdInResult(result, e1), "e1 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-    */
-   /*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: restrict construct on outEdges
-////////////////////////////////////////////////////////////////////////////////
-
-    test_restrictOnOutEdges: function() {
-      var query = g._outEdges(v1 + "/1").restrict(included);
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0,{},@restrictions_0)');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      assertEqual(bindVars.restrictions_0, [included]);
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-    */
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: restrict error handling
@@ -657,14 +567,16 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
    
    test_filterOnEdges: function() {
-      var query = g._edges(v1 + "/1").filter({val: true});
+      var query = g._edges().filter({val: true});
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertexExample_0,@options_0) '
+        + '@graphName,{},@options_0) '
         + 'FILTER MATCHES(edges_0,[{"val":true}])');
       var bindVars = query.bindVars;
       assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertexExample_0, v1 + "/1");
-      assertEqual(bindVars.options_0, {direction: "any"});
+      assertEqual(bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [{}]
+      });
       var result = query.toArray();
       assertEqual(result.length, 1);
       assertTrue(findIdInResult(result, e1), "Did not include e1");
@@ -673,57 +585,17 @@ function GeneralGraphAQLQueriesSuite() {
    },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: filter construct on InEdges
-////////////////////////////////////////////////////////////////////////////////
-/* 
-   test_filterOnInEdges: function() {
-      var query = g._inEdges(v1 + "/1").filter({val: true});
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertex_0,"inbound") '
-        + 'FILTER MATCHES(edges_0,[{"val":true}])');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertex_0, v1 + "/1");
-      var result = query.toArray();
-      assertEqual(result.length, 0);
-      assertFalse(findIdInResult(result, e1), "e1 is not excluded");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: filter construct on OutEdges
-////////////////////////////////////////////////////////////////////////////////
-   
-/*
-    test_filterOnOutEdges: function() {
-      var query = g._outEdges(v1 + "/1").filter({val: true});
-      assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
-        + '@graphName,@startVertex_0,"outbound") '
-        + 'FILTER MATCHES(edges_0,[{"val":true}])');
-      var bindVars = query.bindVars;
-      assertEqual(bindVars.graphName, graphName);
-      assertEqual(bindVars.startVertex_0, v1 + "/1");
-      var result = query.toArray();
-      assertEqual(result.length, 1);
-      assertTrue(findIdInResult(result, e1), "Did not include e1");
-      assertFalse(findIdInResult(result, e2), "e2 is not excluded");
-      assertFalse(findIdInResult(result, e3), "e3 is not excluded");
-    },
-*/
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: counting of query results
 ////////////////////////////////////////////////////////////////////////////////
     test_queryCount: function() {
-      var query = g._edges(v1 + "/1");
+      var query = g._edges();
       assertEqual(query.count(), 3);
     },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Cursor iteration
 ////////////////////////////////////////////////////////////////////////////////
     test_cursorIteration: function() {
-      var query = g._edges(v1 + "/1");
+      var query = g._edges();
       var list = [e1, e2, e3];
       var next;
       assertTrue(query.hasNext());
@@ -745,7 +617,7 @@ function GeneralGraphAQLQueriesSuite() {
 /// @brief test: Cursor recreation after iteration
 ////////////////////////////////////////////////////////////////////////////////
     test_cursorIterationAndRecreation: function() {
-      var query = g._edges(v1 + "/1");
+      var query = g._edges();
       var list = [e1, e2, e3];
       var next;
       assertTrue(query.hasNext());
@@ -774,7 +646,7 @@ function GeneralGraphAQLQueriesSuite() {
 /// @brief test: Is cursor recreated after counting of query results and appending filter
 ////////////////////////////////////////////////////////////////////////////////
     test_cursorRecreationAfterCount: function() {
-      var query = g._edges(v1 + "/1");
+      var query = g._edges();
       assertEqual(query.count(), 3);
       query = query.filter({val: true});
       assertEqual(query.count(), 1);
@@ -784,7 +656,7 @@ function GeneralGraphAQLQueriesSuite() {
 /// @brief test: Is cursor recreated after to array of query results and appending filter
 ////////////////////////////////////////////////////////////////////////////////
     test_cursorRecreationAfterToArray: function() {
-      var query = g._edges(v1 + "/1");
+      var query = g._edges();
       var result = query.toArray();
       assertTrue(findIdInResult(result, e1), "Did not include e1");
       assertTrue(findIdInResult(result, e2), "Did not include e2");
@@ -1742,26 +1614,6 @@ function EdgesAndVerticesSuite() {
       assertTrue(edge);
     },
 
-    test_edges : function() {
-      var ids = fillCollections();
-      var result = g._edges(ids.vId11).toArray();
-      assertEqual(result.length, 13)
-    },
-
-    /*
-    test_inEdges : function() {
-      var ids = fillCollections();
-      var result = g._inEdges(ids.vId11).toArray();
-      assertEqual(result.length, 4)
-    },
-
-    test_outEdges : function() {
-      var ids = fillCollections();
-      var result = g._outEdges(ids.vId11).toArray();
-      assertEqual(result.length, 9)
-    },
-    */
-
     test_getInVertex : function() {
       var ids = fillCollections();
       var result = g._getInVertex(ids.eId11);
@@ -1792,9 +1644,9 @@ function EdgesAndVerticesSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(GeneralGraphAQLQueriesSuite);
-//jsunity.run(EdgesAndVerticesSuite);
-//jsunity.run(GeneralGraphCreationSuite);
+jsunity.run(GeneralGraphAQLQueriesSuite);
+jsunity.run(EdgesAndVerticesSuite);
+jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 
 return jsunity.done();
