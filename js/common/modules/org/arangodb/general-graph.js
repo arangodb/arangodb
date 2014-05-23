@@ -89,10 +89,8 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
       col = db._createEdgeCollection(name);
     }
     res = true;
-  } else if (!(col instanceof ArangoCollection) || col.type() !== type) {
-    throw "<" + name + "> must be a " +
-    (type === ArangoCollection.TYPE_DOCUMENT ? "document" : "edge")
-    + " collection";
+  } else if (!(col instanceof ArangoCollection)) {
+    throw "<" + name + "> must be an ArangoCollection ";
   }
   return res;
 };
@@ -486,6 +484,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
+      //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
       var vertexCollectionName = vertexId.split("/")[0];
       graphs.forEach(
@@ -526,8 +525,10 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(edgeCollections, function(obj, key) {
     var wrap = wrapCollection(obj);
+    // save
     var old_save = wrap.save;
     wrap.save = function(from, to, data) {
+      //check, if edge is allowed
       edgeDefinitions.forEach(
         function(edgeDefinition) {
           if (edgeDefinition.collection === key) {
@@ -541,6 +542,47 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       );
       return old_save(from, to, data);
+    };
+
+    // remove
+    var old_remove = wrap.remove;
+    wrap.remove = function(edgeId, options) {
+      //if _key make _id (only on 1st call)
+      if (edgeId.indexOf("/") === -1) {
+        edgeId = key + "/" + edgeId;
+      }
+      var edgeCollection = edgeId.split("/")[0];
+      var graphs = getGraphCollection().toArray();
+      var result = old_remove(edgeId, options);
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                // if collection of edge to be deleted is in from or to
+                if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+                  //search all edges of the graph
+                  var edges = db[collection].toArray();
+                  edges.forEach(
+                    function (edge) {
+                      // if from is
+                      if (edge._from === edgeId || edge._to === edgeId) {
+                        var newGraph = _graph(graph._key);
+                        newGraph[collection].remove(edge._id, options);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          }
+        }
+      );
+      return result;
     };
     self[key] = wrap;
   });
