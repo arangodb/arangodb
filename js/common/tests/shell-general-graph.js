@@ -925,7 +925,7 @@ function ChainedFluentAQLResultsSuite() {
     return "FOR edges_" + depth + " IN "
       + "GRAPH_EDGES("
       + "@graphName,"
-      + "@startVertexExample_" + depth + ","
+      + "{},"
       + "@options_" + depth + ")";
   };
 
@@ -1085,9 +1085,9 @@ function ChainedFluentAQLResultsSuite() {
       var query = g._edges();
       var stmt = query.printQuery();
       assertEqual(stmt, plainEdgesQueryStmt(0));
-      assertEqual(query.bindVars.startVertexExample_0, {});
       assertEqual(query.bindVars.options_0, {
-        direction: "outbound"
+        direction: "outbound",
+        edgeExamples: [{}]
       });
     },
 
@@ -1098,11 +1098,31 @@ function ChainedFluentAQLResultsSuite() {
       findBoughts(result, [d1, d2, d3, d4, d5]);
     },
 
+    test_getEdgeByIdResultingAQL: function() {
+      var a_id = g[hasBought].firstExample({date: d1})._id;
+      var query = g._edges(a_id);
+      var stmt = query.printQuery();
+      assertEqual(stmt, plainEdgesQueryStmt(0));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [{_id: a_id}]
+      });
+    },
+
     test_getEdgeById: function() {
-      var a_id = g[hasBought].byExample({date: d1})._id;
+      var a_id = g[hasBought].firstExample({date: d1})._id;
       var result = g._edges(a_id).toArray();
       assertEqual(result.length, 1);
       findBoughts(result, [d1]);
+    },
+
+    test_getEdgesByIdResultingAQL: function() {
+      var a_id = g[hasBought].byExample({date: d1})._id;
+      var b_id = g[isFriend].byExample({since: ud2})._id;
+      var result = g._edges([a_id, b_id]).toArray();
+      assertEqual(result.length, 2);
+      findBoughts(result, [d1]);
+      findFriends(result, [ud2]);
     },
 
     test_getEdgesById: function() {
