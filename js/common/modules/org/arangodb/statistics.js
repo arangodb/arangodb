@@ -38,20 +38,6 @@ var db = internal.db;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cluster id or undefined for standalone
-////////////////////////////////////////////////////////////////////////////////
-
-var clusterId;
-
-if (cluster.isCluster()) {
-  clusterId = ArangoServerState.id();
-}
-  
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -59,7 +45,7 @@ if (cluster.isCluster()) {
 /// @brief lastEntry
 ////////////////////////////////////////////////////////////////////////////////
 
-function lastEntry (collection, start) {
+function lastEntry (collection, start, clusterId) {
   'use strict';
 
   var filter = "";
@@ -251,7 +237,7 @@ function computePerSeconds (current, prev) {
 /// @brief computes the 15 minute averages
 ////////////////////////////////////////////////////////////////////////////////
 
-function compute15Minute (start) {
+function compute15Minute (start, clusterId) {
   'use strict';
 
   var filter = "";
@@ -395,9 +381,18 @@ exports.historian = function () {
   var statsRaw = db._statisticsRaw;
   var statsCol = db._statistics;
 
+  var clusterId;
+
+  if (cluster.isCluster()) {
+    clusterId = ArangoServerState.id();
+  }
+
   try {
     var now = internal.time();
-    var prevRaw = lastEntry('_statisticsRaw', now - 2 * exports.STATISTICS_INTERVALL);
+    var prevRaw = lastEntry(
+      '_statisticsRaw',
+      now - 2 * exports.STATISTICS_INTERVALL,
+      clusterId);
 
     // create new raw statistics
     var raw = {};
@@ -420,7 +415,7 @@ exports.historian = function () {
 
       if (perSecs !== null) {
         if (clusterId !== undefined) {
-          statsCol.clusterId = clusterId;
+          perSecs.clusterId = clusterId;
         }
 
         statsCol.save(perSecs);
@@ -441,19 +436,32 @@ exports.historianAverage = function () {
 
   var stats15m = db._statistics15;
 
+  var clusterId;
+
+  if (cluster.isCluster()) {
+    clusterId = ArangoServerState.id();
+  }
+
   try {
     var now = internal.time();
 
     // check if need to create a new 15 min intervall
-    var prev15 = lastEntry('_statistics15', now - 2 * exports.STATISTICS_HISTORY_INTERVALL);
+    var prev15 = lastEntry(
+      '_statistics15',
+      now - 2 * exports.STATISTICS_HISTORY_INTERVALL,
+      clusterId);
+
     var stat15;
+    var start;
 
     if (prev15 === null) {
-      stat15 = compute15Minute(now - exports.STATISTICS_HISTORY_INTERVALL);
+      start = now - exports.STATISTICS_HISTORY_INTERVALL;
     }
     else {
-      stat15 = compute15Minute(prev15.time);
+      start = prev15.time;
     }
+
+    stat15 = compute15Minute(start, clusterId);
 
     if (stat15 !== undefined) {
       if (clusterId !== undefined) {
