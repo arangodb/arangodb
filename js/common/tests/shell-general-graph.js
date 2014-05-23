@@ -1117,21 +1117,41 @@ function ChainedFluentAQLResultsSuite() {
     },
 
     test_getEdgesByIdResultingAQL: function() {
-      var a_id = g[hasBought].byExample({date: d1})._id;
-      var b_id = g[isFriend].byExample({since: ud2})._id;
+      var a_id = g[hasBought].firstExample({date: d1})._id;
+      var b_id = g[isFriend].firstExample({since: ud2})._id;
+      var query = g._edges([a_id, b_id]);
+      var stmt = query.printQuery();
+      assertEqual(stmt, plainEdgesQueryStmt(0));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [
+          {_id: a_id},
+          {_id: b_id}
+        ]
+      });
+    },
+
+    test_getEdgesById: function() {
+      var a_id = g[hasBought].firstExample({date: d1})._id;
+      var b_id = g[isFriend].firstExample({since: ud2})._id;
       var result = g._edges([a_id, b_id]).toArray();
       assertEqual(result.length, 2);
       findBoughts(result, [d1]);
       findFriends(result, [ud2]);
     },
 
-    test_getEdgesById: function() {
-      var a_id = g[hasBought].byExample({date: d1})._id;
-      var b_id = g[isFriend].byExample({since: ud2})._id;
-      var result = g._edges([a_id, b_id]).toArray();
-      assertEqual(result.length, 2);
-      findBoughts(result, [d1]);
-      findFriends(result, [ud2]);
+    test_getEdgeByExampleResultingAQL: function() {
+      var query = g._edges({
+        date: d2
+      });
+      var stmt = query.printQuery();
+      assertEqual(stmt, plainEdgesQueryStmt(0));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [
+          {date: d2}
+        ]
+      });
     },
 
     test_getEdgeByExample: function() {
@@ -1139,7 +1159,24 @@ function ChainedFluentAQLResultsSuite() {
         date: d2
       }).toArray();
       assertEqual(result.length, 1);
-      findBoughts(result, d2);
+      findBoughts(result, [d2]);
+    },
+
+    test_getEdgesByExampleResultingAQL: function() {
+      var query = g._edges([{
+        since: ud3
+      },{
+        date: d3
+      }]);
+      var stmt = query.printQuery();
+      assertEqual(stmt, plainEdgesQueryStmt(0));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [
+          {since: ud3},
+          {date: d3}
+        ]
+      });
     },
 
     test_getEdgesByExample: function() {
@@ -1153,8 +1190,29 @@ function ChainedFluentAQLResultsSuite() {
       findFriends(result, [ud3]);
     },
 
+    test_getEdgesByExampleAndIdMixResultingAQL: function() {
+      var b_id = g[hasBought].firstExample({date: d1})._id;
+      var query = g._edges([{
+        date: d5
+      },
+      b_id,
+      {
+        since: ud1
+      }]);
+      var stmt = query.printQuery();
+      assertEqual(stmt, plainEdgesQueryStmt(0));
+      assertEqual(query.bindVars.options_0, {
+        direction: "outbound",
+        edgeExamples: [
+          {date: d5},
+          {_id: b_id},
+          {since: ud1}
+        ]
+      });
+    },
+
     test_getEdgesByExampleAndIdMix: function() {
-      var b_id = g[hasBought].byExample({date: d1})._id;
+      var b_id = g[hasBought].firstExample({date: d1})._id;
       var result = g._edges([{
         date: d5
       },
