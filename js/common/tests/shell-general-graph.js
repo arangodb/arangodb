@@ -1026,6 +1026,117 @@ function EdgesAndVerticesSuite() {
       assertTrue(edge);
     },
 
+    test_eC_removeWithEdgesAsVertices : function () {
+      var myGraphName = unitTestGraphName + "0815";
+      var g2 = graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition("unitTestEdgeCollection02",
+            ["unitTestEdgeCollection1"], ["unitTestVertexCollection01"]
+          )
+        )
+      );
+      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertexId2 = vertex2._id;
+      var vertex3 = g2.unitTestVertexCollection01.save({first_name: "Ralph"});
+      var vertexId3 = vertex3._id;
+      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edge2 = g2.unitTestEdgeCollection02.save(edge._id, vertexId3, {});
+
+      var edgeId1 = edge._id;
+      edge = g.unitTestEdgeCollection1.remove(edgeId1);
+      assertTrue(edge);
+      assertFalse(db._exists(edge2._id));
+      graph._drop(myGraphName);
+      assertFalse(graph._exists(myGraphName));
+    },
+
+    test_eC_removeWithEdgesAsVerticesCircle : function () {
+      var gN1 = "unitTestGraphCircle1";
+      var gN2 = "unitTestGraphCircle2";
+      var gN3 = "unitTestGraphCircle3";
+      var gN4 = "unitTestGraphCircle4";
+      var eC1 = "unitTestEdgeCollectionCircle1";
+      var eC2 = "unitTestEdgeCollectionCircle2";
+      var eC3 = "unitTestEdgeCollectionCircle3";
+      var eC4 = "unitTestEdgeCollectionCircle4";
+      var vC1 = "unitTestVertexCollectionCircle1";
+      var vC2 = "unitTestVertexCollectionCircle2";
+      var vC3 = "unitTestVertexCollectionCircle3";
+      var vC4 = "unitTestVertexCollectionCircle4";
+
+      db._createEdgeCollection(eC1)
+      db._createEdgeCollection(eC2)
+      db._createEdgeCollection(eC3)
+      db._createEdgeCollection(eC4)
+      db._create(vC1)
+      db._create(vC2)
+      db._create(vC3)
+      db._create(vC4)
+      var vertex1 = db[vC1].save({});
+      var vertexId1 = vertex1._id;
+      var vertex2 = db[vC1].save({});
+      var vertexId2 = vertex2._id;
+      var vertex3 = db[vC1].save({});
+      var vertexId3 = vertex3._id;
+      var vertex4 = db[vC1].save({});
+      var vertexId4 = vertex4._id;
+      var edge1 = db[eC1].save(eC4 + "/4", vertexId1, {_key: "1"});
+      var edge2 = db[eC2].save(eC1 + "/1", vertexId2, {_key: "2"});
+      var edge3 = db[eC3].save(eC2 + "/2", vertexId3, {_key: "3"});
+      var edge4 = db[eC4].save(eC3 + "/3", vertexId4, {_key: "4"});
+
+      var g1 = graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(eC1, [eC4], [vC1])
+        )
+      );
+      var g2 = graph._create(
+        gN2,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(eC2, [eC1], [vC2])
+        )
+      );
+      var g3 = graph._create(
+        gN3,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(eC3, [eC2], [vC3])
+        )
+      );
+      var g4 = graph._create(
+        gN4,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(eC4, [eC3], [vC4])
+        )
+      );
+
+      assertTrue(db._exists(edge1._id));
+      assertTrue(db._exists(edge2._id));
+      assertTrue(db._exists(edge3._id));
+      assertTrue(db._exists(edge4._id));
+      assertTrue(db._exists(vertexId1));
+      assertTrue(db._exists(vertexId2));
+      assertTrue(db._exists(vertexId3));
+      assertTrue(db._exists(vertexId4));
+      var edge = g1[eC1].remove(edge1._id);
+      assertFalse(db._exists(edge1._id));
+      assertFalse(db._exists(edge2._id));
+      assertFalse(db._exists(edge3._id));
+      assertFalse(db._exists(edge4._id));
+      assertTrue(db._exists(vertexId1));
+      assertTrue(db._exists(vertexId2));
+      assertTrue(db._exists(vertexId3));
+      assertTrue(db._exists(vertexId4));
+
+      graph._drop(gN1);
+      graph._drop(gN2);
+      graph._drop(gN3);
+      graph._drop(gN4);
+    },
+
     test_edges : function() {
       var ids = fillCollections();
       var result = g._edges(ids.vId11).toArray();
@@ -1070,8 +1181,10 @@ function EdgesAndVerticesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(EdgesAndVerticesSuite);
+/*
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
+*/
 
 return jsunity.done();
 
