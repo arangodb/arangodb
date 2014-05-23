@@ -245,16 +245,20 @@ AQLGenerator.prototype._createCursor = function() {
   }
 };
 
-AQLGenerator.prototype._edges = function(startVertex, options) {
+AQLGenerator.prototype._edges = function(edgeExample, options) {
   this._clearCursor();
   this.options = options || {};
-  var ex = transformExample(startVertex);
+  var ex = transformExample(edgeExample);
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
-    + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
-    + this.stack.length + ',@options_'
+    + ' IN GRAPH_EDGES(@graphName,{}'
+    + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = ex;
+
+  if (!Array.isArray(ex)) {
+    ex = [ex];
+  }
+  this.options.edgeExamples = ex;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
@@ -830,16 +834,14 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _edges(vertexExample).
+/// @brief _edges(edgeExample).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(vertexExample) {
+Graph.prototype._edges = function(edgeExample) {
   var AQLStmt = new AQLGenerator(this);
-  if (!vertexExample || _.isEmpty(vertexExample)) {
-    // If no vertexExample is given a direction has to be specified
-    return AQLStmt.outEdges(vertexExample);
-  }
-  return AQLStmt.edges(vertexExample);
+  // If no direction is specified all edges are duplicated.
+  // => For initial requests a direction has to be set
+  return AQLStmt.outEdges(edgeExample);
 };
 
 
