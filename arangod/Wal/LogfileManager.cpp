@@ -131,7 +131,7 @@ LogfileManager* LogfileManager::instance () {
 /// @brief initialise the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::initialise (string* path) {
+void LogfileManager::initialise (std::string* path) {
   assert(Instance == nullptr);
 
   Instance = new LogfileManager(path);
