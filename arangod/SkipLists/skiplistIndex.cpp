@@ -699,6 +699,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       values._fields     = relationOperator->_fields;
       values._numFields  = relationOperator->_numFields;
       
+      break;   // this is to silence a compiler warning
     default: {
       // must not access relationOperator->xxx if the operator is not a
       // relational one otherwise we'll get invalid reads and the prog
