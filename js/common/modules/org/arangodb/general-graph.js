@@ -369,15 +369,23 @@ AQLGenerator.prototype.neighbors = function(startVertexExample, options) {
   return this;
 };
 
+AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
+  var i = this.stack.length - 1;
+  while (!this.stack[i].allowsRestrict()) {
+    i--;
+  }
+  return {
+    statement: this.stack[i],
+    options: this.bindVars["options_" + i]
+  };
+};
+
 AQLGenerator.prototype.restrict = function(restrictions) {
   this._clearCursor();
   var rest = stringToArray(restrictions);
-  var lastQuery = this.stack.pop();
-  if (!lastQuery.allowsRestrict()) {
-    this.stack.push(lastQuery);
-    throw "Restrict can only be applied directly after edge or vertex selectors";
-  }
-  var opts = this.bindVars["options_" + this.stack.length];
+  var lastQueryInfo = this._getLastRestrictableStatementInfo();
+  var lastQuery = lastQueryInfo.statement;
+  var opts = lastQueryInfo.options;
   var restricts;
   if (lastQuery.isEdgeQuery()) {
     checkAllowsRestriction(
@@ -396,7 +404,6 @@ AQLGenerator.prototype.restrict = function(restrictions) {
     restricts = opts.vertexCollectionRestriction || [];
     opts.vertexCollectionRestriction = restricts.concat(restrictions);
   }
-  this.stack.push(lastQuery);
   return this;
 };
 
