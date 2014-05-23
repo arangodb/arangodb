@@ -412,13 +412,52 @@ typedef struct TRI_df_footer_marker_s {
 TRI_df_footer_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile document marker
+/// @brief begin transaction marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_document_marker_s {
-  TRI_df_marker_t base;   // 24 bytes
+typedef struct TRI_doc_begin_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+  uint32_t        _numCollections;
+#ifdef TRI_PADDING_32
+  char            _padding_begin_marker[4];
+#endif
 }
-TRI_df_document_marker_t;
+TRI_doc_begin_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief commit transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_commit_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_commit_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_abort_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_abort_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepare transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_prepare_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_prepare_transaction_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

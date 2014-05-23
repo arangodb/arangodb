@@ -147,7 +147,6 @@ typedef struct TRI_transaction_operation_s {
   TRI_doc_mptr_t*               _newHeader;
   TRI_doc_mptr_t*               _oldHeader;
   TRI_doc_mptr_t                _oldData;
-  TRI_df_marker_t*              _marker;
   TRI_voc_document_operation_e  _type;
 }
 TRI_transaction_operation_t;
@@ -270,19 +269,6 @@ int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t*,
                                        TRI_voc_fid_t*,
                                        struct TRI_df_marker_s**,
                                        const bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a document operation marker into the datafile
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteOperationDocumentCollection (TRI_document_collection_t*,
-                                          TRI_voc_document_operation_e,
-                                          TRI_doc_mptr_t*,
-                                          TRI_doc_mptr_t*,
-                                          TRI_doc_mptr_t*,
-                                          TRI_df_marker_t*,
-                                          struct TRI_df_marker_s**,
-                                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
