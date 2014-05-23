@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global describe, beforeEach, afterEach, it, spyOn, expect, jQuery*/
 /*global runs, waitsFor, jasmine, waits*/
 /*global $, console, arangoHelper */
 (function () {
@@ -70,19 +70,19 @@
       tile1 = new window.CollectionListItemView({
         model: edgeCol,
         collectionsView: myView
-      })
+      });
       $('#collectionsThumbnailsIn').append(tile1.render().el);
 
       tile2 = new window.CollectionListItemView({
         model: docCol,
         collectionsView: myView
-      })
+      });
       $('#collectionsThumbnailsIn').append(tile2.render().el);
 
       tile3 = new window.CollectionListItemView({
         model: sysCol,
         collectionsView: myView
-      })
+      });
       $('#collectionsThumbnailsIn').append(tile3.render().el);
 
       window.modalView = new window.ModalView();
@@ -100,7 +100,7 @@
           return {
             journalSize: 33554432,
             waitForSync: true
-          }
+          };
         });
 
         spyOn(window.modalView, "show");
@@ -115,7 +115,7 @@
           return {
             journalSize: 33554432,
             waitForSync: true
-          }
+          };
         });
 
         spyOn(window.modalView, "show");
