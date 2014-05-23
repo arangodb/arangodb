@@ -248,12 +248,13 @@ AQLGenerator.prototype._createCursor = function() {
 AQLGenerator.prototype._edges = function(startVertex, options) {
   this._clearCursor();
   this.options = options || {};
+  var ex = transformExample(startVertex);
   var edgeName = "edges_" + this.stack.length;
   var query = "FOR " + edgeName
     + " IN GRAPH_EDGES(@graphName,@startVertexExample_"
     + this.stack.length + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = startVertex;
+  this.bindVars["startVertexExample_" + this.stack.length] = ex;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
@@ -273,16 +274,16 @@ AQLGenerator.prototype.inEdges = function(example) {
   return this._edges(example, {direction: "inbound"});
 };
 
-AQLGenerator.prototype._verticies = function(example, options) {
+AQLGenerator.prototype._vertices = function(example, options) {
   this._clearCursor();
-  this.options = options;
+  this.options = options || {};
   var ex = transformExample(example);
   var vertexName = "vertices_" + this.stack.length;
   var query = "FOR " + vertexName
-    + " IN GRAPH_EDGES(@graphName,@startEdge_"
+    + " IN GRAPH_VERTICES(@graphName,@vertexExample_"
     + this.stack.length + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startEdge_" + this.stack.length] = ex;
+  this.bindVars["vertexExample_" + this.stack.length] = ex;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "vertex");
   this.stack.push(stmt);
@@ -291,16 +292,19 @@ AQLGenerator.prototype._verticies = function(example, options) {
 
 };
 
-AQLGenerator.prototype.verticies = function(example) {
-  return this._verticies(example, "both");
+AQLGenerator.prototype.vertices = function(example) {
+  return this._vertices(example);
+  //TODO ADD filter
 };
 
 AQLGenerator.prototype.fromVerticies = function(example) {
-  return this._verticies(example, "from");
+  return this._vertices(example);
+  //TODO ADD filter
 };
 
 AQLGenerator.prototype.toVerticies = function(example) {
-  return this._verticies(example, "to");
+  return this._vertices(example);
+  //TODO ADD filter
 };
 
 AQLGenerator.prototype.getLastVar = function() {
@@ -870,9 +874,9 @@ Graph.prototype._outEdges = function(vertexExample) {
 /// @brief _vertices(edgeExample||edgeId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._verticies = function(example) {
+Graph.prototype._vertices = function(example) {
   var AQLStmt = new AQLGenerator(this);
-  return AQLStmt.edges(vertexExample, {direction : "outbound"});
+  return AQLStmt.vertices(example);
 };
 
 
