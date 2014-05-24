@@ -70,6 +70,14 @@ var Buffer = require("buffer").Buffer;
       period: intervall15, 
       command: "require('org/arangodb/statistics').historianAverage();"
     });
+
+    internal.registerTask({ 
+      id: "statistics-gc", 
+      name: "statistics-gc",
+      offset: Math.random() * intervall15 / 2, 
+      period: intervall15 / 2, 
+      command: "require('org/arangodb/statistics').garbageCollector();"
+    });
   }
 }());
 

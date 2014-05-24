@@ -42,6 +42,32 @@ var db = internal.db;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collectGarbage
+////////////////////////////////////////////////////////////////////////////////
+
+function collectGarbage (collection, start) {
+  'use strict';
+
+  var values = db._query(
+      "FOR s in @@collection "
+    + "  FILTER s.time < @start "
+    + "  RETURN s._id",
+    { start: start, '@collection': collection });
+
+  while (values.hasNext()) {
+    var id = values.next();
+
+    try {
+      db._remove(id);
+    }
+    catch (err) {
+    }
+  }
+
+  return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lastEntry
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -227,8 +253,19 @@ function computePerSeconds (current, prev) {
     internal.requestTimeDistribution);
 
   // io time
-  result.client.avgIoTime
-    = result.client.avgTotalTime - result.client.avgRequestTime - result.client.avgQueueTime;
+  d1 = current.client.ioTime.count - prev.client.ioTime.count;
+
+  if (d1 === 0) {
+    result.client.avgIoTime = 0;
+  }
+  else {
+    result.client.avgIoTime = (current.client.ioTime.sum - prev.client.ioTime.sum) / d1;
+  }
+
+  result.client.ioTimePercent = avgPercentDistributon(
+    current.client.ioTime,
+    prev.client.ioTime,
+    internal.requestTimeDistribution);
 
   return result;
 }
@@ -476,6 +513,20 @@ exports.historianAverage = function () {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collects garbage
+////////////////////////////////////////////////////////////////////////////////
+
+exports.garbageCollector = function () {
+  'use strict';
+
+  var time = internal.time();
+
+  collectGarbage("_statistics", time - 60 * 60);
+  collectGarbage("_statisticsRaw", time - 60 * 60);
+  collectGarbage("_statistics15", time - 30 * 24 * 60 * 60);
+};
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
