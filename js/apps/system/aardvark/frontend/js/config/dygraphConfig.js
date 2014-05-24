@@ -241,7 +241,6 @@
           highlightCircleSize: 3,
           legend: "always", 
           labelsDiv: "div#detailLegend.dashboard-legend-inner"
-          // labelsDiv: document.getElementById("detailLegend")
         }
       );
       if (figure === "pageFaults") {
