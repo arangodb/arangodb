@@ -396,7 +396,7 @@
         /*jslint unparam: false*/
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-            .attr("dy", "0.5em")
+            // .attr("dy", "0.35em")
             .style("text-anchor", "middle")
             .text(function(d) {
                 var v = d.data.value / 1024 / 1024 / 1024;
@@ -404,7 +404,7 @@
 
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
-            .attr("dy", "0.5em")
+            // .attr("dy", "1em")
             .style("text-anchor", "middle")
             .text(function(d) { return d.data.key; });
       },

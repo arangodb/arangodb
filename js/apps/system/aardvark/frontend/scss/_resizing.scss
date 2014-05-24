@@ -188,7 +188,10 @@ div.resizecontainer {
         height: $dashboard-height - $dashboard-padding - 5px;
         width: $int-width;
       }
-      
+
+      #clusterGraphs svg text {
+        font-size: $legend-font;
+      }
     }
 
     .dashboard-small-chart {
