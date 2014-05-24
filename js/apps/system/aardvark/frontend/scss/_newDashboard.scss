@@ -22,7 +22,7 @@
   cursor: pointer;
   position: absolute;
   right: 9px;
-  top: 5px;
+  top: 6px;
 
   //&:hover {
     // color: $c-white;
@@ -123,6 +123,7 @@
 
   .dashboard-medium-chart-inner {
     @extend %clear-float;
+    padding-top: $dashboard-padding;
   }
 }
 
