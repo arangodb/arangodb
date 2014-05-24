@@ -253,8 +253,19 @@ function computePerSeconds (current, prev) {
     internal.requestTimeDistribution);
 
   // io time
-  result.client.avgIoTime
-    = result.client.avgTotalTime - result.client.avgRequestTime - result.client.avgQueueTime;
+  d1 = current.client.ioTime.count - prev.client.ioTime.count;
+
+  if (d1 === 0) {
+    result.client.avgIoTime = 0;
+  }
+  else {
+    result.client.avgIoTime = (current.client.ioTime.sum - prev.client.ioTime.sum) / d1;
+  }
+
+  result.client.ioTimePercent = avgPercentDistributon(
+    current.client.ioTime,
+    prev.client.ioTime,
+    internal.requestTimeDistribution);
 
   return result;
 }
