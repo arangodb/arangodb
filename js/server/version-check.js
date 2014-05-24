@@ -70,7 +70,7 @@
   // path to the VERSION file
   var versionFile = internal.db._path() + "/VERSION";
 
-  function runUpgrade (currentVersion) {
+  function runUpgrade (currentVersion, upgradeRun) {
     var allTasks = [];
     var activeTasks = [];
     var lastVersion = null;
@@ -101,35 +101,40 @@
     }
   
     // helper function to define a task
-    function addTask (name, description, fn) {
+    function addTask (name, description, fn, always) {
       // "description" is a textual description of the task that will be printed out on screen
       // "maxVersion" is the maximum version number the task will be applied for
-      var task = { name: name, description: description, func: fn };
 
-      allTasks.push(task);
+      if (upgradeRun || always) {
+        var task = { name: name, description: description, func: fn };
 
-      if (lastTasks[name] === undefined || lastTasks[name] === false) {
-        // task never executed or previous execution failed
-        activeTasks.push(task);
+        allTasks.push(task);
+
+        if (lastTasks[name] === undefined || lastTasks[name] === false) {
+          // task never executed or previous execution failed
+          activeTasks.push(task);
+        }
       }
     }
 
     // helper function to define a task that is run on upgrades only, but not on initialisation
     // of a new empty database
-    function addUpgradeTask (name, description, fn) {
+    function addUpgradeTask (name, description, fn, always) {
       if (cluster.isCoordinator()) {
         return;
       }
 
-      if (isInitialisation) {
-        // if we are initialising a new database, set the task to completed
-        // without executing it. this saves unnecessary migrations for empty
-        // databases
-        lastTasks[name] = true;
-      }
-      else {
-        // if we are upgrading, execute the task
-        addTask(name, description, fn);
+      if (upgradeRun || always) {
+        if (isInitialisation) {
+          // if we are initialising a new database, set the task to completed
+          // without executing it. this saves unnecessary migrations for empty
+          // databases
+          lastTasks[name] = true;
+        }
+        else {
+          // if we are upgrading, execute the task
+          addTask(name, description, fn);
+        }
       }
     }
 
@@ -159,9 +164,11 @@
     
     var procedure = isInitialisation ? "initialisation" : "upgrade";
    
-    if (! isInitialisation) { 
-      logger.log("starting upgrade from version " + (lastVersion || "unknown") 
-                  + " to " + internal.db._version());
+    if (upgradeRun) {
+      if (! isInitialisation) { 
+        logger.log("starting upgrade from version " + (lastVersion || "unknown") 
+                   + " to " + internal.db._version());
+      }
     }
 
 
@@ -656,7 +663,9 @@
     var StatisticsNames = [ "_statisticsRaw", "_statistics", "_statistics15" ];
 
     // create the _statistics collection
-    addTask("createStatistics3", "setup _statistics collection", function () {
+    addTask("createStatistics5",
+            "setup statistics collections: " + JSON.stringify(StatisticsNames),
+            function () {
       var result = true;
       var i;
 
@@ -674,6 +683,9 @@
             result = false;
           }
         }
+        else {
+          collection.truncate();
+        }
 
         if (collection !== null) {
           collection.getIndexes().forEach(function (idx) {
@@ -687,7 +699,8 @@
       }
 
       return result;
-    });
+    },
+    true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createConfiguration
@@ -709,8 +722,10 @@
 ////////////////////////////////////////////////////////////////////////////////
     
     // loop through all tasks and execute them
-    logger.log("Found " + allTasks.length + " defined task(s), "
-                + activeTasks.length + " task(s) to run");
+    if (upgradeRun || 0 < activeTasks.length) {
+      logger.log("Found " + allTasks.length + " defined task(s), "
+                 + activeTasks.length + " task(s) to run");
+    }
 
     var taskNumber = 0;
     var i;
@@ -761,7 +776,9 @@
         JSON.stringify({ version: currentVersion, tasks: lastTasks }));
     }
 
-    logger.log(procedure + " successfully finished");
+    if (upgradeRun || 0 < activeTasks.length) {
+      logger.log(procedure + " successfully finished");
+    }
 
     // successfully finished
     return true;
@@ -779,7 +796,7 @@
   var currentVersion = parseFloat(currentServerVersion[1]);
   
   if (cluster.isCoordinator()) {
-    var result = runUpgrade(currentVersion);
+    var result = runUpgrade(currentVersion, true);
     internal.initializeFoxx();
 
     return result;
@@ -787,7 +804,7 @@
 
   if (! fs.exists(versionFile)) {
     logger.info("No version information file found in database directory.");
-    return runUpgrade(currentVersion);
+    return runUpgrade(currentVersion, true);
   }
 
    // VERSION file exists, read its contents
@@ -802,13 +819,16 @@
   
   if (lastVersion === null) {
     logger.info("No VERSION file found in database directory.");
-    return runUpgrade(currentVersion);
+    return runUpgrade(currentVersion, true);
   }
 
   // version match!
   if (lastVersion === currentVersion) {
     if (internal.upgrade) {
-      runUpgrade(currentVersion);
+      runUpgrade(currentVersion, true);
+    }
+    else {
+      runUpgrade(currentVersion, false);
     }
 
     return true;
@@ -830,7 +850,7 @@
   // upgrade
   if (lastVersion < currentVersion) {
     if (internal.upgrade) {
-      return runUpgrade(currentVersion);
+      return runUpgrade(currentVersion, true);
     }
 
     logger.error("Database directory version (" + lastVersion
