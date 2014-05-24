@@ -4225,7 +4225,7 @@ pre.gv-object-view {
   cursor: pointer;
   position: absolute;
   right: 9px;
-  top: 5px; }
+  top: 6px; }
 
 .dashboard-large-chart {
   margin-right: 12px; }
@@ -4272,6 +4272,10 @@ pre.gv-object-view {
     color: rgba(0, 0, 0, 0.7); }
   .dashboard-medium-chart .dashboard-medium-chart-inner {
     padding-top: 5px; }
+  .dashboard-medium-chart .clusterChart .slice path {
+    stroke-opacity: 1;
+    stroke-width: 1.5px;
+    fill-opacity: 0.15; }
 
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: white;
