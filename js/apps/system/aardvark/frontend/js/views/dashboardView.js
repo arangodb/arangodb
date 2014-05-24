@@ -573,19 +573,19 @@
           }
           else if (dimensions.width < 299) {
             tickMarks = [0, 0.3334, 0.6667, 1];  
-            marginLeft = 75;
+            marginLeft = 77;
           }
           else if (dimensions.width < 379) {
-            marginLeft = 83;
+            marginLeft = 87;
           }
           else if (dimensions.width < 459) {
-            marginLeft = 85;
-          }
-          else if (dimensions.width < 539) {
             marginLeft = 95;
           }
+          else if (dimensions.width < 539) {
+            marginLeft = 100;
+          }
           else if (dimensions.width < 619) {
-            marginLeft = 98;
+            marginLeft = 105;
           }
 
           var chart = nv.models.multiBarHorizontalChart()
