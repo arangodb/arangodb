@@ -266,7 +266,7 @@ namespace triagens {
             if (fd != STDIN_FILENO) {
               TRI_CLOSE(fd);
             }
-            _errorMessage = "import file is too big.";
+            _errorMessage = "import file is too big. please increase the value of --batch-size (currently " + StringUtils::itoa(_maxUploadSize) + ")";
             return false;
           }
 

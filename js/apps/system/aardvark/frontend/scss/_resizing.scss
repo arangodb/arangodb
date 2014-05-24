@@ -160,7 +160,7 @@ div.resizecontainer {
     }
 
     .dashboard-sub-bar-menu {
-      font-size: $subbar-font;
+      font-size: $subbar-font + 2px ;
     }
 
     .dashboard-medium-chart {
@@ -256,7 +256,7 @@ div.resizecontainer {
           .percentage {
             width: ((($int-width / 2) - 8px) * 1.4);
           }
-					
+
           .absolut {
             width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
           }
@@ -264,7 +264,7 @@ div.resizecontainer {
 
         .dashboard-bar-chart-chart {
           width: $int-width - 16px;
-					
+
           $int-height2: ($int-height - 20px);
           height: ($int-height2 * 2 / 3) - 5px;
           line-height: ($int-height2 * 2 / 3) - 5px;
@@ -299,9 +299,10 @@ div.resizecontainer {
           display: none;
         }
         font-size: $legend-font + 2px;
-        width: $legend-width + 10px;
         min-height: $dashboard-height - 10px;
+        width: $legend-width + 10px;
       }
+
       .modal-inner-detail {
         width: $int-width - $legend-width - 20px;
       }

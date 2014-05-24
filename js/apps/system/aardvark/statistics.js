@@ -41,20 +41,6 @@ var STATISTICS_INTERVALL = require("org/arangodb/statistics").STATISTICS_INTERVA
 var STATISTICS_HISTORY_INTERVALL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVALL;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cluster id or undefined for standalone
-////////////////////////////////////////////////////////////////////////////////
-
-var clusterId;
-
-if (cluster.isCluster()) {
-  clusterId = ArangoServerState.id();
-}
-  
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -460,6 +446,17 @@ controller.get("short", function (req, res) {
     start = internal.time() - STATISTICS_INTERVALL * 10;
   }
 
+  var clusterId;
+
+  if (dbServer === undefined) {
+    if (cluster.isCluster()) {
+      clusterId = ArangoServerState.id();
+    }
+  }
+  else {
+    clusterId = dbServer;
+  }
+
   var series = computeStatisticsShort(start, clusterId);
 
   res.json(series);
@@ -488,6 +485,17 @@ controller.get("long", function (req, res) {
     attrs[s[i]] = true;
   }
 
+  var clusterId;
+
+  if (dbServer === undefined) {
+    if (cluster.isCluster()) {
+      clusterId = ArangoServerState.id();
+    }
+  }
+  else {
+    clusterId = dbServer;
+  }
+
   var series = computeStatisticsLong(attrs, clusterId);
 
   res.json(series);
@@ -512,10 +520,15 @@ controller.get("cluster", function (req, res) {
   }
 
   var DBserver = req.parameters.DBserver;
+  var type = req.parameters.type;
   var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
   var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
 
-  var url = "/_admin/aardvark/statistics/full";
+  if (type !== "short" && type !== "long") {
+    type = short;
+  }
+
+  var url = "/_admin/aardvark/statistics/" + type;
   var sep = "?";
 
   if (req.parameters.hasOwnProperty("start")) {
