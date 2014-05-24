@@ -290,12 +290,14 @@ div.resizecontainer {
     .modal-chart-detail {
       $int-width: $content-size;
 
+      bottom: 12.1% !important;
       left: 50%;
       margin-left: -($int-width) / 2;
 				
       .modal-body {
+        // min-height: $dashboard-height;
         max-height: none;
-        min-height: $dashboard-height;
+        height: 95%;
         padding: 5px;
       }
 
@@ -310,6 +312,98 @@ div.resizecontainer {
 
       .modal-inner-detail {
         width: $int-width - $legend-width - 20px;
+      }
+    }
+
+    .modal-body {
+      .dashboard-large-chart {
+        $int-width: ($content-size * 2 / 3) - 9px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: $int-width - 12px;
+        }
+
+        .dashboard-large-chart-inner {
+          .dashboard-interior-chart {
+            width: $int-width - $legend-width - $legend-margin - 0px;
+          }
+        }
+      }
+      .dashboard-medium-chart {
+        $int-width: ($content-size / 2) - 21px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: $int-width - 2px;
+        }
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width - $legend-margin + 10px;
+        }
+
+        .dashboard-medium-chart-menu {
+          left: $int-width - $tendency_name-font - 3px;
+        }
+      }
+
+      .dashboard-small-chart {
+        $int-width: ($content-size / 3) - 13px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: $int-width - 12px;
+        }
+
+        .dashboard-small-chart-inner {
+          width: $int-width - 10px;
+
+          .dashboard-interior-chart {
+            width: $int-width - 10px;
+          }
+        }
+      }
+      .dashboard-tendency-container {
+        $int-width: ($content-size / 3) - 25px;
+
+        .dashboard-tendency-chart {
+
+          .dashboard-tendency,
+          .dashboard-subtitle-bar,
+          .dashboard-figure {
+            width: ($int-width / 2) - 19px;
+          }
+        }
+
+        .dashboard-sub-bar {
+          width: $int-width;
+        }
+      }
+
+      .dashboard-bar-chart-container {
+        $int-width: ($content-size / 3) - 18px;
+
+        .dashboard-bar-chart {
+          width: $int-width;
+
+          .dashboard-bar-chart-title {
+            .percentage {
+              width: ((($int-width / 2) - 8px) * 1.4);
+            }
+
+            .absolut {
+              width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+            }
+          }
+        }
+
+        .dashboard-bar-chart-chart {
+          width: $int-width - 16px;
+        }
+
+        .dashboard-sub-bar {
+          width: $int-width - 2px;
+        }
       }
     }
 
