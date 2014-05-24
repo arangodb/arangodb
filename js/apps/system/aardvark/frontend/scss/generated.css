@@ -4266,6 +4266,8 @@ pre.gv-object-view {
     z-index: 1000; }
   .dashboard-medium-chart .dashboard-medium-chart-menu:hover {
     color: rgba(0, 0, 0, 0.7); }
+  .dashboard-medium-chart .dashboard-medium-chart-inner {
+    padding-top: 5px; }
 
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: white;

@@ -50,9 +50,10 @@
     </div>
   <% } %>
 
-  <% var tendency = function(title, name) { %>
+  <% var tendency = function(title, name, arrows) { %>
     <div class="dashboard-tendency-container">
       <div class="dashboard-tendency-chart">
+        <% enlargeButton(name, arrows); %>
         <div class="dashboard-tendency">
           <% if (name === "asyncRequests") {%>
             <div class="dashboard-subtitle-bar">sync</div>
@@ -89,18 +90,18 @@
     <div class="dashboard-row">
       <% largeChart("requestsChart", "Requests per Second") %>
 
-      <% tendency("Request Types", "asyncRequests"); %>
-      <% tendency("Number of Client Connections", "clientConnections"); %>
+      <% tendency("Request Types", "asyncRequests", false); %>
+      <% tendency("Number of Client Connections", "clientConnections", false); %>
     </div>
     
     <div class="dashboard-row">
       <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
-      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
     </div>
     
     <div class="dashboard-row">
       <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
-      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
     </div>
   </div>
 
@@ -109,7 +110,7 @@
   </div>
 
   <div class="dashboard-row">
-    <% tendency("Number of threads", "numberOfThreads"); %>
+    <% tendency("Number of threads", "numberOfThreads", false); %>
 
     <div class="dashboard-bar-chart-container dashboard-spacer">
       <div class="dashboard-bar-chart">
@@ -126,7 +127,7 @@
       <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
 
-    <% tendency("Virtual Size in GB", "virtualSize"); %>
+    <% tendency("Virtual Size in GB", "virtualSize", false); %>
   </div>
   <div class="dashboard-row">
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>
