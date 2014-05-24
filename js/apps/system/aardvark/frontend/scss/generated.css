@@ -1369,10 +1369,10 @@ textarea,
 .fa-plus-square-o:before {
   content: "\f196"; }
 
-ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
+ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar .dashboard-sub-bar-menu, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
+div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar-menu, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
 div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
@@ -1424,6 +1424,11 @@ nav.navbar, footer.footer {
   background-color: #8f8d8c; }
   .button-neutral:hover, .button-close:hover, .button-neutral:focus, .button-close:focus {
     background-color: #736b68; }
+
+.dashboard-sub-bar-menu {
+  color: #8f8d8c; }
+  .dashboard-sub-bar-menu:hover, .dashboard-sub-bar-menu:focus {
+    color: #736b68; }
 
 .button-primary {
   background-color: #564e4a; }
@@ -2098,7 +2103,7 @@ div.resizecontainer {
       width: 138px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 10px; }
+    font-size: 12px; }
 
   .dashboard-medium-chart {
     width: 98px; }
@@ -2178,8 +2183,8 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       display: none;
       font-size: 12px;
-      width: 10px;
-      min-height: 190px; }
+      min-height: 190px;
+      width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 208px; }
 
@@ -2237,7 +2242,7 @@ div.resizecontainer {
       width: 298px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 10px; }
+    font-size: 12px; }
 
   .dashboard-medium-chart {
     width: 218px; }
@@ -2317,8 +2322,8 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       display: none;
       font-size: 12px;
-      width: 10px;
-      min-height: 190px; }
+      min-height: 190px;
+      width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 448px; }
 
@@ -2376,7 +2381,7 @@ div.resizecontainer {
       width: 458px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 10px; }
+    font-size: 12px; }
 
   .dashboard-medium-chart {
     width: 338px; }
@@ -2456,8 +2461,8 @@ div.resizecontainer {
     .modal-chart-detail .modal-dashboard-legend {
       display: none;
       font-size: 12px;
-      width: 10px;
-      min-height: 190px; }
+      min-height: 190px;
+      width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 688px; }
 
@@ -2515,7 +2520,7 @@ div.resizecontainer {
       width: 498px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 11px; }
+    font-size: 13px; }
 
   .dashboard-medium-chart {
     width: 458px; }
@@ -2594,8 +2599,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 13px;
-      width: 130px;
-      min-height: 215px; }
+      min-height: 215px;
+      width: 130px; }
     .modal-chart-detail .modal-inner-detail {
       width: 808px; }
 
@@ -2651,7 +2656,7 @@ div.resizecontainer {
       width: 648px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 13px; }
+    font-size: 15px; }
 
   .dashboard-medium-chart {
     width: 578px; }
@@ -2730,8 +2735,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 14px;
-      width: 140px;
-      min-height: 240px; }
+      min-height: 240px;
+      width: 140px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1038px; }
 
@@ -2787,7 +2792,7 @@ div.resizecontainer {
       width: 798px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 13px; }
+    font-size: 15px; }
 
   .dashboard-medium-chart {
     width: 698px; }
@@ -2866,8 +2871,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 15px;
-      width: 150px;
-      min-height: 290px; }
+      min-height: 290px;
+      width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1268px; }
 
@@ -2923,7 +2928,7 @@ div.resizecontainer {
       width: 938px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 14px; }
+    font-size: 16px; }
 
   .dashboard-medium-chart {
     width: 818px; }
@@ -3002,8 +3007,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 16px;
-      width: 170px;
-      min-height: 330px; }
+      min-height: 330px;
+      width: 170px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1488px; }
 
@@ -3059,7 +3064,7 @@ div.resizecontainer {
       width: 1088px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 15px; }
+    font-size: 17px; }
 
   .dashboard-medium-chart {
     width: 938px; }
@@ -3138,8 +3143,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
-      width: 180px;
-      min-height: 390px; }
+      min-height: 390px;
+      width: 180px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1718px; }
 
@@ -3195,7 +3200,7 @@ div.resizecontainer {
       width: 1278px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 15px; }
+    font-size: 17px; }
 
   .dashboard-medium-chart {
     width: 1058px; }
@@ -3274,8 +3279,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
-      width: 150px;
-      min-height: 290px; }
+      min-height: 290px;
+      width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1988px; }
 
@@ -3331,7 +3336,7 @@ div.resizecontainer {
       width: 1438px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 15px; }
+    font-size: 17px; }
 
   .dashboard-medium-chart {
     width: 1178px; }
@@ -3410,8 +3415,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
-      width: 150px;
-      min-height: 290px; }
+      min-height: 290px;
+      width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2228px; }
 
@@ -3467,7 +3472,7 @@ div.resizecontainer {
       width: 1598px; }
 
   .dashboard-sub-bar-menu {
-    font-size: 15px; }
+    font-size: 17px; }
 
   .dashboard-medium-chart {
     width: 1298px; }
@@ -3546,8 +3551,8 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 17px;
-      width: 150px;
-      min-height: 290px; }
+      min-height: 290px;
+      width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2468px; }
 
@@ -4205,18 +4210,21 @@ pre.gv-object-view {
   white-space: nowrap; }
 
 .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
-  border-left: 0px solid black; }
+  border-left: 0 solid black; }
   .dashboard-large-chart .dashboard-large-chart-inner:first-child, .dashboard-small-chart .dashboard-small-chart-inner:first-child, .dashboard-medium-chart:first-child, .dashboard-tendency-container:first-child, .dashboard-bar-chart-container:first-child {
     margin-left: 0; }
 
-.dashboard-sub-bar .dashboard-sub-bar-menu {
-  color: #e1e1e1;
-  cursor: pointer; }
-.dashboard-sub-bar .dashboard-sub-bar-menu:hover {
-  color: white; }
+.dashboard-large-chart, .dashboard-small-chart, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
+  margin-bottom: 10px;
+  position: relative; }
+
+.dashboard-sub-bar-menu {
+  cursor: pointer;
+  position: absolute;
+  right: 9px;
+  top: 5px; }
 
 .dashboard-large-chart {
-  margin-bottom: 10px;
   margin-right: 12px;
   position: relative; }
   .dashboard-large-chart .dashboard-large-chart-inner {
@@ -4228,26 +4236,20 @@ pre.gv-object-view {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       margin-bottom: 0; }
 
-.dashboard-small-chart {
-  margin-bottom: 10px; }
-  .dashboard-small-chart .dashboard-small-chart-inner {
-    background-color: white;
-    border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
-    border-top: 5px solid #e1e1e1; }
-    .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
-      fill-opacity: .15;
-      stroke-opacity: 1;
-      stroke-width: 1px; }
+.dashboard-small-chart .dashboard-small-chart-inner {
+  background-color: white;
+  border-left: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1;
+  border-top: 5px solid #e1e1e1; }
+  .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
+    fill-opacity: .15;
+    stroke-opacity: 1;
+    stroke-width: 1px; }
 
 .dashboard-medium-chart {
   background-color: white;
   border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1;
-  margin-bottom: 10px;
-  padding-top: 5px;
-  position: relative; }
+  border-right: 5px solid #e1e1e1; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
@@ -4265,46 +4267,42 @@ pre.gv-object-view {
   .dashboard-medium-chart .dashboard-medium-chart-menu:hover {
     color: rgba(0, 0, 0, 0.7); }
 
-.dashboard-tendency-container {
-  margin-bottom: 10px; }
-  .dashboard-tendency-container .dashboard-tendency-chart {
+.dashboard-tendency-container .dashboard-tendency-chart {
+  background-color: white;
+  border-left: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1;
+  border-top: 5px solid #e1e1e1; }
+  .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
     background-color: white;
-    border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
-    border-top: 5px solid #e1e1e1; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
-      background-color: white;
-      padding: 0px 8px 0px 8px;
-      margin-top: 5px; }
-      .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency:first-child {
-        border-right: 1px solid #e1e1e1; }
-      .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar {
-        border-bottom: 1px solid #e1e1e1;
-        text-align: right; }
-      .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure {
-        text-align: center; }
+    padding: 0px 8px 0px 8px;
+    margin-top: 5px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency:first-child {
+      border-right: 1px solid #e1e1e1; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar {
+      border-bottom: 1px solid #e1e1e1;
+      text-align: right; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure {
+      text-align: center; }
 
-.dashboard-bar-chart-container {
-  margin-bottom: 10px; }
-  .dashboard-bar-chart-container .dashboard-bar-chart {
-    background-color: white;
-    border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
-    border-top: 5px solid #e1e1e1; }
-    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-      margin-top: 5px;
-      padding: 0 8px; }
-      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
-        font-weight: 400; }
-      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
-        text-align: right; }
-    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
-      fill-opacity: .15;
-      stroke-opacity: 1;
-      stroke-width: 1px; }
+.dashboard-bar-chart-container .dashboard-bar-chart {
+  background-color: white;
+  border-left: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1;
+  border-top: 5px solid #e1e1e1; }
+  .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+    margin-top: 5px;
+    padding: 0 8px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+      font-weight: 400; }
+    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+      text-align: right; }
+  .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
+    fill-opacity: .15;
+    stroke-opacity: 1;
+    stroke-width: 1px; }
 
 .dashboard-legend .dashboard-legend-inner {
-  padding: 0 5px; }
+  padding: 0 5px 5px 0; }
 
 .dashboard-sub-bar {
   background-color: #686766;
