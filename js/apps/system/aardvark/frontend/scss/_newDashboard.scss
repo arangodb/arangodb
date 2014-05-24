@@ -16,18 +16,11 @@
 
 .dashboard-sub-bar-menu {
   @extend %pull-right;
-  // color: $c-e1grey;
   @extend %icon-neutral;
-  //color: red;
   cursor: pointer;
   position: absolute;
   right: 9px;
   top: 6px;
-
-  //&:hover {
-    // color: $c-white;
-    //color: red;
-  //}
 }
 
 .detail-chart {

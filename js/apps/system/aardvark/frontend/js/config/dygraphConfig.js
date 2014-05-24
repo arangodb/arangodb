@@ -170,7 +170,8 @@
     getDashBoardFigures : function (all) {
       var result = [], self = this;
       Object.keys(this.figureDependedOptions).forEach(function (k) {
-        if (self.figureDependedOptions[k].div || all) {
+        // ClusterRequestsPerSecond should not be ignored. Quick Fix
+        if (k !== "clusterRequestsPerSecond" && (self.figureDependedOptions[k].div || all)) {
           result.push(k);
         }
       });
