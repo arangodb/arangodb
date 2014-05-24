@@ -101,7 +101,7 @@
       pageFaults: {
         header : "Page Faults",
         visibility: [true, false],
-        labels: ["datetime", "Major Page Faults", "Minor Page Faults"],
+        labels: ["datetime", "Major Page", "Minor Page"],
         div: "pageFaultsChart",
         labelsKMG2: false
       },
