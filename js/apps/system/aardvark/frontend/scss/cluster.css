@@ -4270,8 +4270,7 @@ div.headerBar {
   div.headerBar input[type="radio"]:checked + label span {
     background: url("../img/check_radio_sheet.png") -57px top no-repeat; }
 
-div.headerBar a.arangoHeader,
-.modal-header .arangoHeader {
+div.headerBar a.arangoHeader {
   color: white;
   font-size: 16px;
   left: 5px;
@@ -4303,6 +4302,29 @@ div.breadcrumb a.disabledBread {
 
 .css-label-round {
   background-image: url("../img/dark-check-green-round.png"); }
+
+.modal-header, .modal-dashboard-header {
+  background-color: #686766;
+  border-bottom: 0 !important;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px; }
+  .modal-header .arangoHeader, .modal-dashboard-header .arangoHeader {
+    color: white;
+    font-size: 16px;
+    left: 5px;
+    position: relative;
+    top: 2px; }
+  .modal-header a, .modal-dashboard-header a {
+    top: 2px !important; }
+  .modal-header .close, .modal-dashboard-header .close {
+    color: white;
+    font-weight: 300;
+    margin-top: 2px;
+    opacity: .5; }
+    .modal-header .close:hover, .modal-dashboard-header .close:hover {
+      opacity: 1; }
 
 .modal-body {
   color: #736b68;
@@ -4399,29 +4421,13 @@ pre.gv-object-view {
   padding-right: 17px; }
 
 .modal-header {
-  background-color: #686766;
-  border-bottom: 0 !important;
   margin-left: 5px;
-  margin-right: 5px;
-  margin-top: 5px;
-  padding-left: 5px;
-  padding-right: 10px;
-  padding-top: 4px; }
+  margin-right: 5px; }
 
-.modal-header .arangoHeader {
-  position: relative;
-  top: 3px; }
-
-.modal-header a {
-  top: 2px !important; }
-
-.modal-header .close {
-  color: white;
-  font-weight: 300;
-  opacity: .5; }
-
-.modal-header .close:hover {
-  opacity: 1; }
+.modal-dashboard-header {
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 9px; }
 
 .modal-body .icon_arangodb_info {
   color: #736b68;
