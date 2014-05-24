@@ -693,7 +693,7 @@
     }
 
     // create the _statistics collection
-    addTask("createStatistics5",
+    addTask("createStatistics6",
             "setup statistics collections: " + JSON.stringify(StatisticsNames),
             function () {
       var result = true;
