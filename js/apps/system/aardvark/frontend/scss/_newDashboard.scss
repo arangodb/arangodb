@@ -126,6 +126,13 @@
     @extend %clear-float;
     padding-top: $dashboard-padding;
   }
+
+  .clusterChart .slice path {
+    stroke-opacity: 1;
+    stroke-width: 1.5px;
+    fill-opacity: 0.15;
+  }
+
 }
 
 
