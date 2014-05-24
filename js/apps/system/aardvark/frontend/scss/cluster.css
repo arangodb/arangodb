@@ -1454,19 +1454,19 @@ a.warning.coordinator, a.warning.dbserver {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
-  color: lightgrey; }
+  color: lightgray; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    color: grey; }
+    color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
-  fill: lightgrey; }
+  fill: lightgray; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    fill: grey; }
+    fill: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2109,715 +2109,1507 @@ div.resizecontainer {
   div.resizecontainer {
     width: 228px; }
 
+  .dashboard-large-chart {
+    width: 148px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 136px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 190px;
+      width: 138px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 12px; }
+
+  .dashboard-medium-chart {
+    width: 98px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 96px;
+      margin-left: -5px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      height: 190px;
+      width: 98px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 81px;
+      font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 98px; }
+
+  .dashboard-small-chart {
+    width: 68px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 56px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 58px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 195px;
+        width: 58px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 10px;
+          font-weight: 400;
+          fill: #666666; }
+
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 78.25px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 9px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 25.08333px;
+      line-height: 25.08333px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 40.16667px;
+      line-height: 19.08333px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 56px; }
+
+  .dashboard-bar-chart-container {
+    height: 77.75px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 58px;
+      height: 77.75px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 25.25px;
+        line-height: 25.25px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 29.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 11.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 42px;
+        height: 33.5px;
+        line-height: 33.5px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 38.5px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 56px; }
+
+  .modal-chart-detail {
+    width: 228px;
+    left: 50%;
+    margin-left: -114px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 200px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      min-height: 190px;
+      width: 10px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 208px; }
+
+  .percentage {
+    font-size: 14px; }
+
+  .absolut {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 10px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 16px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 10px;
+    font-weight: 400; }
+
   .dashboard-legend {
     display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
+    height: 195px;
+    font-size: 10px;
+    font-weight: 400;
+    width: 0px;
+    margin-top: -3px; }
 
   .dashboard-half-height-legend {
     display: none;
-    font-size: 8px;
-    width: 5px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -114px;
-    width: 228px; }
-
-  .dashboard-large-chart {
-    width: 152px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 142px; }
-
-  .dashboard-medium-chart {
-    width: 114px; }
-    .dashboard-medium-chart .dashboard-interior-chart {
-      width: 104px; }
-
-  .dashboard-small-chart {
-    width: 76px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 66px; }
-
-  .dashboard-tendency-chart {
-    width: 76px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 66px; }
-
-  div.modal-chart-detail {
-    margin-left: -109px;
-    width: 218px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 88px; }
-    div.modal-chart-detail .modal-body {
-      width: 143px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 85.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 75.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 64px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 54px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 42.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 32.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 42.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 32.66667px; } }
+    height: 100px;
+    font-size: 10px;
+    width: 0px; } }
 @media (min-width: 480px) and (max-width: 719px) {
   div.resizecontainer {
     width: 468px; }
 
+  .dashboard-large-chart {
+    width: 308px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 296px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 190px;
+      width: 298px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 12px; }
+
+  .dashboard-medium-chart {
+    width: 218px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 216px;
+      margin-left: -5px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      height: 190px;
+      width: 218px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 201px;
+      font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 218px; }
+
+  .dashboard-small-chart {
+    width: 148px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 136px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 138px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 195px;
+        width: 138px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 10px;
+          font-weight: 400;
+          fill: #666666; }
+
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 78.25px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 49px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 25.08333px;
+      line-height: 25.08333px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 40.16667px;
+      line-height: 19.08333px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 136px; }
+
+  .dashboard-bar-chart-container {
+    height: 77.75px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 138px;
+      height: 77.75px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 25.25px;
+        line-height: 25.25px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 85.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 35.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 122px;
+        height: 33.5px;
+        line-height: 33.5px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 38.5px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 136px; }
+
+  .modal-chart-detail {
+    width: 468px;
+    left: 50%;
+    margin-left: -234px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 200px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      min-height: 190px;
+      width: 10px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 448px; }
+
+  .percentage {
+    font-size: 14px; }
+
+  .absolut {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 10px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 16px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 10px;
+    font-weight: 400; }
+
   .dashboard-legend {
     display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
+    height: 195px;
+    font-size: 10px;
+    font-weight: 400;
+    width: 0px;
+    margin-top: -3px; }
 
   .dashboard-half-height-legend {
     display: none;
-    font-size: 8px;
-    width: 5px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -234px;
-    width: 468px; }
-
-  .dashboard-large-chart {
-    width: 312px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 302px; }
-
-  .dashboard-medium-chart {
-    width: 234px; }
-    .dashboard-medium-chart .dashboard-interior-chart {
-      width: 224px; }
-
-  .dashboard-small-chart {
-    width: 156px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 146px; }
-
-  .dashboard-tendency-chart {
-    width: 156px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 146px; }
-
-  div.modal-chart-detail {
-    margin-left: -229px;
-    width: 458px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 328px; }
-    div.modal-chart-detail .modal-body {
-      width: 383px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 245.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 235.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 184px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 174px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 122.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 112.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 122.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 112.66667px; } }
+    height: 100px;
+    font-size: 10px;
+    width: 0px; } }
 @media (min-width: 720px) and (max-width: 959px) {
   div.resizecontainer {
     width: 708px; }
 
+  .dashboard-large-chart {
+    width: 468px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 456px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 190px;
+      width: 458px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 12px; }
+
+  .dashboard-medium-chart {
+    width: 338px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 336px;
+      margin-left: -5px; }
+    .dashboard-medium-chart .dashboard-interior-chart {
+      height: 190px;
+      width: 338px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 321px;
+      font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 338px; }
+
+  .dashboard-small-chart {
+    width: 228px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 216px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 218px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 195px;
+        width: 218px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 10px;
+          font-weight: 400;
+          fill: #666666; }
+
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 78.25px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 89px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 25.08333px;
+      line-height: 25.08333px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 40.16667px;
+      line-height: 19.08333px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 216px; }
+
+  .dashboard-bar-chart-container {
+    height: 77.75px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 218px;
+      height: 77.75px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 25.25px;
+        line-height: 25.25px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 141.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 59.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 202px;
+        height: 33.5px;
+        line-height: 33.5px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 38.5px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 216px; }
+
+  .modal-chart-detail {
+    width: 708px;
+    left: 50%;
+    margin-left: -354px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 200px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      display: none;
+      font-size: 12px;
+      min-height: 190px;
+      width: 10px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 688px; }
+
+  .percentage {
+    font-size: 14px; }
+
+  .absolut {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 10px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 16px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 14px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 10px;
+    font-weight: 400; }
+
   .dashboard-legend {
     display: none;
-    font-size: 8px;
-    width: 10px; }
-
-  .modal-dashboard-legend {
-    display: none;
-    font-size: 8px;
-    width: 10px; }
+    height: 195px;
+    font-size: 10px;
+    font-weight: 400;
+    width: 0px;
+    margin-top: -3px; }
 
   .dashboard-half-height-legend {
     display: none;
-    font-size: 8px;
-    width: 5px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -354px;
-    width: 708px; }
-
-  .dashboard-large-chart {
-    width: 472px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 462px; }
-
-  .dashboard-medium-chart {
-    width: 354px; }
-    .dashboard-medium-chart .dashboard-interior-chart {
-      width: 344px; }
-
-  .dashboard-small-chart {
-    width: 236px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 226px; }
-
-  .dashboard-tendency-chart {
-    width: 236px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 226px; }
-
-  div.modal-chart-detail {
-    margin-left: -349px;
-    width: 698px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 568px; }
-    div.modal-chart-detail .modal-body {
-      width: 623px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 405.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 395.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 304px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 294px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 202.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 192.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 202.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 192.66667px; } }
+    height: 100px;
+    font-size: 10px;
+    width: 0px; } }
 @media (min-width: 960px) and (max-width: 1199px) {
   div.resizecontainer {
     width: 948px; }
 
-  .dashboard-legend {
-    font-size: 8px;
-    width: 120px; }
-
-  .modal-dashboard-legend {
-    font-size: 8px;
-    width: 120px; }
-
-  .dashboard-half-height-legend {
-    font-size: 8px;
-    width: 60px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -474px;
-    width: 948px; }
-
   .dashboard-large-chart {
-    width: 632px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 512px; }
+    width: 628px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 616px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 225px;
+      width: 498px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 13px; }
 
   .dashboard-medium-chart {
-    width: 474px; }
+    width: 458px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 456px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 354px; }
+      height: 225px;
+      width: 338px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 440px;
+      font-size: 13px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 225px;
+      width: 458px; }
 
   .dashboard-small-chart {
-    width: 316px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 196px; }
+    width: 308px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 296px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 298px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 232px;
+        width: 298px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 11px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 316px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 196px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 96.5px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 129px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 31.16667px;
+      line-height: 31.16667px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 52.33333px;
+      line-height: 25.16667px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 296px; }
 
-  div.modal-chart-detail {
-    margin-left: -469px;
-    width: 938px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 698px; }
-    div.modal-chart-detail .modal-body {
-      width: 863px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 565.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 445.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 424px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 304px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 282.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 162.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 282.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 162.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 96px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 298px;
+      height: 96px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 31.33333px;
+        line-height: 31.33333px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 197.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 83.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 282px;
+        height: 45.66667px;
+        line-height: 45.66667px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 50.66667px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 296px; }
+
+  .modal-chart-detail {
+    width: 948px;
+    left: 50%;
+    margin-left: -474px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 235px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 13px;
+      min-height: 225px;
+      width: 130px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 808px; }
+
+  .percentage {
+    font-size: 15px; }
+
+  .absolut {
+    font-size: 15px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 11px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 15px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 18px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 16px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 11px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 230px;
+    font-size: 11px;
+    font-weight: 400;
+    width: 120px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 117.5px;
+    font-size: 11px;
+    width: 60px; } }
 @media (min-width: 1200px) and (max-width: 1439px) {
   div.resizecontainer {
     width: 1188px; }
 
-  .dashboard-legend {
-    font-size: 11px;
-    width: 170px; }
-
-  .modal-dashboard-legend {
-    font-size: 11px;
-    width: 170px; }
-
-  .dashboard-half-height-legend {
-    font-size: 11px;
-    width: 85px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -594px;
-    width: 1188px; }
-
   .dashboard-large-chart {
-    width: 792px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 622px; }
+    width: 788px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 776px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 260px;
+      width: 648px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 15px; }
 
   .dashboard-medium-chart {
-    width: 594px; }
+    width: 578px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 576px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 424px; }
+      height: 260px;
+      width: 448px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 557px;
+      font-size: 16px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 260px;
+      width: 578px; }
 
   .dashboard-small-chart {
-    width: 396px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 226px; }
+    width: 388px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 376px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 378px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 267px;
+        width: 378px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 13px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 396px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 226px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 114px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 169px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 37px;
+      line-height: 37px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 64px;
+      line-height: 31px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 376px; }
 
-  div.modal-chart-detail {
-    margin-left: -589px;
-    width: 1178px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 888px; }
-    div.modal-chart-detail .modal-body {
-      width: 1103px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 725.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 555.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 544px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 374px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 362.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 192.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 362.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 192.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 113.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 378px;
+      height: 113.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 37.16667px;
+        line-height: 37.16667px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 253.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 107.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 362px;
+        height: 57.33333px;
+        line-height: 57.33333px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 62.33333px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 376px; }
+
+  .modal-chart-detail {
+    width: 1188px;
+    left: 50%;
+    margin-left: -594px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 270px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 14px;
+      min-height: 260px;
+      width: 140px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1038px; }
+
+  .percentage {
+    font-size: 18px; }
+
+  .absolut {
+    font-size: 18px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 13px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 18px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 22px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 20px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 13px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 265px;
+    font-size: 12px;
+    font-weight: 400;
+    width: 130px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 135px;
+    font-size: 12px;
+    width: 65px; } }
 @media (min-width: 1440px) and (max-width: 1679px) {
   div.resizecontainer {
     width: 1428px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -714px;
-    width: 1428px; }
-
   .dashboard-large-chart {
-    width: 952px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 752px; }
+    width: 948px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 936px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 290px;
+      width: 798px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 15px; }
 
   .dashboard-medium-chart {
-    width: 714px; }
+    width: 698px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 696px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 514px; }
+      height: 290px;
+      width: 558px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 675px;
+      font-size: 18px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 698px; }
 
   .dashboard-small-chart {
-    width: 476px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 276px; }
+    width: 468px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 456px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 458px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 297px;
+        width: 458px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 13px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 476px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 276px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 129px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 209px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 42px;
+      line-height: 42px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 74px;
+      line-height: 36px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 456px; }
 
-  div.modal-chart-detail {
-    margin-left: -709px;
-    width: 1418px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 1098px; }
-    div.modal-chart-detail .modal-body {
-      width: 1343px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 885.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 685.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 664px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 464px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 442.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 242.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 442.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 242.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 128.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 458px;
+      height: 128.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 42.16667px;
+        line-height: 42.16667px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 309.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 131.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 442px;
+        height: 67.33333px;
+        line-height: 67.33333px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 72.33333px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 456px; }
+
+  .modal-chart-detail {
+    width: 1428px;
+    left: 50%;
+    margin-left: -714px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 300px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 15px;
+      min-height: 290px;
+      width: 150px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1268px; }
+
+  .percentage {
+    font-size: 20px; }
+
+  .absolut {
+    font-size: 20px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 13px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 20px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 26px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 24px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 13px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 295px;
+    font-size: 13px;
+    font-weight: 400;
+    width: 140px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 150px;
+    font-size: 13px;
+    width: 70px; } }
 @media (min-width: 1680px) and (max-width: 1919px) {
   div.resizecontainer {
     width: 1668px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -834px;
-    width: 1668px; }
-
   .dashboard-large-chart {
-    width: 1112px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 912px; }
+    width: 1108px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 1096px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 330px;
+      width: 938px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 16px; }
 
   .dashboard-medium-chart {
-    width: 834px; }
+    width: 818px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 816px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 634px; }
+      height: 330px;
+      width: 658px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 791px;
+      font-size: 22px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 330px;
+      width: 818px; }
 
   .dashboard-small-chart {
-    width: 556px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 356px; }
+    width: 548px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 536px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 538px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 337px;
+        width: 538px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 14px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 556px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 356px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 149px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 249px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 48.66667px;
+      line-height: 48.66667px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 87.33333px;
+      line-height: 42.66667px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 536px; }
 
-  div.modal-chart-detail {
-    margin-left: -829px;
-    width: 1658px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 1338px; }
-    div.modal-chart-detail .modal-body {
-      width: 1583px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 1045.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 845.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 784px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 584px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 522.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 322.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 522.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 322.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 148.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 538px;
+      height: 148.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 48.83333px;
+        line-height: 48.83333px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 365.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 155.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 522px;
+        height: 80.66667px;
+        line-height: 80.66667px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 85.66667px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 536px; }
+
+  .modal-chart-detail {
+    width: 1668px;
+    left: 50%;
+    margin-left: -834px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 340px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 16px;
+      min-height: 330px;
+      width: 170px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1488px; }
+
+  .percentage {
+    font-size: 24px; }
+
+  .absolut {
+    font-size: 24px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 14px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 24px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 30px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 28px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 14px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 335px;
+    font-size: 14px;
+    font-weight: 400;
+    width: 160px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 170px;
+    font-size: 14px;
+    width: 80px; } }
 @media (min-width: 1920px) and (max-width: 2159px) {
   div.resizecontainer {
     width: 1908px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -954px;
-    width: 1908px; }
-
   .dashboard-large-chart {
-    width: 1272px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 1072px; }
+    width: 1268px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 1256px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 390px;
+      width: 1088px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 17px; }
 
   .dashboard-medium-chart {
-    width: 954px; }
+    width: 938px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 936px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 754px; }
+      height: 390px;
+      width: 768px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 907px;
+      font-size: 26px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 390px;
+      width: 938px; }
 
   .dashboard-small-chart {
-    width: 636px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 436px; }
+    width: 628px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 616px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 618px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 397px;
+        width: 618px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 14px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 636px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 436px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 179px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 289px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 58.66667px;
+      line-height: 58.66667px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 107.33333px;
+      line-height: 52.66667px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 616px; }
 
-  div.modal-chart-detail {
-    margin-left: -949px;
-    width: 1898px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 1578px; }
-    div.modal-chart-detail .modal-body {
-      width: 1823px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 1205.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 1005.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 904px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 704px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 602.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 402.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 602.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 402.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 178.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 618px;
+      height: 178.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 58.83333px;
+        line-height: 58.83333px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 421.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 179.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 602px;
+        height: 100.66667px;
+        line-height: 100.66667px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 105.66667px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 616px; }
+
+  .modal-chart-detail {
+    width: 1908px;
+    left: 50%;
+    margin-left: -954px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 400px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      min-height: 390px;
+      width: 180px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1718px; }
+
+  .percentage {
+    font-size: 28px; }
+
+  .absolut {
+    font-size: 28px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 28px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 34px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 32px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 14px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 395px;
+    font-size: 15px;
+    font-weight: 400;
+    width: 170px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 200px;
+    font-size: 15px;
+    width: 85px; } }
 @media (min-width: 2160px) and (max-width: 2399px) {
   div.resizecontainer {
     width: 2148px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -1074px;
-    width: 2148px; }
-
   .dashboard-large-chart {
-    width: 1432px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 1232px; }
+    width: 1428px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 1416px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 290px;
+      width: 1278px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 17px; }
 
   .dashboard-medium-chart {
-    width: 1074px; }
+    width: 1058px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 1056px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 874px; }
+      height: 290px;
+      width: 918px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 1033px;
+      font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1058px; }
 
   .dashboard-small-chart {
-    width: 716px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 516px; }
+    width: 708px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 696px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 698px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 297px;
+        width: 698px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 716px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 516px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 129px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 329px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 42px;
+      line-height: 42px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 74px;
+      line-height: 36px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 696px; }
 
-  div.modal-chart-detail {
-    margin-left: -1069px;
-    width: 2138px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 1818px; }
-    div.modal-chart-detail .modal-body {
-      width: 2063px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 1365.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 1165.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 1024px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 824px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 682.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 482.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 682.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 482.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 128.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 698px;
+      height: 128.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 42.16667px;
+        line-height: 42.16667px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 477.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 203.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 682px;
+        height: 67.33333px;
+        line-height: 67.33333px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 72.33333px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 696px; }
+
+  .modal-chart-detail {
+    width: 2148px;
+    left: 50%;
+    margin-left: -1074px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 300px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      min-height: 290px;
+      width: 150px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 1988px; }
+
+  .percentage {
+    font-size: 22px; }
+
+  .absolut {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 36px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 34px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 295px;
+    font-size: 15px;
+    font-weight: 400;
+    width: 140px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 150px;
+    font-size: 15px;
+    width: 70px; } }
 @media (min-width: 2400px) and (max-width: 2639px) {
   div.resizecontainer {
     width: 2388px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -1194px;
-    width: 2388px; }
-
   .dashboard-large-chart {
-    width: 1592px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 1392px; }
+    width: 1588px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 1576px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 290px;
+      width: 1438px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 17px; }
 
   .dashboard-medium-chart {
-    width: 1194px; }
+    width: 1178px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 1176px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 994px; }
+      height: 290px;
+      width: 1038px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 1153px;
+      font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1178px; }
 
   .dashboard-small-chart {
-    width: 796px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 596px; }
+    width: 788px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 776px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 778px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 297px;
+        width: 778px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 796px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 596px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 129px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 369px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 42px;
+      line-height: 42px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 74px;
+      line-height: 36px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 776px; }
 
-  div.modal-chart-detail {
-    margin-left: -1189px;
-    width: 2378px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 2058px; }
-    div.modal-chart-detail .modal-body {
-      width: 2303px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 1525.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 1325.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 1144px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 944px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 762.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 562.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 762.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 562.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 128.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 778px;
+      height: 128.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 42.16667px;
+        line-height: 42.16667px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 533.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 227.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 762px;
+        height: 67.33333px;
+        line-height: 67.33333px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 72.33333px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 776px; }
+
+  .modal-chart-detail {
+    width: 2388px;
+    left: 50%;
+    margin-left: -1194px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 300px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      min-height: 290px;
+      width: 150px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 2228px; }
+
+  .percentage {
+    font-size: 22px; }
+
+  .absolut {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 36px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 34px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 295px;
+    font-size: 15px;
+    font-weight: 400;
+    width: 140px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 150px;
+    font-size: 15px;
+    width: 70px; } }
 @media (min-width: 2640px) and (max-width: 2879px) {
   div.resizecontainer {
     width: 2628px; }
 
-  .dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .modal-dashboard-legend {
-    font-size: 14px;
-    width: 200px; }
-
-  .dashboard-half-height-legend {
-    font-size: 14px;
-    width: 100px; }
-
-  div.modal-chart-detail {
-    left: 50%;
-    margin-left: -1314px;
-    width: 2628px; }
-
   .dashboard-large-chart {
-    width: 1752px; }
-    .dashboard-large-chart .dashboard-interior-chart {
-      width: 1552px; }
+    width: 1748px; }
+    .dashboard-large-chart .dashboard-sub-bar {
+      width: 1736px; }
+    .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
+      height: 290px;
+      width: 1598px; }
+
+  .dashboard-sub-bar-menu {
+    font-size: 17px; }
 
   .dashboard-medium-chart {
-    width: 1314px; }
+    width: 1298px; }
+    .dashboard-medium-chart .dashboard-sub-bar {
+      width: 1296px;
+      margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      width: 1114px; }
+      height: 290px;
+      width: 1158px; }
+    .dashboard-medium-chart .dashboard-medium-chart-menu {
+      top: 0px;
+      left: 1273px;
+      font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1298px; }
 
   .dashboard-small-chart {
-    width: 876px; }
-    .dashboard-small-chart .dashboard-interior-chart {
-      width: 676px; }
+    width: 868px; }
+    .dashboard-small-chart .dashboard-sub-bar {
+      width: 856px; }
+    .dashboard-small-chart .dashboard-small-chart-inner {
+      width: 858px; }
+      .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
+        height: 297px;
+        width: 858px; }
+        .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
+          font-size: 15px;
+          font-weight: 400;
+          fill: #666666; }
 
-  .dashboard-tendency-chart {
-    width: 876px; }
-    .dashboard-tendency-chart .dashboard-interior-chart {
-      width: 676px; }
+  .dashboard-tendency-container .dashboard-tendency-chart {
+    height: 129px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      width: 409px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
+      height: 42px;
+      line-height: 42px; }
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+      height: 74px;
+      line-height: 36px;
+      padding-top: 5px; }
+  .dashboard-tendency-container .dashboard-sub-bar {
+    width: 856px; }
 
-  div.modal-chart-detail {
-    margin-left: -1309px;
-    width: 2618px; }
-    div.modal-chart-detail .modal-inner-detail {
-      width: 2298px; }
-    div.modal-chart-detail .modal-body {
-      width: 2543px; }
-    div.modal-chart-detail .dashboard-large-chart {
-      width: 1685.33333px; }
-      div.modal-chart-detail .dashboard-large-chart .dashboard-interior-chart {
-        width: 1485.33333px; }
-    div.modal-chart-detail .dashboard-medium-chart {
-      width: 1264px; }
-      div.modal-chart-detail .dashboard-medium-chart .dashboard-interior-chart {
-        width: 1064px; }
-    div.modal-chart-detail .dashboard-small-chart {
-      width: 842.66667px; }
-      div.modal-chart-detail .dashboard-small-chart .dashboard-interior-chart {
-        width: 642.66667px; }
-    div.modal-chart-detail .dashboard-tendency-chart {
-      width: 842.66667px; }
-      div.modal-chart-detail .dashboard-tendency-chart .dashboard-interior-chart {
-        width: 642.66667px; } }
+  .dashboard-bar-chart-container {
+    height: 128.5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart {
+      width: 858px;
+      height: 128.5px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
+        height: 42.16667px;
+        line-height: 42.16667px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
+          width: 589.4px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          width: 251.4px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+        width: 842px;
+        height: 67.33333px;
+        line-height: 67.33333px;
+        padding: 5px 8px 10px 8px; }
+        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
+          height: 72.33333px; }
+    .dashboard-bar-chart-container .dashboard-sub-bar {
+      width: 856px; }
+
+  .modal-chart-detail {
+    width: 2628px;
+    left: 50%;
+    margin-left: -1314px; }
+    .modal-chart-detail .modal-body {
+      max-height: none;
+      min-height: 300px;
+      padding: 5px; }
+    .modal-chart-detail .modal-dashboard-legend {
+      font-size: 17px;
+      min-height: 290px;
+      width: 150px; }
+    .modal-chart-detail .modal-inner-detail {
+      width: 2468px; }
+
+  .percentage {
+    font-size: 22px; }
+
+  .absolut {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-sub-bar {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-subtitle-bar {
+    font-size: 22px;
+    font-weight: 300; }
+
+  .dashboard-figure {
+    font-size: 36px;
+    font-weight: 400; }
+
+  .dashboard-figurePer {
+    font-size: 34px;
+    font-weight: 300; }
+
+  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+    font-size: 15px;
+    font-weight: 400; }
+
+  .dashboard-legend {
+    height: 295px;
+    font-size: 15px;
+    font-weight: 400;
+    width: 140px;
+    margin-top: -3px; }
+
+  .dashboard-half-height-legend {
+    height: 150px;
+    font-size: 15px;
+    width: 70px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -3287,7 +4079,7 @@ svg.clusterChart {
 .lineGraph {
   position: absolute; }
   .lineGraph .few .dygraph-legend > span.highlight {
-    border: 1px solid grey; }
+    border: 1px solid gray; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
   .lineGraph .many .dygraph-legend > span.highlight {

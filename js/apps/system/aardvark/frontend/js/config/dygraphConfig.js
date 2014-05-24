@@ -66,7 +66,11 @@
     figureDependedOptions: {
       clusterRequestsPerSecond: {
         showLabelsOnHighlight: true,
-        title: 'Requests per second',
+        title: '',
+        header : "Cluster Requests per Second",
+        stackedGraph: true,
+        div: "lineGraphLegend",
+        labelsKMG2: false,
         axes: {
           y: {
             valueFormatter: function (y) {
@@ -237,7 +241,7 @@
           showRangeSelector: true,
           interactionModel: null,
           showLabelsOnHighlight: true,
-          highlightCircleSize: 3,
+          highlightCircleSize: 2.5,
           legend: "always", 
           labelsDiv: "div#detailLegend.dashboard-legend-inner"
         }
