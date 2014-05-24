@@ -353,10 +353,11 @@
     },
 
     renderPieChart: function(dataset) {
-        var w = 280;
-        var h = 160;
+        var w = $("#clusterGraphs svg").width();
+        var h = $("#clusterGraphs svg").height();
         var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
-        var color = d3.scale.category20();
+        // var color = d3.scale.category20();
+        var color = this.dygraphConfig.colors;
 
         var arc = d3.svg.arc() //each datapoint will create one later.
             .outerRadius(radius - 20)
@@ -370,11 +371,11 @@
             });
         d3.select("#clusterGraphs").select("svg").remove();
         var pieChartSvg = d3.select("#clusterGraphs").append("svg")
-            .attr("width", w)
-            .attr("height", h)
+            // .attr("width", w)
+            // .attr("height", h)
             .attr("class", "clusterChart")
             .append("g") //someone to transform. Groups data.
-            .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
+            .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
 
         var arc2 = d3.svg.arc()
             .outerRadius(radius-2)
@@ -387,12 +388,15 @@
         slices.append("path")
             .attr("d", arc)
             .style("fill", function (item, i) {
-              return color(i);
+              return color[i % color.length];
+            })
+            .style("stroke", function (item, i) {
+              return color[i % color.length];
             });
         /*jslint unparam: false*/
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-            .attr("dy", ".35em")
+            .attr("dy", "0.5em")
             .style("text-anchor", "middle")
             .text(function(d) {
                 var v = d.data.value / 1024 / 1024 / 1024;
@@ -400,7 +404,7 @@
 
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
-            .attr("dy", ".35em")
+            .attr("dy", "0.5em")
             .style("text-anchor", "middle")
             .text(function(d) { return d.data.key; });
       },
@@ -444,10 +448,15 @@
           }
         }
 
+        var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
+        options.labelsDiv = $("#lineGraphLegend")[0];
+        
+        //labels: ["datetime", "Major Page", "Minor Page"],
+
         self.graph = new Dygraph(
           document.getElementById('lineGraph'),
           data,
-          {}
+          options
         );
       },
 
