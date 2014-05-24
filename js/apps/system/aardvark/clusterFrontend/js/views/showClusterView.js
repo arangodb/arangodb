@@ -451,7 +451,7 @@
         var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
         options.labelsDiv = $("#lineGraphLegend")[0];
         
-        labels: ["datetime", "Major Page", "Minor Page"],
+        //labels: ["datetime", "Major Page", "Minor Page"],
 
         self.graph = new Dygraph(
           document.getElementById('lineGraph'),

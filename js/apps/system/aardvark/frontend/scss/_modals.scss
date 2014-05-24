@@ -1,3 +1,38 @@
+%modal-header {
+  background-color: $c-bar-bg;
+  border-bottom: 0 !important;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px;
+
+  .arangoHeader {
+    color: $c-white;
+    font-size: 16px;
+    left: 5px;
+    position: relative;
+    top: 2px;
+  }
+
+  a {
+    top: 2px !important;
+  }
+
+  .close {
+    color: $c-modal-header;
+    font-weight: 300;
+    margin-top: 2px;
+    opacity: .5;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+
+}
+
+
 .modal-body {
   color: $c-btn-inverse;
   font-family: 'Open Sans', sans-serif !important;
@@ -161,33 +196,16 @@ pre.gv-object-view {
 }
 
 .modal-header {
-  background-color: $c-bar-bg;
-  border-bottom: 0 !important;
+  @extend %modal-header;
   margin-left: 5px;
   margin-right: 5px;
-  margin-top: 5px;
-  padding-left: 5px;
-  padding-right: 10px;
-  padding-top: 4px;
 }
 
-.modal-header .arangoHeader {
-  position: relative;
-  top: 3px;
-}
-
-.modal-header a {
-  top: 2px !important;
-}
-
-.modal-header .close {
-  color: $c-modal-header;
-  font-weight: 300;
-  opacity: .5;
-}
-
-.modal-header .close:hover {
-  opacity: 1;
+.modal-dashboard-header {
+  @extend %modal-header;
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 9px;
 }
 
 .modal-body .icon_arangodb_info {
