@@ -1449,9 +1449,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2120,6 +2120,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 98px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 68px; }
@@ -2299,6 +2301,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 218px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 148px; }
@@ -2478,6 +2482,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 338px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 228px; }
@@ -2657,6 +2663,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 225px;
       width: 458px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 11px; }
 
   .dashboard-small-chart {
     width: 308px; }
@@ -2833,6 +2841,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 260px;
       width: 578px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 12px; }
 
   .dashboard-small-chart {
     width: 388px; }
@@ -3009,6 +3019,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 698px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 13px; }
 
   .dashboard-small-chart {
     width: 468px; }
@@ -3185,6 +3197,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 330px;
       width: 818px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 14px; }
 
   .dashboard-small-chart {
     width: 548px; }
@@ -3361,6 +3375,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 390px;
       width: 938px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 628px; }
@@ -3537,6 +3553,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1058px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 708px; }
@@ -3713,6 +3731,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1178px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 788px; }
@@ -3889,6 +3909,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1298px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 868px; }
@@ -4628,7 +4650,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -5313,7 +5335,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
