@@ -423,7 +423,7 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    // require("console").warn("catch error in historian: %s", err);
+    require("console").warn("catch error in historian: %s", err);
   }
 };
 
@@ -472,7 +472,7 @@ exports.historianAverage = function () {
     }
   }
   catch (err) {
-    // require("console").warn("catch error in historianAverage: %s", err);
+    require("console").warn("catch error in historianAverage: %s", err);
   }
 };
 
