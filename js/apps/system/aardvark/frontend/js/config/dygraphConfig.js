@@ -163,72 +163,60 @@
       }
     },
 
-    getDashBoardFigures : function (all) {
-      var result = [], self = this;
-      Object.keys(this.figureDependedOptions).forEach(function (k) {
-        if (self.figureDependedOptions[k].div || all) {
-          result.push(k);
-        }
-      });
-      return result;
-    },
-
-
-    //configuration for chart overview
-    getDefaultConfig: function (figure) {
-      var self = this;
-      var result = {
-        digitsAfterDecimal: 1,
-        drawGapPoints: true,
-        fillGraph: true,
-        showLabelsOnHighlight: false,
-        strokeWidth: 2,
-        strokeBorderWidth: 0.5,
-        includeZero: true,
-        highlightCircleSize: 0,
-        labelsSeparateLines : true,
-        strokeBorderColor: '#ffffff',
-        interactionModel: {},
-        maxNumberWidth : 10,
-        colors: [this.colors[0]],
-        xAxisLabelWidth: "50",
-        rightGap: 15,
-        showRangeSelector: false,
-        rangeSelectorHeight: 50,
-        rangeSelectorPlotStrokeColor: '#365300',
-        rangeSelectorPlotFillColor: '',
-        // rangeSelectorPlotFillColor: '#414a4c',
-        pixelsPerLabel: 50,
-        labelsKMG2: true,
-        dateWindow: [
-          new Date().getTime() -
-            this.defaultFrame,
-          new Date().getTime()
-        ],
-        axes: {
-          x: {
-            valueFormatter: function (d) {
-              return self.xAxisFormat(d);
+        //configuration for chart overview
+        getDefaultConfig: function (figure) {
+            var self = this;
+            var result = {
+                digitsAfterDecimal: 1,
+                drawGapPoints: true,
+                fillGraph: true,
+                showLabelsOnHighlight: false,
+                strokeWidth: 1.5,
+                strokeBorderWidth: 2,
+                includeZero: true,
+                highlightCircleSize: 2.5,
+                labelsSeparateLines : true,
+                strokeBorderColor: '#ffffff',
+                interactionModel: {},
+                maxNumberWidth : 10,
+                colors: [this.colors[0]],
+                xAxisLabelWidth: "50",
+                rightGap: 15,
+                showRangeSelector: false,
+                rangeSelectorHeight: 50,
+                rangeSelectorPlotStrokeColor: '#365300',
+                rangeSelectorPlotFillColor: '',
+                // rangeSelectorPlotFillColor: '#414a4c',
+                pixelsPerLabel: 50,
+                labelsKMG2: true,
+                dateWindow: [
+                    new Date().getTime() -
+                    this.defaultFrame,
+                    new Date().getTime()
+                ],
+                axes: {
+                    x: {
+                        valueFormatter: function (d) {
+                            return self.xAxisFormat(d);
+                        }
+                    },
+                    y: {
+                        ticker: Dygraph.numericLinearTicks
+                    }
+                }
+            };
+            if (this.figureDependedOptions[figure]) {
+                result = this.mergeObjects(
+                    result, this.figureDependedOptions[figure], ["axes"]
+                );
+                if (result.div && result.labels) {
+                    result.colors = this.getColors(result.labels);
+                    result.labelsDiv = document.getElementById(result.div + "Legend");
+                    result.legend = "always";
+                    result.showLabelsOnHighlight = true;
+                }
             }
-          },
-          y: {
-            ticker: Dygraph.numericLinearTicks
-          }
-        }
-      };
-      if (this.figureDependedOptions[figure]) {
-        result = this.mergeObjects(
-          result, this.figureDependedOptions[figure], ["axes"]
-        );
-        if (result.div && result.labels) {
-          result.colors = this.getColors(result.labels);
-          result.labelsDiv = document.getElementById(result.div + "Legend");
-          result.legend = "always";
-          result.showLabelsOnHighlight = true;
-        }
-      }
-      return result;
-
+            return result;
     },
 
     getDetailChartConfig: function (figure) {
