@@ -183,7 +183,7 @@
                 fillGraph: true,
                 showLabelsOnHighlight: false,
                 strokeWidth: 1.5,
-                strokeBorderWidth: 2,
+                strokeBorderWidth: 1.5,
                 includeZero: true,
                 highlightCircleSize: 2.5,
                 labelsSeparateLines : true,
