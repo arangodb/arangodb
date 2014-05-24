@@ -2132,6 +2132,9 @@ div.resizecontainer {
       top: 0px;
       left: 81px;
       font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 98px; }
 
   .dashboard-small-chart {
     width: 68px; }
@@ -2308,6 +2311,9 @@ div.resizecontainer {
       top: 0px;
       left: 201px;
       font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 218px; }
 
   .dashboard-small-chart {
     width: 148px; }
@@ -2484,6 +2490,9 @@ div.resizecontainer {
       top: 0px;
       left: 321px;
       font-size: 12px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 190px;
+      width: 338px; }
 
   .dashboard-small-chart {
     width: 228px; }
@@ -2642,7 +2651,7 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-sub-bar {
       width: 616px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
-      height: 215px;
+      height: 225px;
       width: 498px; }
 
   .dashboard-sub-bar-menu {
@@ -2654,12 +2663,15 @@ div.resizecontainer {
       width: 456px;
       margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      height: 215px;
+      height: 225px;
       width: 338px; }
     .dashboard-medium-chart .dashboard-medium-chart-menu {
       top: 0px;
       left: 440px;
       font-size: 13px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 225px;
+      width: 458px; }
 
   .dashboard-small-chart {
     width: 308px; }
@@ -2668,7 +2680,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 298px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 222px;
+        height: 232px;
         width: 298px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           font-size: 11px;
@@ -2676,40 +2688,40 @@ div.resizecontainer {
           fill: #666666; }
 
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 91.5px; }
+    height: 96.5px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 129px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 29.5px;
-      line-height: 29.5px; }
+      height: 31.16667px;
+      line-height: 31.16667px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 49px;
-      line-height: 23.5px;
+      height: 52.33333px;
+      line-height: 25.16667px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 296px; }
 
   .dashboard-bar-chart-container {
-    height: 91px; }
+    height: 96px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       width: 298px;
-      height: 91px; }
+      height: 96px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 29.66667px;
-        line-height: 29.66667px; }
+        height: 31.33333px;
+        line-height: 31.33333px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 197.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 83.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         width: 282px;
-        height: 42.33333px;
-        line-height: 42.33333px;
+        height: 45.66667px;
+        line-height: 45.66667px;
         padding: 5px 8px 10px 8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 47.33333px; }
+          height: 50.66667px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 296px; }
 
@@ -2724,7 +2736,7 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 13px;
-      min-height: 215px;
+      min-height: 225px;
       width: 130px; }
     .modal-chart-detail .modal-inner-detail {
       width: 808px; }
@@ -2796,14 +2808,14 @@ div.resizecontainer {
     font-weight: 400; }
 
   .dashboard-legend {
-    height: 220px;
+    height: 230px;
     font-size: 11px;
     font-weight: 400;
     width: 120px;
     margin-top: -3px; }
 
   .dashboard-half-height-legend {
-    height: 112.5px;
+    height: 117.5px;
     font-size: 11px;
     width: 60px; } }
 @media (min-width: 1200px) and (max-width: 1439px) {
@@ -2815,7 +2827,7 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-sub-bar {
       width: 776px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
-      height: 240px;
+      height: 260px;
       width: 648px; }
 
   .dashboard-sub-bar-menu {
@@ -2827,12 +2839,15 @@ div.resizecontainer {
       width: 576px;
       margin-left: -5px; }
     .dashboard-medium-chart .dashboard-interior-chart {
-      height: 240px;
+      height: 260px;
       width: 448px; }
     .dashboard-medium-chart .dashboard-medium-chart-menu {
       top: 0px;
       left: 557px;
       font-size: 16px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 260px;
+      width: 578px; }
 
   .dashboard-small-chart {
     width: 388px; }
@@ -2841,7 +2856,7 @@ div.resizecontainer {
     .dashboard-small-chart .dashboard-small-chart-inner {
       width: 378px; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
-        height: 247px;
+        height: 267px;
         width: 378px; }
         .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
           font-size: 13px;
@@ -2849,40 +2864,40 @@ div.resizecontainer {
           fill: #666666; }
 
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 104px; }
+    height: 114px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 169px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 33.66667px;
-      line-height: 33.66667px; }
+      height: 37px;
+      line-height: 37px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 57.33333px;
-      line-height: 27.66667px;
+      height: 64px;
+      line-height: 31px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 376px; }
 
   .dashboard-bar-chart-container {
-    height: 103.5px; }
+    height: 113.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       width: 378px;
-      height: 103.5px; }
+      height: 113.5px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 33.83333px;
-        line-height: 33.83333px; }
+        height: 37.16667px;
+        line-height: 37.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 253.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 107.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         width: 362px;
-        height: 50.66667px;
-        line-height: 50.66667px;
+        height: 57.33333px;
+        line-height: 57.33333px;
         padding: 5px 8px 10px 8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 55.66667px; }
+          height: 62.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 376px; }
 
@@ -2897,7 +2912,7 @@ div.resizecontainer {
       padding: 5px; }
     .modal-chart-detail .modal-dashboard-legend {
       font-size: 14px;
-      min-height: 240px;
+      min-height: 260px;
       width: 140px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1038px; }
@@ -2969,14 +2984,14 @@ div.resizecontainer {
     font-weight: 400; }
 
   .dashboard-legend {
-    height: 245px;
+    height: 265px;
     font-size: 12px;
     font-weight: 400;
     width: 130px;
     margin-top: -3px; }
 
   .dashboard-half-height-legend {
-    height: 125px;
+    height: 135px;
     font-size: 12px;
     width: 65px; } }
 @media (min-width: 1440px) and (max-width: 1679px) {
@@ -3006,6 +3021,9 @@ div.resizecontainer {
       top: 0px;
       left: 675px;
       font-size: 18px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 698px; }
 
   .dashboard-small-chart {
     width: 468px; }
@@ -3179,6 +3197,9 @@ div.resizecontainer {
       top: 0px;
       left: 791px;
       font-size: 22px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 330px;
+      width: 818px; }
 
   .dashboard-small-chart {
     width: 548px; }
@@ -3352,6 +3373,9 @@ div.resizecontainer {
       top: 0px;
       left: 907px;
       font-size: 26px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 390px;
+      width: 938px; }
 
   .dashboard-small-chart {
     width: 628px; }
@@ -3525,6 +3549,9 @@ div.resizecontainer {
       top: 0px;
       left: 1033px;
       font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1058px; }
 
   .dashboard-small-chart {
     width: 708px; }
@@ -3698,6 +3725,9 @@ div.resizecontainer {
       top: 0px;
       left: 1153px;
       font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1178px; }
 
   .dashboard-small-chart {
     width: 788px; }
@@ -3871,6 +3901,9 @@ div.resizecontainer {
       top: 0px;
       left: 1273px;
       font-size: 20px; }
+    .dashboard-medium-chart #clusterGraphs svg {
+      height: 290px;
+      width: 1298px; }
 
   .dashboard-small-chart {
     width: 868px; }
