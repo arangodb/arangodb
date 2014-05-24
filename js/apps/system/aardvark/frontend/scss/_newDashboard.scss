@@ -1,12 +1,34 @@
 %dashboard-chart-box {
   @extend %pull-left;
-  border-left: 0px solid $c-black;
+  border-left: 0 solid $c-black;
 
   &:first-child {
     margin-left: 0;
   }
 }
 
+%dashboard-chart-basic {
+  @extend %pull-left;
+
+  margin-bottom: $dashboard-margin;
+  position: relative;
+}
+
+.dashboard-sub-bar-menu {
+  @extend %pull-right;
+  // color: $c-e1grey;
+  @extend %icon-neutral;
+  //color: red;
+  cursor: pointer;
+  position: absolute;
+  right: 9px;
+  top: 5px;
+
+  //&:hover {
+    // color: $c-white;
+    //color: red;
+  //}
+}
 
 .detail-chart {
   @extend %clear-float;
@@ -19,22 +41,11 @@
   .dashboard-sub-bar-title {
     @extend %pull-left;
   }
-
-  .dashboard-sub-bar-menu {
-    @extend %pull-right;
-    color: $c-e1grey;
-    cursor: pointer;
-  }
-
-  .dashboard-sub-bar-menu:hover {
-    color: $c-white;
-  }
 }
 
 
 .dashboard-large-chart {
-  @extend %pull-left;
-  margin-bottom: $dashboard-margin;
+  @extend %dashboard-chart-basic;
   margin-right: 12px;
 
   .dashboard-large-chart-inner {
@@ -55,8 +66,7 @@
 
 
 .dashboard-small-chart {
-  @extend %pull-left;
-  margin-bottom: $dashboard-margin;
+  @extend %dashboard-chart-basic;
 
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
@@ -81,14 +91,12 @@
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
-  @extend %pull-left;
-  position: relative;
+  @extend %dashboard-chart-basic;
   background-color: $c-white;
   padding-top: $dashboard-padding;
   border-left: $dashboard-borderwidth solid $c-e1grey;
   border-top: $dashboard-borderwidth solid $c-e1grey;
   border-right: $dashboard-borderwidth solid $c-e1grey;
-  margin-bottom: $dashboard-margin;
   
   &:first-child {
     margin-right: 12px;
@@ -122,8 +130,7 @@
 
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
-  @extend %pull-left;
-  margin-bottom: $dashboard-margin;
+  @extend %dashboard-chart-basic;
 
   .dashboard-tendency-chart {
     @extend %clear-float;
@@ -159,8 +166,7 @@
 
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
-  @extend %pull-left;
-  margin-bottom: $dashboard-margin;
+  @extend %dashboard-chart-basic;
 
   .dashboard-bar-chart {
     @extend %clear-float;
@@ -202,7 +208,7 @@
   @extend %pull-left;
 
   .dashboard-legend-inner {
-    padding: 0px 5px 5px 0px;
+    padding: 0 5px 5px 0;
   }
 }
 

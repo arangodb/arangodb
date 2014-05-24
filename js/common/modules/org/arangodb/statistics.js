@@ -38,28 +38,40 @@ var db = internal.db;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cluster id or undefined for standalone
-////////////////////////////////////////////////////////////////////////////////
-
-var clusterId;
-
-if (cluster.isCluster()) {
-  clusterId = ArangoServerState.id();
-}
-  
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collectGarbage
+////////////////////////////////////////////////////////////////////////////////
+
+function collectGarbage (collection, start) {
+  'use strict';
+
+  var values = db._query(
+      "FOR s in @@collection "
+    + "  FILTER s.time < @start "
+    + "  RETURN s._id",
+    { start: start, '@collection': collection });
+
+  while (values.hasNext()) {
+    var id = values.next();
+
+    try {
+      db._remove(id);
+    }
+    catch (err) {
+    }
+  }
+
+  return null;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lastEntry
 ////////////////////////////////////////////////////////////////////////////////
 
-function lastEntry (collection, start) {
+function lastEntry (collection, start, clusterId) {
   'use strict';
 
   var filter = "";
@@ -241,8 +253,19 @@ function computePerSeconds (current, prev) {
     internal.requestTimeDistribution);
 
   // io time
-  result.client.avgIoTime
-    = result.client.avgTotalTime - result.client.avgRequestTime - result.client.avgQueueTime;
+  d1 = current.client.ioTime.count - prev.client.ioTime.count;
+
+  if (d1 === 0) {
+    result.client.avgIoTime = 0;
+  }
+  else {
+    result.client.avgIoTime = (current.client.ioTime.sum - prev.client.ioTime.sum) / d1;
+  }
+
+  result.client.ioTimePercent = avgPercentDistributon(
+    current.client.ioTime,
+    prev.client.ioTime,
+    internal.requestTimeDistribution);
 
   return result;
 }
@@ -251,7 +274,7 @@ function computePerSeconds (current, prev) {
 /// @brief computes the 15 minute averages
 ////////////////////////////////////////////////////////////////////////////////
 
-function compute15Minute (start) {
+function compute15Minute (start, clusterId) {
   'use strict';
 
   var filter = "";
@@ -395,9 +418,18 @@ exports.historian = function () {
   var statsRaw = db._statisticsRaw;
   var statsCol = db._statistics;
 
+  var clusterId;
+
+  if (cluster.isCluster()) {
+    clusterId = ArangoServerState.id();
+  }
+
   try {
     var now = internal.time();
-    var prevRaw = lastEntry('_statisticsRaw', now - 2 * exports.STATISTICS_INTERVALL);
+    var prevRaw = lastEntry(
+      '_statisticsRaw',
+      now - 2 * exports.STATISTICS_INTERVALL,
+      clusterId);
 
     // create new raw statistics
     var raw = {};
@@ -420,7 +452,7 @@ exports.historian = function () {
 
       if (perSecs !== null) {
         if (clusterId !== undefined) {
-          statsCol.clusterId = clusterId;
+          perSecs.clusterId = clusterId;
         }
 
         statsCol.save(perSecs);
@@ -428,7 +460,7 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    // require("console").warn("catch error in historian: %s", err);
+    require("console").warn("catch error in historian: %s", err);
   }
 };
 
@@ -441,19 +473,32 @@ exports.historianAverage = function () {
 
   var stats15m = db._statistics15;
 
+  var clusterId;
+
+  if (cluster.isCluster()) {
+    clusterId = ArangoServerState.id();
+  }
+
   try {
     var now = internal.time();
 
     // check if need to create a new 15 min intervall
-    var prev15 = lastEntry('_statistics15', now - 2 * exports.STATISTICS_HISTORY_INTERVALL);
+    var prev15 = lastEntry(
+      '_statistics15',
+      now - 2 * exports.STATISTICS_HISTORY_INTERVALL,
+      clusterId);
+
     var stat15;
+    var start;
 
     if (prev15 === null) {
-      stat15 = compute15Minute(now - exports.STATISTICS_HISTORY_INTERVALL);
+      start = now - exports.STATISTICS_HISTORY_INTERVALL;
     }
     else {
-      stat15 = compute15Minute(prev15.time);
+      start = prev15.time;
     }
+
+    stat15 = compute15Minute(start, clusterId);
 
     if (stat15 !== undefined) {
       if (clusterId !== undefined) {
@@ -464,10 +509,24 @@ exports.historianAverage = function () {
     }
   }
   catch (err) {
-    // require("console").warn("catch error in historianAverage: %s", err);
+    require("console").warn("catch error in historianAverage: %s", err);
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collects garbage
+////////////////////////////////////////////////////////////////////////////////
+
+exports.garbageCollector = function () {
+  'use strict';
+
+  var time = internal.time();
+
+  collectGarbage("_statistics", time - 60 * 60);
+  collectGarbage("_statisticsRaw", time - 60 * 60);
+  collectGarbage("_statistics15", time - 30 * 24 * 60 * 60);
+};
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
