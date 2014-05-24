@@ -1454,19 +1454,19 @@ a.warning.coordinator, a.warning.dbserver {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
-  color: lightgrey; }
+  color: lightgray; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    color: grey; }
+    color: gray; }
 
 a.inactive.coordinator, a.inactive.dbserver {
-  fill: lightgrey; }
+  fill: lightgray; }
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
-    fill: grey; }
+    fill: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2135,6 +2135,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 98px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 68px; }
@@ -2314,6 +2316,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 218px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 148px; }
@@ -2493,6 +2497,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 190px;
       width: 338px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 10px; }
 
   .dashboard-small-chart {
     width: 228px; }
@@ -2672,6 +2678,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 225px;
       width: 458px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 11px; }
 
   .dashboard-small-chart {
     width: 308px; }
@@ -2848,6 +2856,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 260px;
       width: 578px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 12px; }
 
   .dashboard-small-chart {
     width: 388px; }
@@ -3024,6 +3034,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 698px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 13px; }
 
   .dashboard-small-chart {
     width: 468px; }
@@ -3200,6 +3212,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 330px;
       width: 818px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 14px; }
 
   .dashboard-small-chart {
     width: 548px; }
@@ -3376,6 +3390,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 390px;
       width: 938px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 628px; }
@@ -3552,6 +3568,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1058px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 708px; }
@@ -3728,6 +3746,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1178px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 788px; }
@@ -3904,6 +3924,8 @@ div.resizecontainer {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 290px;
       width: 1298px; }
+    .dashboard-medium-chart #clusterGraphs svg text {
+      font-size: 15px; }
 
   .dashboard-small-chart {
     width: 868px; }
@@ -4525,7 +4547,7 @@ svg.clusterChart {
 .lineGraph {
   position: absolute; }
   .lineGraph .few .dygraph-legend > span.highlight {
-    border: 1px solid grey; }
+    border: 1px solid gray; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
   .lineGraph .many .dygraph-legend > span.highlight {
