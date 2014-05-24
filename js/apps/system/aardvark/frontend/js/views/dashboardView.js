@@ -103,7 +103,7 @@
       );
 
       window.modalView.hideFooter = false;
-
+      
       $('#modal-dialog').on('hidden', function () {
         self.hidden();
       });
@@ -112,7 +112,10 @@
 
       options.height = $(window).height() * 0.7;
       options.width = $('.modal-inner-detail').width();
-      
+
+      // Reselect the labelsDiv. It was not known when requesting options
+      options.labelsDiv = $(options.labelsDiv)[0];
+
       this.detailGraph = new Dygraph(
         document.getElementById("lineChartDetail"),
         this.history[this.server][figure],
