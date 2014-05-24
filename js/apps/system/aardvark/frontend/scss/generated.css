@@ -4270,6 +4270,8 @@ pre.gv-object-view {
     padding: 0px 4px 0px 4px; }
   .dashboard-medium-chart .dashboard-medium-chart-menu:hover {
     color: rgba(0, 0, 0, 0.7); }
+  .dashboard-medium-chart .dashboard-medium-chart-inner {
+    padding-top: 5px; }
 
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: white;
