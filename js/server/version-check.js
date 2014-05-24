@@ -662,6 +662,36 @@
 
     var StatisticsNames = [ "_statisticsRaw", "_statistics", "_statistics15" ];
 
+    function createStatisticsCollection (name) {
+      var collection = getCollection(name);
+
+      if (collection === null) {
+        var r = createSystemCollection(name, { waitForSync: false });
+
+        if (r) {
+          collection = getCollection(name);
+        }
+        else {
+          return false;
+        }
+      }
+      else {
+        collection.truncate();
+      }
+
+      if (collection !== null) {
+        collection.getIndexes().forEach(function (idx) {
+          if (idx.type === "cap") {
+            collection.dropIndex(idx.id);
+          }
+        });
+
+        collection.ensureSkiplist("time");
+      }
+
+      return true;
+    }
+
     // create the _statistics collection
     addTask("createStatistics5",
             "setup statistics collections: " + JSON.stringify(StatisticsNames),
@@ -671,31 +701,8 @@
 
       for (i = 0;  i < StatisticsNames.length;  ++i) {
         var name = StatisticsNames[i];
-        var collection = getCollection(name);
 
-        if (collection === null) {
-          var r = createSystemCollection(name, { waitForSync: false });
-
-          if (r) {
-            collection = getCollection(name);
-          }
-          else {
-            result = false;
-          }
-        }
-        else {
-          collection.truncate();
-        }
-
-        if (collection !== null) {
-          collection.getIndexes().forEach(function (idx) {
-            if (idx.type === "cap") {
-              collection.dropIndex(idx.id);
-            }
-          });
-
-          collection.ensureSkiplist("time");
-        }
+        result = createStatisticsCollection(name) && result;
       }
 
       return result;
