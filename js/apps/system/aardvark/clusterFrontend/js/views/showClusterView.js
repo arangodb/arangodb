@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true, continue: true */
 /*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
 
 (function() {
@@ -16,7 +16,7 @@
       "change #selectDB"        : "updateCollections",
       "change #selectCol"       : "updateShards",
       "click .dbserver"         : "dashboard",
-      "click .coordinator"      : "dashboard",
+      "click .coordinator"      : "dashboard"
     },
 
     replaceSVGs: function() {
@@ -188,7 +188,7 @@
       var self = this;
 
       this.data.forEach(function(m) {
-        pieData.push({key: m.get("name"), value :m.get("system").residentSize,
+        pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
           time: self.serverTime});
       });
 
@@ -417,19 +417,9 @@
         var hash = [];
         var t = Math.round(new Date().getTime() / 1000) - intervall;
         var ks = self.knownServers;
-        var i;
-
         var f = function(x) {return null;};
 
-        for (i = 0;  i < intervall;  ++i) {
-          var dt = t + i;
-          var tt = new Date(dt * 1000);
-          var d = [ tt ].concat(ks.map(f));
-
-          data.push(d);
-          hash[dt] = d;
-        }
-
+        var i;
         var j;
 
         for (i = 0;  i < ks.length;  ++i) {
@@ -439,20 +429,36 @@
             for (j = 0;  j < h.length;  ++j) {
               var snap = h[j].snap;
 
-              if (hash.hasOwnProperty(snap)) {
-                var dd = hash[snap];
-
-                dd[i + 1] = h[j].requestsPerSecond;
+              if (snap < t) {
+                continue;
               }
+
+              var d;
+
+              if (! hash.hasOwnProperty(snap)) {
+                var tt = new Date(snap * 1000);
+
+                d = hash[snap] = [ tt ].concat(ks.map(f));
+              }
+              else {
+                d = hash[snap];
+              }
+
+              d[i + 1] = h[j].requestsPerSecond;
             }
           }
         }
 
+        data = [];
+
+        Object.keys(hash).sort().forEach(function (m) {
+          data.push(hash[m]);
+        });
+
         var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
         options.labelsDiv = $("#lineGraphLegend")[0];
+        options.labels = [ "datetime" ].concat(ks);
         
-        labels: ["datetime", "Major Page", "Minor Page"],
-
         self.graph = new Dygraph(
           document.getElementById('lineGraph'),
           data,

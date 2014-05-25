@@ -38,8 +38,73 @@ var db = internal.db;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialized
+///
+/// Warning: there are many threads, so variable is thread local.
+////////////////////////////////////////////////////////////////////////////////
+
+var initialized = false;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createCollections
+////////////////////////////////////////////////////////////////////////////////
+
+function createStatisticsCollection (name) {
+  'use strict';
+
+  var collection = db._collection(name);
+
+  if (collection === null) {
+    var r = db._create(name, { isSystem: true, waitForSync: false });
+    
+    if (! r) {
+      return;
+    }
+
+    collection = db._collection(name);
+  }
+
+  if (collection !== null) {
+    collection.ensureSkiplist("time");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createCollections
+///
+/// This cannot be called during version check, because the collections are
+/// system wide and the version checks might not yet know, that it is running
+/// on a cluster coordinate.
+///
+/// TODO need to fix this
+////////////////////////////////////////////////////////////////////////////////
+
+var StatisticsNames = [ "_statisticsRaw", "_statistics", "_statistics15" ];
+
+function createStatisticsCollections () {
+  'use strict';
+
+  if (initialized) {
+    return;
+  }
+
+  initialized = true;
+
+  var names = [ "_statisticsRaw", "_statistics", "_statistics15" ];
+  var i;
+
+  for (i = 0;  i < names.length;  ++i) {
+    createStatisticsCollection(names[i]);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collectGarbage
@@ -415,6 +480,8 @@ exports.STATISTICS_HISTORY_INTERVALL = 15 * 60;
 exports.historian = function () {
   "use strict";
 
+  createStatisticsCollections();
+
   var statsRaw = db._statisticsRaw;
   var statsCol = db._statistics;
 
@@ -471,6 +538,8 @@ exports.historian = function () {
 exports.historianAverage = function () {
   "use strict";
 
+  createStatisticsCollections();
+
   var stats15m = db._statistics15;
 
   var clusterId;
@@ -519,6 +588,8 @@ exports.historianAverage = function () {
 
 exports.garbageCollector = function () {
   'use strict';
+
+  createStatisticsCollections();
 
   var time = internal.time();
 
