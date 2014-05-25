@@ -4730,45 +4730,46 @@ pre.gv-object-view {
   top: 6px; }
 
 .dashboard-large-chart {
-  margin-right: 12px;
-  position: relative; }
+  margin-right: 12px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
+    padding-top: 5px;
     background-color: white;
     border-left: 5px solid #e1e1e1;
-    border-right: 5px solid #e1e1e1;
     border-top: 5px solid #e1e1e1;
-    padding-top: 5px; }
+    border-right: 5px solid #e1e1e1; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
-      margin-bottom: 0; }
+      margin-bottom: 0px; }
 
 .dashboard-small-chart .dashboard-small-chart-inner {
   background-color: white;
   border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-top: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1; }
   .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
-    fill-opacity: .15;
     stroke-opacity: 1;
-    stroke-width: 1px; }
+    stroke-width: 1px;
+    fill-opacity: 0.15; }
 
 .dashboard-medium-chart {
   background-color: white;
+  padding-top: 5px;
   border-left: 5px solid #e1e1e1;
+  border-top: 5px solid #e1e1e1;
   border-right: 5px solid #e1e1e1; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
-    margin-bottom: 0; }
+    margin-bottom: 0px; }
   .dashboard-medium-chart .dashboard-medium-chart-menu {
     -moz-border-radius: 2px;
     -webkit-border-radius: 2px;
     border-radius: 2px;
-    border: 0 solid rgba(0, 0, 0, 0.3);
+    position: absolute;
     color: rgba(0, 0, 0, 0.3);
     cursor: pointer;
-    padding: 0 4px;
-    position: absolute;
-    z-index: 1000; }
+    z-index: 1000;
+    border: 0px solid rgba(0, 0, 0, 0.3);
+    padding: 0px 4px 0px 4px; }
   .dashboard-medium-chart .dashboard-medium-chart-menu:hover {
     color: rgba(0, 0, 0, 0.7); }
   .dashboard-medium-chart .dashboard-medium-chart-inner {
@@ -4781,8 +4782,8 @@ pre.gv-object-view {
 .dashboard-tendency-container .dashboard-tendency-chart {
   background-color: white;
   border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-top: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1; }
   .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
     background-color: white;
     padding: 0px 8px 0px 8px;
@@ -4798,19 +4799,19 @@ pre.gv-object-view {
 .dashboard-bar-chart-container .dashboard-bar-chart {
   background-color: white;
   border-left: 5px solid #e1e1e1;
-  border-right: 5px solid #e1e1e1;
-  border-top: 5px solid #e1e1e1; }
+  border-top: 5px solid #e1e1e1;
+  border-right: 5px solid #e1e1e1; }
   .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-    margin-top: 5px;
-    padding: 0 8px; }
+    padding: 0px 8px 0px 8px;
+    margin-top: 5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
       font-weight: 400; }
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
       text-align: right; }
   .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
-    fill-opacity: .15;
     stroke-opacity: 1;
-    stroke-width: 1px; }
+    stroke-width: 1px;
+    fill-opacity: 0.15; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0 5px 5px 0; }
@@ -4824,10 +4825,10 @@ pre.gv-object-view {
   padding: 0px 6px 0px 6px; }
 
 .dashboard-spacer {
-  margin: 0 12px; }
+  margin: 0px 12px 0px 12px; }
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px; }
+  margin: 15px 0px 10px 0px; }
 
 .modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px;
@@ -4843,7 +4844,8 @@ pre.gv-object-view {
   font-weight: 400;
   height: 30px;
   line-height: 30px;
-  padding: 0 5px 0 10px; }
+  /* margin: 0px -1px 0px -1px; */
+  padding: 0px 5px 0px 10px; }
   .dashboard-title-bar .dashboard-half-title-bar {
     border-left: 1px solid black;
     margin-left: -1px;
@@ -4853,9 +4855,9 @@ pre.gv-object-view {
       margin-left: 0; }
 
 .dashboard-row {
-  margin-bottom: 0;
-  margin-left: 0;
-  margin-right: 0; }
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px; }
 
 .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
   color: #666666; }
