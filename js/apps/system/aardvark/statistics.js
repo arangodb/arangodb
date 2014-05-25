@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, vars: true, continue: true */
-/*global require, applicationContext*/
+/*global require, applicationContext, ArangoServerState, ArangoClusterInfo, ArangoClusterComm*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to handle the statistics
@@ -525,7 +525,7 @@ controller.get("cluster", function (req, res) {
   var options = { coordTransactionID: coord.coordTransactionID, timeout:10 };
 
   if (type !== "short" && type !== "long") {
-    type = short;
+    type = "short";
   }
 
   var url = "/_admin/aardvark/statistics/" + type;
