@@ -1,5 +1,5 @@
-v2.1.0 (XXXX-XX-XX)
--------------------
+v2.1.0-rc2 (2014-05-25)
+-----------------------
 
 * fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 
