@@ -174,6 +174,10 @@ arangoDatabase, btoa, _*/
           serverToShow : this.serverToShow
       });
       this.dashboardView.render();
+    },
+
+    clusterUnreachable: function() {
+      alert("Your cluster seems to be unreachable. This is only temp msg");
     }
 
   });

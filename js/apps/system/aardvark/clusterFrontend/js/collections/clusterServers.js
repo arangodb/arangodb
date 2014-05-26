@@ -16,6 +16,28 @@
 
     initialize: function() {
       window.App.registerForUpdate(this);
+      this._retryCount = 0;
+    },
+
+    checkRetries: function() {
+      this.updateUrl();
+      if (this._retryCount > 10) {
+        window.App.clusterUnreachable();
+      }
+    },
+
+    successFullTry: function() {
+      this._retryCount = 0;
+    },
+
+    failureTry: function(retry, err) {
+      if (err.status === 401) {
+        window.App.requestAuth();
+      } else {
+        window.App.clusterPlan.rotateCoordinator();
+        this._retryCount++;
+        retry();
+      }
     },
 
     statusClass: function(s) {
@@ -34,45 +56,31 @@
     },
   
     getStatuses: function(cb) {
+      this.checkRetries();
       var self = this,
         completed = function() {
+          self.successFullTry();
+          self._retryCount = 0;
           self.forEach(function(m) {
             cb(self.statusClass(m.get("status")), m.get("address"));
           });
         };
-      this.updateUrl();
       // This is the first function called in
       // Each update loop
       this.fetch({
-        async: false,
         beforeSend: window.App.addAuth.bind(window.App),
-        error: function(d) {
-          if (d.status === 401) {
-            window.App.requestAuth();
-          } else {
-            console.log("inDB");
-            self.forEach(function(m) {
-              cb(self.statusClass("critical"), m.get("address"));
-            });
-          }
-        }
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb))
       }).done(completed);
     },
 
     byAddress: function (res, callback) {
+      this.checkRetries();
       var self = this;
-      this.updateUrl();
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
-        error: function(d) {
-          if (d.status === 401) {
-            window.App.requestAuth();
-          } else {
-            console.log(d);
-            console.log("Hier isse kapuuuhhhttt inDB2");
-          }
-        }
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
       }).done(function() {
+        self.successFullTry();
         res = res || {};
         self.forEach(function(m) {
           var addr = m.get("address");
@@ -85,25 +93,30 @@
       });
     },
 
-    getList: function() {
+    getList: function(callback) {
+      throw "Do not use";
+      var self = this;
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getList.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        var res = [];
+        _.each(self.where({role: "primary"}), function(m) {
+          var e = {};
+          e.primary = m.forList();
+          if (m.get("secondary")) {
+            e.secondary = self.get(m.get("secondary")).forList();
+          }
+          res.push(e);
+        });
+        callback(res);
       });
-      var res = [],
-          self = this;
-      _.each(this.where({role: "primary"}), function(m) {
-        var e = {};
-        e.primary = m.forList();
-        if (m.get("secondary")) {
-          e.secondary = self.get(m.get("secondary")).forList();
-        }
-        res.push(e);
-      });
-      return res;
     },
 
     getOverview: function() {
+      throw "Do not use DbServer.getOverview";
+      /*
       this.fetch({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
@@ -146,6 +159,7 @@
         }
       });
       return res;
+      */
     }
   });
 
