@@ -881,7 +881,7 @@ Graph.prototype._EDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
@@ -905,7 +905,7 @@ Graph.prototype._INEDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
@@ -930,7 +930,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
