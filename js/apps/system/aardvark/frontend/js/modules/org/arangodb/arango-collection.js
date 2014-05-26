@@ -1392,7 +1392,7 @@ ArangoCollection.prototype.updateByExample = function (example,
       collection: this._name,
       example: example, 
       newValue: newValue,
-      options: optionoptions
+      options: options
     };
   }
 
