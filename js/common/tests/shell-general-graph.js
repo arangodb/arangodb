@@ -1405,12 +1405,12 @@ function EdgesAndVerticesSuite() {
   var vertexId1, vertexId2;
   var unitTestGraphName = "unitTestGraph";
 
-  var ec1 = "UnitTestEdgeCollection1";
-  var ec2 = "UnitTestEdgeCollection2";
-  var vc1 = "UnitTestVertexCollection1";
-  var vc2 = "UnitTestVertexCollection2";
-  var vc3 = "UnitTestVertexCollection3";
-  var vc4 = "UnitTestVertexCollection4";
+  var ec1 = "unitTestEdgeCollection1";
+  var ec2 = "unitTestEdgeCollection2";
+  var vc1 = "unitTestVertexCollection1";
+  var vc2 = "unitTestVertexCollection2";
+  var vc3 = "unitTestVertexCollection3";
+  var vc4 = "unitTestVertexCollection4";
 
 
   var fillCollections = function() {
@@ -1647,26 +1647,29 @@ function EdgesAndVerticesSuite() {
 
 
     test_eC_removeWithEdgesAsVertices : function () {
+
       var myGraphName = unitTestGraphName + "0815";
+      var myEC02 = "unitTestEdgeCollection02";
+      var myVC01 = "unitTestVertexCollection01";
       var g2 = graph._create(
         myGraphName,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition("unitTestEdgeCollection02",
-            ["unitTestEdgeCollection1"], ["unitTestVertexCollection01"]
+          graph._directedRelationDefinition(myEC02,
+            [ec1], [myVC01]
           )
         )
       );
-      var vertex1 = g.unitTestVertexCollection1.save({first_name: "Tom"});
+      var vertex1 = g[vc1].save({first_name: "Tom"});
       var vertexId1 = vertex1._id;
-      var vertex2 = g.unitTestVertexCollection1.save({first_name: "Tim"});
+      var vertex2 = g[vc1].save({first_name: "Tim"});
       var vertexId2 = vertex2._id;
       var vertex3 = g2.unitTestVertexCollection01.save({first_name: "Ralph"});
       var vertexId3 = vertex3._id;
-      var edge = g.unitTestEdgeCollection1.save(vertexId1, vertexId2, {});
+      var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edge2 = g2.unitTestEdgeCollection02.save(edge._id, vertexId3, {});
 
       var edgeId1 = edge._id;
-      edge = g.unitTestEdgeCollection1.remove(edgeId1);
+      edge = g[ec1].remove(edgeId1);
       assertTrue(edge);
       assertFalse(db._exists(edge2._id));
       graph._drop(myGraphName);
@@ -1755,24 +1758,6 @@ function EdgesAndVerticesSuite() {
       graph._drop(gN2);
       graph._drop(gN3);
       graph._drop(gN4);
-    },
-
-    test_edges : function() {
-      var ids = fillCollections();
-      var result = g._edges(ids.vId11).toArray();
-      assertEqual(result.length, 13)
-    },
-
-    test_inEdges : function() {
-      var ids = fillCollections();
-      var result = g._inEdges(ids.vId11).toArray();
-      assertEqual(result.length, 4)
-    },
-
-    test_outEdges : function() {
-      var ids = fillCollections();
-      var result = g._outEdges(ids.vId11).toArray();
-      assertEqual(result.length, 9)
     },
 
     test_getInVertex : function() {
