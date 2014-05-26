@@ -555,10 +555,10 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ b : 1 });
       assertEqual(1, deleted);
 
-      deleted = collection.removeByExample({ a : 1 }, {limit: 10});
+      deleted = collection.removeByExample({ a : 1 }, {limit : 10});
       assertEqual(10, deleted);
 
-      deleted = collection.removeByExample({ a : 1 }, {waitForSync: true, limit:15});
+      deleted = collection.removeByExample({ a : 1 }, {waitForSync: true, limit : 15});
       assertEqual(15, deleted);
       
       // not existing documents
@@ -690,14 +690,14 @@ function SimpleQueryByExampleSuite () {
 /// @brief test: replaceByExampleWithNewSignature
 ////////////////////////////////////////////////////////////////////////////////
 
-    replaceByExampleWithNewSignature : function () {
+      test_replaceByExampleWithNewSignature : function () {
       var replaced;
 
       for (var i = 0; i < 50; ++i) {
         collection.save({ value: 2, a: i, b: i + 1 });
       }
 
-      replaced = collection.replaceByExample({ value : 2 }, { foo : "bar", bar : "baz" }, {limit: 20, waitForSync: true});
+      replaced = collection.replaceByExample({ value : 2 }, { foo : "bar", bar : "baz" }, {limit : 20, waitForSync: true});
       assertEqual(20, replaced);
 
       assertEqual(50, collection.count());
@@ -889,7 +889,7 @@ function SimpleQueryByExampleSuite () {
         collection.save({ test : i , limit_test : 1});
       }
       // update and remove old values keep null values
-      updated = collection.updateByExample({ limit_test : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit: 30});
+      updated = collection.updateByExample({ limit_test : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit : 30});
       assertEqual(30, updated);
 
     },
