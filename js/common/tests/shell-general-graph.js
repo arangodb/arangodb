@@ -844,6 +844,14 @@ function ChainedFluentAQLResultsSuite() {
       + "@options_" + depth + ")";
   };
 
+  var plainNeighborQueryStmt = function(depth, vdepth) {
+    return "FOR neighbors_" + depth + " IN "
+      + "GRAPH_NEIGHBORS("
+      + "@graphName,"
+      + "vertices_" + vdepth + ","
+      + "@options_" + depth + ")";
+  };
+
   var vertexFilterStmt = function(direction, eDepth, vDepth) {
     switch(direction) {
       case "both":
@@ -874,12 +882,19 @@ function ChainedFluentAQLResultsSuite() {
 
   };
 
-  var plainEdgesQueryStmt = function(depth, vDepth) {
+  var plainEdgesQueryStmt = function(depth, vDepth, type) {
+    if (!type) {
+      type = "vertices";
+    }
     var q = "FOR edges_" + depth + " IN "
       + "GRAPH_EDGES("
       + "@graphName,";
     if(vDepth > -1) {
-      q += "vertices_" + vDepth + ",";
+      q += type + "_" + vDepth;
+      if (type === "neighbors") {
+        q += ".vertex";
+      }
+      q += ",";
     } else {
       q += "{},";
     }
@@ -995,7 +1010,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, p1Name);
     },
 
-    test_getVerticiesByExampleAndIdMix: function() {
+    test_getVerticiesByExampleAndIdMixResultingAQL: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var query = g._vertices([{
         name: uaName
@@ -1395,7 +1410,103 @@ function ChainedFluentAQLResultsSuite() {
       var sorted = _.sortBy(result, "name");
       assertEqual(sorted[0].name, ubName);
       assertEqual(sorted[1].name, p1Name);
+    },
+
+    test_getNeighborsOfSelectedVerticesResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .neighbors();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainNeighborQueryStmt(1, 0));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        vertexExamples: {}
+      });
+    },
+
+    test_getNeighborsOfSelectedVertices: function() {
+      var result = g._vertices({name: uaName})
+        .neighbors()
+        .toArray();
+      assertEqual(result.length, 3);
+      var sorted = _.sortBy(result, "name");
+      assertEqual(sorted[0].name, ubName);
+      assertEqual(sorted[1].name, ucName);
+      assertEqual(sorted[2].name, p1Name);
+    },
+
+    test_getExampleNeighborsOfSelectedVerticesResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .neighbors([{
+          name: uaName
+        },{
+          name: p1Name
+        }]);
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainNeighborQueryStmt(1, 0));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        vertexExamples: [{
+          name: uaName
+        },{
+          name: p1Name
+        }]
+      });
+    },
+
+    /*  Not yet working, neighbors requires vertex-examples in AQL
+
+    test_getExampleNeighborsOfSelectedVertices: function() {
+      var result = g._vertices({name: uaName})
+        .neighbors([{
+          name: uaName
+        },{
+          name: p1Name
+        }])
+        .toArray();
+      assertEqual(result.length, 2);
+      var sorted = _.sortBy(result, "name");
+      assertEqual(sorted[0].name, uaName);
+      assertEqual(sorted[1].name, p1Name);
+    },
+
+    */
+
+    test_getEdgesOfNeighborsResultingAQL: function() {
+      var query = g._vertices({name: uaName})
+        .neighbors()
+        .outEdges();
+      var stmt = query.printQuery();
+      var expected = [];
+      expected.push(plainVertexQueryStmt(0));
+      expected.push(plainNeighborQueryStmt(1, 0));
+      expected.push(plainEdgesQueryStmt(2, 1, "neighbors"));
+      assertEqual(stmt, expected.join(" "));
+      assertEqual(query.bindVars.options_0, {});
+      assertEqual(query.bindVars.options_1, {
+        vertexExamples: {}
+      });
+      assertEqual(query.bindVars.options_2, {
+        direction: "outbound",
+        edgeExamples: [{}]
+      });
+    },
+
+    test_getEdgesOfNeighbors: function() {
+      var result = g._vertices({name: uaName})
+        .neighbors()
+        .outEdges()
+        .toArray();
+      assertEqual(result.length, 4);
+      findFriends(result, [ud3, ud4]);
+      findBoughts(result, [d2, d3]);
     }
+
   };
 }
 
