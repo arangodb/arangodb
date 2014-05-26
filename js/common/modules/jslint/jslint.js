@@ -3474,7 +3474,7 @@ klass:              do {
                             n = expression(0);
                             p.second = [n];
                             if (n.id !== '(number)' || next_token.id === ',') {
-                                warn('use_array', p);
+                                // warn('use_array', p);
                             }
                             while (next_token.id === ',') {
                                 advance(',');

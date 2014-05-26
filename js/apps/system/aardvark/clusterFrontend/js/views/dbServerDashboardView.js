@@ -33,6 +33,22 @@
       $('#modal-dialog').on('hidden', function () {
             self.hide();
       });
+
+      // Inject the closing x
+      var closingX = document.createElement("button");
+      closingX.className = "close";
+      closingX.appendChild(
+        document.createTextNode("×")
+      );
+      closingX = $(closingX);
+      closingX.attr("data-dismiss", "modal");
+      closingX.attr("aria-hidden", "true");
+      closingX.attr("type", "button");
+      $(".modal-body .headerBar:first-child")
+        .toggleClass("headerBar", false)
+        .toggleClass("modal-dashboard-header", true)
+        .append(closingX);
+
     }
   });
 

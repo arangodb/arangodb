@@ -2,15 +2,15 @@
   <div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
        aria-labelledby="myModalLabel" aria-hidden="true">
    <% if (title !== null) { %>
-	 <div class="modal-header">
+   <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
       <a class="arangoHeader"><%=title%></a>
-    </div>
-		<%}%>
+   </div>
+   <%}%>
 
     <div class="modal-body">
     </div>
-		<% if (!hideFooter) { %>
+    <% if (!hideFooter) { %>
     <div class="modal-footer">
       <%
       _.each(buttons, function(value, key){
@@ -24,7 +24,7 @@
       <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
       <%});%>
     </div>
-		<% } %>
+    <% } %>
     <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
       <strong>Really delete?</strong>
       <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
