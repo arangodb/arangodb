@@ -76,10 +76,12 @@
       this.startUpdating();
     },
 
-    listByAddress: function() {
-      var byAddress = this.dbservers.byAddress();
-      byAddress = this.coordinators.byAddress(byAddress);
-      return byAddress;
+    listByAddress: function(callback) {
+      var byAddress = {};
+      var self = this;
+      this.dbservers.byAddress(byAddress, function(res) {
+        self.coordinators.byAddress(res, callback);
+      });
     },
 
     updateCollections: function() {
@@ -101,22 +103,19 @@
       });
     },
 
-    updateServerStatus: function() {
-      this.dbservers.getStatuses(function(stat, serv) {
+    updateServerStatus: function(nextStep) {
+      var self = this;
+      var callBack = function(cls, stat, serv) {
         var id = serv,
           type;
         id = id.replace(/\./g,'-');
         id = id.replace(/\:/g,'_');
         type = $("#id" + id).attr("class").split(/\s+/)[1];
-        $("#id" + id).attr("class", "dbserver " + type + " " + stat);
-      });
-      this.coordinators.getStatuses(function(stat, serv) {
-        var id = serv,
-          type;
-        id = id.replace(/\./g,'-');
-        id = id.replace(/\:/g,'_');
-        type = $("#id" + id).attr("class").split(/\s+/)[1];
-        $("#id" + id).attr("class", "coordinator " + type + " " + stat);
+        $("#id" + id).attr("class", cls + " " + type + " " + stat);
+      };
+      this.coordinators.getStatuses(callBack.bind(this, "coordinator"), function() {
+        self.dbservers.getStatuses(callBack.bind(self, "dbserver"));
+        nextStep();
       });
     },
 
@@ -150,37 +149,40 @@
     },
 
     rerender : function() {
-      this.updateServerStatus();
-      this.getServerStatistics();
-      this.updateServerTime();
-      this.data = this.generatePieData();
-      this.renderPieChart(this.data);
-      this.renderLineChart();
-      this.updateDBDetailList();
+      var self = this;
+      this.updateServerStatus(function() {
+        self.getServerStatistics();
+        self.updateServerTime();
+        self.data = self.generatePieData();
+        self.renderPieChart(self.data);
+        self.renderLineChart();
+        self.updateDBDetailList();
+      });
     },
 
     render: function() {
-      this.startUpdating();
-      var byAddress = this.listByAddress();
-      if (Object.keys(byAddress).length === 1) {
-        this.type = "testPlan";
-      }
-      else {
-        this.type = "other";
-      }
-      $(this.el).html(this.template.render({
-        dbs: _.pluck(this.dbs.getList(), "name"),
-        byAddress: byAddress,
-        type: this.type
-      }));
-      $(this.el).append(this.modal.render({}));
-      this.replaceSVGs();
-      /* this.loadHistory(); */
-      this.getServerStatistics();
-      this.data = this.generatePieData();
-      this.renderPieChart(this.data);
-      this.renderLineChart();
-      this.updateCollections();
+      var self = this;
+      this.listByAddress(function(byAddress) {
+        self.startUpdating();
+        if (Object.keys(byAddress).length === 1) {
+          self.type = "testPlan";
+        } else {
+          self.type = "other";
+        }
+        $(self.el).html(self.template.render({
+          dbs: _.pluck(self.dbs.getList(), "name"),
+          byAddress: byAddress,
+          type: self.type
+        }));
+        $(self.el).append(self.modal.render({}));
+        self.replaceSVGs();
+        /* this.loadHistory(); */
+        self.getServerStatistics();
+        self.data = self.generatePieData();
+        self.renderPieChart(self.data);
+        self.renderLineChart();
+        self.updateCollections();
+      });
     },
 
     generatePieData: function() {

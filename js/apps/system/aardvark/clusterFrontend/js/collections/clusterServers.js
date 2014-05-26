@@ -28,43 +28,61 @@
           return "danger";
         case "missing":
           return "inactive";
+        default: 
+          return "danger";
       }
     },
   
     getStatuses: function(cb) {
       var self = this,
         completed = function() {
-        self.forEach(function(m) {
-          cb(self.statusClass(m.get("status")), m.get("address"));
-        });
-      };
+          self.forEach(function(m) {
+            cb(self.statusClass(m.get("status")), m.get("address"));
+          });
+        };
+      this.updateUrl();
       // This is the first function called in
       // Each update loop
       this.fetch({
         async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
-      }).done(completed)
-      .fail(function(d) {
-        if (d.status === 401) {
-          window.App.requestAuth();
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function(d) {
+          if (d.status === 401) {
+            window.App.requestAuth();
+          } else {
+            console.log("inDB");
+            self.forEach(function(m) {
+              cb(self.statusClass("critical"), m.get("address"));
+            });
+          }
         }
-      });
+      }).done(completed);
     },
 
-    byAddress: function (res) {
+    byAddress: function (res, callback) {
+      var self = this;
+      this.updateUrl();
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function(d) {
+          if (d.status === 401) {
+            window.App.requestAuth();
+          } else {
+            console.log(d);
+            console.log("Hier isse kapuuuhhhttt inDB2");
+          }
+        }
+      }).done(function() {
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].dbs = res[addr].dbs || [];
+          res[addr].dbs.push(m);
+        });
+        callback(res);
       });
-      res = res || {};
-      this.forEach(function(m) {
-        var addr = m.get("address");
-        addr = addr.split(":")[0];
-        res[addr] = res[addr] || {};
-        res[addr].dbs = res[addr].dbs || [];
-        res[addr].dbs.push(m);
-      });
-      return res;
     },
 
     getList: function() {

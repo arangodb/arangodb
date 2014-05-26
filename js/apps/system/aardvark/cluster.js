@@ -174,13 +174,19 @@
     controller.get("/healthcheck", function(req, res) {
       var out = getStarter().isHealthy();
       var stf = JSON.stringify(out);
+      var answer = true;
       if (out.error) {
-        require("console").log("Cluster HealthCheck Error:", out.error);
+        _.each(out.results, function(res) {
+          if (res.answering) {
+            answer = (_.any(res.answering, function(i) {
+              return i === true;
+            }));
+          }
+        });
         require("console").log("Cluster HealthCheck Result:", stf);
-        res.json(false);
-        return;
       }
-      res.json(true);
+      require("console").log("Answer", answer);
+      res.json(answer);
     });
 
     controller.get("/shutdown", function(req, res) {
