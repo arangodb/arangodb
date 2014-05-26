@@ -16,6 +16,27 @@
       this._retryCount = 0;
     },
 
+    checkRetries: function() {
+      this.updateUrl();
+      if (this._retryCount > 10) {
+        window.App.clusterUnreachable();
+      }
+    },
+
+    successFullTry: function() {
+      this._retryCount = 0;
+    },
+
+    failureTry: function(retry, err) {
+      if (err.status === 401) {
+        window.App.requestAuth();
+      } else {
+        window.App.clusterPlan.rotateCoordinator();
+        this._retryCount++;
+        retry();
+      }
+    },
+
     statusClass: function(s) {
       switch (s) {
         case "ok":
@@ -30,26 +51,15 @@
           return "danger";
       }
     },
-  
+
     getStatuses: function(cb, nextStep) {
-      if (this._retryCount > 10) {
-        console.log("Cluster unreachable");
-      }
+      this.checkRetries();
       var self = this;
-      this.updateUrl();
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
-        error: function() {
-          self._retryCount++;
-          console.log(self._retryCount);
-          self.forEach(function(m) {
-            cb(self.statusClass("critical"), m.get("address"));
-          });
-          window.App.clusterPlan.rotateCoordinator();
-          self.getStatuses(cb, nextStep);
-        }
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
       }).done(function() {
-        console.log(self._retryCount);
+        self.successFullTry();
         self._retryCount = 0;
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
@@ -59,14 +69,13 @@
     },
 
     byAddress: function (res, callback) {
+      this.checkRetries();
       var self = this;
-      this.updateUrl();
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
-        error: function() {
-          console.log("incord2");
-        }
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
       }).done(function() {
+        self.successFullTry();
         res = res || {};
         self.forEach(function(m) {
           var addr = m.get("address");
@@ -80,6 +89,8 @@
     },
 
     getList: function() {
+      throw "Do not use coordinator.getList";
+      /*
       this.fetch({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
@@ -87,9 +98,12 @@
       return this.map(function(m) {
         return m.forList();
       });
+      */
     },
 
     getOverview: function() {
+      throw "Do not use coordinator.getOverview";
+      /*
       this.fetch({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
@@ -123,6 +137,7 @@
         }
       });
       return res;
+      */
     }
   });
 }());
