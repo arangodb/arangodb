@@ -153,7 +153,7 @@ namespace triagens {
             LOG_FATAL_AND_EXIT("out of memory");
           }
          
-          _client = new SimpleHttpClient(_connection, 10.0, true);
+          _client = new SimpleHttpClient(_connection, _requestTimeout, true);
 
           if (_client == 0) {
             LOG_FATAL_AND_EXIT("out of memory");
