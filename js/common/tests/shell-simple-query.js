@@ -833,15 +833,12 @@ function SimpleQueryByExampleSuite () {
       var updated;
 
       for (var i = 0; i < 50; ++i) {
-        collection.save({ value : i });
-      }
-      for (var i = 0; i < 50; ++i) {
-        collection.save({ a: 1, value : i });
+        collection.save({ value : i , a : 1});
       }
 
       // update and keep old values
       updated = collection.updateByExample({ value : 2 }, { foo : "bar", bar : "baz" });
-      assertEqual(2, updated);
+      assertEqual(1, updated);
 
       assertEqual(50, collection.count());
 
@@ -869,28 +866,32 @@ function SimpleQueryByExampleSuite () {
       assertEqual(9, doc.value);
       
       // update and remove old values keep null values
-      updated = collection.updateByExample({ value : 6 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true});
+      updated = collection.updateByExample({ value : 6 }, { foo : "bart6", bar : "baz6", value : null }, {keepNull: true});
       assertEqual(1, updated);
       
-      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
-      assertEqual("bart", doc.foo);
-      assertEqual("baz", doc.bar);
+      var doc = collection.firstExample({ foo : "bart6", bar : "baz6" });
+      assertEqual("bart6", doc.foo);
+      assertEqual("baz6", doc.bar);
       assertEqual(null, doc.value);
 
-      // update and remove old values keep null values
-      updated = collection.updateByExample({ a : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit: 30});
-      assertEqual(30, updated);
-      
       // not existing documents
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
       
-      updated = collection.updateByExample({ value : null }, { });
+      updated = collection.updateByExample({ not_existent_null_value : null }, { });
       assertEqual(0, updated);
       
       collection.truncate();
       updated = collection.updateByExample({ value : 6 }, { });
       assertEqual(0, updated);
+
+      for (var i = 0; i < 50; ++i) {
+        collection.save({ test : i , limit_test : 1});
+      }
+      // update and remove old values keep null values
+      updated = collection.updateByExample({ limit_test : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit: 30});
+      assertEqual(30, updated);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////

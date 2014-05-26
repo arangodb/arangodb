@@ -1386,11 +1386,12 @@ ArangoCollection.prototype.updateByExample = function (example,
     if (typeof waitForSync !== "undefined") {
       throw "too many parameters";
     }
+    var options = keepNull;
     data = { 
       collection: this._name,
       example: example, 
       newValue: newValue,
-      options: keepNull
+      options: optionoptions
     };
   }
 
