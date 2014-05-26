@@ -870,13 +870,19 @@ Graph.prototype._vertexCollections = function() {
 
 // might be needed from AQL itself
 Graph.prototype._EDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
-
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.edges(vertexId));
     }
   );
@@ -888,13 +894,20 @@ Graph.prototype._EDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._INEDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
 
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.inEdges(vertexId));
     }
   );
@@ -906,13 +919,20 @@ Graph.prototype._INEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._OUTEDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
 
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
