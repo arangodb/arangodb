@@ -118,41 +118,6 @@
       this.reset();
     },
 
-    getStatisticsHistory: function(params) {
-      var self = this,
-      body = {
-        figures: params.figures
-      },
-      server = params.server,
-      addAuth = function(){},
-      url = "";
-      if (server) {
-        url = server.endpoint;
-        url += "/_admin/history";
-        if (server.isDBServer) {
-          url += "?DBserver=" + server.target;
-        }
-        addAuth = server.addAuth;
-      } else {
-        url = "/_admin/history";
-      }
-      $.ajax({
-        cache: false,
-        type: 'POST',
-        async: false,
-        url: url,
-        data: JSON.stringify(body),
-        contentType: "application/json",
-        beforeSend: addAuth,
-        success: function(data) {
-          self.history =  data.result;
-        },
-        error: function() {
-
-        }
-      });
-    },
-
     updloadDocuments : function (file) {
       var result;
       $.ajax({

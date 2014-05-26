@@ -31,6 +31,7 @@ var graph = require("org/arangodb/general-graph");
 var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
+var getRawQueryResults = helper.getRawQueryResults
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,11 +65,12 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
       vertex1.save({ _key: "v1" , hugo : true});
       vertex1.save({ _key: "v2" ,hugo : true});
-      vertex2.save({ _key: "v3" });
+      vertex2.save({ _key: "v3" , heinz : 1});
       vertex2.save({ _key: "v4" });
       vertex3.save({ _key: "v5" });
       vertex3.save({ _key: "v6" });
       vertex4.save({ _key: "v7" });
+      vertex4.save({ _key: "v8" ,heinz : 1});
 
       function makeEdge(from, to, collection) {
         collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
@@ -81,6 +83,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex3/v6", edge2);
       makeEdge("UnitTestsAhuacatlVertex2/v4", "UnitTestsAhuacatlVertex4/v7", edge2);
       makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex3/v5", edge2);
+      makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex4/v8", edge2);
 
       try {
         db._collection("_graphs").remove("_graphs/bla3")
@@ -113,27 +116,50 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_EDGES() and GRAPH_NEIGHBOURS()
+/// @brief checks GRAPH_EDGES() and GRAPH_NEIGHBOURS() and GRAPH_VERTICES()
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesAny: function () {
-      var actual;
 
+      var actual;
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+
+      var actual;
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v2", "v1->v5", "v2->v1" ]);
 
-      /*actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeCollectionRestriction: ['UnitTestsAhuacatlEdge1']}) " +
+      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeCollectionRestriction: ['UnitTestsAhuacatlEdge1']}) " +
         "SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v2", "v2->v1" ]);*/
+      assertEqual(actual, [ "v1->v2", "v2->v1" ]);
+
+      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'any'}) " +
+        "SORT e.what RETURN e.what");
+      assertEqual(actual, [ "v1->v2",
+        "v1->v2",
+        "v1->v5",
+        "v2->v1",
+        "v2->v1",
+        "v2->v5",
+        "v3->v5",
+        "v3->v6",
+        "v3->v8",
+        "v3->v8" ]);
+
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'any'}) SORT e._id RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
+      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex2/v3');
+      assertEqual(actual[3]._id, 'UnitTestsAhuacatlVertex4/v8');
+
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeExamples : [{'what' : 'v2->v1'}]}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v1" ]);
 
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeExamples : [{'what' : 'v2->v1'}]}) SORT e.what RETURN e");
-      assertEqual(actual[0].edge.what , "v2->v1");
+      assertEqual(actual[0].path.edges[0].what , "v2->v1");
       assertEqual(actual[0].vertex._key , "v2");
     },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks EDGES()
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,14 +170,24 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound'}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v5", "v2->v5", "v3->v5"]);
 
-      /*actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' ,edgeCollectionRestriction: 'UnitTestsAhuacatlEdge2'}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v5", "v2->v5", "v3->v5"]);*/
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound'}) SORT e._id RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex3/v5');
+
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'inbound'}) SORT e._id RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
+      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex4/v8');
+      assertTrue(actual.length === 3);
+
+
+      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' ,edgeCollectionRestriction: 'UnitTestsAhuacatlEdge2'}) SORT e.what RETURN e.what");
+      assertEqual(actual, [ "v1->v5", "v2->v5", "v3->v5"]);
 
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' , edgeExamples : [{'what' : 'v2->v5'}]}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v2->v5" ]);
 
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' , edgeExamples : [{'what' : 'v2->v5'}]}) SORT e.what RETURN e");
-      assertEqual(actual[0].edge.what , "v2->v5");
+      assertEqual(actual[0].path.edges[0].what , "v2->v5");
       assertEqual(actual[0].vertex._key , "v2");
     },
 
@@ -166,53 +202,57 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound'}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v2", "v1->v5"]);
 
-      /*actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,edgeCollectionRestriction: 'UnitTestsAhuacatlEdge2'}) SORT e.what RETURN e.what");
+      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,edgeCollectionRestriction: 'UnitTestsAhuacatlEdge2'}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v5"]);
-*/
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,edgeExamples :  [{'what' : 'v2->v5'}]}) SORT e.what RETURN e.what");
       assertEqual(actual, []);
 
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,minDepth : 1, maxDepth : 3}) SORT e.vertex._key RETURN e");
+
+      assertEqual(actual[0].vertex._key , "v1");
+      assertEqual(actual[1].vertex._key , "v2");
+      assertEqual(actual[2].vertex._key , "v5");
+      assertEqual(actual[3].vertex._key , "v5");
+
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'outbound'}) SORT e._id RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
+      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex2/v3');
+      assertTrue(actual.length === 3);
+
+
+
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound'}) SORT e.what RETURN e");
-      assertEqual(actual[0].edge.what , "v1->v2");
+      assertEqual(actual[0].path.edges[0].what , "v1->v2");
       assertEqual(actual[0].vertex._key , "v2");
-      assertEqual(actual[1].edge.what , "v1->v5");
+      assertEqual(actual[1].path.edges[0].what , "v1->v5");
       assertEqual(actual[1].vertex._key , "v5");
 
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound'}) SORT e.edge.what RETURN e");
-
-      assertEqual(actual[0].edge.what , "v1->v2");
-      assertEqual(actual[0].vertex._key , "v2");
-      assertEqual(actual[1].edge.what , "v1->v5");
-      assertEqual(actual[1].vertex._key , "v5");
-      assertEqual(actual[2].edge.what , "v2->v1");
-      assertEqual(actual[2].vertex._key , "v1");
-      assertEqual(actual[3].edge.what , "v2->v5");
+      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound'}) SORT e.vertex._key RETURN e");
+      assertEqual(actual[0].vertex._key , "v1");
+      assertEqual(actual[1].vertex._key , "v2");
+      assertEqual(actual[2].vertex._key , "v5");
       assertEqual(actual[3].vertex._key , "v5");
 
 
 
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound', endVertexCollectionRestriction : 'UnitTestsAhuacatlVertex3' }) " +
-        "SORT e.edge.what RETURN e");
-      assertEqual(actual[0].edge.what , "v1->v2");
-      assertEqual(actual[0].vertex._key , "v2");
-      assertEqual(actual[1].edge.what , "v1->v5");
-      assertEqual(actual[1].vertex._key , "v5");
-      assertEqual(actual[2].edge.what , "v2->v1");
-      assertEqual(actual[2].vertex._key , "v1");
-      assertEqual(actual[3].edge.what , "v2->v5");
-      assertEqual(actual[3].vertex._key , "v5");
-    },
+        "SORT e.vertex._key RETURN e");
 
+      assertEqual(actual[0].vertex._key , "v1");
+      assertEqual(actual[1].vertex._key , "v2");
+      assertEqual(actual[2].vertex._key , "v5");
+      assertEqual(actual[3].vertex._key , "v5");
+
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks EDGES() exceptions
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesExceptions: function () {
-      /*assertQueryError(errors.ERROR_GRAPH_INVALID_GRAPH.code, "FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') RETURN e.what");*/
+      //assertQueryError(errors.ERROR_GRAPH_INVALID_GRAPH.code, "FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') RETURN e.what");
 
-      /*assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR e IN GRAPH_EDGES('bla3', 'NotExistingVertex', 'outbound') RETURN e.what");*/
-        
-      /*assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') RETURN e.what");*/
+      //assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') RETURN e.what");
     }
 
   }

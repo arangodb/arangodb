@@ -44,13 +44,19 @@
       );
 */
     },
-    
-    selectCollection: function() {
+
+    selectCollection: function(event) {
+
+      //check if event was fired from disabled button
+      if ($(event.target).hasClass("disabled")) {
+        return 0;
+      }
+
       window.App.navigate(
         "collection/" + encodeURIComponent(this.model.get("name")) + "/documents/1", {trigger: true}
       );
     },
-    
+
     noop: function(event) {
       event.stopPropagation();
     },

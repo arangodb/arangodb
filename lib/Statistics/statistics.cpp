@@ -114,9 +114,17 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
       double requestTime = statistics->_requestEnd - statistics->_requestStart;
       TRI_RequestTimeDistributionStatistics->addFigure(requestTime);
 
+      double queueTime = 0.0;
+
       if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-        double queueTime = statistics->_queueEnd - statistics->_queueStart;
+        queueTime = statistics->_queueEnd - statistics->_queueStart;
         TRI_QueueTimeDistributionStatistics->addFigure(queueTime);
+      }
+
+      double ioTime = totalTime - requestTime - queueTime;
+
+      if (ioTime >= 0.0) {
+        TRI_IoTimeDistributionStatistics->addFigure(ioTime);
       }
 
       TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
@@ -149,6 +157,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
 void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
                                 StatisticsDistribution& requestTime,
                                 StatisticsDistribution& queueTime,
+                                StatisticsDistribution& ioTime,
                                 StatisticsDistribution& bytesSent,
                                 StatisticsDistribution& bytesReceived) {
   STATISTICS_LOCK(&RequestListLock);
@@ -156,6 +165,7 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
   totalTime = *TRI_TotalTimeDistributionStatistics;
   requestTime = *TRI_RequestTimeDistributionStatistics;
   queueTime = *TRI_QueueTimeDistributionStatistics;
+  ioTime = *TRI_IoTimeDistributionStatistics;
   bytesSent = *TRI_BytesSentDistributionStatistics;
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 
@@ -444,6 +454,12 @@ StatisticsDistribution* TRI_RequestTimeDistributionStatistics;
 StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief i/o distribution
+////////////////////////////////////////////////////////////////////////////////
+
+StatisticsDistribution* TRI_IoTimeDistributionStatistics;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -540,6 +556,7 @@ void TRI_InitialiseStatistics () {
   TRI_TotalTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
   TRI_RequestTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
   TRI_QueueTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_IoTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
   TRI_BytesSentDistributionStatistics = new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
   TRI_BytesReceivedDistributionStatistics = new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
 
@@ -583,6 +600,7 @@ void TRI_ShutdownStatistics (void) {
   delete TRI_TotalTimeDistributionStatistics;
   delete TRI_RequestTimeDistributionStatistics;
   delete TRI_QueueTimeDistributionStatistics;
+  delete TRI_IoTimeDistributionStatistics;
   delete TRI_BytesSentDistributionStatistics;
   delete TRI_BytesReceivedDistributionStatistics;
 

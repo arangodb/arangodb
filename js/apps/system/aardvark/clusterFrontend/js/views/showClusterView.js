@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true, continue: true */
 /*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
 
 (function() {
@@ -16,10 +16,7 @@
       "change #selectDB"        : "updateCollections",
       "change #selectCol"       : "updateShards",
       "click .dbserver"         : "dashboard",
-      "click .coordinator"      : "dashboard",
-      "click #lineGraph"        : "showDetail"
-      //"mouseover #lineGraph"    : "setShowAll",
-      //"mouseout #lineGraph"     : "resetShowAll"
+      "click .coordinator"      : "dashboard"
     },
 
     replaceSVGs: function() {
@@ -106,7 +103,6 @@
 
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
-//        var id = serv.replace(":", "\\:"),
         var id = serv,
           type;
         id = id.replace(/\./g,'-');
@@ -136,7 +132,8 @@
       var dbToSel = $("#" + dbName, selDB);
       if (!dbToSel.length) {
         dbName = $("#selectDB").find(":selected").attr("id");
-      } else {
+      }
+      else {
         dbToSel.prop("selected", true);
       }
 
@@ -167,7 +164,8 @@
       var byAddress = this.listByAddress();
       if (Object.keys(byAddress).length === 1) {
         this.type = "testPlan";
-      } else {
+      }
+      else {
         this.type = "other";
       }
       $(this.el).html(this.template.render({
@@ -177,7 +175,7 @@
       }));
       $(this.el).append(this.modal.render({}));
       this.replaceSVGs();
-      this.loadHistory();
+      /* this.loadHistory(); */
       this.getServerStatistics();
       this.data = this.generatePieData();
       this.renderPieChart(this.data);
@@ -188,157 +186,178 @@
     generatePieData: function() {
       var pieData = [];
       var self = this;
+
       this.data.forEach(function(m) {
-        pieData.push({key: m.get("name"), value :m.get("system").residentSize,
+        pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
           time: self.serverTime});
       });
+
       return pieData;
     },
 
+/*
     loadHistory : function() {
         this.hist = {};
+
         var self = this;
         var coord = this.coordinators.findWhere({
           status: "ok"
         });
+
         var endpoint = coord.get("protocol")
           + "://"
           + coord.get("address");
+
         this.dbservers.forEach(function (dbserver) {
-            if (dbserver.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(dbserver.id) === -1) {
-              self.knownServers.push(dbserver.id);
-            }
-            var server = {
-              raw: dbserver.get("address"),
-              isDBServer: true,
-              target: encodeURIComponent(dbserver.get("name")),
-              endpoint: endpoint,
-              addAuth: window.App.addAuth.bind(window.App)
-            };
-            self.documentStore.getStatisticsHistory({
-              server: server,
-              figures: ["client.totalTime"]
-            });
-            self.history = self.documentStore.history;
-            self.hist[dbserver.id] = {};
-            self.history.forEach(function(e) {
-                var date = new Date(e.time * 1000);
-                date.setMilliseconds(0);
-                date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                var uptime = e.server.uptime * 1000;
-                var time = date.getTime();
-                if (self.hist[dbserver.id].lastTime
-                  && (time - self.hist[dbserver.id].lastTime) > uptime) {
-                    self.hist[dbserver.id][
-                        self.hist[dbserver.id].lastTime +
-                            (time-self.hist[dbserver.id].lastTime) / 2] = null;
-                }
-                self.hist[dbserver.id].lastTime = time;
-                if (e.client.totalTime.count === 0) {
-                  self.hist[dbserver.id][time] = 0;
-                } else {
-                  self.hist[dbserver.id][time] = e.client.totalTime.sum
-                    / e.client.totalTime.count;
-                }
-            });
+          if (dbserver.get("status") !== "ok") {return;}
+
+          if (self.knownServers.indexOf(dbserver.id) === -1) {
+            self.knownServers.push(dbserver.id);
+          }
+
+          var server = {
+            raw: dbserver.get("address"),
+            isDBServer: true,
+            target: encodeURIComponent(dbserver.get("name")),
+            endpoint: endpoint,
+            addAuth: window.App.addAuth.bind(window.App)
+          };
         });
+
         this.coordinators.forEach(function (coordinator) {
-            if (coordinator.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(coordinator.id) === -1) {
-              self.knownServers.push(coordinator.id);
-            }
-            var server = {
-              raw: coordinator.get("address"),
-              isDBServer: false,
-              target: encodeURIComponent(coordinator.get("name")),
-              endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
-              addAuth: window.App.addAuth.bind(window.App)
-            };
-            self.documentStore.getStatisticsHistory({
-              server: server,
-              figures: ["client.totalTime"]
-            });
-            self.history = self.documentStore.history;
-            self.hist[coordinator.id] = {};
-            self.history.forEach(function(e) {
-                var date = new Date(e.time * 1000);
-                date.setMilliseconds(0);
-                date.setSeconds(Math.round(date.getSeconds() / 10) * 10);
-                var uptime = e.server.uptime * 1000;
-                var time = date.getTime();
-                if (self.hist[coordinator.id].lastTime
-                  && (time - self.hist[coordinator.id].lastTime) > uptime) {
-                    self.hist[coordinator.id][
-                        self.hist[coordinator.id].lastTime +
-                            (time-self.hist[coordinator.id].lastTime) / 2] = null;
-                }
-                self.hist[coordinator.id].lastTime = time;
-                if (e.client.totalTime.count === 0) {
-                    self.hist[coordinator.id][time] = 0;
-                } else {
-                  self.hist[coordinator.id][time] = e.client.totalTime.sum
-                    / e.client.totalTime.count;
-                }
-            });
+          if (coordinator.get("status") !== "ok") {return;}
+
+          if (self.knownServers.indexOf(coordinator.id) === -1) {
+            self.knownServers.push(coordinator.id);
+          }
+
+          var server = {
+            raw: coordinator.get("address"),
+            isDBServer: false,
+            target: encodeURIComponent(coordinator.get("name")),
+            endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+            addAuth: window.App.addAuth.bind(window.App)
+          };
         });
+    },
+*/
+
+    addStatisticsItem: function(name, time, requests, snap) {
+      var self = this;
+
+      if (! self.hasOwnProperty('hist')) {
+        self.hist = {};
+      }
+
+      if (! self.hist.hasOwnProperty(name)) {
+        self.hist[name] = [];
+      }
+
+      var h = self.hist[name];
+      var l = h.length;
+
+      if (0 === l) {
+        h.push({
+          time: time,
+          snap: snap,
+          requests: requests,
+          requestsPerSecond: 0
+        });
+      }
+      else {
+        var lt = h[l - 1].time;
+        var tt = h[l - 1].requests;
+
+        if (tt >= requests) {
+          h.times.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: 0
+          });
+        }
+        else {
+          var dt = time - lt;
+          var ps = 0;
+
+          if (dt > 0) {
+            ps = (requests - tt) / dt;
+          }
+
+          h.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: ps
+          });
+        }
+      }
     },
 
     getServerStatistics: function() {
-        var self = this;
-        this.data = undefined;
-        var statCollect = new window.ClusterStatisticsCollection();
-        var coord = this.coordinators.first();
-        this.dbservers.forEach(function (dbserver) {
-            if (dbserver.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(dbserver.id) === -1) {
-              self.knownServers.push(dbserver.id);
-            }
-            var stat = new window.Statistics({name: dbserver.id});
-            stat.url = coord.get("protocol") + "://"
-              + coord.get("address")
-              + "/_admin/clusterStatistics?DBserver="
-              + dbserver.get("name");
-            statCollect.add(stat);
-        });
-        this.coordinators.forEach(function (coordinator) {
-            if (coordinator.get("status") !== "ok") {return;}
-            if (self.knownServers.indexOf(coordinator.id) === -1) {
-              self.knownServers.push(coordinator.id);
-            }
-            var stat = new window.Statistics({name: coordinator.id});
-            stat.url = coordinator.get("protocol") + "://"
-              + coordinator.get("address")
-              + "/_admin/statistics";
-            statCollect.add(stat);
-        });
-        statCollect.fetch();
-        statCollect.forEach(function(m) {
-          var uptime = m.get("server").uptime * 1000;
-          var time = self.serverTime;
-          var name = m.get("name");
-          var totalTime = m.get("client").totalTime;
-          if (self.hist[name].lastTime
-            && (time - self.hist[name].lastTime) > uptime) {
-              self.hist[name][
-                  self.hist[name].lastTime +
-                      (time-self.hist[name].lastTime) / 2] = null;
-          }
-          self.hist[name].lastTime = time;
-          if (totalTime.count === 0) {
-            self.hist[name][time] = 0;
-          } else {
-            self.hist[name][time] = totalTime.sum / totalTime.count;
-          }
-        });
-        this.data = statCollect;
+      var self = this;
+      var snap = Math.round(self.serverTime / 1000);
+
+      this.data = undefined;
+
+      var statCollect = new window.ClusterStatisticsCollection();
+      var coord = this.coordinators.first();
+
+      // create statistics collector for DB servers
+      this.dbservers.forEach(function (dbserver) {
+        if (dbserver.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(dbserver.id) === -1) {
+          self.knownServers.push(dbserver.id);
+        }
+
+        var stat = new window.Statistics({name: dbserver.id});
+
+        stat.url = coord.get("protocol") + "://"
+          + coord.get("address")
+          + "/_admin/clusterStatistics?DBserver="
+          + dbserver.get("name");
+
+        statCollect.add(stat);
+      });
+
+      // create statistics collector for coordinator
+      this.coordinators.forEach(function (coordinator) {
+        if (coordinator.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(coordinator.id) === -1) {
+          self.knownServers.push(coordinator.id);
+        }
+
+        var stat = new window.Statistics({name: coordinator.id});
+
+        stat.url = coordinator.get("protocol") + "://"
+          + coordinator.get("address")
+          + "/_admin/statistics";
+
+        statCollect.add(stat);
+      });
+
+      // now fetch the statistics
+      statCollect.fetch();
+
+      statCollect.forEach(function(m) {
+        var time = m.get("time");
+        var name = m.get("name");
+        var requests = m.get("http").requestsTotal;
+
+        self.addStatisticsItem(name, time, requests, snap);
+      });
+
+      this.data = statCollect;
     },
 
     renderPieChart: function(dataset) {
-        var w = 280;
-        var h = 160;
+        var w = $("#clusterGraphs svg").width();
+        var h = $("#clusterGraphs svg").height();
         var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
-        var color = d3.scale.category20();
+        // var color = d3.scale.category20();
+        var color = this.dygraphConfig.colors;
 
         var arc = d3.svg.arc() //each datapoint will create one later.
             .outerRadius(radius - 20)
@@ -352,11 +371,11 @@
             });
         d3.select("#clusterGraphs").select("svg").remove();
         var pieChartSvg = d3.select("#clusterGraphs").append("svg")
-            .attr("width", w)
-            .attr("height", h)
+            // .attr("width", w)
+            // .attr("height", h)
             .attr("class", "clusterChart")
             .append("g") //someone to transform. Groups data.
-            .attr("transform", "translate(" + w / 2 + "," + h / 2 + ")");
+            .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
 
         var arc2 = d3.svg.arc()
             .outerRadius(radius-2)
@@ -369,164 +388,82 @@
         slices.append("path")
             .attr("d", arc)
             .style("fill", function (item, i) {
-              return color(i);
+              return color[i % color.length];
+            })
+            .style("stroke", function (item, i) {
+              return color[i % color.length];
             });
         /*jslint unparam: false*/
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-            .attr("dy", ".35em")
+            // .attr("dy", "0.35em")
             .style("text-anchor", "middle")
             .text(function(d) {
-                var v = d.data.value / 1000000000;
-                return v.toFixed(2) + "GB"; });
+                var v = d.data.value / 1024 / 1024 / 1024;
+                return v.toFixed(2); });
 
         slices.append("text")
             .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
-            .attr("dy", ".35em")
+            // .attr("dy", "1em")
             .style("text-anchor", "middle")
             .text(function(d) { return d.data.key; });
       },
 
-      renderLineChart: function(remake) {
-          var self = this;
-          self.chartData = {
-              labelsNormal : ['datetime'],
-              labelsShowAll : ['datetime'],
-              data : [],
-              visibilityNormal : [],
-              visibilityShowAll : []
-          };
-          var getData = function() {
-              var data = {};
-              Object.keys(self.hist).forEach(function(server) {
-                  Object.keys(self.hist[server]).forEach(function(date) {
-                    if (date === "lastTime") {
-                        return;
-                    }
-                    if (!data[date]) {
-                        data[date] = {};
-                        Object.keys(self.hist).forEach(function(s) {
-                            data[date][s] = null;
-                        });
-                    }
-                    data[date][server] = self.hist[server][date];
-                  });
-              });
-              Object.keys(data).forEach(function(d) {
-                  var i = 0;
-                  var sum = 0;
-                  Object.keys(data[d]).forEach(function(server) {
-                    if (data[d][server] !== null) {
-                        i++;
-                        sum = sum + data[d][server];
-                    }
-                    data[d].ClusterAverage = sum / i;
-                  });
-              });
-              Object.keys(data).sort().forEach(function (time) {
-                  var dataList = [new Date(parseFloat(time))];
-                  self.max = Number.NEGATIVE_INFINITY;
-                  self.chartData.visibilityShowAll = [];
-                  self.chartData.labelsShowAll = [ "Date"];
-                  Object.keys(data[time]).sort().forEach(function (server) {
-                      self.chartData.visibilityShowAll.push(true);
-                      self.chartData.labelsShowAll.push(server);
-                      dataList.push(data[time][server]);
-                  });
-                  self.chartData.data.push(dataList);
-              });
-              var latestEntry = self.chartData.data[self.chartData.data.length -1];
-              latestEntry.forEach(function (e) {
-                  if (latestEntry.indexOf(e) > 0) {
-                      if (e !== null) {
-                          if (self.max < e) {
-                              self.max = e;
-                          }
-                      }
-                  }
-              });
-              self.chartData.visibilityNormal = [];
-              self.chartData.labelsNormal = [ "Date"];
-              var i = 0;
-              latestEntry.forEach(function (e) {
-                  if (i > 0) {
-                      if ("ClusterAverage" === self.chartData.labelsShowAll[i]) {
-                          self.chartData.visibilityNormal.push(true);
-                          self.chartData.labelsNormal.push(
-                            self.chartData.labelsShowAll[i] + " (avg)"
-                          );
-                      } else if (e === self.max ) {
-                          self.chartData.visibilityNormal.push(true);
-                          self.chartData.labelsNormal.push(
-                            self.chartData.labelsShowAll[i] + " (max)"
-                          );
-                      } else {
-                          self.chartData.visibilityNormal.push(false);
-                          self.chartData.labelsNormal.push(self.chartData.labelsShowAll[i]);
-                      }
-                  }
-                  i++;
-              });
-          };
-          if (this.graph !== undefined && !remake) {
-              getData();
-              var opts = {file : this.chartData.data};
-              if (this.graphShowAll ) {
-                opts.labels = this.chartData.labelsShowAll;
-                opts.visibility = this.chartData.visibilityShowAll;
-              } else {
-                opts.labels = this.chartData.labelsNormal;
-                opts.visibility = this.chartData.visibilityNormal;
+      renderLineChart: function() {
+        var self = this;
+
+        var intervall = 60 * 20;
+        var data = [];
+        var hash = [];
+        var t = Math.round(new Date().getTime() / 1000) - intervall;
+        var ks = self.knownServers;
+        var f = function(x) {return null;};
+
+        var i;
+        var j;
+
+        for (i = 0;  i < ks.length;  ++i) {
+          var h = self.hist[ks[i]];
+
+          if (h) {
+            for (j = 0;  j < h.length;  ++j) {
+              var snap = h[j].snap;
+
+              if (snap < t) {
+                continue;
               }
-              opts.dateWindow = this.updateDateWindow( this.graph.graph, this.graphShowAll);
-              this.graph.graph.updateOptions(opts);
-              return;
-          }
 
-          var makeGraph = function(remake) {
-            self.graph = {data : null, options :
-                self.dygraphConfig.getDefaultConfig("clusterAverageRequestTime")
-            };
-            getData();
-            self.graph.data = self.chartData.data;
-            self.graph.options.visibility = self.chartData.visibilityNormal;
-            self.graph.options.labels = self.chartData.labelsNormal;
-            self.graph.options.colors =
-                self.dygraphConfig.getColors(self.chartData.labelsNormal);
-            if (remake) {
-                self.graph.options =
-                    self.dygraphConfig.getDetailChartConfig("clusterAverageRequestTime");
-                self.graph.options.labels = self.chartData.labelsShowAll;
-                self.graph.options.colors =
-                    self.dygraphConfig.getColors(self.chartData.labelsShowAll);
-                self.graph.options.visibility = self.chartData.visibilityShowAll;
-                self.graph.options.height = $('.modal-chart-detail').height() * 0.7;
-                self.graph.options.width = $('.modal-chart-detail').width() * 0.84;
-                self.graph.options.title = "";
+              var d;
+
+              if (! hash.hasOwnProperty(snap)) {
+                var tt = new Date(snap * 1000);
+
+                d = hash[snap] = [ tt ].concat(ks.map(f));
+              }
+              else {
+                d = hash[snap];
+              }
+
+              d[i + 1] = h[j].requestsPerSecond;
             }
-            self.graph.graph = new Dygraph(
-                  document.getElementById(remake ? 'lineChartDetail' : 'lineGraph'),
-                  self.graph.data,
-                  self.graph.options
-            );
-            self.graph.graph.setSelection(false, 'ClusterAverage', true);
-          };
-        makeGraph(remake);
-
-      },
-
-      updateDateWindow: function (graph, isDetailChart) {
-          var t = new Date().getTime();
-          var borderLeft, borderRight;
-          if (isDetailChart && graph.dateWindow_) {
-              borderLeft = graph.dateWindow_[0];
-              borderRight = t - graph.dateWindow_[1] - this.interval * 5 > 0 ?
-                  graph.dateWindow_[1] : t;
-              return [borderLeft, borderRight];
           }
-          return [t - this.defaultFrame, t];
+        }
 
+        data = [];
 
+        Object.keys(hash).sort().forEach(function (m) {
+          data.push(hash[m]);
+        });
+
+        var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
+        options.labelsDiv = $("#lineGraphLegend")[0];
+        options.labels = [ "datetime" ].concat(ks);
+        
+        self.graph = new Dygraph(
+          document.getElementById('lineGraph'),
+          data,
+          options
+        );
       },
 
       stopUpdating: function () {
@@ -539,8 +476,11 @@
         if (this.isUpdating) {
           return;
         }
+
         this.isUpdating = true;
+
         var self = this;
+
         this.timer = window.setInterval(function() {
           self.rerender();
         }, this.interval);
@@ -549,16 +489,20 @@
 
       dashboard: function(e) {
         this.stopUpdating();
+
         var tar = $(e.currentTarget);
         var serv = {};
         var cur;
         var coord;
+
         var ip_port = tar.attr("id");
         ip_port = ip_port.replace(/\-/g,'.');
         ip_port = ip_port.replace(/\_/g,':');
         ip_port = ip_port.substr(2);
+
         serv.raw = ip_port;
         serv.isDBServer = tar.hasClass("dbserver");
+
         if (serv.isDBServer) {
           cur = this.dbservers.findWhere({
             address: serv.raw
@@ -569,7 +513,8 @@
           serv.endpoint = coord.get("protocol")
           + "://"
           + coord.get("address");
-        } else {
+        }
+        else {
           cur = this.coordinators.findWhere({
             address: serv.raw
           });
@@ -577,35 +522,10 @@
           + "://"
           + cur.get("address");
         }
+
         serv.target = encodeURIComponent(cur.get("name"));
         window.App.serverToShow = serv;
         window.App.dashboard();
-      },
-
-      showDetail : function() {
-          var self = this;
-          delete self.graph;
-          window.modalView.hideFooter = true;
-          window.modalView.hide();
-          window.modalView.show(
-              "modalGraph.ejs",
-              "Average request time in milliseconds",
-              undefined,
-              undefined,
-              undefined
-          );
-
-          window.modalView.hideFooter = false;
-
-          $('#modal-dialog').on('hidden', function () {
-              delete self.graph;
-              self.resetShowAll();
-          });
-          //$('.modal-body').css({"max-height": "100%" });
-          $('#modal-dialog').toggleClass("modal-chart-detail", true);
-          self.setShowAll();
-          self.renderLineChart(true);
-          return self;
       },
 
       getCurrentSize: function (div) {
@@ -625,12 +545,9 @@
       resize: function () {
           var dimensions;
           if (this.graph) {
-              dimensions = this.getCurrentSize(this.graph.graph.maindiv_.id);
-              this.graph.graph.resize(dimensions.width, dimensions.height);
+              dimensions = this.getCurrentSize(this.graph.maindiv_.id);
+              this.graph.resize(dimensions.width, dimensions.height);
           }
       }
     });
-
-
-
-  }());
+}());
