@@ -117,6 +117,7 @@ bin_arangod_SOURCES = \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Marker.cpp \
+	arangod/Wal/ReadOperation.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
 	arangod/Wal/TestThread.cpp \

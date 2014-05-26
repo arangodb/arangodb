@@ -84,6 +84,7 @@ LogfileManager::LogfileManager (std::string* databasePath)
     _logfilesLock(),
     _lastCollectedId(0),
     _logfiles(),
+    _readOperations(),
     _regex(),
     _shutdown(0) {
   
@@ -323,6 +324,30 @@ void LogfileManager::stop () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a WAL read operation
+////////////////////////////////////////////////////////////////////////////////
+  
+uint64_t LogfileManager::registerReadOperation () {
+  uint64_t id = static_cast<uint64_t>(TRI_NewTickServer());
+
+  {
+    WRITE_LOCKER(_logfilesLock);
+    _readOperations.insert(make_pair(id, _lastCollectedId));
+  }
+
+  return id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisters a WAL read operation
+////////////////////////////////////////////////////////////////////////////////
+        
+void LogfileManager::unregisterReadOperation (uint64_t id) {
+  WRITE_LOCKER(_logfilesLock);
+  _readOperations.erase(id);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not it is currently allowed to create an additional 
@@ -690,10 +715,19 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
   READ_LOCKER(_logfilesLock);
 
+  // iterate over all active readers and find their minimum used logfile id
+  Logfile::IdType minId = UINT64_MAX;
+  for (auto it = _readOperations.begin(); it != _readOperations.end(); ++it) {
+    if ((*it).second < minId) {
+      minId = (*it).second;
+    }
+  }
+
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
 
-    if (logfile != nullptr && logfile->canBeRemoved()) {
+    // find the first logfile that can be safely removed
+    if (logfile != nullptr && logfile->id() <= minId && logfile->canBeRemoved()) {
       if (first == nullptr) {
         first = logfile;
       }
@@ -733,6 +767,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   {
     WRITE_LOCKER(_logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
+    _lastCollectedId = logfile->id();
   }
 
   _collectorThread->signal();
