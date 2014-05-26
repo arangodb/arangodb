@@ -705,6 +705,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
+      options = options || {};
       var edgeCollection = edgeId.split("/")[0];
       var graphs = getGraphCollection().toArray();
       var result = old_remove(edgeId, options);
