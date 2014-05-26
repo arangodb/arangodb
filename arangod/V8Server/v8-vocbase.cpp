@@ -280,7 +280,7 @@ static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
     if (TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION) ||
         TRI_EqualString(c->_name, TRI_COL_NAME_TRANSACTION) ||
         TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
-        TRI_EqualString(c->_name, TRI_COL_NAME_STATISTICS)) {
+        TRI_IsPrefixString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       c->_canDrop   = false;
       c->_canRename = false;

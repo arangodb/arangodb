@@ -131,6 +131,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t*);
 void TRI_FillRequestStatistics (triagens::basics::StatisticsDistribution& totalTime,
                                 triagens::basics::StatisticsDistribution& requestTime,
                                 triagens::basics::StatisticsDistribution& queueTime,
+                                triagens::basics::StatisticsDistribution& ioTime,
                                 triagens::basics::StatisticsDistribution& bytesSent,
                                 triagens::basics::StatisticsDistribution& bytesReceived);
 
@@ -239,6 +240,12 @@ extern triagens::basics::StatisticsDistribution* TRI_RequestTimeDistributionStat
 ////////////////////////////////////////////////////////////////////////////////
 
 extern triagens::basics::StatisticsDistribution* TRI_QueueTimeDistributionStatistics;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief i/o distribution
+////////////////////////////////////////////////////////////////////////////////
+
+extern triagens::basics::StatisticsDistribution* TRI_IoTimeDistributionStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytes sent distribution vector

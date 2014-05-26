@@ -60,60 +60,63 @@
       }
     },
 
+    replShellPromptHelper: function(command) {
+      // Continue line if can't compile the command.
+      try {
+        var f = new Function(command);
+      }
+      catch (e) {
+        if (/[\[\{\(]$/.test(command)) {
+          return 1;
+        }
+        return 0;
+      }
+      return false;
+    },
+
+    replShellHandlerHelper: function(command) {
+
+    },
+
     replShell: function () {
-                 // Creating the console.
-                 var internal = require("internal");
-                 var client = require("org/arangodb/arangosh");
-                 var header = 'Welcome to arangosh Copyright (c) triAGENS GmbH.\n';
-                 window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
-                 this.executeJs(internal.print(client.HELP));
-                 // Abort prompt on Ctrl+Z.
-                 jqconsole.RegisterShortcut('Z', function() {
-                   jqconsole.AbortPrompt();
-                   handler();
-                 });
-                 // Move to line end Ctrl+E.
-                 jqconsole.RegisterShortcut('E', function() {
-                   jqconsole.MoveToEnd();
-                   handler();
-                 });
-                 jqconsole.RegisterMatching('{', '}', 'brace');
-                 jqconsole.RegisterMatching('(', ')', 'paren');
-                 jqconsole.RegisterMatching('[', ']', 'bracket');
+      var self = this;
+      // Creating the console.
+      var internal = require("internal");
+      var client = require("org/arangodb/arangosh");
+      var header = 'Welcome to arangosh Copyright (c) triAGENS GmbH.\n';
+      window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
+      this.executeJs(internal.print(client.HELP));
+      // Abort prompt on Ctrl+Z.
+      jqconsole.RegisterShortcut('Z', function() {
+        jqconsole.AbortPrompt();
+        handler();
+      });
+      // Move to line end Ctrl+E.
+      jqconsole.RegisterShortcut('E', function() {
+        jqconsole.MoveToEnd();
+        handler();
+      });
+      jqconsole.RegisterMatching('{', '}', 'brace');
+      jqconsole.RegisterMatching('(', ')', 'paren');
+      jqconsole.RegisterMatching('[', ']', 'bracket');
 
-                 var that = this;
-                 // Handle a command.
-                 var handler = function(command) {
-                   if (command === 'help') {
-                     //command = "require(\"arangosh\").HELP";
-                     command = help();
-                   }
-                   if (command === "exit") {
-                     location.reload();
-                   }
+      // Handle a command.
+      var handler = function(command) {
+        if (command === 'help') {
+          //command = "require(\"arangosh\").HELP";
+          command = help();
+        }
+        if (command === "exit") {
+          location.reload();
+        }
 
-                   that.executeJs(command);
-                   jqconsole.Prompt(true, handler, function(command) {
-                     // Continue line if can't compile the command.
-                     try {
-                       var f = new Function(command);
-                     }
-                     catch (e) {
-                       if (/[\[\{\(]$/.test(command)) {
-                         return 1;
-                       }
-                       return 0;
-                     }
-                     return false;
-                   });
-                 };
+        self.executeJs(command);
+        jqconsole.Prompt(true, handler, self.replShellPromptHelper(command));
+      };
 
-                 // Initiate the first prompt.
-                 handler();
-               },
-    evaloutput: function (data) {
-                  this.executeJs(data);
-                }
+      // Initiate the first prompt.
+      handler();
+    }
 
-});
+  });
 }());
