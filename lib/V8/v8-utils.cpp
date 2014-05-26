@@ -2487,14 +2487,16 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
   StatisticsDistribution totalTime;
   StatisticsDistribution requestTime;
   StatisticsDistribution queueTime;
+  StatisticsDistribution ioTime;
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  TRI_FillRequestStatistics(totalTime, requestTime, queueTime, bytesSent, bytesReceived);
+  TRI_FillRequestStatistics(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
 
   FillDistribution(result, "totalTime", totalTime);
   FillDistribution(result, "requestTime", requestTime);
   FillDistribution(result, "queueTime", queueTime);
+  FillDistribution(result, "ioTime", ioTime);
   FillDistribution(result, "bytesSent", bytesSent);
   FillDistribution(result, "bytesReceived", bytesReceived);
 

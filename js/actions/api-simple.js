@@ -1750,6 +1750,8 @@ actions.defineHttp({
 /// - `example`: An example document that all collection documents are compared
 ///   against.
 ///
+/// - options: an json object which can contains following attributes:
+///
 /// - `waitForSync`: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
@@ -1761,6 +1763,9 @@ actions.defineHttp({
 ///
 /// Note: the `limit` attribute is not supported on sharded collections. 
 /// Using it will result in an error.
+/// The options attributes waitForSync and limit can given yet without 
+/// an ecapsulation into a json object. but this may be deprecated in future 
+/// versions of arango 
 ///
 /// Returns the number of documents that were deleted.
 ///
@@ -1797,6 +1802,46 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// Using Parameter: waitForSync and limit
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/remove-by-example";
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
+///                 "waitForSync": true, "limit": 2 }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// Using Parameter: waitForSync and limit with new signature
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/remove-by-example";
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
+///                   "options": {"waitForSync": true, "limit": 2} }';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1818,7 +1863,6 @@ actions.defineHttp({
         var example = body.example;
         var name = body.collection;
         var collection = db._collection(name);
-        var limit = body.limit || null;
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -1827,7 +1871,13 @@ actions.defineHttp({
           actions.badParameter(req, res, "example");
         }
         else {
-          var result = collection.removeByExample(example, body.waitForSync, limit);
+          var options = body.options;
+          if (typeof options === "undefined") {
+            var waitForSync = body.waitForSync || undefined;
+            var limit = body.limit || null;
+            options = {waitForSync: waitForSync, limit: limit};
+          }
+          var result = collection.removeByExample(example, options);
           actions.resultOk(req, res, actions.HTTP_OK, { deleted: result });
         }
       }
@@ -1865,6 +1915,8 @@ actions.defineHttp({
 /// - `newValue`: The replacement document that will get inserted in place
 ///   of the "old" documents.
 ///
+/// - `options`: an json object which can contain following attributes
+///
 /// - `waitForSync`: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
@@ -1876,6 +1928,9 @@ actions.defineHttp({
 ///
 /// Note: the `limit` attribute is not supported on sharded collections. 
 /// Using it will result in an error.
+/// The options attributes waitForSync and limit can given yet without 
+/// an ecapsulation into a json object. but this may be deprecated in future 
+/// versions of arango 
 ///
 /// Returns the number of documents that were replaced.
 ///
@@ -1917,6 +1972,30 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// Using new Signature for attributes WaitForSync and limit
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/replace-by-example";
+///     var body = '{ ' +
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : {"foo" : "bar"}, ' +
+///       options: {'"limit" : 3  "waitForSync": true'  }+
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1939,7 +2018,6 @@ actions.defineHttp({
         var newValue = body.newValue;
         var name = body.collection;
         var collection = db._collection(name);
-        var limit = body.limit || null;
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -1951,7 +2029,13 @@ actions.defineHttp({
           actions.badParameter(req, res, "newValue");
         }
         else {
-          var result = collection.replaceByExample(example, newValue, body.waitForSync, limit);
+          var options = body.options;
+          if (typeof options === "undefined") {
+            var waitForSync = body.waitForSync || undefined;
+            var limit = body.limit || null;
+            options = {waitForSync: waitForSync, limit: limit};
+          }
+          var result = collection.replaceByExample(example, newValue, options);
           actions.resultOk(req, res, actions.HTTP_OK, { replaced: result });
         }
       }
@@ -1988,6 +2072,8 @@ actions.defineHttp({
 ///
 /// - `newValue`: A document containing all the attributes to update in the
 ///   found documents.
+///
+/// - `options`: a json object wich can contains following attributes:
 ///
 /// - `keepNull`: This parameter can be used to modify the behavior when
 ///   handling `null` values. Normally, `null` values are stored in the

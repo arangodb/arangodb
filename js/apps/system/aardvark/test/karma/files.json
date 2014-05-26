@@ -248,6 +248,7 @@
   "test/specs/views/modalViewSpec.js",
   "test/specs/views/editListEntryViewSpec.js",
   "test/specs/views/collectionsViewSpec.js",
+  "test/specs/views/collectionsItemViewSpec.js",
   "test/specs/views/dbSelectionViewSpec.js",
   "test/specs/views/navigationViewSpec.js",
   "test/specs/views/graphViewSpec.js",
@@ -260,6 +261,7 @@
   "test/specs/views/newLogsViewSpec.js",
   "test/specs/views/notificationViewSpec.js",
   "test/specs/views/statisticBarViewSpec.js",
+  "test/specs/views/shellViewSpec.js",
 
 
   "test/specs/router/routerSpec.js",

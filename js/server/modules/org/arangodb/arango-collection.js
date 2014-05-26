@@ -552,7 +552,17 @@ ArangoCollection.prototype.removeByExample = function (example,
   if (limit === 0) {
     return 0;
   }
-
+  if (typeof waitForSync === "object") {
+    if (typeof limit !== "undefined") {
+      throw "too many parameters";
+    }
+    var tmp_options = waitForSync;
+    // avoiding jslint error
+    // see: http://jslinterrors.com/unexpected-sync-method-a/
+    /*jslint node: true, stupid: true */
+    waitForSync = tmp_options.waitForSync;
+    limit = tmp_options.limit;
+  }
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
@@ -643,6 +653,18 @@ ArangoCollection.prototype.replaceByExample = function (example,
     err1.errorMessage = "invalid value for parameter 'newValue'";
 
     throw err1;
+  }
+
+  if (typeof waitForSync === "object") {
+    if (typeof limit !== "undefined") {
+      throw "too many parameters";
+    }
+    var tmp_options = waitForSync;
+    // avoiding jslint error
+    // see: http://jslinterrors.com/unexpected-sync-method-a/
+    /*jslint node: true, stupid: true */
+    waitForSync = tmp_options.waitForSync;
+    limit = tmp_options.limit;
   }
 
   var cluster = require("org/arangodb/cluster");
@@ -740,6 +762,19 @@ ArangoCollection.prototype.updateByExample = function (example,
 
     throw err1;
   }
+
+  if (typeof keepNull === "object") {
+    if (typeof waitForSync !== "undefined") {
+      throw "too many parameters";
+    }
+    var tmp_options = keepNull;
+    // avoiding jslint error
+    // see: http://jslinterrors.com/unexpected-sync-method-a/
+    /*jslint node: true, stupid: true */
+    keepNull = tmp_options.keepNull;
+    waitForSync = tmp_options.waitForSync;
+    limit = tmp_options.limit;
+  }
   
   var cluster = require("org/arangodb/cluster");
 
@@ -800,7 +835,8 @@ ArangoCollection.prototype.updateByExample = function (example,
       while (documents.hasNext()) {
         var document = documents.next();
 
-        if (collection.update(document, params.newValue, true, params.keepNull, params.wfs)) {
+        if (collection.update(document, params.newValue, 
+            {overwrite: true, keepNull: params.keepNull, waitForSync: params.wfs})) {
           updated++;
         }
       }
