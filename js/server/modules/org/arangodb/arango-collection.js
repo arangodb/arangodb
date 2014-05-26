@@ -765,7 +765,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     throw err1;
   }
 
-  if (typeof waitForSync === "object") {
+  if (typeof keepNull === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many parameters";
     }
@@ -773,7 +773,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
     /*jslint node: true, stupid: true */
-    keepNull = tmp_opions.keepNull;
+    keepNull = tmp_options.keepNull;
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
