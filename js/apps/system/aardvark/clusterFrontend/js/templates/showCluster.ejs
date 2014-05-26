@@ -106,15 +106,39 @@
 <div class="headerBar">
   <a class="arangoHeader">Cluster Statistics</a>
 </div>
-<div class="resizecontainer">
-  <div class="dashboardChart">
-    <div id="clusterGraphs" class="innerDashboardChart">
-      <div>Virtual Memory Size</div>
+<div class="dashboard-row">
+  <div class="dashboard-medium-chart">
+    <div class="dashboard-medium-chart-inner dashboard-chart" id="TestContainer">
+      <div id="clusterGraphs" class="dashboard-interior-chart"><svg></svg></div>
+    </div>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title">Virtual Memory Size in GB</div>
     </div>
   </div>
-  <div class="dashboardChart">
-    <div id="lineGraph" class="innerDashboardChart">
+  <div class="dashboard-medium-chart">
+    <div class="dashboard-medium-chart-inner dashboard-chart" id="TestContainer">
+      <div id="lineGraph" class="dashboard-interior-chart"></div>
+      <div class="dashboard-legend">
+        <div class="dashboard-legend-inner" id="lineGraphLegend"></div>
+      </div>
+    </div>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title">Requests per Second</div>
     </div>
   </div>
 </div>
+
+<!--
+<div class="resizecontainer">
+  <div class="dashboardChart">
+    <div id="clusterGraphs" class="innerDashboardChart">
+      <div>Virtual Memory Size in GB</div>
+    </div>
+  </div>
+  <div class="dashboardChart">
+    <div id="lineGraph" class="innerDashboardChart"></div>
+  </div>
+</div>
+-->
+
 </script>

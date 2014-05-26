@@ -89,10 +89,8 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
       col = db._createEdgeCollection(name);
     }
     res = true;
-  } else if (!(col instanceof ArangoCollection) || col.type() !== type) {
-    throw "<" + name + "> must be a " +
-    (type === ArangoCollection.TYPE_DOCUMENT ? "document" : "edge")
-    + " collection";
+  } else if (!(col instanceof ArangoCollection)) {
+    throw "<" + name + "> must be an ArangoCollection ";
   }
   return res;
 };
@@ -213,9 +211,14 @@ AQLStatement.prototype.isVertexQuery = function() {
   return this.type === "vertex";
 };
 
+AQLStatement.prototype.isNeighborQuery = function() {
+  return this.type === "neighbor";
+};
+
 AQLStatement.prototype.allowsRestrict = function() {
   return this.isEdgeQuery()
-    || this.isVertexQuery(); 
+    || this.isVertexQuery()
+    || this.isNeighborQuery(); 
 };
 
 // -----------------------------------------------------------------------------
@@ -354,18 +357,20 @@ AQLGenerator.prototype.getLastVar = function() {
   return this.lastVar;
 };
 
-AQLGenerator.prototype.neighbors = function(startVertexExample, options) {
-  var ex = transformExample(startVertexExample);
-  var resultName = "neighbors_" + this.stack.length + ".vertices";
+AQLGenerator.prototype.neighbors = function(vertexExample, options) {
+  var ex = transformExample(vertexExample);
+  var resultName = "neighbors_" + this.stack.length;
   var query = "FOR " + resultName
-    + " IN GRAPH_NEIGHBORS(@graphName,@startVertexExample_"
-    + this.stack.length + ',@options_'
+    + " IN GRAPH_NEIGHBORS(@graphName,"
+    + this.getLastVar()
+    + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = ex;
+  options = options || {};
+  options.vertexExamples = ex;
   this.bindVars["options_" + this.stack.length] = options;
-  var stmt = new AQLStatement(query, true);
+  var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
-  this.lastEdgeVar = resultName;
+  this.lastVar = resultName + ".vertex";
   return this;
 };
 
@@ -395,7 +400,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
     );
     restricts = opts.edgeCollectionRestriction || [];
     opts.edgeCollectionRestriction = restricts.concat(restrictions);
-  } else if (lastQuery.isVertexQuery()) {
+  } else if (lastQuery.isVertexQuery() || lastQuery.isNeighborQuery()) {
     checkAllowsRestriction(
       this.graph.__vertexCollections,
       rest,
@@ -633,6 +638,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
+      //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
       var vertexCollectionName = vertexId.split("/")[0];
       graphs.forEach(
@@ -673,8 +679,10 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
   _.each(edgeCollections, function(obj, key) {
     var wrap = wrapCollection(obj);
+    // save
     var old_save = wrap.save;
     wrap.save = function(from, to, data) {
+      //check, if edge is allowed
       edgeDefinitions.forEach(
         function(edgeDefinition) {
           if (edgeDefinition.collection === key) {
@@ -688,6 +696,47 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       );
       return old_save(from, to, data);
+    };
+
+    // remove
+    var old_remove = wrap.remove;
+    wrap.remove = function(edgeId, options) {
+      //if _key make _id (only on 1st call)
+      if (edgeId.indexOf("/") === -1) {
+        edgeId = key + "/" + edgeId;
+      }
+      var edgeCollection = edgeId.split("/")[0];
+      var graphs = getGraphCollection().toArray();
+      var result = old_remove(edgeId, options);
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                // if collection of edge to be deleted is in from or to
+                if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+                  //search all edges of the graph
+                  var edges = db[collection].toArray();
+                  edges.forEach(
+                    function (edge) {
+                      // if from is
+                      if (edge._from === edgeId || edge._to === edgeId) {
+                        var newGraph = exports._graph(graph._key);
+                        newGraph[collection].remove(edge._id, options);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          }
+        }
+      );
+      return result;
     };
     self[key] = wrap;
   });
@@ -828,13 +877,19 @@ Graph.prototype._vertexCollections = function() {
 
 // might be needed from AQL itself
 Graph.prototype._EDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
-
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.edges(vertexId));
     }
   );
@@ -846,13 +901,20 @@ Graph.prototype._EDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._INEDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
 
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.inEdges(vertexId));
     }
   );
@@ -864,13 +926,20 @@ Graph.prototype._INEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._OUTEDGES = function(vertexId) {
+  if (vertexId.indexOf("/") === -1) {
+    throw vertexId + " is not a valid id";
+  }
+  var collection = vertexId.split("/");
+  if (!db._exists(collection)) {
+    throw collection + " does not exists.";
+  }
+
   var edgeCollections = this._edgeCollections();
   var result = [];
 
 
   edgeCollections.forEach(
     function(edgeCollection) {
-      //todo: test, if collection may point to vertex
       result = result.concat(edgeCollection.outEdges(vertexId));
     }
   );
