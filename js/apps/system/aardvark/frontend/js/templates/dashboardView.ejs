@@ -1,44 +1,59 @@
 <script id="dashboardView.ejs" type="text/template">
-  <% var largeChart = function(name, title) { %>
+  <% var subBar = function(title) { %>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title"><%= title %></div>
+    </div>
+  <% }
+  var enlargeButton = function(name, arrows) {
+    if (arrows) { %>
+      <div class="dashboard-sub-bar-menu">
+        <i class="fa fa-arrows-alt dashboard-sub-bar-menu-sign" id="<%= name %>Button"></i>
+      </div>
+    <% }
+  } %>
+
+  <% var largeChart = function(name, title, arrows) { %>
     <div class="dashboard-large-chart">
+      <% enlargeButton(name, true); %>
       <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
-        <!-- <div class="dashboard-large-chart-menu"><i class="fa fa-arrows-alt dashboard-large-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
       </div>
-      <div class="dashboard-sub-bar""><%= title %></div>
+      <% subBar(title) %>
     </div>
   <% } %>
 
-  <% var mediumChart = function(name, title) { %>
+  <% var mediumChart = function(name, title, arrows) { %>
     <div class="dashboard-medium-chart">
+      <% enlargeButton(name, true); %>
       <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
-        <!-- <div class="dashboard-medium-chart-menu"><i class="fa fa-arrows-alt dashboard-medium-chart-detail"></i></div> -->
         <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
       </div>
-      <div class="dashboard-sub-bar""><%= title %></div>
+      <% subBar(title) %>
     </div>
   <% } %>
 
-  <% var smallChart = function(name, title) { %>
+  <% var smallChart = function(name, title, arrows) { %>
     <div class="dashboard-small-chart">
+      <% enlargeButton(name, arrows); %>
       <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
         <div id="<%= name %>" class="dashboard-interior-chart">
           <svg></svg>
         </div>
       </div>
-      <div class="dashboard-sub-bar"><%= title %></div>
+      <% subBar(title) %>
     </div>
   <% } %>
 
-  <% var tendency = function(title, name) { %>
+  <% var tendency = function(title, name, arrows) { %>
     <div class="dashboard-tendency-container">
       <div class="dashboard-tendency-chart">
+        <% enlargeButton(name, arrows); %>
         <div class="dashboard-tendency">
           <% if (name === "asyncRequests") {%>
             <div class="dashboard-subtitle-bar">sync</div>
@@ -75,18 +90,18 @@
     <div class="dashboard-row">
       <% largeChart("requestsChart", "Requests per Second") %>
 
-      <% tendency("Request Types", "asyncRequests"); %>
-      <% tendency("Number of Client Connections", "clientConnections"); %>
+      <% tendency("Request Types", "asyncRequests", false); %>
+      <% tendency("Number of Client Connections", "clientConnections", false); %>
     </div>
     
     <div class="dashboard-row">
       <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
-      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
     </div>
     
     <div class="dashboard-row">
       <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
-      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
     </div>
   </div>
 
@@ -95,7 +110,7 @@
   </div>
 
   <div class="dashboard-row">
-    <% tendency("Number of threads", "numberOfThreads"); %>
+    <% tendency("Number of threads", "numberOfThreads", false); %>
 
     <div class="dashboard-bar-chart-container dashboard-spacer">
       <div class="dashboard-bar-chart">
@@ -112,7 +127,7 @@
       <div class="dashboard-sub-bar"">Resident Size</div>
     </div>
 
-    <% tendency("Virtual Size in GB", "virtualSize"); %>
+    <% tendency("Virtual Size in GB", "virtualSize", false); %>
   </div>
   <div class="dashboard-row">
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>

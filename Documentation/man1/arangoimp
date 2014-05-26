@@ -15,6 +15,8 @@ online manual, available at http://www.arangodb.org/
 
 The most important startup options are:
 
+OPTION "--batch-size <uint64>"
+maximum size of data batches that are sent to the server ENDOPTION
 OPTION "--configuration <string>"
 read configuration from file <string> ENDOPTION
 OPTION "--collection <string>"

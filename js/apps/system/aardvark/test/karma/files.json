@@ -248,6 +248,7 @@
   "test/specs/views/modalViewSpec.js",
   "test/specs/views/editListEntryViewSpec.js",
   "test/specs/views/collectionsViewSpec.js",
+  "test/specs/views/collectionsItemViewSpec.js",
   "test/specs/views/dbSelectionViewSpec.js",
   "test/specs/views/navigationViewSpec.js",
   "test/specs/views/graphViewSpec.js",

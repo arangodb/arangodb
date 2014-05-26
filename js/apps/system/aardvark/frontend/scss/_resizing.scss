@@ -62,13 +62,13 @@ div.resizecontainer {
 
     $axis-font: 10px;
 
-    $tendency-name-font: 14px;
-    $tendency-figure-font: 16px;
-    $tendency-height-corrector: 7.25px;
+    $tendency_name-font: 14px;
+    $tendency_figure-font: 16px;
+    $tendency_height-corrector: 7.25px;
 
     $subbar-font: 10px;
 
-    $smallchart-height-corrector: 5px;
+    $smallchart_height-corrector: 5px;
 
     $dashboard-height: 200px;
   } @else if $i < 5 {
@@ -83,7 +83,7 @@ div.resizecontainer {
 
     $subbar-font: 11px;
 
-    $dashboard-height: 225px;
+    $dashboard-height: 235px;
   } @else if $i < 6 {
     $legend-width: 130px;
     $legend-font: 12px;
@@ -96,7 +96,7 @@ div.resizecontainer {
 
     $subbar-font: 13px;
 
-    $dashboard-height: 250px;
+    $dashboard-height: 270px;
   } @else if $i < 7 {
     $legend-width: 140px;
     $legend-font: 13px;
@@ -148,7 +148,7 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-sub-bar {
-        width: $int-width - 6px;
+        width: $int-width - 12px;
       }
 
       .dashboard-large-chart-inner {
@@ -156,13 +156,11 @@ div.resizecontainer {
           height: $dashboard-height - $dashboard-padding - 5px;
           width: $int-width - $legend-width - $legend-margin - 0;
         }
-
-        .dashboard-large-chart-menu {
-          font-size: $tendency-name-font - 2px;
-          right: 6px;
-          top: 7px;
-        }
       }
+    }
+
+    .dashboard-sub-bar-menu {
+      font-size: $subbar-font + 2px ;
     }
 
     .dashboard-medium-chart {
@@ -170,6 +168,7 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-sub-bar {
+        width: $int-width - 2px;
         margin-left: -5px;
         width: $int-width + 4px;
       }
@@ -180,9 +179,18 @@ div.resizecontainer {
       }
 
       .dashboard-medium-chart-menu {
-        font-size: $tendency-name-font - 2px;
-        left: $int-width - $tendency-name-font - 3px;
-        top: 0;
+        top: 0px;
+        left: $int-width - $tendency_name-font - 3px;
+        font-size: $tendency_name-font - 2px;
+      }
+      
+      #clusterGraphs svg {
+        height: $dashboard-height - $dashboard-padding - 5px;
+        width: $int-width;
+      }
+
+      #clusterGraphs svg text {
+        font-size: $legend-font;
       }
     }
 
@@ -191,7 +199,7 @@ div.resizecontainer {
       width: $int-width;
 
       .dashboard-sub-bar {
-        width: $int-width - 6px;
+        width: $int-width - 12px;
       }
 
       .dashboard-small-chart-inner {
@@ -200,21 +208,21 @@ div.resizecontainer {
         .dashboard-interior-chart {
           height: $dashboard-height - $smallchart-height-corrector;
           width: $int-width - 10px;
-
+					
           .nv-axis text {
-            fill: $c-darker-grey;
             font: {
               size: $axis-font;
               weight: $axis-weight;
             }
+            fill: $c-darker-grey;
           }
         }
       }
     }
 
     .dashboard-tendency-container {
-      $int-width: ($content-size / 3) - 14px;
-
+      $int-width: ($content-size / 3) - 20px;
+  
       .dashboard-tendency-chart {
         $int-height: (($dashboard-height - 29px)  / 2) - $tendency-height-corrector;
         height: $int-height;
@@ -225,7 +233,7 @@ div.resizecontainer {
           width: ($int-width / 2) - 19px;
         }
 
-        $int-height2: ($int-height - 5px);
+        $int-height2: ($int-height - 3px);
 
         .dashboard-subtitle-bar {
           height: ($int-height2 / 3);
@@ -246,7 +254,7 @@ div.resizecontainer {
 
     .dashboard-bar-chart-container {
       $int-width: ($content-size / 3) - 18px;
-      $int-height: (($dashboard-height - 31px)  / 2) - $tendency-height-corrector;
+      $int-height: (($dashboard-height - 30px)  / 2) - $tendency_height-corrector;
       height: $int-height;
 
       .dashboard-bar-chart {
@@ -267,12 +275,15 @@ div.resizecontainer {
         }
 
         .dashboard-bar-chart-chart {
-          $int-height2: ($int-height - 20px);
+          width: $int-width - 16px;
 
+          $int-height2: ($int-height - 20px);
           height: ($int-height2 * 2 / 3) - 5px;
           line-height: ($int-height2 * 2 / 3) - 5px;
           padding: 5px 8px 10px;
           width: $int-width - 16px;
+
+          padding: 5px 8px 10px 8px;
 
           #residentSizeChart {
             height: ($int-height2 * 2 / 3);
@@ -281,20 +292,21 @@ div.resizecontainer {
       }
 
       .dashboard-sub-bar {
-        width: $int-width + 4px;
+        width: $int-width - 2px;
       }
-		}
+    }
 
     .modal-chart-detail {
       $int-width: $content-size;
 
+      bottom: 12.1% !important;
       left: 50%;
       margin-left: -($int-width) / 2;
-      width: $int-width;
-
+				
       .modal-body {
+        // min-height: $dashboard-height;
         max-height: none;
-        min-height: $dashboard-height;
+        height: 95%;
         padding: 5px;
       }
 
@@ -312,15 +324,109 @@ div.resizecontainer {
       }
     }
 
+    .modal-body {
+      .dashboard-large-chart {
+        $int-width: ($content-size * 2 / 3) - 9px;
+        width: $int-width;
 
+        .dashboard-sub-bar {
+          width: $int-width - 12px;
+        }
+
+        .dashboard-large-chart-inner {
+          .dashboard-interior-chart {
+            width: $int-width - $legend-width - $legend-margin - 0px;
+          }
+        }
+      }
+      .dashboard-medium-chart {
+        $int-width: ($content-size / 2) - 21px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: $int-width - 2px;
+        }
+
+        .dashboard-interior-chart {
+          width: $int-width - $legend-width - $legend-margin + 10px;
+        }
+
+        .dashboard-medium-chart-menu {
+          left: $int-width - $tendency_name-font - 3px;
+        }
+      }
+
+      .dashboard-small-chart {
+        $int-width: ($content-size / 3) - 13px;
+        width: $int-width;
+
+        .dashboard-sub-bar {
+          width: $int-width - 12px;
+        }
+
+        .dashboard-small-chart-inner {
+          width: $int-width - 10px;
+
+          .dashboard-interior-chart {
+            width: $int-width - 10px;
+          }
+        }
+      }
+      .dashboard-tendency-container {
+        $int-width: ($content-size / 3) - 25px;
+
+        .dashboard-tendency-chart {
+
+          .dashboard-tendency,
+          .dashboard-subtitle-bar,
+          .dashboard-figure {
+            width: ($int-width / 2) - 19px;
+          }
+        }
+
+        .dashboard-sub-bar {
+          width: $int-width;
+        }
+      }
+
+      .dashboard-bar-chart-container {
+        $int-width: ($content-size / 3) - 18px;
+
+        .dashboard-bar-chart {
+          width: $int-width;
+
+          .dashboard-bar-chart-title {
+            .percentage {
+              width: ((($int-width / 2) - 8px) * 1.4);
+            }
+
+            .absolut {
+              width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+            }
+          }
+        }
+
+        .dashboard-bar-chart-chart {
+          width: $int-width - 16px;
+        }
+
+        .dashboard-sub-bar {
+          width: $int-width - 2px;
+        }
+      }
+    }
+
+    .dashboard-spacer {
+    }
+  	
     .percentage {
-      font-size: $tendency-name-font;
-  	}
+      font-size: $tendency_name-font;
+    }
 
     .absolut {
-      font-size: $tendency-name-font;
-      font-weight: $tendency-name-weight;
-  	}
+      font-size: $tendency_name-font;
+      font-weight: $tendency_name-weight;
+    }
 
     .dashboard-sub-bar {
       font-size: $subbar-font;
@@ -361,6 +467,7 @@ div.resizecontainer {
       height: $dashboard-height - $dashboard-padding;
       margin-top: -3px;
       width: $legend-width;
+      margin-top: -3px;
     }
 
     .dashboard-half-height-legend {
