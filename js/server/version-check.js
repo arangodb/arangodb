@@ -538,6 +538,47 @@
     });
   
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief upgradeGraphs
+////////////////////////////////////////////////////////////////////////////////
+
+    // update _graphs to new document stucture containing edgeDefinitions
+    addUpgradeTask("upgradeGraphs", "update _graphs to new document stucture containing edgeDefinitions", function () {
+      try {
+        var graphs = db._graphs;
+        if (graphs === null || graphs === undefined) {
+          throw "_graphs collection does not exist.";
+        }
+        graphs.toArray().forEach(
+          function(graph) {
+            if (graph.edgeDefinitions) {
+              return;
+            }
+            var from = [graph.vertices];
+            var to = [graph.vertices];
+            var collection = graph.edges;
+            db._graphs.replace(
+              graph,
+              {
+                edgeDefinitions: [
+                  {
+                    "collection": collection,
+                    "from" : from,
+                    "to" : to
+                  }
+                ]
+              },
+              true
+            )
+          }
+        );
+      } catch (e) {
+        logger.error("could not upgrade _graphs");
+        return false;
+      }
+      return true;
+    });
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief setupAal
 ////////////////////////////////////////////////////////////////////////////////
 
