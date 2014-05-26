@@ -211,9 +211,14 @@ AQLStatement.prototype.isVertexQuery = function() {
   return this.type === "vertex";
 };
 
+AQLStatement.prototype.isNeighborQuery = function() {
+  return this.type === "neighbor";
+};
+
 AQLStatement.prototype.allowsRestrict = function() {
   return this.isEdgeQuery()
-    || this.isVertexQuery(); 
+    || this.isVertexQuery()
+    || this.isNeighborQuery(); 
 };
 
 // -----------------------------------------------------------------------------
@@ -352,18 +357,20 @@ AQLGenerator.prototype.getLastVar = function() {
   return this.lastVar;
 };
 
-AQLGenerator.prototype.neighbors = function(startVertexExample, options) {
-  var ex = transformExample(startVertexExample);
-  var resultName = "neighbors_" + this.stack.length + ".vertices";
+AQLGenerator.prototype.neighbors = function(vertexExample, options) {
+  var ex = transformExample(vertexExample);
+  var resultName = "neighbors_" + this.stack.length;
   var query = "FOR " + resultName
-    + " IN GRAPH_NEIGHBORS(@graphName,@startVertexExample_"
-    + this.stack.length + ',@options_'
+    + " IN GRAPH_NEIGHBORS(@graphName,"
+    + this.getLastVar()
+    + ',@options_'
     + this.stack.length + ')';
-  this.bindVars["startVertexExample_" + this.stack.length] = ex;
+  options = options || {};
+  options.vertexExamples = ex;
   this.bindVars["options_" + this.stack.length] = options;
-  var stmt = new AQLStatement(query, true);
+  var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
-  this.lastEdgeVar = resultName;
+  this.lastVar = resultName + ".vertex";
   return this;
 };
 
@@ -393,7 +400,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
     );
     restricts = opts.edgeCollectionRestriction || [];
     opts.edgeCollectionRestriction = restricts.concat(restrictions);
-  } else if (lastQuery.isVertexQuery()) {
+  } else if (lastQuery.isVertexQuery() || lastQuery.isNeighborQuery()) {
     checkAllowsRestriction(
       this.graph.__vertexCollections,
       rest,
@@ -874,7 +881,7 @@ Graph.prototype._EDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
@@ -898,7 +905,7 @@ Graph.prototype._INEDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
@@ -923,7 +930,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
     throw vertexId + " is not a valid id";
   }
   var collection = vertexId.split("/");
-  if (!db._exists(collection)) {
+  if (!db._collection(collection)) {
     throw collection + " does not exists.";
   }
 
