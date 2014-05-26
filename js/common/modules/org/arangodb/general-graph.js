@@ -760,7 +760,7 @@ var _graph = function(graphName) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
-    throw "graph " + graphName + " does not exists.";
+    throw "graph " + graphName + " does not exist.";
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
@@ -880,9 +880,9 @@ Graph.prototype._EDGES = function(vertexId) {
   if (vertexId.indexOf("/") === -1) {
     throw vertexId + " is not a valid id";
   }
-  var collection = vertexId.split("/");
+  var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exists.";
+    throw collection + " does not exist.";
   }
 
   var edgeCollections = this._edgeCollections();
@@ -904,9 +904,9 @@ Graph.prototype._INEDGES = function(vertexId) {
   if (vertexId.indexOf("/") === -1) {
     throw vertexId + " is not a valid id";
   }
-  var collection = vertexId.split("/");
+  var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exists.";
+    throw collection + " does not exist.";
   }
 
   var edgeCollections = this._edgeCollections();
@@ -929,9 +929,9 @@ Graph.prototype._OUTEDGES = function(vertexId) {
   if (vertexId.indexOf("/") === -1) {
     throw vertexId + " is not a valid id";
   }
-  var collection = vertexId.split("/");
+  var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exists.";
+    throw collection + " does not exist.";
   }
 
   var edgeCollections = this._edgeCollections();
