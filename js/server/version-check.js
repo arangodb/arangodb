@@ -542,7 +542,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
     // update _graphs to new document stucture containing edgeDefinitions
-    addUpgradeTask("upgradeGraphs", "update _graphs to new document stucture containing edgeDefinitions", function () {
+    addUpgradeTask("upgradeGraphs",
+      "update _graphs to new document stucture containing edgeDefinitions", function () {
       try {
         var graphs = db._graphs;
         if (graphs === null || graphs === undefined) {
@@ -568,7 +569,7 @@
                 ]
               },
               true
-            )
+            );
           }
         );
       } catch (e) {
