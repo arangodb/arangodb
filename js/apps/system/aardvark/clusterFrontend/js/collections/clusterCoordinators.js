@@ -11,8 +11,9 @@
       this.url = window.App.getNewRoute("Coordinators");
     },
 
-    initialize: function(options) {
+    initialize: function() {
       window.App.registerForUpdate(this);
+      this._retryCount = 0;
     },
 
     statusClass: function(s) {
@@ -25,35 +26,57 @@
           return "danger";
         case "missing":
           return "inactive";
+        default: 
+          return "danger";
       }
     },
   
-    getStatuses: function(cb) {
+    getStatuses: function(cb, nextStep) {
+      if (this._retryCount > 10) {
+        console.log("Cluster unreachable");
+      }
       var self = this;
+      this.updateUrl();
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function() {
+          self._retryCount++;
+          console.log(self._retryCount);
+          self.forEach(function(m) {
+            cb(self.statusClass("critical"), m.get("address"));
+          });
+          window.App.clusterPlan.rotateCoordinator();
+          self.getStatuses(cb, nextStep);
+        }
       }).done(function() {
+        console.log(self._retryCount);
+        self._retryCount = 0;
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
+        nextStep();
       });
     },
 
-    byAddress: function (res) {
+    byAddress: function (res, callback) {
+      var self = this;
+      this.updateUrl();
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function() {
+          console.log("incord2");
+        }
+      }).done(function() {
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].coords = res[addr].coords || [];
+          res[addr].coords.push(m);
+        });
+        callback(res);
       });
-      res = res || {};
-      this.forEach(function(m) {
-        var addr = m.get("address");
-        addr = addr.split(":")[0];
-        res[addr] = res[addr] || {};
-        res[addr].coords = res[addr].coords || [];
-        res[addr].coords.push(m);
-      });
-      return res;
     },
 
     getList: function() {
