@@ -554,12 +554,10 @@ ArangoCollection.prototype.removeByExample = function (example,
   }
   if (typeof waitForSync === "object") {
     if (typeof limit !== "undefined") {
-      print("in ArangoCollection.prototype.removeByExample limit is " + limit);
       throw "too many parameters";
     }
     var tmp_options = waitForSync;
     // avoiding jslint error
-      print("limit is " + limit);
     // see: http://jslinterrors.com/unexpected-sync-method-a/
     /*jslint node: true, stupid: true */
     waitForSync = tmp_options.waitForSync;
