@@ -121,6 +121,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
 
     _currentRequest(0),
     _currentResponse(0),
+    _walReadOperation(nullptr),
     _currentTransaction(0),
     _server(0),
     _vocbase(0),
