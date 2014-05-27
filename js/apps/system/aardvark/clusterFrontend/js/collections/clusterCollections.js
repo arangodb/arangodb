@@ -24,7 +24,6 @@
 
     getList: function(db, callback) {
       if (db === undefined) {
-        console.log("Called to early");
         return;
       }
       this.dbname = db;
