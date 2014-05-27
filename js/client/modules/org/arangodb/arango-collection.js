@@ -1392,10 +1392,9 @@ ArangoCollection.prototype.updateByExample = function (example,
       collection: this._name,
       example: example, 
       newValue: newValue,
-      keepNull: options
+      options: options
     };
   }
-
   var requestResult = this._database._connection.PUT(
     this._prefixurl("/_api/simple/update-by-example"),
     JSON.stringify(data));

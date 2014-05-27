@@ -2170,11 +2170,15 @@ actions.defineHttp({
           actions.badParameter(req, res, "newValue");
         }
         else {
+          var options = body.options;
+          if (typeof options === "undefined") {
+            var waitForSync = body.waitForSync || undefined;
+            limit = body.limit || undefined;
+            options = {waitForSync: waitForSync, limit: limit};
+          }
           var result = collection.updateByExample(example, 
                                                   newValue, 
-                                                  keepNull, 
-                                                  body.waitForSync, 
-                                                  limit);
+                                                  options);
           actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
         }
       }
