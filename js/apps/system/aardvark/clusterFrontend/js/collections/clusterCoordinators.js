@@ -2,7 +2,7 @@
 /*global window, Backbone, console */
 (function() {
   "use strict";
-  window.ClusterCoordinators = Backbone.Collection.extend({
+  window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
     
     url: "/_admin/aardvark/cluster/Coordinators",
@@ -13,28 +13,6 @@
 
     initialize: function() {
       window.App.registerForUpdate(this);
-      this._retryCount = 0;
-    },
-
-    checkRetries: function() {
-      this.updateUrl();
-      if (this._retryCount > 10) {
-        window.App.clusterUnreachable();
-      }
-    },
-
-    successFullTry: function() {
-      this._retryCount = 0;
-    },
-
-    failureTry: function(retry, err) {
-      if (err.status === 401) {
-        window.App.requestAuth();
-      } else {
-        window.App.clusterPlan.rotateCoordinator();
-        this._retryCount++;
-        retry();
-      }
     },
 
     statusClass: function(s) {
@@ -60,7 +38,6 @@
         error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
       }).done(function() {
         self.successFullTry();
-        self._retryCount = 0;
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
