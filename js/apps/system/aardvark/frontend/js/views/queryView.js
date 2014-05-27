@@ -20,10 +20,7 @@
     events: {
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
-      'click #customs-switch': function(e) {
-        this.switchTab(e);
-        this.updateTable();
-      },
+      'click #customs-switch': "switchTab",
       'click #submitQueryIcon': 'submitQuery',
       'click #submitQueryButton': 'submitQuery',
       'click #commentText': 'commentText',
@@ -36,10 +33,6 @@
       'click #clearInput': 'clearInput',
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
-      'click #editAQL': 'editAQL',
-      'click #delete-edit-query': 'showDeleteFie/ld',
-      'click #abortDeleteQuery': 'hideDeleteField',
-      'change #queryModalSelect': 'updateEditSelect',
       'change #querySelect': 'importSelected',
       'change #querySize': 'changeSize',
       'keypress #aqlEditor': 'aqlShortcuts',
@@ -162,14 +155,6 @@
       }
       else if (e.metaKey && !e.ctrlKey && e.keyCode === 13) {
         this.submitQuery();
-      }
-      else if (e.ctrlKey && e.keyCode === 90) {
-        // TO_DO: undo/redo seems to work even without this. check if can be removed
-        this.undoText();
-      }
-      else if (e.ctrlKey && e.shiftKey && e.keyCode === 90) {
-        // TO_DO: undo/redo seems to work even without this. check if can be removed
-        this.redoText();
       }
     },
 
@@ -317,29 +302,10 @@
       this.checkSaveName();
     },
 
-    editAQL: function () {
-      if (this.customQueries.length === 0) {
-        //Heiko: display information that no custom queries are available
-        return;
-      }
-
-      this.hideDeleteField();
-      $('#queryDropdown').slideToggle();
-      //$('#edit-aql-queries').modal('show');
-      this.renderSelectboxes(true);
-      this.updateEditSelect();
-    },
     getAQL: function () {
       if (localStorage.getItem("customQueries")) {
         this.customQueries = JSON.parse(localStorage.getItem("customQueries"));
       }
-    },
-
-    showDeleteField: function () {
-      $('#reallyDeleteQueryDiv').show();
-    },
-    hideDeleteField: function () {
-      $('#reallyDeleteQueryDiv').hide();
     },
 
     deleteAQL: function (e) {
@@ -404,12 +370,6 @@
       localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.renderSelectboxes();
       $('#querySelect').val(saveName);
-    },
-
-    updateEditSelect: function () {
-      var value = this.getCustomQueryValueByName($('#queryModalSelect').val());
-      $('#edit-aql-textarea').val(value);
-      $('#edit-aql-textarea').focus();
     },
 
     getSystemQueries: function () {
@@ -578,6 +538,7 @@
         }
       };
       this.tabArray.forEach(changeTab);
+      this.updateTable();
     }
   });
 }());
