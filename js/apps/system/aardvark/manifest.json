@@ -258,6 +258,7 @@
 
     "cluster.js": {
       "files": [
+        "frontend/js/arango/arango.js",
         "clusterFrontend/js/models/clusterCollection.js",
         "clusterFrontend/js/models/clusterCoordinator.js",
         "clusterFrontend/js/models/clusterDatabase.js",

@@ -33,6 +33,7 @@
 
   var _ = require("underscore"),
     Foxx = require("org/arangodb/foxx"),
+    version = require("internal").version,
     Plans;
 
   Plans = Foxx.Repository.extend({
@@ -59,6 +60,10 @@
       return this.loadConfig().runInfo;
     },
 
+    getCredentials: function() {
+      return this.loadConfig().user;
+    },
+
     updateConfig: function(config) {
       var old = this.loadConfig();
       this.collection.update(old._id, config);
@@ -71,7 +76,7 @@
           name: user,
           passwd: passwd
         }
-      }
+      };
       var old = this.loadConfig();
       this.collection.update(old._id, config);
       return true;
@@ -79,7 +84,24 @@
 
     storeConfig: function(config) {
       this.collection.truncate();
+      config.version = version;
       this.collection.save(config);
+      return true;
+    },
+
+    removeRunInfo: function() {
+      var old = this.loadConfig();
+      delete old.runInfo;
+      this.collection.replace(old._id, old);
+      return true;
+    },
+
+    replaceRunInfo: function(newInfo) {
+      var old = this.loadConfig();
+      this.collection.update(old._id, {
+        runInfo: newInfo,
+        version: version
+      });
       return true;
     }
   });

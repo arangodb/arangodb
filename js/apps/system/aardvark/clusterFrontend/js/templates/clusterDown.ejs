@@ -8,6 +8,13 @@
     Relaunch Cluster
   </button>
 </div>
+<% if(canUpgrade) { %>
+  <div class="clusterDownBtn">
+    <button class="green" id="upgradeCluster">
+      Upgrade and Relaunch Cluster
+    </button>
+  </div>
+<% } %>
 <div class="clusterDownBtn">
   <button id="editPlan">
     Edit Cluster Plan

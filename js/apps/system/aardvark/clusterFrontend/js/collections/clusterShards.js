@@ -30,7 +30,7 @@
 
     getList: function(dbname, colname, callback) {
       if (dbname === undefined || colname === undefined) {
-        console.log("Called to early");
+        console.log("Called to early shards");
         return;
       }
       this.dbname = dbname;
