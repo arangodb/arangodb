@@ -1353,6 +1353,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     data = { 
       collection: this._name,
       example: example, 
+      newValue: newValue,
       options: waitForSync
     };
   }
