@@ -4,7 +4,7 @@
 
   "use strict";
 
-  window.ClusterShards = Backbone.Collection.extend({
+  window.ClusterShards = window.AutomaticRetryCollection.extend({
 
     model: window.ClusterShard,
     
@@ -28,16 +28,24 @@
       window.App.registerForUpdate(this);
     },
 
-    getList: function(dbname, colname) {
+    getList: function(dbname, colname, callback) {
+      if (dbname === undefined || colname === undefined) {
+        console.log("Called to early");
+        return;
+      }
       this.dbname = dbname;
       this.colname = colname;
-      this.updateUrl();
+      this.checkRetries();
+      var self = this;
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
-      });
-      return this.map(function(m) {
-        return m.forList();
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getList.bind(
+          self, dbname, colname, callback)
+        )
+      }).done(function() {
+        callback(self.map(function(m) {
+          return m.forList();
+        }));
       });
     },
 
