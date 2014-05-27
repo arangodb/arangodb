@@ -265,6 +265,7 @@
         "clusterFrontend/js/models/clusterServer.js",
         "clusterFrontend/js/models/clusterShard.js",
         "clusterFrontend/js/models/clusterType.js",
+        "clusterFrontend/js/collections/_automaticRetryCollection.js",
         "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
         "clusterFrontend/js/collections/clusterCollections.js",
         "clusterFrontend/js/collections/clusterCoordinators.js",

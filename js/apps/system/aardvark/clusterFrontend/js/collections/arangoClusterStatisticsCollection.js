@@ -13,11 +13,16 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
     window.App.registerForUpdate(this);
   },
 
-  fetch: function() {
+  // The callback has to be invokeable for each result individually
+  fetch: function(callback, errCB) {
     this.forEach(function (m) {
       m.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function() {
+          errCB(m);
+        }
+      }).done(function() {
+        callback(m);
       });
     });
   }
