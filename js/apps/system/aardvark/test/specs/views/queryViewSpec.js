@@ -514,6 +514,40 @@
       document.body.removeChild(div2);
     });
 
+    it("should render the selectboxes for custom and arango queries", function() {
+      jQueryDummy = {
+        empty: function () {
+          throw "Should be a spy";
+        },
+        append: function () {
+          throw "Should be a spy";
+        }
+      };
+
+      spyOn(jQueryDummy, "empty");
+      spyOn(jQueryDummy, "append");
+      spyOn(window, "$").andReturn(
+        jQueryDummy
+      );
+      var customQueries = [{
+        name: "findme",
+        value: "for var yx do something"
+      }];
+
+      view.queries = customQueries;
+      view.customQueries = customQueries;
+
+      spyOn(view, "sortQueries");
+      spyOn(arangoHelper, "escapeHtml");
+
+      view.renderSelectboxes();
+
+      expect(view.sortQueries).toHaveBeenCalled();
+      expect(jQueryDummy.empty).toHaveBeenCalled();
+      expect(jQueryDummy.append).toHaveBeenCalled();
+      expect(arangoHelper.escapeHtml).toHaveBeenCalled();
+    });
+
 
 
 

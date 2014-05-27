@@ -418,25 +418,16 @@
         localStorage.setItem("querySize", parseInt($('#' + e.currentTarget.id).val(), 10));
       }
     },
-    renderSelectboxes: function (modal) {
+    renderSelectboxes: function () {
       this.sortQueries();
       var selector = '';
-      if (modal === true) {
-        selector = '#queryModalSelect';
-        $(selector).empty();
-        $.each(this.customQueries, function (k, v) {
-          var escapedName = arangoHelper.escapeHtml(v.name);
-          $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
-        });
-      }
-      else {
         selector = '#querySelect';
         $(selector).empty();
 
         $(selector).append('<option id="emptyquery">Insert Query</option>');
 
         $(selector).append('<optgroup label="Example queries">');
-        $.each(this.queries, function (k, v) {
+        jQuery.each(this.queries, function (k, v) {
           var escapedName = arangoHelper.escapeHtml(v.name);
           $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
         });
@@ -444,13 +435,12 @@
 
         if (this.customQueries.length > 0) {
           $(selector).append('<optgroup label="Custom queries">');
-          $.each(this.customQueries, function (k, v) {
+          jQuery.each(this.customQueries, function (k, v) {
             var escapedName = arangoHelper.escapeHtml(v.name);
             $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
           });
           $(selector).append('</optgroup>');
         }
-      }
     },
     undoText: function () {
       var inputEditor = ace.edit("aqlEditor");
