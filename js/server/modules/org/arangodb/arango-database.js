@@ -348,7 +348,7 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// @FUN{db._dropIndex(@FA{index})}
 ///
-/// Drops the @FA{index}.  If the index does not exists, then @LIT{false} is
+/// Drops the @FA{index}.  If the index does not exist, then @LIT{false} is
 /// returned. If the index existed and was dropped, then @LIT{true} is
 /// returned. Note that you cannot drop the primary index.
 ///
