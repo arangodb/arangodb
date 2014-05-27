@@ -2,7 +2,7 @@
 /*global window, Backbone */
 (function() {
   "use strict";
-  window.ClusterCollections = Backbone.Collection.extend({
+  window.ClusterCollections = window.AutomaticRetryCollection.extend({
     model: window.ClusterCollection,
     
     updateUrl: function() {
@@ -22,15 +22,21 @@
       window.App.registerForUpdate(this);
     },
 
-    getList: function(db) {
+    getList: function(db, callback) {
+      if (db === undefined) {
+        console.log("Called to early");
+        return;
+      }
       this.dbname = db;
-      this.updateUrl();
+      this.checkRetries();
+      var self = this;
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
-      });
-      return this.map(function(m) {
-        return m.forList();
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getList.bind(self, db, callback))
+      }).done(function() {
+        callback(self.map(function(m) {
+          return m.forList();
+        }));
       });
     },
 
