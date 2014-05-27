@@ -89,7 +89,8 @@ std::string Slot::statusText () const {
 
 void Slot::fill (void* src,
                  size_t size) {
-  assert(size == _size);         
+  assert(size == _size);
+  assert(src != nullptr);   
 
   TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
   

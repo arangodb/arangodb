@@ -47,9 +47,16 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
+#include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a WAL operation for a transaction collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -153,9 +160,9 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   TRI_doc_mptr_t* found;
   int res;
 
-  TRI_ASSERT_MAINTAINER(document != NULL);
-  TRI_ASSERT_MAINTAINER(header != NULL);
-  TRI_ASSERT_MAINTAINER(header->_key != NULL);
+  TRI_ASSERT_MAINTAINER(document != nullptr);
+  TRI_ASSERT_MAINTAINER(header != nullptr);
+  TRI_ASSERT_MAINTAINER(header->_key != nullptr);
   
   primary = &document->base;
 
@@ -166,7 +173,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
     return res;
   }
 
-  if (found == NULL) {
+  if (found == nullptr) {
     // success
     IncreaseDocumentCount(primary);
 
@@ -190,18 +197,12 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 static int InsertSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    const bool isRollback) {
-  size_t i, n;
-  int result;
+  int result = TRI_ERROR_NO_ERROR;
+  size_t const n = document->_allIndexes._length;
 
-  result = TRI_ERROR_NO_ERROR;
-  n = document->_allIndexes._length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-    int res;
-
-    idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-    res = idx->insert(idx, header, isRollback);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+    int res = idx->insert(idx, header, isRollback);
 
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
@@ -233,7 +234,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   TRI_primary_collection_t* primary = &document->base;
   TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key));
 
-  if (found == NULL) {
+  if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
@@ -249,13 +250,10 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
 static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    const bool isRollback) {
-  size_t i, n;
-  int result;
+  size_t const n = document->_allIndexes._length;
+  int result = TRI_ERROR_NO_ERROR;
 
-  n = document->_allIndexes._length;
-  result = TRI_ERROR_NO_ERROR;
-
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     int res = idx->remove(idx, header, isRollback);
 
@@ -358,23 +356,13 @@ static int RotateJournal (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RollbackInsert (TRI_document_collection_t* document,
-                           TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader) {
-  int res;
-
-  // there is no old header
-  assert(oldHeader == NULL);
+                           TRI_doc_mptr_t* header) {
 
   // ignore any errors we're getting from this
-  DeletePrimaryIndex(document, newHeader, true); 
-  DeleteSecondaryIndexes(document, newHeader, true);
+  DeletePrimaryIndex(document, header, true); 
+  DeleteSecondaryIndexes(document, header, true);
 
-  // release the header. nobody else should point to it now
-  document->_headers->release(document->_headers, newHeader, true);
-
-  res = TRI_ERROR_NO_ERROR;
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,18 +402,12 @@ static int RollbackUpdate (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RollbackRemove (TRI_document_collection_t* document,
-                           TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader, 
+                           TRI_doc_mptr_t* header, 
                            bool adjustHeader) {
-  int res;
-
-  // there is no new header
-  assert(newHeader == NULL);
-  
-  res = InsertPrimaryIndex(document, oldHeader, true);
+  int res = InsertPrimaryIndex(document, header, true);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = InsertSecondaryIndexes(document, oldHeader, true);
+    res = InsertSecondaryIndexes(document, header, true);
   }
   else {
     LOG_ERROR("error rolling back remove operation");
@@ -433,7 +415,7 @@ static int RollbackRemove (TRI_document_collection_t* document,
 
   if (adjustHeader) {
     // put back the header into its old position
-    document->_headers->relink(document->_headers, oldHeader, oldHeader);
+    document->_headers->relink(document->_headers, header, header);
   }
 
   return res;
@@ -597,35 +579,6 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a WAL marker into indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertIndexes (TRI_transaction_collection_t* trxCollection,
-                          TRI_doc_mptr_t* header) {
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
-
-  // insert into primary index first
-  int res = InsertPrimaryIndex(document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // insert has failed
-    return res;
-  }
-  
-  // insert into secondary indexes
-  res = InsertSecondaryIndexes(document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // insertion into secondary indexes failed
-    DeleteSecondaryIndexes(document, header, true);
-    DeletePrimaryIndex(document, header, true);
-  }
-    
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief post-insert operation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -648,6 +601,63 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a new revision id if not yet set
+////////////////////////////////////////////////////////////////////////////////
+  
+static inline TRI_voc_rid_t GetRevisionId (TRI_voc_rid_t previous) {
+  if (previous != 0) {
+    return previous;
+  }
+
+  // generate new revision id
+  return static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a document
+////////////////////////////////////////////////////////////////////////////////
+
+static int InsertDocument (TRI_transaction_collection_t* trxCollection,
+                           TRI_doc_mptr_t* header,
+                           triagens::wal::DocumentOperation& operation,
+                           TRI_doc_mptr_t* mptr, 
+                           bool syncRequested) {
+ 
+  assert(header != nullptr);
+  assert(mptr != nullptr);
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+
+  // .............................................................................
+  // insert into indexes
+  // .............................................................................
+
+  // insert into primary index first
+  int res = InsertPrimaryIndex(document, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insert has failed
+    return res;
+  }
+
+  // insert into secondary indexes
+  res = InsertSecondaryIndexes(document, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  res = TRI_AddOperationTransaction(operation, syncRequested);
+      
+  if (res == TRI_ERROR_NO_ERROR) {
+    *mptr = *header;
+
+    res = PostInsertIndexes(trxCollection, header);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shaped-json document (or edge)
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
@@ -664,16 +674,12 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool isRestore) {
 
   // TODO: isRestore is not used yet!
-  TRI_voc_tick_t tick;
+  assert(mptr != nullptr);
+  mptr->_data = nullptr;
+  mptr->_key = nullptr;
 
-  if (rid == 0) {
-    // generate new revision id
-    tick = TRI_NewTickServer();
-    rid = static_cast<TRI_voc_rid_t>(tick);
-  }
-  else {
-    tick = static_cast<TRI_voc_tick_t>(rid);
-  }
+  rid = GetRevisionId(rid);
+  TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
   
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
   TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary->_keyGenerator);
@@ -707,37 +713,32 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     return res;
   }
 
-
-  triagens::wal::SlotInfo slotInfo;
+  triagens::wal::Marker* marker = nullptr;
 
   if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
     // document
     assert(edge == nullptr);
 
-    triagens::wal::DocumentMarker marker(primary->base._vocbase->_id,
-                                         primary->base._info._cid,
-                                         rid,
-                                         trxCollection->_transaction->_id,
-                                         keyString,
-                                         legend,
-                                         shaped);
-
-    slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+    marker = new triagens::wal::DocumentMarker(primary->base._vocbase->_id,
+                                               primary->base._info._cid,
+                                               rid,
+                                               trxCollection->_transaction->_id,
+                                               keyString,
+                                               legend,
+                                               shaped);
   }
   else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // edge
     assert(edge != nullptr);
 
-    triagens::wal::EdgeMarker marker(primary->base._vocbase->_id,
-                                     primary->base._info._cid,
-                                     rid,
-                                     trxCollection->_transaction->_id,
-                                     keyString,
-                                     edge,
-                                     legend,
-                                     shaped);
-
-    slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+    marker = new triagens::wal::EdgeMarker(primary->base._vocbase->_id,
+                                           primary->base._info._cid,
+                                           rid,
+                                           trxCollection->_transaction->_id,
+                                           keyString,
+                                           edge,
+                                           legend,
+                                           shaped);
   }
   else {
     // invalid marker type
@@ -745,69 +746,70 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
 
 
-  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    // some error occurred
-    return slotInfo.errorCode;
-  }
-
+  assert(marker != nullptr);
 
   // now insert into indexes
   {
     triagens::arango::CollectionWriteLocker collectionLocker(primary, lock);
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
+    // create a new header
     TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-    TRI_doc_mptr_t* header = document->_headers->request(document->_headers, slotInfo.size);
+    TRI_doc_mptr_t* header = operation.header = document->_headers->request(document->_headers, marker->size());
 
     if (header == nullptr) {
+      // out of memory. no harm done here. just return the error
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    
+
     // update the header we got
-    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(slotInfo.mem);
+    void* mem = operation.marker->mem();
+    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(mem);
     header->_rid  = rid;
-    header->_fid  = 0; // TODO: use WAL fid
-    // let header point to WAL location
-    header->_data = slotInfo.mem;
-    header->_key  = static_cast<char*>(const_cast<void*>(slotInfo.mem)) + m->_offsetKey; 
+    header->_data = mem;
+    header->_key  = static_cast<char*>(const_cast<void*>(mem)) + m->_offsetKey; 
 
     // insert into indexes
-    res = InsertIndexes(trxCollection, header);
-
+    res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
+  
     if (res != TRI_ERROR_NO_ERROR) {
-      // release the header
-      document->_headers->release(document->_headers, header, true);
-
-      return res;
-    }
-
-    // add the operation to the running transaction
-    res = TRI_AddOperationTransaction(trxCollection,
-                                      TRI_VOC_DOCUMENT_OPERATION_INSERT,
-                                      header,
-                                      nullptr,
-                                      nullptr, 
-                                      forceSync);
-
-    if (res != TRI_ERROR_NO_ERROR) {
+      // release the header. nobody else should point to it now
+      assert(mptr->_data == nullptr);
+      assert(mptr->_key == nullptr);
+  
       // something has failed.... now delete from the indexes again
-      RollbackInsert(document, header, nullptr);
-      // TODO: do we need to release the header here?
-      return res;
+      RollbackInsert(document, header);
     }
-
-    // execute a post-insert 
-    res = PostInsertIndexes(trxCollection, header);
-
-    // TODO: do we need to release the header if something goes wrong?
-    // TODO: post-insert will never return an error
-      
-    if (res == TRI_ERROR_NO_ERROR) { 
-      TRI_SetRevisionDocumentCollection(document, header->_rid, false);
-      *mptr = *header;
+    else {
+      assert(mptr->_data != nullptr);
+      assert(mptr->_key != nullptr);
     }
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document by key
+/// the caller must make sure the read lock on the collection is helt
+////////////////////////////////////////////////////////////////////////////////
+
+static int LookupDocument (TRI_primary_collection_t* primary,
+                           TRI_voc_key_t key,
+                           TRI_doc_update_policy_t const* policy,
+                           TRI_doc_mptr_t*& header) {
+  header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+  
+  if (! IsVisible(header)) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+ 
+  if (policy != nullptr) { 
+    return TRI_CheckUpdatePolicy(policy, header->_rid);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -818,15 +820,19 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    const TRI_voc_key_t key,
                                    TRI_doc_mptr_t* mptr,
                                    bool lock) {
-  TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
+  assert(mptr != nullptr);
+  mptr->_data = nullptr;
+  mptr->_key = nullptr;
 
   {
+    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
     triagens::arango::CollectionReadLocker collectionLocker(primary, lock);
 
-    TRI_doc_mptr_t const* header = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+    TRI_doc_mptr_t* header;
+    int res = LookupDocument(primary, key, nullptr, header);
 
-    if (! IsVisible(header)) {
-      return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
 
     // we found a document, now copy it over
@@ -841,15 +847,26 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the indexes
+/// @brief updates an existing document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateIndexes (TRI_transaction_collection_t* trxCollection,
-                          TRI_doc_mptr_t* oldHeader,
-                          TRI_doc_mptr_t* newHeader) {
+static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
+                           TRI_doc_mptr_t* oldHeader,
+                           triagens::wal::DocumentOperation& operation,
+                           TRI_doc_mptr_t* mptr,
+                           bool syncRequested) {
+  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+ 
+  // save the old data, remember
+  TRI_doc_mptr_t oldData = *oldHeader;
+  
+  // .............................................................................
+  // update indexes
+  // .............................................................................
+
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+
   int res = DeleteSecondaryIndexes(document, oldHeader, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -858,6 +875,16 @@ static int UpdateIndexes (TRI_transaction_collection_t* trxCollection,
 
     return res;
   }
+  
+  // .............................................................................
+  // update header
+  // .............................................................................
+
+  TRI_doc_mptr_t* newHeader = oldHeader; 
+  
+  // update the header. this will modify oldHeader, too !!!
+  newHeader->_rid  = operation.rid;
+  newHeader->_data = operation.marker->mem();
 
   // insert new document into secondary indexes
   res = InsertSecondaryIndexes(document, newHeader, false);
@@ -865,7 +892,23 @@ static int UpdateIndexes (TRI_transaction_collection_t* trxCollection,
   if (res != TRI_ERROR_NO_ERROR) {
     // rollback
     DeleteSecondaryIndexes(document, newHeader, true);
+    
+    // copy back old header data
+    *oldHeader = oldData;
+    
     InsertSecondaryIndexes(document, oldHeader, true);
+
+    return res;
+  }
+
+  res = TRI_AddOperationTransaction(operation, syncRequested);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // write new header into result  
+    *mptr = *((TRI_doc_mptr_t*) newHeader);
+  }
+  else {
+    RollbackUpdate(document, newHeader, &oldData, false); // TODO: check whether "false" is correct!
   }
     
   return res;
@@ -884,184 +927,89 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool lock,
                                      bool forceSync) {
 
-  if (rid == 0) {
-    // generate new revision id
-    rid = static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
-  }
+  rid = GetRevisionId(rid);
+
+  assert(key != nullptr);
 
   // initialise the result
   assert(mptr != nullptr);
   mptr->_key  = nullptr;
   mptr->_data = nullptr;
-
+    
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  
+  // create legend  
+  triagens::basics::JsonLegend legend(primary->_shaper);
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
 
-  int res;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+    
   {
     triagens::arango::CollectionWriteLocker collectionLocker(primary, lock);
 
     // get the header pointer of the previous revision
-    assert(key != nullptr);
-    TRI_doc_mptr_t* oldHeader = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
-
-    if (IsVisible(oldHeader)) {
-      // document found, now check revision
-      res = TRI_CheckUpdatePolicy(policy, oldHeader->_rid);
-    }
-    else {
-      // document not found
-      res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-    }
+    TRI_doc_mptr_t* oldHeader;
+    res = LookupDocument(primary, key, policy, oldHeader);
     
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
 
-    triagens::basics::JsonLegend legend(primary->_shaper);
-    res = legend.addShape(shaped->_sid, &shaped->_data);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    triagens::wal::SlotInfo slotInfo;
+    triagens::wal::Marker* marker = nullptr;
     TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->_data);
 
     if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
         original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      
-      triagens::wal::DocumentMarker marker = triagens::wal::DocumentMarker::clone(original,
-                                                                                  primary->base._vocbase->_id,
-                                                                                  primary->base._info._cid,
-                                                                                  rid,
-                                                                                  trxCollection->_transaction->_id,
-                                                                                  legend,
-                                                                                  shaped);
-
-      slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+      // create a WAL document marker
+    
+      marker = triagens::wal::DocumentMarker::clone(original,
+                                                    primary->base._vocbase->_id,
+                                                    primary->base._info._cid,
+                                                    rid,
+                                                    trxCollection->_transaction->_id,
+                                                    legend,
+                                                    shaped);
     }
     else if (original->_type == TRI_WAL_MARKER_EDGE ||
-            original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+             original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      // create a WAL edge marker
 
-      triagens::wal::EdgeMarker marker = triagens::wal::EdgeMarker::clone(original,
-                                                                          primary->base._vocbase->_id,
-                                                                          primary->base._info._cid,
-                                                                          rid,
-                                                                          trxCollection->_transaction->_id,
-                                                                          legend,
-                                                                          shaped);
-
-      slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
+      marker = triagens::wal::EdgeMarker::clone(original,
+                                                primary->base._vocbase->_id,
+                                                primary->base._info._cid,
+                                                rid,
+                                                trxCollection->_transaction->_id,
+                                                legend,
+                                                shaped);
     }
     else {
       // invalid marker type
-      assert(false);
       return TRI_ERROR_INTERNAL;
     }
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
+    operation.header = oldHeader;
+    operation.init();
 
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      // some error occurred
-      return slotInfo.errorCode;
-    }
-
-    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(slotInfo.mem);
-
-    TRI_doc_mptr_t newHeader;
-    newHeader._rid  = rid;
-    newHeader._fid  = 0; // TODO
-    newHeader._data = slotInfo.mem;
-    newHeader._key  = static_cast<char*>(const_cast<void*>(slotInfo.mem)) + m->_offsetKey; 
-
-    res = UpdateIndexes(trxCollection, oldHeader, &newHeader); 
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    
-    res = TRI_AddOperationTransaction(trxCollection, 
-                                      TRI_VOC_DOCUMENT_OPERATION_UPDATE, 
-                                      &newHeader,
-                                      oldHeader,
-                                      oldHeader,
-                                      forceSync);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      RollbackUpdate(document, &newHeader, oldHeader, false);
-      return res;
-    }
-      
-    TRI_SetRevisionDocumentCollection(document, rid, false);
-
-    // update the old header in place
-    oldHeader->_rid  = newHeader._rid;
-    oldHeader->_fid  = newHeader._fid;
-    oldHeader->_data = newHeader._data;
-    oldHeader->_key  = newHeader._key;
-
-    // return value
-    *mptr = newHeader;
+    res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync); 
   }
-    
-  assert(mptr->_key != nullptr);
-  assert(mptr->_data != nullptr);
-  assert(mptr->_rid > 0);
+   
+  if (res == TRI_ERROR_NO_ERROR) { 
+    assert(mptr->_key != nullptr);
+    assert(mptr->_data != nullptr);
+    assert(mptr->_rid > 0);
+  }
+  else {
+    assert(mptr->_key == nullptr);
+    assert(mptr->_data == nullptr);
+    assert(mptr->_rid == 0);
+  }
 
   return res;
 }
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a document from the indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemoveIndexes (TRI_transaction_collection_t* trxCollection,
-                          TRI_doc_update_policy_t const* policy,
-                          TRI_voc_key_t key,
-                          TRI_doc_mptr_t** mptr) {
-
-  TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
- 
-  // get the existing header pointer
-  TRI_doc_mptr_t* header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
-
-  if (! IsVisible(header)) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }
-
-  *mptr = header;
-  
-  // .............................................................................
-  // check the revision
-  // .............................................................................
-
-  int res = TRI_CheckUpdatePolicy(policy, header->_rid);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  
-  // delete from indexes
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
-  res = DeleteSecondaryIndexes(document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // deletion failed. roll back
-    InsertSecondaryIndexes(document, header, true);
-
-    return res;
-  }
-  
-  res = DeletePrimaryIndex(document, header, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // deletion failed. roll back 
-    InsertSecondaryIndexes(document, header, true);
-  }
-
-  return res;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a shaped-json document (or edge)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1073,55 +1021,50 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool lock,
                                      bool forceSync) {
   assert(key != nullptr);
-  
-  if (rid == 0) {
-    // generate new revision id
-    rid = static_cast<TRI_voc_rid_t>(TRI_NewTickServer());
-  }
+ 
+  rid = GetRevisionId(rid); 
 
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
 
-  triagens::wal::RemoveMarker marker(primary->base._vocbase->_id,
-                                     primary->base._info._cid,
-                                     rid,
-                                     trxCollection->_transaction->_id,
-                                     std::string(key));
-
-  triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, forceSync);
-  
-  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    // some error occurred
-    return slotInfo.errorCode;
-  }
+  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(primary->base._vocbase->_id,
+                                                                  primary->base._info._cid,
+                                                                  rid,
+                                                                  trxCollection->_transaction->_id,
+                                                                  std::string(key));
 
   TRI_doc_mptr_t* header;
   int res;
   {
     triagens::arango::CollectionWriteLocker collectionLocker(primary, lock);
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
 
-    res = RemoveIndexes(trxCollection, policy, key, &header);
+    res = LookupDocument(primary, key, policy, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-
+    
+    // we found a document to remove
     assert(header != nullptr);
+    operation.header = header;
 
-    res = TRI_AddOperationTransaction(trxCollection,
-                                      TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                                      nullptr,
-                                      header,
-                                      header,
-                                      forceSync);
+    TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  
+    // delete from indexes
+    res = DeleteSecondaryIndexes(document, header, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      InsertSecondaryIndexes(document, header, true);
+
+      return res;
+    }
+
+    res = TRI_AddOperationTransaction(operation, forceSync);
   
     if (res != TRI_ERROR_NO_ERROR) {
       // deletion failed. roll back
-      RollbackRemove(document, nullptr, header, true); // TODO: check if "true" is correct!
-    }
-    else {
-      TRI_SetRevisionDocumentCollection(document, rid, false);
-      document->_headers->unlink(document->_headers, header);
+      RollbackRemove(document, header, false);
     }
   }
 
@@ -2575,13 +2518,13 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
   int res;
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    res = RollbackInsert(document, newHeader, NULL);
+    res = RollbackInsert(document, newHeader);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     res = RollbackUpdate(document, newHeader, oldData, true);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    res = RollbackRemove(document, NULL, oldHeader, true);
+    res = RollbackRemove(document, oldHeader, true);
   }
   else {
     res = TRI_ERROR_INTERNAL;
