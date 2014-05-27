@@ -330,8 +330,8 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_cluster_dispatcher_POST
 /// @brief exposes the dispatcher functionality to start up, shutdown,
-/// relaunch or cleanup a cluster according to a cluster plan as for
-/// example provided by the kickstarter.
+/// relaunch, upgrade or cleanup a cluster according to a cluster plan
+/// as for example provided by the kickstarter.
 ///
 /// @RESTHEADER{POST /_admin/clusterDispatch,execute startup commands}
 ///
@@ -358,10 +358,16 @@ actions.defineHttp({
 ///       - "isHealthy": checks whether or not the processes involved
 ///         in the cluster are running or not. The additional property
 ///         `runInfo` (see above) must be bound as well
+///       - "upgrade": performs an upgrade of a cluster, to this end,
+///         the agency is started, and then every server is once started
+///         with the "--upgrade" option, and then normally. Finally,
+///         the script "verion-check.js" is run on one of the coordinators
+///         for the cluster.
 ///
 ///   - `runInfo": this is needed for the "shutdown" and "isHealthy" actions
-///     only and should be the structure that "launch" or "relaunch"
-///     returned. It contains runtime information like process IDs.
+///     only and should be the structure that "launch", "relaunch" or
+///     "upgrade" returned. It contains runtime information like process
+///     IDs.
 ///
 /// This call executes the plan by either doing the work personally
 /// or by delegating to other dispatchers.
@@ -432,6 +438,19 @@ actions.defineHttp({
       }
       catch (error3) {
         actions.resultException(req, res, error3, undefined, false);
+      }
+    }
+    else if (action === "upgrade") {
+      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      try {
+        k = new Kickstarter(input.clusterPlan, input.myname);
+        r = k.upgrade(input.username, input.password);
+        res.responseCode = actions.HTTP_OK;
+        res.contentType = "application/json; charset=utf-8";
+        res.body = JSON.stringify(r);
+      }
+      catch (error3a) {
+        actions.resultException(req, res, error3a, undefined, false);
       }
     }
     else if (action === "shutdown") {
