@@ -88,6 +88,9 @@
       var self = this;
       var selCol = $("#selectCol");
       var dbName = $("#selectDB").find(":selected").attr("id");
+      if (!dbName) {
+        return;
+      }
       var colName = selCol.find(":selected").attr("id");
       selCol.html("");
       this.cols.getList(dbName, function(list) {
