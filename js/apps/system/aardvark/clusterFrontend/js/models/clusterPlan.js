@@ -12,6 +12,11 @@
 
     idAttribute: "config",
 
+    getVersion: function() {
+      var v = this.get("version");
+      return v || "2.0";
+    },
+
     getCoordinator: function() {
       if (this._coord) {
         return this._coord[
