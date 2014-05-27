@@ -147,20 +147,26 @@ namespace triagens {
 
         Marker& operator= (Marker const&) = delete;
 
-        Marker (Marker&&); 
+        Marker (Marker&&) = delete; 
         
-        Marker (Marker const&);
+        Marker (Marker const&) = delete;
 
         Marker (TRI_df_marker_type_e,
                 size_t);
 
-        virtual ~Marker ();
-        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
       public:
+        
+        virtual ~Marker ();
+
+        inline char* steal () {
+          char* buffer = _buffer;
+          _buffer = nullptr;
+          return buffer;
+        }
       
         static inline size_t alignedSize (size_t size) {
           return TRI_DF_ALIGN_BLOCK(size);
@@ -379,13 +385,13 @@ namespace triagens {
          
         void dump () const;
         
-        static DocumentMarker clone (TRI_df_marker_t const*,
-                                     TRI_voc_tick_t,
-                                     TRI_voc_cid_t,
-                                     TRI_voc_rid_t,
-                                     TRI_voc_tid_t,
-                                     triagens::basics::JsonLegend&,
-                                     TRI_shaped_json_t const*);
+        static DocumentMarker* clone (TRI_df_marker_t const*,
+                                      TRI_voc_tick_t,
+                                      TRI_voc_cid_t,
+                                      TRI_voc_rid_t,
+                                      TRI_voc_tid_t,
+                                      triagens::basics::JsonLegend&,
+                                      TRI_shaped_json_t const*);
     };
 
 // -----------------------------------------------------------------------------
@@ -458,13 +464,13 @@ namespace triagens {
         
         void dump () const;
         
-        static EdgeMarker clone (TRI_df_marker_t const*,
-                                 TRI_voc_tick_t,
-                                 TRI_voc_cid_t,
-                                 TRI_voc_rid_t,
-                                 TRI_voc_tid_t,
-                                 triagens::basics::JsonLegend&,
-                                 TRI_shaped_json_t const*);
+        static EdgeMarker* clone (TRI_df_marker_t const*,
+                                  TRI_voc_tick_t,
+                                  TRI_voc_cid_t,
+                                  TRI_voc_rid_t,
+                                  TRI_voc_tid_t,
+                                  triagens::basics::JsonLegend&,
+                                  TRI_shaped_json_t const*);
     };
 
 // -----------------------------------------------------------------------------

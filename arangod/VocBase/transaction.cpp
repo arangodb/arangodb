@@ -37,6 +37,7 @@
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
+#include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 
 #define LOG_TRX(trx, level, format, ...) \
@@ -123,45 +124,6 @@ static int InitCollectionOperations (TRI_transaction_collection_t* trxCollection
   }
    
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a WAL-based operation for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int AddOperation (TRI_transaction_collection_t* trxCollection,
-                         TRI_voc_document_operation_e type,
-                         TRI_doc_mptr_t* newHeader,
-                         TRI_doc_mptr_t* oldHeader,
-                         TRI_doc_mptr_t* oldData) {
-
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("AddOperation-OOM") {
-    return TRI_ERROR_DEBUG;
-  }
-
-  int res;
-
-  if (trxCollection->_operations == nullptr) {
-    res = InitCollectionOperations(trxCollection);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-  }
-
-  TRI_transaction_operation_t trxOperation;
-  trxOperation._type       = type;
-  trxOperation._newHeader  = newHeader;
-  trxOperation._oldHeader  = oldHeader;
-  
-  if (oldData != nullptr) {
-    trxOperation._oldData  = *oldData;
-  }
-  else {
-    memset(&trxOperation._oldData, 0, sizeof(TRI_doc_mptr_t));
-  }
-  
-  return TRI_PushBackVector(trxCollection->_operations, &trxOperation);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -970,48 +932,55 @@ int TRI_AddIdFailedTransaction (TRI_vector_t* vector,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve room in the transactions operations vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReserveOperationTransaction (TRI_transaction_collection_t* trxCollection) {
-  if (trxCollection->_operations == nullptr) {
-    return InitCollectionOperations(trxCollection);
-  }
-
-  return TRI_ReserveVector(trxCollection->_operations, 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddOperationTransaction (TRI_transaction_collection_t* trxCollection,
-                                 TRI_voc_document_operation_e type,
-                                 TRI_doc_mptr_t* newHeader,
-                                 TRI_doc_mptr_t* oldHeader,
-                                 TRI_doc_mptr_t* oldData,
+int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
                                  bool syncRequested) {
-
+  TRI_transaction_collection_t* trxCollection = operation.trxCollection;
   TRI_transaction_t* trx = trxCollection->_transaction;
 
-  // TODO: re-add replication!!
- 
-  int res = AddOperation(trxCollection, type, newHeader, oldHeader, oldData);
+  assert(operation.header != nullptr);
   
-  if (res == TRI_ERROR_NO_ERROR) {
-    // if everything went well, this will ensure we don't double free etc. headers
-    trx->_hasOperations = true;
-  
-    // update waitForSync for the transaction 
+  bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
+
+  // default is false
+  bool waitForSync = false;
+  if (isSingleOperationTransaction) {
+    waitForSync = syncRequested || trxCollection->_waitForSync;
+  }
+  else {
+    // upgrade the info for the transaction
     if (syncRequested || trxCollection->_waitForSync) {
       trx->_waitForSync = true;
     }
   }
-  else {
-    TRI_ASSERT_MAINTAINER(res == TRI_ERROR_OUT_OF_MEMORY || res == TRI_ERROR_DEBUG);
-  }
   
-  return res;
+  triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+  
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    // some error occurred
+    operation.revert(isSingleOperationTransaction);
+
+    return slotInfo.errorCode;
+  }
+    
+  if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    // adjust the data position in the header
+    operation.header->_data = slotInfo.mem;
+    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(operation.header->_data);
+    operation.header->_key  = static_cast<char*>(const_cast<void*>(slotInfo.mem)) + m->_offsetKey; 
+  } 
+
+  operation.handled(isSingleOperationTransaction);
+  
+  if (operation.rid > 0) {
+    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+    TRI_SetRevisionDocumentCollection(document, operation.rid, false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
