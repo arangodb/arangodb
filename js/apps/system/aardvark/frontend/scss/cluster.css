@@ -1938,6 +1938,8 @@ a.button-gui {
   text-decoration: none !important;
   top: 2px;
   width: auto; }
+  a.button-gui.button-gui-disabled {
+    display: none; }
 
 .clusterDownBtn {
   padding-bottom: 10px;

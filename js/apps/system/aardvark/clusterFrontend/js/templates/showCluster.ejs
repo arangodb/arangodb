@@ -17,15 +17,19 @@
     id = id.replace(/\:/g,'_');
     id = "id" + id;
     return id;
-  }
+  };
+
+  var buttonClass = function(s) {
+    if (s === "ok") {
+      return "";
+    }
+    return " button-gui-disabled";
+  };
 %>
 <div class="headerBar">
   <a class="arangoHeader">Cluster Dashboard</a>
   <div class="headerButtonBar pull-right">
     <select id="selectDB">
-      <% _.each(dbs, function(d) { %>
-        <option id="<%=d%>" <%=(d === "_system")?"checked":""%> ><%=d%></option>
-      <% }); %>
     </select>
     <select id="selectCol">
     </select>
@@ -48,7 +52,7 @@
         <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <span class="fa fa-compass icon"></span>
         </a>
-        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui">GUI</a></h5>
+        <h5 class="collectionName"><%=c.get("name")%> <a href="<%=url%>" target="_blank" class="button-gui<%=buttonClass(c.get('status'))%>">GUI</a></h5>
       </li>
     <%
       });
@@ -95,7 +99,7 @@
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui" href="<%=url%>" target="_blank">GUI</a></h5>
+      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui<%=buttonClass(c.get('status'))%>" href="<%=url%>" target="_blank">GUI</a></h5>
       </li>
     <%
     });
