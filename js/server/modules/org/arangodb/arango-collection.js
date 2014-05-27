@@ -556,7 +556,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     if (typeof limit !== "undefined") {
       throw "too many parameters";
     }
-    var tmp_options = waitForSync == null ? {} : waitForSync;
+    var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
     /*jslint node: true, stupid: true */
@@ -659,7 +659,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     if (typeof limit !== "undefined") {
       throw "too many parameters";
     }
-    var tmp_options = waitForSync == null ? {} : waitForSync;
+    var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
     /*jslint node: true, stupid: true */
@@ -767,7 +767,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     if (typeof waitForSync !== "undefined") {
       throw "too many parameters";
     }
-    var tmp_options = keepNull == null ? {} : keepNull;
+    var tmp_options = keepNull === null ? {} : keepNull;
 
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
