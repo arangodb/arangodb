@@ -34,7 +34,9 @@
     },
   
     getStatuses: function(cb) {
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this,
         completed = function() {
           self.successFullTry();
@@ -52,7 +54,9 @@
     },
 
     byAddress: function (res, callback) {
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),

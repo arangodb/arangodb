@@ -31,7 +31,9 @@
     },
 
     getStatuses: function(cb, nextStep) {
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
@@ -46,7 +48,9 @@
     },
 
     byAddress: function (res, callback) {
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
@@ -67,11 +71,14 @@
 
     checkConnection: function(callback) {
       var self = this;
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
       }).done(function() {
+        self.successFullTry();
         callback();
       });
     },
