@@ -40,6 +40,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/ApplicationScheduler.h"
+#include "Scheduler/Scheduler.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -751,6 +753,11 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+  // unregister all tasks
+  if (_scheduler != nullptr) {
+    _scheduler->scheduler()->unregisterUserTasks();
+  }
+
   // stop GC
   _gcThread->shutdown();
 

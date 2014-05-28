@@ -226,8 +226,8 @@ void Scheduler::shutdown () {
 TRI_json_t* Scheduler::getUserTasks () {
   TRI_json_t* json = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (json == 0) {
-    return 0;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   {
@@ -240,7 +240,7 @@ TRI_json_t* Scheduler::getUserTasks () {
       if (task->isUserDefined()) {
         TRI_json_t* obj = task->toJson(); 
 
-        if (obj != 0) {
+        if (obj != nullptr) {
           TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
         }
       }
@@ -270,7 +270,7 @@ TRI_json_t* Scheduler::getUserTask (string const& id) {
     ++i;
   }
 
-  return 0;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +282,7 @@ int Scheduler::unregisterUserTask (string const& id) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
 
-  Task* task = 0;
+  Task* task = nullptr;
  
   {
     MUTEX_LOCKER(schedulerLock);
@@ -305,7 +305,7 @@ int Scheduler::unregisterUserTask (string const& id) {
     }
   }
 
-  if (task == 0) {
+  if (task == nullptr) {
     // not found
     return TRI_ERROR_TASK_NOT_FOUND;
   }
@@ -314,11 +314,43 @@ int Scheduler::unregisterUserTask (string const& id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister all user tasks
+////////////////////////////////////////////////////////////////////////////////
+
+int Scheduler::unregisterUserTasks () {
+  while (true) {
+    Task* task = nullptr;
+
+    {
+      MUTEX_LOCKER(schedulerLock);
+
+      map<Task*, SchedulerThread*>::iterator i = task2thread.begin();
+      while (i != task2thread.end()) {
+        Task const* t = (*i).first;
+
+        if (t->isUserDefined()) {
+          task = const_cast<Task*>(t);
+          break;
+        }
+
+        ++i;
+      }
+    }
+
+    if (task == nullptr) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    destroyTask(task);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a new task
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::registerTask (Task* task) {
-  SchedulerThread* thread = 0;
+  SchedulerThread* thread = nullptr;
 
   if (task->isUserDefined() && task->id().empty()) {
     // user-defined task without id is invalid
@@ -360,7 +392,7 @@ int Scheduler::registerTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::unregisterTask (Task* task) {
-  SchedulerThread* thread = 0;
+  SchedulerThread* thread = nullptr;
 
   {
     MUTEX_LOCKER(schedulerLock);
@@ -395,7 +427,7 @@ int Scheduler::unregisterTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::destroyTask (Task* task) {
-  SchedulerThread* thread = 0;
+  SchedulerThread* thread = nullptr;
 
   {
     MUTEX_LOCKER(schedulerLock);
