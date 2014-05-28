@@ -81,7 +81,7 @@ The `_system` database cannot be dropped, though all user-defined collections in
 can be dropped normally if required. All database management operations such as
 creating new databases, dropping databases, and retrieving the list of existing databases
 can only be carried out from within the `_system` database. Fetching the server logs 
-(via the `/_api/log` API) is also restricted the `_system` database.
+(via the `/_admin/log` API) is also restricted the `_system` database.
 
 All command-line tools (e.g. _arangosh_, _arangoimp_, _foxx-manager_) will connect to the 
 `_system` database by default. They also provide the option `--server.database` to connect 
