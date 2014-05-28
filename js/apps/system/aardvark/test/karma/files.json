@@ -262,6 +262,7 @@
   "test/specs/views/notificationViewSpec.js",
   "test/specs/views/statisticBarViewSpec.js",
   "test/specs/views/shellViewSpec.js",
+  "test/specs/views/queryViewSpec.js",
 
 
   "test/specs/router/routerSpec.js",
