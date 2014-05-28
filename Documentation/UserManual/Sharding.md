@@ -284,13 +284,15 @@ for detailed information about the `Planner` and `Kickstarter` classes.
 Status of the implementation {#ShardingStatusImpl}
 ==================================================
 
-This version 2.0 of ArangoDB contains the first usable implementation
-of the sharding extensions. However, not all planned features are
-included in this release. In particular, automatic fail-over is fully
+This version 2.0 of ArangoDB contained the first usable implementation
+of the sharding extensions. The current version 2.1 improves these
+by many bug fixes, dump and restore for clusters and some performance
+improvements. However, even in this version not all planned features are
+included. In particular, automatic fail-over is fully
 prepared in the architecture but is not yet implemented. If you use
-Version 2.0 in cluster mode in a production system, you have to
+Version 2.1 in cluster mode in a production system, you have to
 organise failure recovery manually. This is why, at this stage with
-Version 2.0 we do not yet recommend to use the cluster mode in
+Version 2.1 we do not yet recommend to use the cluster mode in
 production systems. If you really need this feature now, please contact
 us.
 
@@ -300,7 +302,7 @@ features.
 In normal single instance mode, ArangoDB works as usual
 with the same performance and functionality as in previous releases.
 
-In cluster mode, the following things are implemented in version 2.0 
+In cluster mode, the following things are implemented in version 2.1 
 and work:
 
   - All basic CRUD operations for single documents and edges work
@@ -323,12 +325,12 @@ and work:
     but only leads to a local index of the same type on each shard.
   - All SimpleQueries work. Again, we will improve the performance in
     future releases, when we revisit the AQL query optimiser 
-    (see road map for release 2.2).
+    (see road map for release 2.3).
   - AQL queries work, but with relatively bad performance. Also, if the
     result of a query on a sharded collection is large, this can lead
     to an out of memory situation on the coordinator handling the
     request. We will improve this situation when we revisit the AQL
-    query optimiser (see road map for release 2.2).
+    query optimiser (see road map for release 2.3).
   - Authentication on the cluster works with the method known from
     single ArangoDB instances on the coordinators. A new cluster-internal
     authorisation scheme has been created. See below for hints on a
@@ -336,15 +338,21 @@ and work:
   - Most standard API calls of the REST interface work on the cluster
     as usual, with a few exceptions, which do no longer make sense on
     a cluster or are harder to implement. See below for details.
+  - In version 2.1 the `arangodump` and `arangorestore` programs
+    can be used talking to a coordinator to directly backup
+    sharded collections. At this stage, they do not provide a
+    cluster-consistent snapshot-functionality, so one has to refrain
+    from write-accesses to the database during the dump to get a 
+    consistent backup.
 
 
 The following does not yet work, but is planned for future releases (see
 road map):
 
   - Transactions can be run, but do not behave like transactions. They
-    simply execute but have no atomicity or isolation in version 2.0.
+    simply execute but have no atomicity or isolation in version 2.1.
     See the road map for version 2.X.
-  - We plan to revise the AQL optimiser for version 2.2. This is
+  - We plan to revise the AQL optimiser for version 2.3. This is
     necessary since for efficient queries in cluster mode we have to
     do as much as possible of the filtering and sorting on the
     individual DBservers rather than on the coordinator.
@@ -352,7 +360,7 @@ road map):
     fail-over and recovery of a cluster, which will be implemented
     for version 2.3 (see our road map).
   - This setup will at the same time, allow for hot swap and in-service 
-    maintenance and scaling of a cluster. However, in version 2.0 the
+    maintenance and scaling of a cluster. However, in version 2.1 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
   - For version 2.3 we envision an extension for AQL to allow writing
@@ -367,28 +375,19 @@ road map):
     graph traversal algorithms are executed on the coordinator and
     this means relatively poor performance since every single edge
     step leads to a network exchange.
-  - In version 2.0 the import API is broken for sharded collections.
+  - In version 2.1 the import API is broken for sharded collections.
     It will appear to work but will in fact silently fail. Fixing this
-    is on the road map for version 2.1.
-  - In version 2.0 the `arangodump` and `arangorestore` programs
-    can not be used talking to a coordinator to directly backup
-    sharded collections. At this stage, one has to backup the
-    DBservers individually using `arangodump` and `arangorestore`
-    on them. The coordinators themselves do not hold any state and
-    therefore do not need backup. Do not forget to backup the meta
-    data stored in the agency because this is essential to access
-    the sharded collections. These limitations will be fixed in
-    version 2.1.
-  - In version 2.0 the replication API (`/_api/replication`)
+    is on the road map for version 2.2.
+  - In version 2.1 the replication API (`/_api/replication`)
     does not work on coordinators. This is intentional, since the 
     plan is to organize replication with automatic fail-over directly
     on the DBservers, which is planned for version 2.3.
   - The `db.<collection>.rotate()` method for sharded collections is not
-    yet implemented, but will be supported from version 2.1 onwards.
+    yet implemented, but will be supported from some later version onwards.
   - The `db.<collection>.rename()` method for sharded collections is not
-    yet implemented, but will be supported from version 2.1 onwards.
+    yet implemented, but will be supported from some later version onwards.
   - The `db.<collection>.checksum()` method for sharded collections is
-    not yet implemented, but will be supported from version 2.1
+    not yet implemented, but will be supported from some later version
     onwards.
 
 The following restrictions will probably stay, for cluster mode, even in
@@ -397,13 +396,13 @@ to implement efficiently:
 
   - Custom key generators with the `keyOptions` property in the
     `_create` method for collections are not supported. We plan
-    to improve this for version 2.1 (see road map). However, due to the
-    distributed nature of a sharded collection, not everything that is
-    possible in the single instance situation will be possible on a
-    cluster. For example the auto-increment feature in a cluster with
-    multiple DBservers and coordinators would have to lock the whole
-    collection centrally for every document creation, which
-    essentially defeats the performance purpose of sharding.
+    to improve this. However, due to the distributed nature of a
+    sharded collection, not everything that is possible in the single
+    instance situation will be possible on a cluster. For example the
+    auto-increment feature in a cluster with multiple DBservers and
+    coordinators would have to lock the whole collection centrally for
+    every document creation, which essentially defeats the performance
+    purpose of sharding.
   - Unique constraints on non-sharding keys are unsupported. The reason
     for this is that we do not plan to have global indices for sharded
     collections. Therefore, there is no single authority that could
