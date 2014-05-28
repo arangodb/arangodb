@@ -9870,7 +9870,9 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   }
 
   // convert the JavaScript string to a string
-  string const key = TRI_ObjectToString(name);
+  // we take the fast path here and don't normalize the string
+  v8::String::Utf8Value const str(name);
+  string const key(*str, (size_t) str.length());
 
   if (key.empty() || key[0] == '_' || strchr(key.c_str(), '.') != 0) {
     return scope.Close(v8::Handle<v8::Value>());
