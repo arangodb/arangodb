@@ -23,7 +23,6 @@
       this.coordinators.checkConnection(function() {
         window.App.navigate("showCluster", {trigger: true});
       });
-      
     },
 
     render: function() {
