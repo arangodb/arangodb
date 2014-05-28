@@ -1098,7 +1098,25 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// @brief get common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
+Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  return db._query(query, bindVars, {count: true}).toArray();
+
 
 };
 
@@ -1106,15 +1124,63 @@ Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
 /// @brief get amount of common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._amountCommonNeighbors = function(vertex1, vertex2, options) {
-
+Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a])  '
+    + 'SORT  ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars, {count: true}).toArray(),
+    tmp = {}, tmp2={}, returnHash = [];
+  result.forEach(function (r) {
+    if (!tmp[r[0]]) {
+      tmp[r[0]] = [];
+    }
+    tmp2 = {};
+    tmp2[r[1]] = r[2];
+    tmp[r[0]].push(tmp2);
+  });
+  Object.keys(tmp).forEach(function(w) {
+    tmp2 = {};
+    tmp2[w] = tmp[w];
+    returnHash.push(tmp2);
+  });
+  return returnHash;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get common properties of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
+Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example, options) {
+
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  return db._query(query, bindVars, {count: true}).toArray();
 
 };
 
@@ -1122,8 +1188,29 @@ Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
 /// @brief get amount of common properties of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._amountCommonProperties = function(vertex1, vertex2, options) {
-
+Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Example, options) {
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ') FOR a in ATTRIBUTES(e)  SORT  ATTRIBUTES(e)[0] RETURN [ ATTRIBUTES(e)[0], LENGTH(e[a]) ]';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars, {count: true}).toArray(), returnHash = [];
+  result.forEach(function (r) {
+    var tmp = {};
+    tmp[r[0]] = r[1];
+    returnHash.push(tmp);
+  });
+  return returnHash;
 };
 
 // -----------------------------------------------------------------------------
