@@ -2439,12 +2439,9 @@ function SORT (value, sortFunction) {
 
   LIST(value);
  
-  var n = value.length;
-  if (n > 0) {
+  if (value.length > 0) {
     value.sort(sortFunction);
   }
-
-  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
