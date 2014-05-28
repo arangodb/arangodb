@@ -3,18 +3,32 @@
   <a class="arangoHeader">Cluster Unreachable</a>
 </div>
 
-<div class="clusterDownBtn">
+<div class="cluster-unreachable-info">
   <p>
     None of your Coordinators is reachable.
     However your DBServers are still running.
-    This might be a network network problem.
+    This might be a network problem.
+  </p>
+  Please check the your network connection to the following servers:
+  </p>
+  <% if(coordinators.length > 0) { %>
+  <ul>
+    <% _.each(coordinators, function(c) { %>
+      <li><b><%=c %></b></li>
+    <% }); %>
+  </ul>
+  <% } %>
+  <p>
+    If none of these servers is reachable they are either located behind a firewall and not accessable to the outside, or there is a network disconnection.
   </p>
   <p>
-  Please check the coordinators manually on the following servers:
+    If at least of these servers is reachable the coordinator potentially crashed, please have a look in the log files.
+    In this case you can shutdown the cluster and relaunch it again.
   </p>
-  <ul>
-    <li>Bla</li>
-    <li>blub</li>
-  </ul>
+  <p>
+    <button id="clusterShutdown" class="button-danger shutdown">Shutdown Cluster</button>
+  </p>
+  <p>
+  If you want to file a bug, please use <a href="https://github.com/triAGENS/ArangoDB/issues">our issue tracker</a>. Or feel free to ask a question on <a href="https://groups.google.com/forum/#!forum/arangodb">our google group</a>.
 </div>
 </script>
