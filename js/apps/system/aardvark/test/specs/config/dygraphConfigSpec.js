@@ -135,9 +135,10 @@
     });
 
     it("getDashBoardFigures", function () {
-      var result = [], self = this;
+      var result = [];
       Object.keys(col.figureDependedOptions).forEach(function (k) {
-        if (col.figureDependedOptions[k].div) {
+        if (k !== "clusterRequestsPerSecond"
+          && col.figureDependedOptions[k].div) {
           result.push(k);
         }
       });
@@ -147,7 +148,9 @@
     it("get all DashBoardFigures", function () {
       var result = [], self = this;
       Object.keys(col.figureDependedOptions).forEach(function (k) {
-        result.push(k);
+        if (k !== "clusterRequestsPerSecond") {
+          result.push(k);
+        }
       });
       expect(col.getDashBoardFigures(true)).toEqual(result);
     });
@@ -158,10 +161,10 @@
       expect(res.drawGapPoints).toEqual(true);
       expect(res.fillGraph).toEqual(true);
       expect(res.showLabelsOnHighlight).toEqual(true);
-      expect(res.strokeWidth).toEqual(2);
-      expect(res.strokeBorderWidth).toEqual(0.5);
+      expect(res.strokeWidth).toEqual(1.5);
+      expect(res.strokeBorderWidth).toEqual(1.5);
       expect(res.includeZero).toEqual(true);
-      expect(res.highlightCircleSize).toEqual(0);
+      expect(res.highlightCircleSize).toEqual(2.5);
       expect(res.labelsSeparateLines ).toEqual(true);
       expect(res.strokeBorderColor).toEqual('#ffffff');
       expect(res.interactionModel).toEqual({});
@@ -201,10 +204,10 @@
       expect(res.drawGapPoints).toEqual(true);
       expect(res.fillGraph).toEqual(true);
       expect(res.showLabelsOnHighlight).toEqual(true);
-      expect(res.strokeWidth).toEqual(2);
-      expect(res.strokeBorderWidth).toEqual(0.5);
+      expect(res.strokeWidth).toEqual(1.5);
+      expect(res.strokeBorderWidth).toEqual(1.5);
       expect(res.includeZero).toEqual(true);
-      expect(res.highlightCircleSize).toEqual(3);
+      expect(res.highlightCircleSize).toEqual(2.5);
       expect(res.labelsSeparateLines ).toEqual(true);
       expect(res.strokeBorderColor).toEqual('#ffffff');
       expect(res.interactionModel).toEqual(null);
@@ -220,8 +223,8 @@
       expect(res.labelsKMG2 ).toEqual(false);
       expect(res.div).toEqual("pageFaultsChart");
       expect(res.header).toEqual("Page Faults");
-      expect(res.labels).toEqual(["datetime", "Major Page Faults",
-        "Minor Page Faults"]);
+      expect(res.labels).toEqual(["datetime", "Major Page",
+        "Minor Page"]);
       expect(res.legend ).toEqual("always");
       expect(res.visibility).toEqual([true, true]);
     });
@@ -232,10 +235,10 @@
       expect(res.drawGapPoints).toEqual(true);
       expect(res.fillGraph).toEqual(true);
       expect(res.showLabelsOnHighlight).toEqual(true);
-      expect(res.strokeWidth).toEqual(2);
-      expect(res.strokeBorderWidth).toEqual(0.5);
+      expect(res.strokeWidth).toEqual(1.5);
+      expect(res.strokeBorderWidth).toEqual(1.5);
       expect(res.includeZero).toEqual(true);
-      expect(res.highlightCircleSize).toEqual(3);
+      expect(res.highlightCircleSize).toEqual(2.5);
       expect(res.labelsSeparateLines ).toEqual(true);
       expect(res.strokeBorderColor).toEqual('#ffffff');
       expect(res.interactionModel).toEqual(null);
