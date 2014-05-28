@@ -124,6 +124,10 @@
         id = id.replace(/\./g,'-');
         id = id.replace(/\:/g,'_');
         icon = $("#id" + id);
+        if (icon.length < 1) {
+          // callback after view was unrendered
+          return;
+        }
         type = icon.attr("class").split(/\s+/)[1];
         icon.attr("class", cls + " " + type + " " + stat);
         if (cls === "coordinator") {
@@ -285,15 +289,7 @@
         var lt = h[l - 1].time;
         var tt = h[l - 1].requests;
 
-        if (tt >= requests) {
-          h.times.push({
-            time: time,
-            snap: snap,
-            requests: requests,
-            requestsPerSecond: 0
-          });
-        }
-        else {
+        if (tt < requests) {
           var dt = time - lt;
           var ps = 0;
 
@@ -308,6 +304,16 @@
             requestsPerSecond: ps
           });
         }
+        /*
+        else {
+          h.times.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: 0
+          });
+        }
+        */
       }
     },
 
