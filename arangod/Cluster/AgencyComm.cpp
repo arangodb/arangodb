@@ -1375,7 +1375,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 
 std::string AgencyComm::ttlParam (double ttl,
                                   bool isFirst) {
-  if (ttl <= 0.0) {
+  if ((int) ttl <= 0) {
     return "";
   }
 
@@ -1397,7 +1397,8 @@ bool AgencyComm::lock (std::string const& key,
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
   }
-
+    
+  unsigned long sleepTime = InitialSleepTime;
   const double end = TRI_microtime() + timeout;
 
   while (true) {
@@ -1429,7 +1430,11 @@ bool AgencyComm::lock (std::string const& key,
       return true;
     }
 
-    usleep(1000);
+    usleep(sleepTime);
+
+    if (sleepTime < MaxSleepTime) {
+      sleepTime += InitialSleepTime;
+    }
 
     const double now = TRI_microtime();
 
@@ -1453,6 +1458,7 @@ bool AgencyComm::unlock (std::string const& key,
     timeout = _globalConnectionOptions._lockTimeout;
   }
 
+  unsigned long sleepTime = InitialSleepTime;
   const double end = TRI_microtime() + timeout;
 
   while (true) {
@@ -1474,7 +1480,11 @@ bool AgencyComm::unlock (std::string const& key,
       return true;
     }
 
-    usleep(1000);
+    usleep(sleepTime);
+
+    if (sleepTime < MaxSleepTime) {
+      sleepTime += InitialSleepTime;
+    }
     
     const double now = TRI_microtime();
 
@@ -1492,6 +1502,8 @@ bool AgencyComm::unlock (std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
     
 AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
+  unsigned long sleepTime = InitialSleepTime;
+   
   while (1) {
     {
       WRITE_LOCKER(AgencyComm::_globalLock);
@@ -1533,7 +1545,11 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 
     // if we got here, we ran out of non-busy connections...
 
-    usleep(1000);
+    usleep(sleepTime);
+
+    if (sleepTime < MaxSleepTime) {
+      sleepTime += InitialSleepTime;
+    }
   }
 
   // just to shut up compilers
@@ -1763,6 +1779,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
   if (response == 0) {
     result._message = "could not send request to agency";
     LOG_TRACE("sending request to agency failed");
+
     return false;
   }
 

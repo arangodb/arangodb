@@ -167,7 +167,7 @@ void ConnectionManager::returnConnection (SingleServerConnection* c) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
 
-  if (!c->connection->isConnected()) {
+  if (! c->connection->isConnected()) {
     brokenConnection(c);
     return;
   }

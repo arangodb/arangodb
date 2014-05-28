@@ -219,11 +219,40 @@ function Shutdown() {
   }
 }
 
+function IsHealthy() {
+  var db = require("internal").db;
+  var print = require("internal").print;
+  var col = db._cluster_kickstarter_plans;
+  print("\nHello, this is the ArangoDB cluster health check function...\n");
+  if (col === undefined || col.count() === 0) {
+    print("I did not find a cluster plan, therefore I give up.");
+  }
+  else {
+    var x = col.any();
+    if (! x.hasOwnProperty("runInfo")) {
+      print("Warning: It seems your cluster is already shutdown. I give up.");
+    }
+    else {
+      var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+      var k = new Kickstarter(x.plan);
+      k.runInfo = x.runInfo;
+      var r = k.isHealthy();
+      if (r.error === true) {
+        print("Error: Health check went wrong.");
+        return r;
+      }
+      print("Health check successful.");
+      return r;
+    }
+  }
+}
+
 exports.Planner = Planner;
 exports.Kickstarter = Kickstarter;
 exports.Upgrade = Upgrade;
 exports.Relaunch = Relaunch;
 exports.Shutdown = Shutdown;
+exports.IsHealthy = IsHealthy;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
