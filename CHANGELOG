@@ -1,3 +1,20 @@
+v2.1.0 (2014-05-29)
+-------------------
+
+* implemented upgrade procedure for clusters
+
+* fixed communication issue with agency which prevented reconnect
+  after an agent failure
+
+* fixed cluster dashboard in the case that one but not all servers
+  in the cluster are down
+
+* fixed a bug with coordinators creating local database objects
+  in the wrong order (_system needs to be done first)
+
+* improved cluster dashboard
+
+
 v2.1.0-rc2 (2014-05-25)
 -----------------------
 
@@ -127,6 +144,12 @@ v2.1.0-rc1 (2014-05-13)
 
 v2.0.8 (XXXX-XX-XX)
 -------------------
+
+* fixed too-busy iteration over skiplists
+
+  Even when a skiplist query was restricted by a limit clause, the skiplist
+  index was queried without the limit. this led to slower-than-necessary
+  execution times.
 
 * fixed timeout overflows on 32 bit systems
 

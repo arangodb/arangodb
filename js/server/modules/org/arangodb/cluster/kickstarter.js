@@ -1219,7 +1219,7 @@ Kickstarter.prototype.isHealthy = function() {
 /// @fn JSF_Kickstarter_prototype_upgrade
 /// @brief performs an upgrade on a cluster and starts it at the same time
 ///
-/// @FUN{@FA{Kickstarter}.relaunch()}
+/// @FUN{@FA{Kickstarter}.upgrade()}
 ///
 /// This performs an upgrade procedure on a cluster as described in
 /// the plan which was given to the constructor. To this end, other

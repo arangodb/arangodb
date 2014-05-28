@@ -8,5 +8,6 @@ TOC {#JSModuleClusterTOC}
   - @ref JSModuleClusterKickstarterLaunch
   - @ref JSModuleClusterKickstarterShutdown
   - @ref JSModuleClusterKickstarterRelaunch
+  - @ref JSModuleClusterKickstarterUpgrade
   - @ref JSModuleClusterKickstarterCleanup
 

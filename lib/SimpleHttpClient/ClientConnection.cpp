@@ -98,11 +98,11 @@ bool ClientConnection::checkSocket () {
 
   assert(TRI_isvalidsocket(_socket));
 
-  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)(&so_error), &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*) &so_error, &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errno);
-    _isConnected = false;
+    disconnect();
     return false;
   }
 
@@ -111,7 +111,7 @@ bool ClientConnection::checkSocket () {
   }
 
   TRI_set_errno(so_error);
-  _isConnected = false;
+  disconnect();
   
   return false;
 }
@@ -141,7 +141,7 @@ bool ClientConnection::connectSocket () {
   }
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (!TRI_isvalidsocket(_socket)) {
+  if (! TRI_isvalidsocket(_socket)) {
     return false;
   }
 
@@ -233,11 +233,11 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 
   if (status < 0) {
     TRI_set_errno(errno);
-    _isConnected = false;
+    disconnect();
     return false;
   }
   else if (status == 0) {
-    _isConnected = false;
+    disconnect();
     return false;
   }
 
@@ -277,7 +277,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
       // since we come from a call to select which indicated that there 
       // is something to read and we are reading from a socket, this is
       // an error condition. Therefore we return false
-      _isConnected = false;
+      disconnect();
       return false;
     }
 
