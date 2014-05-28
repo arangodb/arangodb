@@ -483,10 +483,10 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
             TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
             if (json != 0) {
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-              return false;  // We give up, we will try again in the
-                             // next heartbeat, because we did not
-                             // touch remotePlanVersion
             } 
+            return false;  // We give up, we will try again in the
+                           // next heartbeat, because we did not
+                           // touch remotePlanVersion
           }
 
           if (json != 0) {
