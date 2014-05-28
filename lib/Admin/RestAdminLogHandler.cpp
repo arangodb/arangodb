@@ -89,7 +89,7 @@ bool RestAdminLogHandler::isDirect () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the log files
 ///
-/// @RESTHEADER{GET /_api/log,reads the global log from the server}
+/// @RESTHEADER{GET /_admin/log,reads the global log from the server}
 ///
 /// @RESTQUERYPARAMETERS
 ///
