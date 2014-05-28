@@ -1,6 +1,12 @@
 v2.0.8 (XXXX-XX-XX)
 -------------------
 
+* fixed too-busy iteration over skiplists
+
+  Even when a skiplist query was restricted by a limit clause, the skiplist
+  index was queried without the limit. this led to slower-than-necessary
+  execution times.
+
 * fixed timeout overflows on 32 bit systems
 
 * fixed issue #848: db.someEdgeCollection.inEdge does not return correct 
