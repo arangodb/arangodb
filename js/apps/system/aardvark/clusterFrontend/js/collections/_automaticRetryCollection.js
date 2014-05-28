@@ -11,6 +11,7 @@
     checkRetries: function() {
       this.updateUrl();
       if (this._retryCount > 10) {
+        this._retryCount = 0;
         window.App.clusterUnreachable();
       }
     },
