@@ -722,14 +722,12 @@
       });
       spyOn(nv.utils, "windowResize");
       spyOn(nv.models, "multiBarHorizontalChart").andReturn(d3ChartDummy);
-
       spyOn(d3, "select").andReturn(d3ChartDummy);
-
-
-
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {
+        totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
@@ -799,7 +797,8 @@
 
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 200});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
@@ -868,7 +867,8 @@
 
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 404});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
@@ -937,7 +937,9 @@
 
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 304});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {
+        totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
@@ -1003,10 +1005,11 @@
 
       spyOn(d3, "select").andReturn(d3ChartDummy);
 
-
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 204});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {
+        totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
@@ -1075,7 +1078,9 @@
 
       spyOn(view, "getCurrentSize").andReturn({height: 190, width: 11});
 
-      view.history = {totalTimeDistribution: [
+      view.history = {};
+      view.history[view.server] = {
+        totalTimeDistribution: [
         {
           "key": "",
           "color": dyGraphConfigDummy.colors[1],
