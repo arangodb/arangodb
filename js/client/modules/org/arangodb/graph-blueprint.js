@@ -212,11 +212,10 @@ Graph.prototype.initialize = function (name, vertices, edges) {
       edges = edges.name();
     }
 
-    var newEdgeDefinition = [{"collection": edges, "from" :[vertices], "to": [vertices]}];
-
     results = GraphAPI.postGraph({
       _key: name,
-      edgeDefinitions: newEdgeDefinition
+      vertices: vertices,
+      edges: edges
     });
   }
 

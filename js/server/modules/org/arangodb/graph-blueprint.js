@@ -318,7 +318,6 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
-
   this._name = name;
   var gdb = db._collection("_graphs");
   var graphProperties;
@@ -415,8 +414,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 
       if (graphProperties === null) {
 
-         // check if edge is used in a graph
-        //hole alle graphen nud schau nach O.o
+        // check if edge is used in a graph
         gdb.toArray().forEach(
           function(singleGraph) {
             var sGEDs = singleGraph.edgeDefinitions;
@@ -455,7 +453,9 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       }
     }
     else {
-      if (graphProperties.vertices !== vertices || graphProperties.edges !== edges) {
+      if (graphProperties.edgeDefinitions[0].from[0] !== vertices
+        || graphProperties.edgeDefinitions[0].to[0] !== vertices
+        || graphProperties.edgeDefinitions[0].collection !== edges) {
         throw "graph with that name already exists!";
       }
     }

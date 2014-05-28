@@ -252,13 +252,11 @@ function post_graph_graph (req, res) {
     }
 
     var name = json._key;
-    var vertices = json.edgeDefinitions[0].from[0];
-    var edges = json.edgeDefinitions[0].collection;
+    var vertices = json.vertices;
+    var edges = json.edges;
 
     var waitForSync = false;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     var g = new graph.Graph(name, vertices, edges, waitForSync);
@@ -483,9 +481,7 @@ function delete_graph_graph (req, res) {
   }
 
   var waitForSync = g._gdb.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -576,9 +572,7 @@ function post_graph_vertex (req, res, g) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -779,9 +773,7 @@ function delete_graph_vertex (req, res, g) {
   } 
 
   var waitForSync = g._vertices.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
 
@@ -823,9 +815,7 @@ function update_graph_vertex (req, res, g, isPatch) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1477,9 +1467,7 @@ function post_graph_edge (req, res, g) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1686,9 +1674,7 @@ function delete_graph_edge (req, res, g) {
   } 
  
   var waitForSync = g._edges.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -1730,9 +1716,7 @@ function update_graph_edge (req, res, g, isPatch) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
