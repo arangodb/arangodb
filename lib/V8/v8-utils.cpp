@@ -93,8 +93,11 @@ namespace {
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj) :
-  _str(0), _length(0), _memoryZone(memoryZone) {
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, 
+                                    v8::Handle<v8::Value> const obj) 
+  : _str(nullptr), 
+    _length(0), 
+    _memoryZone(memoryZone) {
 
    v8::String::Value str(obj);
    int str_len = str.length();
@@ -102,8 +105,12 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8
    _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t) str_len, &_length);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Destroys a normalized string object
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
-  if (_str) {
+  if (_str != nullptr) {
     TRI_Free(_memoryZone, _str);
   }
 }
