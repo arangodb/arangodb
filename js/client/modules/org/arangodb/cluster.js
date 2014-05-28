@@ -110,8 +110,149 @@ Kickstarter.prototype.isHealthy = function () {
   return r;
 };
 
+Kickstarter.prototype.upgrade = function (username, password) {
+  "use strict";
+  if (username === undefined || password === undefined) {
+    username = "root";
+    password = "";
+  }
+  var r = db._connection.POST("/_admin/clusterDispatch",
+                              JSON.stringify({"action": "upgrade",
+                                              "clusterPlan": this.clusterPlan,
+                                              "myname": this.myname,
+                                              "username": username,
+                                              "password": password}));
+  this.runInfo = r.runInfo;
+  return r;
+};
+
+function Upgrade () {
+  var db = require("internal").db;
+  var print = require("internal").print;
+  var col = db._cluster_kickstarter_plans;
+  print("\nHello, this is the ArangoDB cluster upgrade function...\n");
+  if (col === undefined || col.count() === 0) {
+    print("I did not find a cluster plan, therefore I give up.");
+  }
+  else {
+    var x = col.any();
+    if (db._version() >= "2.2" && x.hasOwnProperty("runInfo")) {
+      print("Warning: It seems that your cluster has not been shutdown.");
+      print("         Please shutdown your cluster via the web interface and");
+      print("         then run this script again.");
+    }
+    else {
+      var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+      var k = new Kickstarter(x.plan);
+      var r = k.upgrade(x.user.name, x.user.passwd);
+      if (r.error === true) {
+        print("Error: Upgrade went wrong, here are more details:");
+        print(JSON.stringify(r));
+      }
+      else {
+        x.runInfo = r.runInfo;
+        col.replace(x._key, x);
+        print("Upgrade successful, your cluster is already running.");
+      }
+    }
+  }
+}
+
+function Relaunch() {
+  var db = require("internal").db;
+  var print = require("internal").print;
+  var col = db._cluster_kickstarter_plans;
+  print("\nHello, this is the ArangoDB cluster relaunch function...\n");
+  if (col === undefined || col.count() === 0) {
+    print("I did not find a cluster plan, therefore I give up.");
+  }
+  else {
+    var x = col.any();
+    if (db._version() >= "2.2" && x.hasOwnProperty("runInfo")) {
+      print("Warning: It seems your cluster has not been shutdown.");
+    }
+    else {
+      var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+      var k = new Kickstarter(x.plan);
+      var r = k.relaunch();
+      if (r.error === true) {
+        print("Error: Relaunch went wrong, here are more details:");
+        print(JSON.stringify(r));
+      }
+      else {
+        x.runInfo = r.runInfo;
+        col.replace(x._key, x);
+        print("Relaunch successful, your cluster is now running.");
+      }
+    }
+  }
+}
+
+function Shutdown() {
+  var db = require("internal").db;
+  var print = require("internal").print;
+  var col = db._cluster_kickstarter_plans;
+  print("\nHello, this is the ArangoDB cluster shutdown function...\n");
+  if (col === undefined || col.count() === 0) {
+    print("I did not find a cluster plan, therefore I give up.");
+  }
+  else {
+    var x = col.any();
+    if (! x.hasOwnProperty("runInfo")) {
+      print("Warning: It seems your cluster is already shutdown. I give up.");
+    }
+    else {
+      var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+      var k = new Kickstarter(x.plan);
+      k.runInfo = x.runInfo;
+      var r = k.shutdown();
+      if (r.error === true) {
+        print("Error: Shutdown went wrong, here are more details:");
+        print(JSON.stringify(r));
+      }
+      else {
+        delete x.runInfo;
+        db._cluster_kickstarter_plans.replace(x._key, x);
+        print("Shutdown successful, your cluster is now stopped.");
+      }
+    }
+  }
+}
+
+function IsHealthy() {
+  var db = require("internal").db;
+  var print = require("internal").print;
+  var col = db._cluster_kickstarter_plans;
+  print("\nHello, this is the ArangoDB cluster health check function...\n");
+  if (col === undefined || col.count() === 0) {
+    print("I did not find a cluster plan, therefore I give up.");
+  }
+  else {
+    var x = col.any();
+    if (! x.hasOwnProperty("runInfo")) {
+      print("Warning: It seems your cluster is already shutdown. I give up.");
+    }
+    else {
+      var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+      var k = new Kickstarter(x.plan);
+      k.runInfo = x.runInfo;
+      var r = k.isHealthy();
+      if (r.error === true) {
+        print("Error: Health check went wrong.");
+        return r;
+      }
+      print("Health check successful.");
+      return r;
+    }
+  }
+}
+
 exports.Planner = Planner;
 exports.Kickstarter = Kickstarter;
+exports.Upgrade = Upgrade;
+exports.Relaunch = Relaunch;
+exports.Shutdown = Shutdown;
+exports.IsHealthy = IsHealthy;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -241,6 +241,17 @@ it), do:
     arangodb> k.shutdown();
     arangodb> k.cleanup();
 
+If you have to upgrade a cluster after you have installed a new version
+of ArangoDB on your systems, then you can
+
+  1. shutdown your cluster with `k.shutdown()`
+  2. upgrade your ArangoDB installation
+  3. upgrade your cluster using `k.upgrade("root","")` where you replace
+     `"root"` with a user name and `""` with a password that is valid
+     for authentication with the cluster.
+
+Your cluster will be running after these steps.
+
 We conclude this section with another example using two machines, which 
 will act as two dispatchers. We start from scratch using two machines,
 running on the network addresses `tcp://192.168.173.78:8529` and
@@ -263,8 +274,8 @@ You can now launch this cluster exactly as explained earlier:
     arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 
-Likewise, the methods `shutdown`, `relaunch`, `isHealthy` and `cleanup`
-work exactly as in the single server case.
+Likewise, the methods `shutdown`, `relaunch`, `isHealthy`, `upgrade` 
+and `cleanup` work exactly as in the single server case.
 
 See @ref JSModuleCluster "the corresponding chapter of the reference manual"
 for detailed information about the `Planner` and `Kickstarter` classes.
