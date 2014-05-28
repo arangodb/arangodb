@@ -220,6 +220,25 @@ function INDEX_FULLTEXT (collection, attribute) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms a parameter to a list,
+////////////////////////////////////////////////////////////////////////////////
+
+function TO_LIST (param, isStringHash) {
+
+  if (!param) {
+    param = isStringHash ? [] : [{}];
+  }
+  if (typeof param === "string") {
+    param = isStringHash ? [param] : {_id : param};
+  }
+  if (!Array.isArray(param)) {
+    param = [param];
+  }
+  return param;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find an index of a certain type for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4250,7 +4269,7 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   "use strict";
 
-  result.push(CLONE({ vertex: vertex, path: path }));
+  result.push(CLONE({ vertex: vertex, path: path, startVertex : config.startVertex }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4398,7 +4417,9 @@ function TRAVERSAL_FUNC (func,
     expander: direction,
     strategy: params.strategy,
     order: params.order,
-    itemOrder: params.itemOrder
+    itemOrder: params.itemOrder,
+    startVertex : startVertex
+
   };
 
   if (params.followEdges) {
@@ -4862,7 +4883,10 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
     toVertices : DOCUMENTS_BY_EXAMPLE(
       toCollection.filter(removeDuplicates), options.toVertexExample
     ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample)
+    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample),
+    edgeCollections : edgeCollections,
+    fromCollections : fromCollections,
+    toCollection : toCollection
   };
 }
 
@@ -4928,7 +4952,16 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 
     neighbors = neighbors.concat(e);
   });
-  return neighbors;
+
+  var result = [];
+  neighbors.forEach(function (n) {
+    if (FILTER([n.vertex], options.neighborExamples).length > 0) {
+      result.push(n);
+    }
+  });
+
+  return result;
+
 }
 
 
@@ -4976,6 +5009,140 @@ function GENERAL_GRAPH_VERTICES (
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
   return graph.fromVertices;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return common neighbors of two vertices lists
+////////////////////////////////////////////////////////////////////////////////
+function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
+
+  var ret = {};
+  result.forEach(function (r) {
+    if (!ret[r.startVertex]) {
+      ret[r.startVertex] = [];
+    }
+    ret[r.startVertex].push(r.vertex);
+  });
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return common neighbors of two vertices lists
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_COMMON_NEIGHBORS (
+  graphName,
+  vertex1Examples,
+  vertex2Examples,
+  options) {
+  "use strict";
+
+  var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
+    GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options)
+  );
+  var result = {}, res = [];
+
+  Object.keys(neighbors1).forEach(function (n1) {
+    if (!result[n1]) {
+      result[n1] = {};
+    }
+    neighbors1[n1].forEach(function (n11) {
+      options.neighborExamples = {_id : n11._id };
+      var neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
+        GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options)
+      );
+      Object.keys(neighbors2).forEach(function (n2) {
+        if (n1 === n2) {return;}
+        if (!result[n1][n2]) {
+          result[n1][n2] = [];
+        }
+        var keys = [];
+        result[n1][n2].forEach(function (a) {keys.push(a._id);});
+        if (keys.indexOf(n11._id) === -1) {
+          result[n1][n2].push(n11);
+        }
+      });
+    });
+  });
+  Object.keys(result).forEach(function (r) {
+    var tmp = {};
+    tmp[r] = result[r];
+    if (Object.keys(result[r]).length > 0) {
+      res.push(tmp);
+    }
+  });
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return common neighbors of two vertices lists
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_COMMON_PROPERTIES (
+  graphName,
+  vertex1Examples,
+  vertex2Examples,
+  options) {
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  options.fromVertexExample = vertex1Examples;
+  options.direction =  'any';
+  options.ignoreProperties = TO_LIST(options.ignoreProperties, true);
+
+  var g = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var result = {}, res = [];
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  g.fromVertices.forEach(function (n1) {
+    options.fromVertexExample = vertex2Examples;
+    vertex2Examples = TO_LIST(vertex2Examples);
+    var searchOptions = [];
+    Object.keys(n1).forEach(function (key) {
+        if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
+          return;
+        }
+        if (vertex2Examples.length === 0) {
+          var con = {};
+          con[key] = n1[key];
+          searchOptions.push(con);
+        }
+      vertex2Examples.forEach(function (example) {
+        var con = CLONE(example);
+        con[key] = n1[key];
+        searchOptions.push(con);
+      });
+    });
+    if (searchOptions.length > 0) {
+      options.fromVertexExample = searchOptions;
+      var commons = DOCUMENTS_BY_EXAMPLE(
+        g.fromCollections.filter(removeDuplicates), options.fromVertexExample
+      );
+      result[n1._id] = [];
+      commons.forEach(function (c) {
+        if (c._id !== n1._id) {
+          result[n1._id].push(c);
+        }
+      });
+      if (result[n1._id].length === 0) {
+        delete result[n1._id];
+      }
+    }
+  });
+  Object.keys(result).forEach(function (r) {
+    var tmp = {};
+    tmp[r] = result[r];
+    if (Object.keys(result[r]).length > 0) {
+      res.push(tmp);
+    }
+  });
+  return res;
+
+}
+
+
 
 
 
@@ -5095,6 +5262,8 @@ exports.GENERAL_GRAPH_VERTICES = GENERAL_GRAPH_VERTICES;
 exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
 exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;
+exports.GENERAL_GRAPH_COMMON_NEIGHBORS = GENERAL_GRAPH_COMMON_NEIGHBORS;
+exports.GENERAL_GRAPH_COMMON_PROPERTIES = GENERAL_GRAPH_COMMON_PROPERTIES;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;

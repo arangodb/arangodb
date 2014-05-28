@@ -73,6 +73,7 @@ var GRAPH_CONTEXT = "api";
 ////////////////////////////////////////////////////////////////////////////////
 
 function graph_by_request (req) {
+
   var key = req.suffix[0];
 
   var g = new graph.Graph(key);
@@ -251,8 +252,8 @@ function post_graph_graph (req, res) {
     }
 
     var name = json._key;
-    var vertices = json.vertices;
-    var edges = json.edges;
+    var vertices = json.edgeDefinitions[0].from[0];
+    var edges = json.edgeDefinitions[0].collection;
 
     var waitForSync = false;
     if (req.parameters.waitForSync && 
@@ -476,11 +477,11 @@ function delete_graph_graph (req, res) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
-    
+  
   if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
     return;
-  } 
-    
+  }
+
   var waitForSync = g._gdb.properties().waitForSync;
   if (req.parameters.waitForSync && 
 	(req.parameters.waitForSync === "true" ||  

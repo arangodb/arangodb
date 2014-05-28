@@ -715,6 +715,8 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("GRAPH_VERTICES", "GENERAL_GRAPH_VERTICES", false, false, "s,als|a", NULL);
   REGISTER_FUNCTION("NEIGHBORS", "GRAPH_NEIGHBORS", false, false, "h,h,s,s|l", NULL);
   REGISTER_FUNCTION("GRAPH_NEIGHBORS", "GENERAL_GRAPH_NEIGHBORS", false, false, "s,als|a", NULL);
+  REGISTER_FUNCTION("GRAPH_COMMON_NEIGHBORS", "GENERAL_GRAPH_COMMON_NEIGHBORS", false, false, "s,als,als|a", NULL);
+  REGISTER_FUNCTION("GRAPH_COMMON_PROPERTIES", "GENERAL_GRAPH_COMMON_PROPERTIES", false, false, "s,als,als|a", NULL);
   
   // date functions
   REGISTER_FUNCTION("DATE_NOW", "DATE_NOW", false, false, "", NULL); // NOW is non-deterministic
