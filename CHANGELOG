@@ -145,6 +145,12 @@ v2.1.0-rc1 (2014-05-13)
 v2.0.8 (XXXX-XX-XX)
 -------------------
 
+* fixed too-busy iteration over skiplists
+
+  Even when a skiplist query was restricted by a limit clause, the skiplist
+  index was queried without the limit. this led to slower-than-necessary
+  execution times.
+
 * fixed timeout overflows on 32 bit systems
 
   this bug has led to problems when select was called with a high timeout
