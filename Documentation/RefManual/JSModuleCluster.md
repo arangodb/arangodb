@@ -43,6 +43,9 @@ Here are the details of the functionality:
 @anchor JSModuleClusterKickstarterRelaunch
 @copydetails JSF_Kickstarter_prototype_relaunch
 
+@anchor JSModuleClusterKickstarterUpgrade
+@copydetails JSF_Kickstarter_prototype_upgrade
+
 @anchor JSModuleClusterKickstarterCleanup
 @copydetails JSF_Kickstarter_prototype_cleanup
 
