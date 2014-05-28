@@ -21,7 +21,7 @@
 
     retryConnection: function() {
       this.coordinators.checkConnection(function() {
-        window.App.navigate("showCluster", {trigger: true});
+        window.App.showCluster();
       });
     },
 
