@@ -30,12 +30,13 @@
 
     getList: function(dbname, colname, callback) {
       if (dbname === undefined || colname === undefined) {
-        console.log("Called to early shards");
         return;
       }
       this.dbname = dbname;
       this.colname = colname;
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),

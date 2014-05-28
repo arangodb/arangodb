@@ -19,7 +19,9 @@
     },
 
     getList: function(callback) {
-      this.checkRetries();
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
