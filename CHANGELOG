@@ -1,7 +1,5 @@
-v2.1.0-rc2 (2014-05-25)
------------------------
-
-* fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
+v2.1.0 (2014-05-29)
+-------------------
 
 * implemented upgrade procedure for clusters
 
@@ -15,6 +13,12 @@ v2.1.0-rc2 (2014-05-25)
   in the wrong order (_system needs to be done first)
 
 * improved cluster dashboard
+
+
+v2.1.0-rc2 (2014-05-25)
+-----------------------
+
+* fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 
 
 v2.1.0-rc1 (2014-05-13)
