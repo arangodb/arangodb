@@ -544,6 +544,16 @@ ArangoCollection.prototype.firstExample = function (example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes documents matching an example
+/// @param example a json object which is used as sample for finding docs that
+///        this example matches
+/// @param waitForSync (optional) a boolean value or a json object 
+/// @param limit (optional) an integer value, the max number of to deleting docs
+/// @example remove("{a : 1 }")
+/// @example remove("{a : 1 }", true)
+/// @example remove("{a : 1 }", false)
+/// @example remove("{a : 1 }", {waitForSync: false, limit: 12})
+/// @throws "too many parameters" when waiitForSyn is a Json object and limit
+///         is given
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example, 
@@ -637,6 +647,14 @@ ArangoCollection.prototype.removeByExample = function (example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces documents matching an example
+/// @param example the json object for finding documents which matches this 
+///        example
+/// @param newValue the json object which replaces the matched documents
+/// @param waitForSync (optional) a boolean value or a json object which 
+///        contains the options
+/// @param limit (optional) an integer value, the max number of to deleting docs
+/// @throws "too many parameters" when waitForSync is a json object and limit 
+///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example, 
@@ -743,6 +761,15 @@ ArangoCollection.prototype.replaceByExample = function (example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially updates documents matching an example
+/// @param example the json object for finding documents which matches this 
+///        example
+/// @param newValue the json object which replaces the matched documents
+/// @param keepNull (optional) true or a json object which 
+///        contains the options
+/// @param waitForSync (optional) a boolean value 
+/// @param limit (optional) an integer value, the max number of to deleting docs
+/// @throws "too many parameters" when keepNull is  a json object and limit 
+///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, 

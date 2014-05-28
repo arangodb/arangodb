@@ -2111,7 +2111,7 @@ actions.defineHttp({
 /// response body contains an error document in this case.
 ///
 /// @EXAMPLES
-///
+/// using old syntax for options
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -2126,6 +2126,30 @@ actions.defineHttp({
 ///       '"example" : { "a" : { "j" : 1 } }, ' +
 ///       '"newValue" : { "a" : { "j" : 22 } }, ' +
 ///       '"limit" : 3 ' +
+///     '}';
+///
+///     var response = logCurlRequest('PUT', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// using new signature for options
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn, { waitForSync: true });
+///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
+///     products.save({ "a": { "j": 1 }, "i": 1});
+///     products.save({ "i": 1});
+///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
+///     var url = "/_api/simple/update-by-example";
+///     var body = '{ ' + 
+///       '"collection": "products", ' +
+///       '"example" : { "a" : { "j" : 1 } }, ' +
+///       '"newValue" : { "a" : { "j" : 22 } }, ' +
+///       '"options" :  { "limit" : 3, waitForSync: true }  ' + 
 ///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);

@@ -2596,7 +2596,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   // check the arguments
   if (argv.Length() < 2 || argv.Length() > 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>) or"
+                                  "update(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
   }
 
   if (argv.Length() > 2) {
