@@ -33,6 +33,7 @@ var arangodb = require("org/arangodb"),
   db = arangodb.db,
   ArangoCollection = arangodb.ArangoCollection,
   common = require("org/arangodb/graph-common"),
+  newGraph = require("org/arangodb/general-graph"),
   Edge = common.Edge,
   Graph = common.Graph,
   Vertex = common.Vertex,
@@ -317,6 +318,8 @@ Vertex.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
+
+  this._name = name;
   var gdb = db._collection("_graphs");
   var graphProperties;
   var graphPropertiesId;
@@ -337,9 +340,10 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   if (typeof edges === 'object' && typeof edges.name === 'function') {
     edges = edges.name();
   }
-  
+
   // find an existing graph by name
   if (vertices === undefined && edges === undefined) {
+
     try {
       graphProperties = gdb.document(name);
     }
@@ -351,19 +355,37 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       throw "no graph named '" + name + "' found";
     }
 
-    vertices = db._collection(graphProperties.vertices);
+    //check if graph can be loaded by this deprecated module
+    var newGraphError = "Graph can not be loaded, "
+      + "because more than 1 vertex collection is defined. "
+      + "Please use the new graph module";
+    var edgeDefinitions = db._graphs.document(name).edgeDefinitions;
+    if (edgeDefinitions.length === 0) {
+      throw newGraphError;
+    }
+    if (edgeDefinitions.length > 1) {
+      throw newGraphError;
+    } else if (edgeDefinitions.length === 1) {
+      var from = edgeDefinitions[0].from;
+      var to = edgeDefinitions[0].to;
+      if (from.length !== 1 || to.length !== 1 || from[0] !== to[0]) {
+        throw newGraphError;
+      }
+   }
+
+    vertices = db._collection(edgeDefinitions[0].from[0]);
 
     if (vertices === null) {
-      throw "vertex collection '" + graphProperties.vertices + "' has vanished";
+      throw "vertex collection '" + edgeDefinitions[0].from[0] + "' has vanished";
     }
 
-    edges = db._collection(graphProperties.edges);
+    edges = db._collection(edgeDefinitions[0].collection);
 
     if (edges === null) {
-      throw "edge collection '" + graphProperties.edges + "' has vanished";
+      throw "edge collection '" + edgeDefinitions[0].collection + "' has vanished";
     }
   }
-  
+
   // sanity check for vertices
   else if (typeof vertices !== "string" || vertices === "") {
     throw "<vertices> must be a string or null";
@@ -388,26 +410,41 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 
       // check if know that graph
       graphProperties = gdb.firstExample(
-        'vertices', vertices,
-        'edges', edges
+        'edgeDefintions', [{"collection": edges, "from" :[vertices], "to": [vertices]}]
       );
 
       if (graphProperties === null) {
-        
-         // check if edge is used in a graph
-        graphProperties = gdb.firstExample('edges', edges);
 
-        if (graphProperties === null) {      
+         // check if edge is used in a graph
+        //hole alle graphen nud schau nach O.o
+        gdb.toArray().forEach(
+          function(singleGraph) {
+            var sGEDs = singleGraph.edgeDefinitions;
+            sGEDs.forEach(
+              function(sGED) {
+                if (sGED.collection === edges) {
+                  graphProperties = "";
+                }
+              }
+            );
+          }
+        );
+
+        if (graphProperties === null) {
           findOrCreateCollectionByName(vertices);
           findOrCreateEdgeCollectionByName(edges);
 
-          graphPropertiesId = gdb.save({
-            'vertices' : vertices,
-            'edges' : edges,
-            '_key' : name
-          }, waitForSync);
+          var newEdgeDefinition = [{"collection": edges, "from" :[vertices], "to": [vertices]}];
 
-          graphProperties = gdb.document(graphPropertiesId);
+          graphPropertiesId = gdb.save(
+            {
+              'edgeDefinitions' : newEdgeDefinition,
+              '_key' : name
+            },
+            waitForSync
+          );
+
+          graphProperties = gdb.document(graphPropertiesId._key);
         }
         else {
           throw "edge collection already used";
@@ -419,21 +456,20 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
     }
     else {
       if (graphProperties.vertices !== vertices || graphProperties.edges !== edges) {
-        throw "graph with that name already exists";
+        throw "graph with that name already exists!";
       }
     }
 
-    vertices = db._collection(graphProperties.vertices);
-    edges = db._collection(graphProperties.edges);
+    vertices = db._collection(graphProperties.edgeDefinitions[0].from[0]);
+    edges = db._collection(graphProperties.edgeDefinitions[0].collection);
   }
-
   this._properties = graphProperties;
 
   // and store the collections
   this._gdb = gdb;
   this._vertices = vertices;
   this._edges = edges;
-  
+
   // and dictionary for vertices and edges
   this._verticesCache = {};
   this._edgesCache = {};
@@ -506,15 +542,7 @@ Graph.drop = function (name, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function (waitForSync) {
-  var gdb = db._collection("_graphs");
-
-  gdb.remove(this._properties, true, waitForSync);
-
-  if (gdb.byExample({vertices: this._vertices.name()}).count() === 0) {
-    this._vertices.drop();
-  }
-
-  this._edges.drop();
+  newGraph._drop(this._name, true);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
