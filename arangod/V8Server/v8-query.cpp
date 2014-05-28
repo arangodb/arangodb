@@ -1128,7 +1128,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
   bool usedBarrier = false;
 
-  while (true) {
+
+  while (limit > 0) {
     TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
@@ -1151,6 +1152,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
                                                    (TRI_doc_mptr_t const*) indexElement->_document, 
                                                    barrier, 
                                                    usedBarrier);
+  
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1158,7 +1160,10 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
       }
       else {
         documents->Set(count, doc);
-        ++count;
+
+        if (++count >= limit) {
+          break;
+        }
       }
 
     }
@@ -1344,7 +1349,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   bool usedBarrier = false;
 
   if (indexIterator != NULL) {
-    while (true) {
+    while (limit > 0) {
       TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
       if (data == NULL) {
@@ -1371,7 +1376,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
         }
         else {
           documents->Set(count, doc);
-          ++count;
+          if (++count >= limit) {
+            break;
+          }
         }
       }
     }
