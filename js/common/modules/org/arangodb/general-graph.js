@@ -634,6 +634,44 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
 
+  var removeEdge = function (edgeId, options) {
+    options = options || {};
+    var edgeCollection = edgeId.split("/")[0];
+    var graphs = getGraphCollection().toArray();
+    var result = db._remove(edgeId, options);
+//    var result = old_remove(edgeId, options);
+    graphs.forEach(
+      function(graph) {
+        var edgeDefinitions = graph.edgeDefinitions;
+        if (graph.edgeDefinitions) {
+          edgeDefinitions.forEach(
+            function(edgeDefinition) {
+              var from = edgeDefinition.from;
+              var to = edgeDefinition.to;
+              var collection = edgeDefinition.collection;
+              // if collection of edge to be deleted is in from or to
+              if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+                //search all edges of the graph
+                var edges = db[collection].toArray();
+                edges.forEach(
+                  function (edge) {
+                    // if from is
+                    if (edge._from === edgeId || edge._to === edgeId) {
+                      var newGraph = exports._graph(graph._key);
+                      newGraph[collection].remove(edge._id, options);
+                    }
+                  }
+                );
+              }
+            }
+          );
+        }
+      }
+    );
+    return result;
+  };
+
+
   _.each(vertexCollections, function(obj, key) {
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
@@ -657,7 +695,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
                   edges.forEach(
                     function(edge) {
                       if (edge._from === vertexId || edge._to === vertexId) {
-                        db._remove(edge._id);
+                        removeEdge(edge._id, options);
                       }
                     }
                   );
@@ -705,39 +743,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
-      options = options || {};
-      var edgeCollection = edgeId.split("/")[0];
-      var graphs = getGraphCollection().toArray();
-      var result = old_remove(edgeId, options);
-      graphs.forEach(
-        function(graph) {
-          var edgeDefinitions = graph.edgeDefinitions;
-          if (graph.edgeDefinitions) {
-            edgeDefinitions.forEach(
-              function(edgeDefinition) {
-                var from = edgeDefinition.from;
-                var to = edgeDefinition.to;
-                var collection = edgeDefinition.collection;
-                // if collection of edge to be deleted is in from or to
-                if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
-                  //search all edges of the graph
-                  var edges = db[collection].toArray();
-                  edges.forEach(
-                    function (edge) {
-                      // if from is
-                      if (edge._from === edgeId || edge._to === edgeId) {
-                        var newGraph = exports._graph(graph._key);
-                        newGraph[collection].remove(edge._id, options);
-                      }
-                    }
-                  );
-                }
-              }
-            );
-          }
-        }
-      );
-      return result;
+      return (removeEdge(edgeId, options));
     };
     self[key] = wrap;
   });
