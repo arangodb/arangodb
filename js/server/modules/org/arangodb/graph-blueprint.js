@@ -415,11 +415,22 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 
       if (graphProperties === null) {
 
-        //TODO
          // check if edge is used in a graph
-        graphProperties = gdb.firstExample('edges', edges);
+        //hole alle graphen nud schau nach O.o
+        gdb.toArray().forEach(
+          function(singleGraph) {
+            var sGEDs = singleGraph.edgeDefinitions;
+            sGEDs.forEach(
+              function(sGED) {
+                if (sGED.collection === edges) {
+                  graphProperties = "";
+                }
+              }
+            );
+          }
+        );
 
-        if (graphProperties === null) {      
+        if (graphProperties === null) {
           findOrCreateCollectionByName(vertices);
           findOrCreateEdgeCollectionByName(edges);
 
