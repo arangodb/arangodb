@@ -1762,6 +1762,12 @@ function EdgesAndVerticesSuite() {
       var myGraphName = unitTestGraphName + "0815";
       var myEC02 = "unitTestEdgeCollection02";
       var myVC01 = "unitTestVertexCollection01";
+      try {
+        graph._drop(myGraphName);
+        db._drop(myEC02);
+        db._drop(myVC01);
+      } catch (ignore) {
+      }
       var g2 = graph._create(
         myGraphName,
         graph._edgeDefinitions(
@@ -1800,6 +1806,21 @@ function EdgesAndVerticesSuite() {
       var vC2 = "unitTestVertexCollectionCircle2";
       var vC3 = "unitTestVertexCollectionCircle3";
       var vC4 = "unitTestVertexCollectionCircle4";
+      try {
+        graph._drop(gN1);
+        graph._drop(gN2);
+        graph._drop(gN3);
+        graph._drop(gN4);
+        db._drop(eC1);
+        db._drop(eC2);
+        db._drop(eC3);
+        db._drop(eC4);
+        db._drop(vC1);
+        db._drop(vC2);
+        db._drop(vC3);
+        db._drop(vC4);
+      } catch (ignore) {
+      }
 
       db._createEdgeCollection(eC1)
       db._createEdgeCollection(eC2)
