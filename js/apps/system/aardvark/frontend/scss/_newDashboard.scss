@@ -44,15 +44,15 @@
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
     @extend %pull-left;
-    padding-top: $dashboard-padding;
     background-color: $c-white;
     border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
     border-right: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
+    padding-top: $dashboard-padding;
 
     .dashboard-interior-chart {
       @extend %pull-left;
-      margin-bottom: 0px;
+      margin-bottom: 0;
     }
   }
 }
@@ -66,16 +66,16 @@
     @extend %pull-left;
     background-color: $c-white;
     border-left: $dashboard-borderwidth solid $c-e1grey;
-    border-top: $dashboard-borderwidth solid $c-e1grey;
     border-right: $dashboard-borderwidth solid $c-e1grey;
+    border-top: $dashboard-borderwidth solid $c-e1grey;
 
     .dashboard-interior-chart {
       @extend %pull-left;
 
       .nv-bar rect {
+        fill-opacity: .15;
         stroke-opacity: 1;
         stroke-width: 1px;
-        fill-opacity: 0.15;
       }
     }
   }
@@ -86,10 +86,10 @@
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   background-color: $c-white;
-  padding-top: $dashboard-padding;
   border-left: $dashboard-borderwidth solid $c-e1grey;
-  border-top: $dashboard-borderwidth solid $c-e1grey;
   border-right: $dashboard-borderwidth solid $c-e1grey;
+  border-top: $dashboard-borderwidth solid $c-e1grey;
+  padding-top: $dashboard-padding;
   
   &:first-child {
     margin-right: 12px;
@@ -97,18 +97,19 @@
 
   .dashboard-interior-chart {
     @extend %pull-left;
-    margin-bottom: 0px;
+    margin-bottom: 0;
   }
   
   .dashboard-medium-chart-menu {
     @extend %clear-float;
     @include border-radius(2px);
-    position: absolute;
+
+    border: 0 solid $c-halfsemi-transp;
     color: $c-halfsemi-transp;
     cursor: pointer;
+    padding: 0 4px;
+    position: absolute;
     z-index: 1000;
-    border: 0px solid $c-halfsemi-transp;
-    padding: 0px 4px 0px 4px;
   }
 
   .dashboard-medium-chart-menu:hover {
@@ -121,9 +122,9 @@
   }
 
   .clusterChart .slice path {
+    fill-opacity: .15;
     stroke-opacity: 1;
     stroke-width: 1.5px;
-    fill-opacity: 0.15;
   }
 
 }
@@ -137,14 +138,14 @@
     @extend %clear-float;
     background-color: $c-white;
     border-left: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
     border-right: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
 
     .dashboard-tendency {
       @extend %pull-left;
       background-color: $c-white;
-      padding: 0px 8px 0px 8px;
       margin-top: 5px;
+      padding: 0 8px;
       
       &:first-child {
         border-right: 1px solid $c-e1grey;
@@ -173,13 +174,13 @@
     @extend %clear-float;
     background-color: $c-white;
     border-left: 5px solid $c-e1grey;
-    border-top: 5px solid $c-e1grey;
     border-right: 5px solid $c-e1grey;
+    border-top: 5px solid $c-e1grey;
 
     .dashboard-bar-chart-title {
       @extend %pull-left;
-      padding: 0px 8px 0px 8px;
       margin-top: 5px;
+      padding: 0 8px;
 
       .percentage {
         @extend %pull-left;
@@ -196,9 +197,9 @@
       @extend %pull-left;
 
       .nv-bar rect {
+        fill-opacity: .15;
         stroke-opacity: 1;
         stroke-width: 1px;
-        fill-opacity: 0.15;
       }
     }
   }
@@ -220,18 +221,18 @@
   color: $c-white;
   height: 24px;
   line-height: 24px;
-  margin: 0px 0px 0px 0px;
-  padding: 0px 6px 0px 6px;
+  margin: 0;
+  padding: 0 6px;
 }
 
 
 .dashboard-spacer {
- margin: 0px 12px 0px 12px;
+  margin: 0 12px;
 }
 
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0px 10px 0px;
+  margin: 15px 0 10px;
 }
 
 
@@ -273,8 +274,7 @@
   font-weight: 400;
   height: 30px;
   line-height: 30px;
-  /* margin: 0px -1px 0px -1px; */
-  padding: 0px 5px 0px 10px;
+  padding: 0 5px 0 10px;
 
   .dashboard-half-title-bar {
     @extend %pull-left;
@@ -292,9 +292,9 @@
 
 .dashboard-row {
   @extend %clear-float;
-  margin-bottom: 0px;
-  margin-left: 0px;
-  margin-right: 0px;
+  margin-bottom: 0;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 
