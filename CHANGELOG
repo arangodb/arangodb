@@ -3,6 +3,9 @@ v2.2.0 (XXXX-XX-XX)
 
 * issue #862: added `--overwrite` option to arangoimp
 
+* removed number of property lookups for documents during AQL queries that
+  access documents
+
 * prevent buffering of long print results in arangosh's and arangod's print
   command
 
@@ -19,8 +22,25 @@ v2.2.0 (XXXX-XX-XX)
   benefit from this change by faster inserts and slightly less memory usage.
 
 
-v2.1.0 (XXXX-XX-XX)
+v2.1.0 (2014-05-29)
 -------------------
+
+* implemented upgrade procedure for clusters
+
+* fixed communication issue with agency which prevented reconnect
+  after an agent failure
+
+* fixed cluster dashboard in the case that one but not all servers
+  in the cluster are down
+
+* fixed a bug with coordinators creating local database objects
+  in the wrong order (_system needs to be done first)
+
+* improved cluster dashboard
+
+
+v2.1.0-rc2 (2014-05-25)
+-----------------------
 
 * fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 
