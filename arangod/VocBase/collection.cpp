@@ -691,6 +691,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           filename = TRI_Concatenate2File(collection->_directory, file);
         }
 
+        assert(filename != NULL);
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
