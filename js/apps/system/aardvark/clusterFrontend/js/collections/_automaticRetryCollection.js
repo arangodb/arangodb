@@ -9,11 +9,16 @@
 
 
     checkRetries: function() {
+      var self = this;
       this.updateUrl();
       if (this._retryCount > 10) {
-        this._retryCount = 0;
+        window.setTimeout(function() {
+          self._retryCount = 0;
+        }, 10000);
         window.App.clusterUnreachable();
+        return false;
       }
+      return true;
     },
 
     successFullTry: function() {
