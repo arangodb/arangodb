@@ -177,7 +177,14 @@ arangoDatabase, btoa, _*/
     },
 
     clusterUnreachable: function() {
-      alert("Your cluster seems to be unreachable. This is only temp msg");
+      if (this.showClusterView) {
+        this.showClusterView.stopUpdating();
+        this.shutdownView.unrender();
+      }
+      if (!this.unreachableView) {
+        this.unreachableView = new window.ClusterUnreachableView();
+      }
+      this.unreachableView.render();
     }
 
   });

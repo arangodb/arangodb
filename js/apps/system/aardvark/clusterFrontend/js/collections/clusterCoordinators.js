@@ -65,6 +65,17 @@
       });
     },
 
+    checkConnection: function(callback) {
+      var self = this;
+      this.checkRetries();
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
+      }).done(function() {
+        callback();
+      });
+    },
+
     getList: function() {
       throw "Do not use coordinator.getList";
       /*
