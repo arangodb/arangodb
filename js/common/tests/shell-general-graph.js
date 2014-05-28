@@ -371,7 +371,7 @@ function GeneralGraphCreationSuite() {
         graph._graph(gn + "UnknownExtension");
         fail();
       } catch (e) {
-        assertEqual(e, "graph " + gn + "UnknownExtension" + " does not exists.");
+        assertEqual(e, "graph " + gn + "UnknownExtension" + " does not exist.");
       }
     },
 
