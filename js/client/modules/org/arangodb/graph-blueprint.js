@@ -212,16 +212,17 @@ Graph.prototype.initialize = function (name, vertices, edges) {
       edges = edges.name();
     }
 
+    var newEdgeDefinition = [{"collection": edges, "from" :[vertices], "to": [vertices]}];
+
     results = GraphAPI.postGraph({
       _key: name,
-      vertices: vertices,
-      edges: edges
+      edgeDefinitions: newEdgeDefinition
     });
   }
 
   this._properties = results.graph;
-  this._vertices = arangodb.db._collection(this._properties.vertices);
-  this._edges = arangodb.db._collection(this._properties.edges);
+  this._vertices = arangodb.db._collection(this._properties.edgeDefinitions[0].from[0]);
+  this._edges = arangodb.db._collection(this._properties.edgeDefinitions[0].collection);
   
   // and dictionary for vertices and edges
   this._verticesCache = {};
