@@ -599,6 +599,42 @@ var _create = function (graphName, edgeDefinitions) {
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
     throw "at least one edge definition is required to create a graph.";
   }
+  //check, if a collection is already used in a different edgeDefinition
+  var tmpCollections = [];
+  var tmpEdgeDefinitions = {};
+  edgeDefinitions.forEach(
+    function(edgeDefinition) {
+      var col = edgeDefinition.collection;
+      if (tmpCollections.indexOf(col) !== -1) {
+        var err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
+        err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
+        throw err;
+      }
+      tmpCollections.push(col);
+      tmpEdgeDefinitions[col] = edgeDefinition;
+    }
+  );
+  gdb.toArray().forEach(
+    function(singleGraph) {
+      var sGEDs = singleGraph.edgeDefinitions;
+      sGEDs.forEach(
+        function(sGED) {
+          var col = sGED.collection;
+          if (tmpCollections.indexOf(col) !== -1) {
+            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+              var err = new ArangoError();
+              err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
+              err.errorMessage = col
+                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+              throw err;
+            }
+          }
+        }
+      );
+    }
+  );
+
   try {
     g = gdb.document(graphName);
   } catch (e) {

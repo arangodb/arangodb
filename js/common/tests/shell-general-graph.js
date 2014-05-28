@@ -1600,8 +1600,8 @@ function EdgesAndVerticesSuite() {
 
     test_dropGraph : function () {
       var myGraphName = unitTestGraphName + "2";
-      var myEdgeColName = ec1;
-      var myVertexColName = "unitTestVertexCollection4711";
+      var myEdgeColName = "unitTestEdgeCollection4711";
+      var myVertexColName = vc1;
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
@@ -1610,8 +1610,68 @@ function EdgesAndVerticesSuite() {
       );
       graph._drop(myGraphName);
       assertFalse(graph._exists(myGraphName));
-      assertTrue(db._collection(myVertexColName) === null);
-      assertTrue(db._collection(myEdgeColName) !== null);
+      assertTrue(db._collection(myVertexColName) !== null);
+      assertTrue(db._collection(myEdgeColName) === null);
+    },
+
+    test_createGraphWithCollectionDuplicateOK : function () {
+      var myGraphName = unitTestGraphName + "2";
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(ec1, vc1)
+        )
+      );
+      assertTrue(graph._exists(myGraphName));
+      graph._drop(myGraphName);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(vc1) !== null);
+      assertTrue(db._collection(ec1) !== null);
+    },
+
+    test_createGraphWithCollectionDuplicateNOK1 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      try {
+        graph._create(
+          myGraphName,
+          graph._edgeDefinitions(
+            graph._undirectedRelationDefinition(ec1, vc2)
+          )
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          ec1 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(vc2) !== null);
+      assertTrue(db._collection(ec1) !== null);
+    },
+
+    test_createGraphWithCollectionDuplicateNOK2 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myED = "unitTestEdgeCollection4711";
+      var myVD1 = "unitTestVertexCollection4711";
+      var myVD2 = "unitTestVertexCollection4712";
+      try {
+        graph._create(
+          myGraphName,
+          graph._edgeDefinitions(
+            graph._undirectedRelationDefinition(myED, myVD1),
+            graph._undirectedRelationDefinition(myED, myVD2)
+          )
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVD1) === null);
+      assertTrue(db._collection(myVD2) === null);
+      assertTrue(db._collection(myED) === null);
     },
 
     test_edgeCollections : function () {
