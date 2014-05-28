@@ -4609,6 +4609,12 @@ a.dbserver.double {
   color: #da4f49;
   margin-left: 20px; }
 
+.cluster-unreachable-info {
+  margin: 0 auto;
+  max-width: 320px;
+  padding-top: 17px;
+  text-align: center; }
+
 .machineClass {
   background-color: #e1e1e1;
   margin-left: 31px;
