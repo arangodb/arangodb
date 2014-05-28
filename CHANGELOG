@@ -1,4 +1,4 @@
-v2.1.0 (2014-05-29)
+v2.1.0 (XXXX-XX-XX)
 -------------------
 
 * implemented upgrade procedure for clusters
@@ -10,7 +10,8 @@ v2.1.0 (2014-05-29)
   in the cluster are down
 
 * fixed a bug with coordinators creating local database objects
-  in the wrong order (_system needs to be done first)
+  in the wrong order (_system needs to be done successfully first),
+  which lead to a coordinator on strike
 
 * improved cluster dashboard
 
