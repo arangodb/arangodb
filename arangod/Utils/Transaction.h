@@ -510,8 +510,7 @@ namespace triagens {
             *barrier = 0;
 
             // no document found
-            mptr->_key = 0;
-            mptr->_data = 0;
+            mptr->_data = nullptr;
           }
           else {
             size_t total = primary->_primaryIndex._nrAlloc;
@@ -577,8 +576,7 @@ namespace triagens {
             for (;  ptr < end;  ++ptr) {
               if (*ptr) {
                 TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-                ids.push_back(d->_key);
+                ids.push_back(TRI_EXTRACT_MARKER_KEY(d));
               }
             }
           }

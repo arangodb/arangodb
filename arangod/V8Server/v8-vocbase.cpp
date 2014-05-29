@@ -1982,7 +1982,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_FreeBarrier(barrier);
   }
 
-  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+  if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -2088,7 +2088,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
-  if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+  if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -2281,7 +2281,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   }
 
   assert(col != 0);
-  assert(key != 0);
+  assert(key != nullptr);
 
 #ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
@@ -2326,7 +2326,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   
     res = trx.read(&document, key);
 
-    if (res != TRI_ERROR_NO_ERROR || document._key == 0 || document._data == 0) {
+    if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, res);
@@ -2360,6 +2360,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
+  
+  Barrier barrier(primary);
 
   res = trx.updateDocument(key, &document, shaped, policy, options.waitForSync, rid, &actualRevision);
 
@@ -2372,16 +2374,17 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(document._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->_KeyKey, v8::String::New(document._key));
-
+  result->Set(v8g->_KeyKey, v8::String::New(docKey));
+    
   return scope.Close(result);
 }
 
@@ -2424,7 +2427,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true, true);
 
-  if (shaped == 0) {
+  if (shaped == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
@@ -2444,13 +2447,14 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   
-  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver().getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver().getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->_KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_KeyKey, v8::String::New(docKey));
   
   return scope.Close(result);
 }
@@ -2495,7 +2499,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   CollectionNameResolver resolver(col->_vocbase);
 
   // set document key
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   int res;
 
   if (argv[2]->IsObject() && ! argv[2]->IsArray()) {
@@ -2515,8 +2519,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   // the following values are defaults that will be overridden below
   edge._fromCid = 0;
   edge._toCid   = 0;
-  edge._fromKey = 0;
-  edge._toKey   = 0;
+  edge._fromKey = nullptr;
+  edge._toKey   = nullptr;
 
   // extract from
   res = TRI_ParseVertex(resolver, edge._fromCid, edge._fromKey, argv[0], false);
@@ -2542,16 +2546,18 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true, true);
 
-  if (shaped == 0) {
+  if (shaped == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-
   TRI_doc_mptr_t document;
   res = trx->createEdge(key, &document, shaped, forceSync, &edge);
+
+  Barrier barrier(primary);
+
   res = trx->finish(res);
    
   TRI_FreeShapedJson(zone, shaped);
@@ -2563,12 +2569,13 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
 
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(document._rid));
-  result->Set(v8g->_KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
   return scope.Close(result);
 }
@@ -2757,6 +2764,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   }
 
   res = trx.updateDocument(key, &document, patchedJson, policy, options.waitForSync, rid, &actualRevision);
+
+  Barrier barrier(primary);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
@@ -2766,15 +2775,16 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), document._key));
+  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(document._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->_KeyKey, v8::String::New(document._key));
+  result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
   return scope.Close(result);
 }
@@ -10236,10 +10246,11 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(document);
 
-  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver().getCollectionName(cid), document->_key), v8::ReadOnly);
+  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver().getCollectionName(cid), docKey), v8::ReadOnly);
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->_KeyKey, v8::String::New(document->_key), v8::ReadOnly);
+  result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
 
   TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
 
@@ -10271,10 +10282,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           bool& usedBarrier) {
   v8::HandleScope scope;
     
-  TRI_ASSERT_MAINTAINER(document != 0);
-  TRI_ASSERT_MAINTAINER(document->_key != 0);
-  TRI_ASSERT_MAINTAINER(document->_data != 0);
-  TRI_ASSERT_MAINTAINER(barrier != 0);
+  TRI_ASSERT_MAINTAINER(document != nullptr);
+  TRI_ASSERT_MAINTAINER(document->_data != nullptr);
+  TRI_ASSERT_MAINTAINER(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
