@@ -19,13 +19,13 @@ var attributeRules = {
 		if(data.ignoreCase){
 			value = value.toLowerCase();
 
-			return function(elem){
+			return function equalsIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null && attr.toLowerCase() === value && next(elem);
 			};
 		}
 
-		return function(elem){
+		return function equals(elem){
 			return getAttributeValue(elem, name) === value && next(elem);
 		};
 	},
@@ -37,7 +37,7 @@ var attributeRules = {
 		if(data.ignoreCase){
 			value = value.toLowerCase();
 
-			return function(elem){
+			return function hyphenIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null &&
 						(attr.length === len || attr.charAt(len) === "-") &&
@@ -46,7 +46,7 @@ var attributeRules = {
 			};
 		}
 
-		return function(elem){
+		return function hyphen(elem){
 			var attr = getAttributeValue(elem, name);
 			return attr != null &&
 					attr.substr(0, len) === value &&
@@ -68,14 +68,14 @@ var attributeRules = {
 		    flags = data.ignoreCase ? "i" : "",
 		    regex = new RegExp(pattern, flags);
 
-		return function(elem){
+		return function element(elem){
 			var attr = getAttributeValue(elem, name);
 			return attr != null && regex.test(attr) && next(elem);
 		};
 	},
 	exists: function(next, data){
 		var name = data.name;
-		return function(elem){
+		return function exists(elem){
 			return hasAttrib(elem, name) && next(elem);
 		};
 	},
@@ -91,13 +91,13 @@ var attributeRules = {
 		if(data.ignoreCase){
 			value = value.toLowerCase();
 
-			return function(elem){
+			return function startIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null && attr.substr(0, len).toLowerCase() === value && next(elem);
 			};
 		}
 
-		return function(elem){
+		return function start(elem){
 			var attr = getAttributeValue(elem, name);
 			return attr != null && attr.substr(0, len) === value && next(elem);
 		};
@@ -114,13 +114,13 @@ var attributeRules = {
 		if(data.ignoreCase){
 			value = value.toLowerCase();
 
-			return function(elem){
+			return function endIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null && attr.substr(len).toLowerCase() === value && next(elem);
 			};
 		}
 
-		return function(elem){
+		return function end(elem){
 			var attr = getAttributeValue(elem, name);
 			return attr != null && attr.substr(len) === value && next(elem);
 		};
@@ -136,13 +136,13 @@ var attributeRules = {
 		if(data.ignoreCase){
 			var regex = new RegExp(value.replace(reChars, "\\$&"), "i");
 
-			return function(elem){
+			return function anyIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null && regex.test(attr) && next(elem);
 			};
 		}
 
-		return function(elem){
+		return function any(elem){
 			var attr = getAttributeValue(elem, name);
 			return attr != null && attr.indexOf(value) >= 0 && next(elem);
 		};
@@ -152,19 +152,19 @@ var attributeRules = {
 		    value = data.value;
 
 		if(value === ""){
-			return function(elem){
+			return function notEmpty(elem){
 				return !!getAttributeValue(elem, name) && next(elem);
 			};
 		} else if(data.ignoreCase){
 			value = value.toLowerCase();
 
-			return function(elem){
+			return function notIC(elem){
 				var attr = getAttributeValue(elem, name);
 				return attr != null && attr.toLowerCase() !== value && next(elem);
 			};
 		}
 
-		return function(elem){
+		return function not(elem){
 			return getAttributeValue(elem, name) !== value && next(elem);
 		};
 	}
