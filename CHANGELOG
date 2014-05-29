@@ -1,6 +1,9 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* specialized primary index implementation to allow faster hash table 
+  rebuilding and reduce lookups in datafiles for the actual value of `_key`.
+
 * issue #862: added `--overwrite` option to arangoimp
 
 * removed number of property lookups for documents during AQL queries that
@@ -17,7 +20,7 @@ v2.2.0 (XXXX-XX-XX)
 
   sorting attribute names was done on document insert to keep attributes 
   of a collection in sorted order for faster comparisons. The sort order
-  of attributes was only used in one particular and unlikey case, so it
+  of attributes was only used in one particular and unlikely case, so it
   was removed. Collections with many different attribute names should 
   benefit from this change by faster inserts and slightly less memory usage.
 

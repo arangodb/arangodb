@@ -290,14 +290,15 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
                                                TRI_doc_mptr_t const* document,
                                                TRI_shaper_t* shaper,
                                                const bool generateBody) {
-  if (document == 0) {
+  if (document == nullptr) {
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "document pointer is null, should not happen");
     return;
   }
 
-  const string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), document->_key);
+  char const* k = TRI_EXTRACT_MARKER_KEY(document);
+  const string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), k);
 
   TRI_json_t augmented;
   TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
@@ -316,7 +317,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_REV, _rev);
   }
 
-  TRI_json_t* _key = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, document->_key, strlen(document->_key));
+  TRI_json_t* _key = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, k, strlen(k));
 
   if (_key) {
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_KEY, _key);

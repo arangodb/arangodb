@@ -37,6 +37,7 @@
 #include "BasicsC/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/marker.h"
+#include "VocBase/primary-index.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
@@ -491,7 +492,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
@@ -513,7 +514,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
     deleted = found == NULL;
 
     if (deleted) {
@@ -546,9 +547,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // let marker point to the new position
     found2->_data = result;
-
-    // let _key point to the new key position
-    found2->_key = ((char*) result) + (((TRI_doc_document_key_marker_t*) result)->_offsetKey);
 
     // update datafile info
     context->_dfi._numberAlive += 1;
@@ -745,7 +743,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     // check if the document is still active
     TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
 
-    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
 
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
