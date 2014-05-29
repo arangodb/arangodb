@@ -116,7 +116,10 @@ bool V8PeriodicTask::handlePeriod () {
     "(function (params) { " + _command + " } )(params);",
     _parameters);
     
-  _dispatcher->addJob(job);
+  if (! _dispatcher->addJob(job)) {
+    // just in case the dispatcher cannot accept the job (e.g. when shutting down)
+    delete job;
+  }
 
   return true;
 }
