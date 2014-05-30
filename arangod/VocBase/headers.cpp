@@ -576,9 +576,8 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
 
 void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  size_t i;
 
-  for (i = 0;  i < headers->_blocks._length;  ++i) {
+  for (size_t i = 0;  i < headers->_blocks._length;  ++i) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, headers->_blocks._buffer[i]);
   }
 
