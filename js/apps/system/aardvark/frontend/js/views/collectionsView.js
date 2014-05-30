@@ -10,7 +10,6 @@
     searchTimeout: null,
 
     initialize: function () {
-      var self = this;
     },
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
