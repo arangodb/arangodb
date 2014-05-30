@@ -212,6 +212,16 @@ bool ApplicationDispatcher::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+void ApplicationDispatcher::close () {
+  if (_dispatcher != 0) {
+    _dispatcher->beginShutdown();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 void ApplicationDispatcher::stop () {
   if (_dispatcherReporterTask != 0) {
     _dispatcherReporterTask = 0;
@@ -219,8 +229,6 @@ void ApplicationDispatcher::stop () {
 
   if (_dispatcher != 0) {
     static size_t const MAX_TRIES = 50; // 10 seconds (50 * 200 ms)
-
-    _dispatcher->beginShutdown();
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
       LOG_TRACE("waiting for dispatcher to stop");
