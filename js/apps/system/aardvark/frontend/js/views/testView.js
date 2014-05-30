@@ -15,7 +15,6 @@
 
     readJSON: function() {
       var fileInput = document.getElementById('fileInput');
-      var fileDisplayArea = document.getElementById('fileDisplayArea');
       var file = fileInput.files[0];
       var textType = 'application/json';
 
