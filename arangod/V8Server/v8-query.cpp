@@ -1128,7 +1128,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   bool error = false;
   bool usedBarrier = false;
 
-  while (true) {
+
+  while (limit > 0) {
     TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == NULL) {
@@ -1151,6 +1152,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
                                                    (TRI_doc_mptr_t const*) indexElement->_document, 
                                                    barrier, 
                                                    usedBarrier);
+  
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1158,7 +1160,10 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
       }
       else {
         documents->Set(count, doc);
-        ++count;
+
+        if (++count >= limit) {
+          break;
+        }
       }
 
     }
@@ -1344,7 +1349,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   bool usedBarrier = false;
 
   if (indexIterator != NULL) {
-    while (true) {
+    while (limit > 0) {
       TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
       if (data == NULL) {
@@ -1371,7 +1376,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
         }
         else {
           documents->Set(count, doc);
-          ++count;
+          if (++count >= limit) {
+            break;
+          }
         }
       }
     }
@@ -1931,8 +1938,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
-  document._data = 0;
-  document._key = 0;
+  document._data = nullptr;
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1954,7 +1960,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._data == 0 || document._key == 0) {
+  if (document._data == nullptr) {
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
@@ -2340,7 +2346,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
   uint32_t localCrc;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    localCrc = TRI_Crc32HashString(mptr->_key);
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
@@ -2349,7 +2355,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
     // must convert _rid, _fromCid, _toCid into strings for portability
-    localCrc = TRI_Crc32HashString(mptr->_key);
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }

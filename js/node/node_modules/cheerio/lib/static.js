@@ -5,18 +5,22 @@
 var select = require('CSSselect'),
     parse = require('./parse'),
     render = require('./render'),
-    decode = require('./utils').decode;
+    _ = require('lodash');
 
 /**
  * $.load(str)
  */
 
-var load = exports.load = function(str, options) {
-  var Cheerio = require('./cheerio'),
-      root = parse(str, options);
+var load = exports.load = function(content, options) {
+  var Cheerio = require('./cheerio');
 
-  var initialize = function(selector, context, r) {
-    return new Cheerio(selector, context, r || root);
+  options = _.defaults(options || {}, Cheerio.prototype.options);
+
+  var root = parse(content, options);
+
+  var initialize = function(selector, context, r, opts) {
+    opts = _.defaults(opts || {}, options);
+    return new Cheerio(selector, context, r || root, opts);
   };
 
   // Add in the static methods
@@ -34,10 +38,10 @@ var load = exports.load = function(str, options) {
 
 var html = exports.html = function(dom) {
   if (dom) {
-    dom = (typeof dom === 'string') ? select(dom, this._root) : dom;
-    return render(dom);
+    dom = (typeof dom === 'string') ? select(dom, this._root, this.options) : dom;
+    return render(dom, this.options);
   } else if (this._root && this._root.children) {
-    return render(this._root.children);
+    return render(this._root.children, this.options);
   } else {
     return '';
   }
@@ -49,7 +53,7 @@ var html = exports.html = function(dom) {
 
 var xml = exports.xml = function(dom) {
   if (dom) {
-    dom = (typeof dom === 'string') ? select(dom, this._root) : dom;
+    dom = (typeof dom === 'string') ? select(dom, this._root, this.options) : dom;
     return render(dom, { xmlMode: true });
   } else if (this._root && this._root.children) {
     return render(this._root.children, { xmlMode: true });
@@ -71,7 +75,7 @@ var text = exports.text = function(elems) {
 
   for (var i = 0; i < len; i ++) {
     elem = elems[i];
-    if (elem.type === 'text') ret += decode(elem.data);
+    if (elem.type === 'text') ret += elem.data;
     else if (elem.children && elem.type !== 'comment') {
       ret += text(elem.children);
     }
@@ -83,7 +87,7 @@ var text = exports.text = function(elems) {
 /**
  * $.parseHTML(data [, context ] [, keepScripts ])
  * Parses a string into an array of DOM nodes. The `context` argument has no
- * meaning for Cheerio, but it is maintained for API compatability with jQuery.
+ * meaning for Cheerio, but it is maintained for API compatibility with jQuery.
  */
 var parseHTML = exports.parseHTML = function(data, context, keepScripts) {
   var parsed;
@@ -121,7 +125,7 @@ var contains = exports.contains = function(container, contained) {
     return false;
   }
 
-  // Step up the descendents, stopping when the root element is reached
+  // Step up the descendants, stopping when the root element is reached
   // (signaled by `.parent` returning a reference to the same object)
   while (contained && contained !== contained.parent) {
     contained = contained.parent;

@@ -73,6 +73,7 @@ var GRAPH_CONTEXT = "api";
 ////////////////////////////////////////////////////////////////////////////////
 
 function graph_by_request (req) {
+
   var key = req.suffix[0];
 
   var g = new graph.Graph(key);
@@ -255,9 +256,7 @@ function post_graph_graph (req, res) {
     var edges = json.edges;
 
     var waitForSync = false;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     var g = new graph.Graph(name, vertices, edges, waitForSync);
@@ -476,15 +475,13 @@ function delete_graph_graph (req, res) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
-    
+  
   if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
     return;
-  } 
-    
+  }
+
   var waitForSync = g._gdb.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -575,9 +572,7 @@ function post_graph_vertex (req, res, g) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -778,9 +773,7 @@ function delete_graph_vertex (req, res, g) {
   } 
 
   var waitForSync = g._vertices.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
 
@@ -822,9 +815,7 @@ function update_graph_vertex (req, res, g, isPatch) {
     }
 
     var waitForSync = g._vertices.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1476,9 +1467,7 @@ function post_graph_edge (req, res, g) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     
@@ -1685,9 +1674,7 @@ function delete_graph_edge (req, res, g) {
   } 
  
   var waitForSync = g._edges.properties().waitForSync;
-  if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+  if (req.parameters.waitForSync) {
     waitForSync = true;
   }
     
@@ -1729,9 +1716,7 @@ function update_graph_edge (req, res, g, isPatch) {
     }
 
     var waitForSync = g._edges.properties().waitForSync;
-    if (req.parameters.waitForSync && 
-	(req.parameters.waitForSync === "true" ||  
-	 req.parameters.waitForSync === true)) {
+    if (req.parameters.waitForSync) {
       waitForSync = true;
     }
     

@@ -71,7 +71,7 @@ namespace triagens {
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      if (!_keepConnectionOnDestruction) {
+      if (! _keepConnectionOnDestruction || ! _connection->isConnected()) {
         _connection->disconnect();
       }
     }
@@ -93,6 +93,9 @@ namespace triagens {
       return true;
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request
+////////////////////////////////////////////////////////////////////////////////
 
     SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
             const string& location,
@@ -107,6 +110,9 @@ namespace triagens {
 
       // set body 
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
+
+      assert(_state == IN_CONNECT || _state == IN_WRITE);
+
 
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
@@ -270,6 +276,10 @@ namespace triagens {
       return _result;
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepare a request
+////////////////////////////////////////////////////////////////////////////////
+
     void SimpleHttpClient::setRequest (rest::HttpRequest::HttpRequestType method,
                                        const string& location,
                                        const char* body,
@@ -278,11 +288,7 @@ namespace triagens {
 
       _method = method;
 
-      if (_state == DEAD) {
-        _connection->resetNumConnectRetries();
-      }
-
-///////////////////// fill the write buffer //////////////////////////////
+      // now fill the write buffer
       _writeBuffer.clear();
 
       HttpRequest::appendMethod(method, &_writeBuffer);
@@ -359,7 +365,10 @@ namespace triagens {
 
       LOG_TRACE("Request: %s", _writeBuffer.c_str());
 
-////////////////////////////////////////////////////////////////////////////////
+
+      if (_state == DEAD) {
+        _connection->resetNumConnectRetries();
+      }
 
 
       if (_state != FINISHED) {
@@ -376,6 +385,8 @@ namespace triagens {
         // connect to server
         _state = IN_CONNECT;
       }
+
+      assert(_state == IN_CONNECT ||_state == IN_WRITE);
     }
 
 

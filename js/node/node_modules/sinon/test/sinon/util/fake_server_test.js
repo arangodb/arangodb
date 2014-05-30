@@ -10,7 +10,9 @@
 
 buster.testCase("sinon.fakeServer", {
     tearDown: function () {
-        this.server.restore();
+        if (this.server) {
+            this.server.restore();
+        }
     },
 
     "provides restore method": function () {
@@ -160,11 +162,11 @@ buster.testCase("sinon.fakeServer", {
 
         "does not respond to requests queued after respond() (eg from callbacks)": function () {
             var xhr;
-            this.getRootAsync.addEventListener("load", function() {
-              xhr = new sinon.FakeXMLHttpRequest();
-              xhr.open("GET", "/", true);
-              xhr.send();
-              sinon.spy(xhr, "respond");
+            this.getRootAsync.addEventListener("load", function () {
+                xhr = new sinon.FakeXMLHttpRequest();
+                xhr.open("GET", "/", true);
+                xhr.send();
+                sinon.spy(xhr, "respond");
             });
 
             this.server.respondWith("Oh yeah! Duffman!");
@@ -397,10 +399,10 @@ buster.testCase("sinon.fakeServer", {
             }
 
             assert.isObject(error);
-            assert.equals(                     error.message, "Fake server response body should be string, but was undefined");
+            assert.equals(error.message, "Fake server response body should be string, but was undefined");
         },
 
-        "is able to pass the same args to respond directly": function() {
+        "is able to pass the same args to respond directly": function () {
             this.server.respond("Oh yeah! Duffman!");
 
             assert.equals(this.getRootAsync.respond.args[0], [200, {}, "Oh yeah! Duffman!"]);
@@ -409,10 +411,10 @@ buster.testCase("sinon.fakeServer", {
             assert.equals(this.postPathAsync.respond.args[0], [200, {}, "Oh yeah! Duffman!"]);
         },
 
-        "responds to most recently defined match": function() {
+        "responds to most recently defined match": function () {
             this.server.respondWith("POST", "", "All POSTs");
             this.server.respondWith("POST", "/path", "Particular POST");
-            
+
             this.server.respond();
 
             assert.equals(this.postRootAsync.respond.args[0], [200, {}, "All POSTs"]);
@@ -629,8 +631,7 @@ buster.testCase("sinon.fakeServer", {
             assert.equals(this.request.respond.args[0], [200, {}, "OK"]);
         },
 
-        "does not fail when getting the HTTP method from a request with no body":
-        function () {
+        "does not fail when getting the HTTP method from a request with no body": function () {
             var server = this.server;
             server.fakeHTTPMethods = true;
 

@@ -194,8 +194,9 @@ static int CmpElmElm (void* sli,
   }
 
   // We break this tie in the key comparison by looking at the key: 
-  compareResult = strcmp(leftElement->_document->_key,
-                         rightElement->_document->_key);
+  compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),
+                         TRI_EXTRACT_MARKER_KEY(rightElement->_document));
+
   if (compareResult < 0) {
       return -1;
   }

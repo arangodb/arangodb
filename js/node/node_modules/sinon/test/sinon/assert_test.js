@@ -66,6 +66,24 @@ buster.testCase("sinon.assert", {
         }
     },
 
+    "match": {
+        setUp: function () { this.setUpStubs(); },
+        tearDown: function () { this.tearDownStubs(); },
+
+        "fails when arguments to not match": function () {
+            assert.exception(function () {
+                sinon.assert.match("foo", "bar");
+            });
+
+            assert(sinon.assert.fail.calledOnce);
+        },
+
+        "passes when argumens match": function () {
+            sinon.assert.match("foo", "foo");
+            assert(sinon.assert.pass.calledOnce);
+        }
+    },
+
     "called": {
         setUp: function () { this.setUpStubs(); },
         tearDown: function () { this.tearDownStubs(); },
@@ -1350,6 +1368,13 @@ buster.testCase("sinon.assert", {
             assert.equals(this.message("alwaysThrew", this.obj.doSomething),
                           "doSomething did not always throw exception\n" +
                           "    doSomething(1, 3, hey)\n    doSomething(1, 3)");
+        },
+
+        "assert.match exception message": function () {
+            assert.equals(this.message("match", { foo: 1 }, [1, 3]),
+                          "expected value to match\n" +
+                          "    expected = [1, 3]\n" +
+                          "    actual = { foo: 1 }");
         }
     }
 });

@@ -35,7 +35,7 @@ Getting started
     master or other branches.
 
 * If missing, install the required prerequisites. They are listed
-  [here](https://github.com/triAGENS/ArangoDB/wiki/Compiling).
+  [in the manual](https://www.arangodb.org/manuals/current/Compiling.html).
 
 * configure and make your local clone. If you intend to modify the parser files,
   please make sure to activate the --enable-maintainer-mode configure option. In

@@ -321,14 +321,14 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid, document._key, document._rid);
+    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
   }
   else {
-    generateAccepted(cid, document._key, document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
   }
 
   return true;

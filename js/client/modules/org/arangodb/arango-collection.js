@@ -1095,6 +1095,13 @@ ArangoCollection.prototype.save = function (from, to, data, waitForSync) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document in the collection
+/// @param id the id of the document
+/// @param overwrite (optional) a boolean value or a json object 
+/// @param waitForSync (optional) a boolean value .
+/// @example remove("example/996280832675")
+/// @example remove("example/996280832675", true)
+/// @example remove("example/996280832675", false)
+/// @example remove("example/996280832675", {waitForSync: false, overwrite: true})
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
@@ -1157,6 +1164,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document in the collection
+/// @param id the id of the document
+/// @param overwrite (optional) a boolean value or a json object 
+/// @param waitForSync (optional) a boolean value .
+/// @example replace("example/996280832675", { a : 1, c : 2} )
+/// @example replace("example/996280832675", { a : 1, c : 2}, true)
+/// @example replace("example/996280832675", { a : 1, c : 2}, false)
+/// @example replace("example/996280832675", { a : 1, c : 2}, {waitForSync: false, overwrite: true})
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) { 
@@ -1210,6 +1224,14 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document in the collection
+/// @param id the id of the document
+/// @param overwrite (optional) a boolean value or a json object 
+/// @param keepNull (optional) determines if null values should saved or not
+/// @param waitForSync (optional) a boolean value .
+/// @example update("example/996280832675", { a : 1, c : 2} )
+/// @example update("example/996280832675", { a : 1, c : 2, x: null}, true, true, true)
+/// @example update("example/996280832675", { a : 1, c : 2, x: null}, 
+//                 {keepNull: true, waitForSync: false, overwrite: true})
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, waitForSync) { 
