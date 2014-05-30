@@ -32,7 +32,6 @@
 #include "BasicsC/vector.h"
 #include "VocBase/index.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/primary-collection.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -390,7 +389,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     TRI_barrier_t* ce;
 
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_primary_collection_t* primaryCollection;
+    TRI_document_collection_t* primaryCollection;
 
     assert(collection != NULL);
     assert(collection->_name != NULL);
@@ -398,7 +397,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     assert(collection->_collection->_collection != NULL);
     assert(collection->_barrier == NULL);
 
-    primaryCollection = (TRI_primary_collection_t*) collection->_collection->_collection;
+    primaryCollection = collection->_collection->_collection;
 
     LOG_TRACE("adding barrier for collection '%s'", collection->_name);
 
@@ -481,21 +480,19 @@ bool TRI_AddCollectionAql (TRI_aql_context_t* context,
 TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
                                                    TRI_aql_collection_t* collection) {
   if (context->_isCoordinator) {
-    if (collection->_availableIndexes == NULL) {
+    if (collection->_availableIndexes == nullptr) {
       collection->_availableIndexes = TRI_GetCoordinatorIndexes(context->_vocbase->_name, collection->_name);
     }
 
     return collection->_availableIndexes;
   }
   else {
-    TRI_primary_collection_t* primary;
-
-    if (collection->_collection == NULL) {
-      return NULL;
+    if (collection->_collection == nullptr) {
+      return nullptr;
     }
 
-    primary = collection->_collection->_collection;
-    return &(((TRI_document_collection_t*) primary)->_allIndexes);
+    TRI_document_collection_t* document = collection->_collection->_collection;
+    return &document->_allIndexes;
   }
 }
 

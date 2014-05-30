@@ -49,7 +49,7 @@
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_document_collection_s*,
                                   TRI_idx_iid_t,
                                   char const*,
                                   TRI_shape_pid_t,
@@ -61,7 +61,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_document_collection_s*,
                                   TRI_idx_iid_t,
                                   char const*,
                                   TRI_shape_pid_t ,

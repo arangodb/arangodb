@@ -31,7 +31,6 @@
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/voc-shaper.h"
 
 //------------------------------------------------------------------------------
@@ -525,23 +524,25 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
 /// @brief creates a new skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex* SkiplistIndex_new (TRI_primary_collection_t* primary,
-                                  size_t numFields, bool unique, bool sparse) {
+SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
+                                  size_t numFields, 
+                                  bool unique, 
+                                  bool sparse) {
   SkiplistIndex* skiplistIndex = static_cast<SkiplistIndex*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true));
 
-  if (skiplistIndex == NULL) {
-    return NULL;
+  if (skiplistIndex == nullptr) {
+    return nullptr;
   }
 
-  skiplistIndex->_collection = primary;
+  skiplistIndex->_collection = document;
   skiplistIndex->_numFields = numFields;
   skiplistIndex->unique = unique;
   skiplistIndex->sparse = sparse;
   skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm, CmpKeyElm, skiplistIndex,
                                              FreeElm, unique);
-  if (skiplistIndex->skiplist == NULL) {
+  if (skiplistIndex->skiplist == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-    return NULL;
+    return nullptr;
   }
   
   return skiplistIndex;

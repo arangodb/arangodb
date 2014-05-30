@@ -615,14 +615,14 @@ bool RestImportHandler::createFromJson (string const& type) {
     return false;
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  TRI_document_collection_t* document = trx.primaryCollection();
+  bool const isEdgeCollection = (document->base._info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
   
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
     trx.truncate(false);
     
     if (barrier != 0) {
@@ -1073,14 +1073,14 @@ bool RestImportHandler::createFromKeyValueList () {
     return false;
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  TRI_document_collection_t* document = trx.primaryCollection();
+  bool const isEdgeCollection = (document->base._info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
     trx.truncate(false);
     
     if (barrier != 0) {

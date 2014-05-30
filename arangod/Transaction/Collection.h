@@ -136,7 +136,7 @@ namespace triagens {
 /// @brief return the pointer to the primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_primary_collection_t* primary () const {
+        inline TRI_document_collection_t* primary () const {
           return _collection->_collection;
         }
 

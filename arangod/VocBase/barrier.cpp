@@ -28,7 +28,7 @@
 #include "barrier.h"
 
 #include "BasicsC/logging.h"
-#include "VocBase/primary-collection.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           BARRIER
@@ -108,7 +108,7 @@ template <typename T> static T* CreateBarrier () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitBarrierList (TRI_barrier_list_t* container, 
-                          TRI_primary_collection_t* collection) {
+                          TRI_document_collection_t* collection) {
   container->_collection = collection;
 
   TRI_InitSpin(&container->_lock);

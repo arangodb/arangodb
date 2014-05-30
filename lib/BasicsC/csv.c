@@ -147,12 +147,6 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
   // append line to buffer
   if (line != NULL) {
-    size_t l1;
-    size_t l2;
-    size_t l3;
-    size_t l4;
-    size_t l5;
-
     assert(parser->_begin <= parser->_start);
     assert(parser->_start <= parser->_written);
     assert(parser->_written <= parser->_current);
@@ -167,8 +161,9 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
       parser->_nMemcpy++;
     }
     else {
-      l1 = parser->_start - parser->_begin;
-      l2 = parser->_end - parser->_stop;
+      size_t l1 = parser->_start - parser->_begin;
+      size_t l2 = parser->_end - parser->_stop;
+      size_t l3;
 
       // not enough room, but enough room between BEGIN and START plus STOP and END
       if (length <= l1 + l2) {
@@ -189,6 +184,8 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
       // really not enough room
       else {
+        size_t l4, l5;
+
         l2 = parser->_stop - parser->_start;
         l3 = parser->_end - parser->_begin + length;
         l4 = parser->_written - parser->_start;

@@ -2319,11 +2319,11 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return res;
   }
 
-  TRI_primary_collection_t* primary = col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
@@ -2331,7 +2331,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
     // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-    res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
+    res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
@@ -2340,7 +2340,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     else {
       assert(idx != 0);
 
-      res = TRI_SaveIndex(primary, idx, remoteServerId);
+      res = TRI_SaveIndex(document, idx, remoteServerId);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "could not save index: " + string(TRI_errno_string(res));
@@ -2349,7 +2349,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     }
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
 
@@ -2452,22 +2452,22 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
     assert(json != 0);
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json, true, true);
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->_shaper, json, true, true);
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
       memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
-      int res = primary->readDocument(trxCollection, key, &mptr, false);
+      int res = document->readDocument(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
         if (type == MARKER_EDGE) {
           // edge
-          if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+          if (document->base._info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -2490,16 +2490,16 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
           // document
-          if (primary->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->base._info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
@@ -2509,7 +2509,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         // init the update policy
         TRI_doc_update_policy_t policy;
         TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
-        res = primary->updateDocument(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+        res = document->updateDocument(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2529,8 +2529,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_doc_update_policy_t policy;
     TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    int res = primary->removeDocument(trxCollection, key, rid, &policy, false, false);
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    int res = document->removeDocument(trxCollection, key, rid, &policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -2811,7 +2811,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   vector<string> shardIds;
   map<ShardID, ServerID>::iterator it;
   map<string, size_t>::iterator it2;
-  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); it++) {
+  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
     shardTab.insert(make_pair(it->first,shardIds.size()));
     shardIds.push_back(it->first);
   }

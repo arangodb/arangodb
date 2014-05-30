@@ -60,8 +60,6 @@
 ///
 /// @section PrimaryCollection Document Collection
 ///
-/// @copydetails TRI_primary_collection_t
-///
 /// @section DocumentCollection Simple Document Collection
 ///
 /// @copydetails TRI_document_collection_t

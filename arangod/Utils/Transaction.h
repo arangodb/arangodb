@@ -61,11 +61,6 @@ namespace triagens {
     class Transaction : public T {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -73,18 +68,9 @@ namespace triagens {
         Transaction (const Transaction&);
         Transaction& operator= (const Transaction&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -142,18 +128,9 @@ namespace triagens {
           }
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -297,18 +274,10 @@ namespace triagens {
           return res;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -316,7 +285,7 @@ namespace triagens {
 /// @brief return a collection's primary collection
 ////////////////////////////////////////////////////////////////////////////////
          
-         TRI_primary_collection_t* primaryCollection (TRI_transaction_collection_t const* trxCollection) const {
+         TRI_document_collection_t* primaryCollection (TRI_transaction_collection_t const* trxCollection) const {
            TRI_ASSERT_MAINTAINER(_trx != 0);
            TRI_ASSERT_MAINTAINER(getStatus() == TRI_TRANSACTION_RUNNING);
            TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
@@ -485,9 +454,9 @@ namespace triagens {
                      TRI_doc_mptr_t* mptr,
                      TRI_barrier_t** barrier) {
 
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
-          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (*barrier == 0) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -502,7 +471,7 @@ namespace triagens {
             return res;
           }
 
-          if (primary->_primaryIndex._nrUsed == 0) {
+          if (document->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
             *barrier = 0;
 
@@ -510,9 +479,9 @@ namespace triagens {
             mptr->_data = nullptr;
           }
           else {
-            size_t total = primary->_primaryIndex._nrAlloc;
+            size_t total = document->_primaryIndex._nrAlloc;
             size_t pos = TRI_UInt32Random() % total;
-            void** beg = primary->_primaryIndex._table;
+            void** beg = document->_primaryIndex._table;
 
             while (beg[pos] == 0) {
               pos = TRI_UInt32Random() % total;
@@ -537,9 +506,9 @@ namespace triagens {
 
           assert(mptr != nullptr);
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
-          int res = primary->readDocument(trxCollection,
+          int res = document->readDocument(trxCollection,
                                           (TRI_voc_key_t) key.c_str(), 
                                           mptr,
                                           ! isLocked(trxCollection, TRI_TRANSACTION_READ));
@@ -555,7 +524,7 @@ namespace triagens {
                      vector<string>& ids, 
                      bool lock) {
 
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
           if (lock) {
             // READ-LOCK START
@@ -566,11 +535,11 @@ namespace triagens {
             }
           }
           
-          if (primary->_primaryIndex._nrUsed > 0) {
-            ids.reserve(primary->_primaryIndex._nrUsed);
+          if (document->_primaryIndex._nrUsed > 0) {
+            ids.reserve(document->_primaryIndex._nrUsed);
 
-            void** ptr = primary->_primaryIndex._table;
-            void** end = ptr + primary->_primaryIndex._nrAlloc;
+            void** ptr = document->_primaryIndex._table;
+            void** end = ptr + document->_primaryIndex._nrAlloc;
 
             for (;  ptr < end;  ++ptr) {
               if (*ptr) {
@@ -596,8 +565,7 @@ namespace triagens {
                          vector<TRI_doc_mptr_t const*>& documents,
                          int64_t offset,
                          int64_t count) {
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
-          TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -660,7 +628,7 @@ namespace triagens {
                        TRI_voc_size_t limit,
                        uint32_t* total) {
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
           if (limit == 0) {
             // nothing to do
@@ -674,7 +642,7 @@ namespace triagens {
             return res;
           }
 
-          if (primary->_primaryIndex._nrUsed == 0) {
+          if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
 
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -682,19 +650,19 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (*barrier == 0) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = primary->_primaryIndex._table;
+          void** beg = document->_primaryIndex._table;
           void** ptr = beg;
-          void** end = ptr + primary->_primaryIndex._nrAlloc;
+          void** end = ptr + document->_primaryIndex._nrAlloc;
           uint32_t count = 0;
           
-          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+          *total = (uint32_t) document->_primaryIndex._nrUsed;
 
           // apply skip
           if (skip > 0) {
@@ -760,7 +728,7 @@ namespace triagens {
                              TRI_voc_ssize_t skip,
                              uint32_t* total) {
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -769,7 +737,7 @@ namespace triagens {
             return res;
           }
 
-          if (primary->_primaryIndex._nrUsed == 0) {
+          if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
 
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -777,7 +745,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          *barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (*barrier == 0) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -785,8 +753,8 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = primary->_primaryIndex._table;
-          void** end = beg + primary->_primaryIndex._nrAlloc;
+          void** beg = document->_primaryIndex._table;
+          void** end = beg + document->_primaryIndex._nrAlloc;
 
           if (internalSkip > 0) {
             beg += internalSkip;
@@ -794,7 +762,7 @@ namespace triagens {
 
           void** ptr = beg;
           uint32_t count = 0;
-          *total = (uint32_t) primary->_primaryIndex._nrUsed;
+          *total = (uint32_t) document->_primaryIndex._nrUsed;
 
           // fetch documents, taking limit into account
           for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
@@ -876,10 +844,10 @@ namespace triagens {
                            void const* data,
                            const bool forceSync) {
          
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
-          int res = primary->insertDocument(trxCollection,
+          int res = document->insertDocument(trxCollection,
                                             key, 
                                             rid, 
                                             mptr,
@@ -947,9 +915,9 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
           
-          int res = primary->updateDocument(trxCollection, 
+          int res = document->updateDocument(trxCollection, 
                                             (TRI_voc_key_t) key.c_str(),
                                             rid, 
                                             mptr, 
@@ -976,9 +944,9 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
 
-          int res = primary->removeDocument(trxCollection,
+          int res = document->removeDocument(trxCollection,
                                             (TRI_voc_key_t) key.c_str(), 
                                             rid,
                                             &updatePolicy, 
@@ -998,7 +966,7 @@ namespace triagens {
 
           vector<string> ids;
           
-          TRI_primary_collection_t* primary = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = primaryCollection(trxCollection);
           
           // WRITE-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
@@ -1019,7 +987,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             const string& id = ids[i];
           
-            res = primary->removeDocument(trxCollection,
+            res = document->removeDocument(trxCollection,
                                           (TRI_voc_key_t) id.c_str(), 
                                           0,
                                           nullptr, // policy
@@ -1039,18 +1007,9 @@ namespace triagens {
           return res;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -1193,18 +1152,9 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -1256,18 +1206,9 @@ namespace triagens {
 
         bool _isReal;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -1294,10 +1235,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const CollectionNameResolver _resolver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 

@@ -230,19 +230,18 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
-                                            TRI_primary_collection_t* primary,
-                                            TRI_shaped_json_t const* document) {
-  TRI_shaper_t* shaper;
+                                            TRI_document_collection_t* document,
+                                            TRI_shaped_json_t const* shapedJson) {
   char* user;
   char* password;
   bool active;
   bool found;
   bool mustChange;
   
-  shaper = primary->_shaper;
+  TRI_shaper_t* shaper = document->_shaper;
 
   // extract username
-  user = ExtractStringShapedJson(shaper, document, "user");
+  user = ExtractStringShapedJson(shaper, shapedJson, "user");
 
   if (user == NULL) {
     LOG_DEBUG("cannot extract username");
@@ -250,7 +249,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract password
-  password = ExtractStringShapedJson(shaper, document, "password");
+  password = ExtractStringShapedJson(shaper, shapedJson, "password");
 
   if (password == NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
@@ -259,7 +258,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract active flag
-  active = ExtractBooleanShapedJson(shaper, document, "active", &found);
+  active = ExtractBooleanShapedJson(shaper, shapedJson, "active", &found);
 
   if (! found) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
@@ -269,7 +268,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract must-change-password flag
-  mustChange = ExtractBooleanShapedJson(shaper, document, "changePassword", &found);
+  mustChange = ExtractBooleanShapedJson(shaper, shapedJson, "changePassword", &found);
 
   if (! found) {
     mustChange = false;
@@ -431,7 +430,6 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 
 bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
   void** beg;
   void** end;
   void** ptr;
@@ -447,13 +445,13 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_UseCollectionVocBase(vocbase, collection);
 
-  primary = collection->_collection;
+  TRI_document_collection_t* document = collection->_collection;
 
-  if (primary == NULL) {
+  if (document == nullptr) {
     LOG_FATAL_AND_EXIT("collection '_users' cannot be loaded");
   }
 
-  assert(primary != NULL);
+  assert(document != nullptr);
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
@@ -462,10 +460,10 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   // inside a write transaction
   // .............................................................................
 
-  primary->beginRead(primary);
+  document->beginRead(document);
 
-  beg = primary->_primaryIndex._table;
-  end = beg + primary->_primaryIndex._nrAlloc;
+  beg = document->_primaryIndex._table;
+  end = beg + document->_primaryIndex._nrAlloc;
   ptr = beg;
 
   for (;  ptr < end;  ++ptr) {
@@ -478,7 +476,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
 
-      auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
+      auth = ConvertAuthInfo(vocbase, document, &shapedJson);
 
       if (auth != NULL) {
         TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
@@ -490,7 +488,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     }
   }
 
-  collection->_collection->endRead(collection->_collection);
+  document->endRead(document);
 
   // .............................................................................
   // outside a write transaction

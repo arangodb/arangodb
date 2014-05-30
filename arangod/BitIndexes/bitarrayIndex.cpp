@@ -32,8 +32,8 @@
 #include "BitIndexes/bitarray.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/index.h"
-#include "VocBase/primary-collection.h"
 
 // .............................................................................
 // forward declaration of static functions used for iterator callbacks
@@ -1016,7 +1016,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // and what values the document has sent.
   // ...........................................................................
 
-  shaper      = ((TRI_primary_collection_t*)(element->collection))->_shaper;
+  shaper      = ((TRI_document_collection_t*) (element->collection))->_shaper;
   mask->_mask = 0;
   shiftLeft   = 0;
 

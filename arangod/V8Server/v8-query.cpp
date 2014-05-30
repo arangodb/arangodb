@@ -1042,8 +1042,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   v8::Handle<v8::Object> err;
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_shaper_t* shaper = document->_shaper;
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1118,7 +1118,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
     if (total > skip && count < limit) {
       if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+        barrier = TRI_CreateBarrierElement(&document->_barrierList);
         if (barrier == 0) {
           error = true;
           break;
@@ -1257,8 +1257,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_shaper_t* shaper = document->_shaper;
 
   // .............................................................................
   // Create the json object result which stores documents located
@@ -1338,7 +1338,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 
       if (total > skip && count < limit) {
         if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (barrier == 0) {
             error = true;
@@ -1452,7 +1452,7 @@ static int StoreGeoResult (ReadTransactionType& trx,
   };
   std::sort(tmp, gnd, compareSort);
 
-  barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
+  barrier = TRI_CreateBarrierElement(&(collection->_collection)->_barrierList);
 
   if (barrier == 0) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
@@ -1527,7 +1527,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
 
   // first and only argument schould be a list of document idenfifier
   if (argv.Length() != 1) {
@@ -1576,7 +1576,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
         continue;
       }
 
-      edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
+      edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
       if (key != 0) {
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -1584,7 +1584,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
       for (size_t j = 0;  j < edges._length;  ++j) {
         if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+          barrier = TRI_CreateBarrierElement(&document->_barrierList);
           if (barrier == 0) {
             error = true;
             break;
@@ -1626,7 +1626,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       TRI_V8_EXCEPTION(scope, res);
     }
 
-    edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
+    edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
     if (key != 0) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -1634,7 +1634,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
     for (size_t j = 0;  j < edges._length;  ++j) {
       if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+        barrier = TRI_CreateBarrierElement(&document->_barrierList);
         if (barrier == 0) {
           error = true;
           break;
@@ -1953,8 +1953,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_shaper_t* shaper = document->_shaper;
 
   v8::Handle<v8::Object> example = argv[0]->ToObject();
 
@@ -2007,7 +2007,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     if (s < e) {
       // only go in here if something has to be done, otherwise barrier memory might be lost
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
       if (barrier == 0) {
         error = true;
@@ -2109,8 +2109,8 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   // convert the example (index is locked by lockRead)
   TRI_index_search_value_t searchValue;
   
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_shaper_t* shaper = document->_shaper;
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2137,7 +2137,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
     CalculateSkipLimitSlice(total, skip, limit, s, e);
 
     if (s < e) {
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
       if (barrier == 0) {
         error = true;
@@ -2273,7 +2273,7 @@ collection_checksum_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
-                                                           TRI_primary_collection_t* primary, 
+                                                           TRI_document_collection_t* document, 
                                                            void* data) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
@@ -2309,7 +2309,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
 
-    TRI_StringifyArrayShapedJson(primary->_shaper, &helper->_buffer, &shaped, false);
+    TRI_StringifyArrayShapedJson(document->_shaper, &helper->_buffer, &shaped, false);
     localCrc += TRI_Crc32HashPointer(TRI_BeginStringBuffer(&helper->_buffer), TRI_LengthStringBuffer(&helper->_buffer));
     TRI_ResetStringBuffer(&helper->_buffer);
   }
@@ -2373,9 +2373,9 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
 
-  Barrier barrier(primary);
+  Barrier barrier(document);
   
   collection_checksum_t helper;
   helper._checksum = 0;
@@ -2387,26 +2387,26 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   trx.lockRead();
   // get last tick
-  const string rid = StringUtils::itoa(primary->base._info._revision);
+  const string rid = StringUtils::itoa(document->base._info._revision);
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, true>);
+      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<true, true>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, true>);
+      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<false, true>);
     }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, false>);
+      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<true, false>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, false>);
+      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<false, false>);
     }
   }
 
@@ -2642,7 +2642,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   bool usedBarrier = false;
 
   if (queryResult->_numDocuments > 0) {
-    barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
+    barrier = TRI_CreateBarrierElement(&collection->_collection->_barrierList);
   }
 
   // setup result

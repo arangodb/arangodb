@@ -30,7 +30,7 @@
 
 #include "Basics/Common.h"
 
-#include "VocBase/primary-collection.h"
+#include "VocBase/document-collection.h"
 
 namespace triagens {
   namespace arango {
@@ -54,13 +54,13 @@ namespace triagens {
 /// @brief create the locker
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionReadLocker (TRI_primary_collection_t* primary, 
+        CollectionReadLocker (TRI_document_collection_t* document,
                               bool doLock) 
-          : _primary(primary),
+          : _document(document),
             _doLock(false) {
 
           if (doLock) {
-            _primary->beginRead(_primary);          
+            _document->beginRead(_document);
             _doLock = true;
           }
         }
@@ -83,7 +83,7 @@ namespace triagens {
 
         inline void unlock () {
           if (_doLock) {
-            _primary->endRead(_primary);
+            _document->endRead(_document);
             _doLock = false;
           }
         }
@@ -98,7 +98,7 @@ namespace triagens {
 /// @brief collection pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_primary_collection_t* _primary;
+        TRI_document_collection_t* _document;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock flag

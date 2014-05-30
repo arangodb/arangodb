@@ -61,21 +61,15 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitIndex (TRI_index_t* idx, 
                     TRI_idx_iid_t iid,
                     TRI_idx_type_e type, 
-                    struct TRI_primary_collection_s* primary,
+                    TRI_document_collection_t* document,
                     bool unique) {
-  // note: primary can be NULL
-  assert(idx != NULL);
+  assert(idx != nullptr);
 
   if (iid > 0) {
     // use iid if specified
@@ -90,32 +84,22 @@ void TRI_InitIndex (TRI_index_t* idx,
   }
 
   idx->_type              = type;
-  idx->_collection        = primary;
+  idx->_collection        = document;
   idx->_unique            = unique;
   
   // init common functions
-  idx->memory            = NULL;
-  idx->removeIndex       = NULL;
-  idx->cleanup           = NULL;
-  idx->sizeHint          = NULL;
-
-  idx->postInsert        = NULL;
+  idx->memory            = nullptr;
+  idx->removeIndex       = nullptr;
+  idx->cleanup           = nullptr;
+  idx->sizeHint          = nullptr;
+  idx->postInsert        = nullptr;
 
   LOG_TRACE("initialising index of type %s", TRI_TypeNameIndex(idx->_type));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not an index needs full coverage
@@ -332,7 +316,7 @@ void TRI_FreeIndex (TRI_index_t* idx) {
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx) {
+bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* idx) {
   char* filename;
   char* name;
   char* number;
@@ -386,7 +370,7 @@ bool TRI_RemoveIndexFile (TRI_primary_collection_t* collection, TRI_index_t* idx
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (TRI_primary_collection_t* primary, 
+int TRI_SaveIndex (TRI_document_collection_t* document,
                    TRI_index_t* idx,
                    TRI_server_id_t generatingServer) {
   TRI_json_t* json;
@@ -407,12 +391,12 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
   // construct filename
   number   = TRI_StringUInt64(idx->_iid);
   name     = TRI_Concatenate3String("index-", number, ".json");
-  filename = TRI_Concatenate2File(primary->base._directory, name);
+  filename = TRI_Concatenate2File(document->base._directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  vocbase = primary->base._vocbase;
+  vocbase = document->base._vocbase;
 
   // and save
   ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
@@ -428,8 +412,8 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
 
   // it is safe to use _name as we hold a read-lock on the collection status
   TRI_LogCreateIndexReplication(vocbase, 
-                                primary->base._info._cid, 
-                                primary->base._info._name, 
+                                document->base._info._cid, 
+                                document->base._info._name, 
                                 idx->_iid, 
                                 json,
                                 generatingServer);
@@ -443,12 +427,10 @@ int TRI_SaveIndex (TRI_primary_collection_t* primary,
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (TRI_primary_collection_t* primary, 
+TRI_index_t* TRI_LookupIndex (TRI_document_collection_t* document, 
                               TRI_idx_iid_t iid) {
-  TRI_document_collection_t* doc = (TRI_document_collection_t*) primary;
-
-  for (size_t i = 0;  i < doc->_allIndexes._length;  ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(doc->_allIndexes._buffer[i]);
+  for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_iid == iid) {
       return idx;
@@ -547,10 +529,6 @@ char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
   return fieldList;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
@@ -558,11 +536,6 @@ char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert methods does nothing
@@ -610,26 +583,15 @@ static TRI_json_t* JsonPrimary (TRI_index_t const* idx) {
   return json;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
-  // note: primary can be NULL
-
+TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
   // create primary index
   TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false));
 
@@ -641,7 +603,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s* primary) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, primary, true);
+  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true);
 
   idx->memory   = MemoryPrimary;
   idx->json     = JsonPrimary;
@@ -660,10 +622,6 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EDGE INDEX
 // -----------------------------------------------------------------------------
@@ -671,11 +629,6 @@ void TRI_FreePrimaryIndex (TRI_index_t* idx) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key 
@@ -925,24 +878,15 @@ static int SizeHintEdge (TRI_index_t* idx,
   return TRI_ResizeMultiPointer(edgesIndex, size + 2049);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid) {
   TRI_index_t* idx;
   char* id;
@@ -951,8 +895,8 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
   // create index
   TRI_edge_index_t* edgeIndex = static_cast<TRI_edge_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_edge_index_t), false));
 
-  if (edgeIndex == NULL) {
-    return NULL;
+  if (edgeIndex == nullptr) {
+    return nullptr;
   }
  
   res = TRI_InitMultiPointer(&edgeIndex->_edges_from,
@@ -965,7 +909,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
 
-    return NULL;
+    return nullptr;
   }
   res = TRI_InitMultiPointer(&edgeIndex->_edges_to,
                              TRI_UNKNOWN_MEM_ZONE,
@@ -978,7 +922,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
     TRI_DestroyMultiPointer(&edgeIndex->_edges_from);
     TRI_Free(TRI_CORE_MEM_ZONE, edgeIndex);
 
-    return NULL;
+    return nullptr;
   }
 
   idx = &edgeIndex->base;
@@ -987,7 +931,7 @@ TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s* primary,
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
  
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, primary, false); 
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false); 
 
   idx->memory   = MemoryEdge;
   idx->json     = JsonEdge;
@@ -1025,10 +969,6 @@ void TRI_FreeEdgeIndex (TRI_index_t* idx) {
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
 // -----------------------------------------------------------------------------
@@ -1037,18 +977,13 @@ void TRI_FreeEdgeIndex (TRI_index_t* idx) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // .............................................................................
 // Helper function for TRI_LookupSkiplistIndex
 // .............................................................................
 
 static int FillLookupSLOperator (TRI_index_operator_t* slOperator, 
-                                 TRI_primary_collection_t* primary) {
-  if (slOperator == NULL) {
+                                 TRI_document_collection_t* document) {
+  if (slOperator == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -1057,10 +992,10 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
       TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) slOperator;
-      int result = FillLookupSLOperator(logicalOperator->_left, primary);
+      int result = FillLookupSLOperator(logicalOperator->_left, document);
 
       if (result == TRI_ERROR_NO_ERROR) {
-        result = FillLookupSLOperator(logicalOperator->_right, primary);
+        result = FillLookupSLOperator(logicalOperator->_right, document);
       }
       if (result != TRI_ERROR_NO_ERROR) {
         return result;
@@ -1088,7 +1023,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(primary->_shaper, jsonObject, false, false);
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->_shaper, jsonObject, false, false);
 
           if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
@@ -1332,7 +1267,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
     return NULL;
   }
 
-  TRI_primary_collection_t* primary = idx->_collection;
+  TRI_document_collection_t* document = idx->_collection;
 
   // ..........................................................................
   // Allocate sufficent memory for the field list
@@ -1346,7 +1281,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
 
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
-    const TRI_shape_path_t* path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
+    const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -1451,24 +1386,20 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
+TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
                                       TRI_idx_iid_t iid,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
                                       bool unique) {
-  int result;
-  size_t j;
-  
-  assert(primary != NULL);
   TRI_skiplist_index_t* skiplistIndex = static_cast<TRI_skiplist_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false));
 
-  if (skiplistIndex == NULL) {
-    return NULL;
+  if (skiplistIndex == nullptr) {
+    return nullptr;
   }
 
   TRI_index_t* idx = &skiplistIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, primary, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique);
 
   idx->memory   = MemorySkiplistIndex;
   idx->json     = JsonSkiplistIndex;
@@ -1481,7 +1412,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
 
   TRI_InitVector(&skiplistIndex->_paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
 
-  for (j = 0;  j < paths->_length;  ++j) {
+  for (size_t j = 0;  j < paths->_length;  ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,j)));
 
     TRI_PushBackVector(&skiplistIndex->_paths, &shape);
@@ -1489,14 +1420,16 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  for (j = 0;  j < fields->_length;  ++j) {
+  for (size_t j = 0;  j < fields->_length;  ++j) {
     char const* name = static_cast<char const*>(fields->_buffer[j]);
     char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
     TRI_PushBackVectorString(&idx->_fields, copy);
   }
 
-  skiplistIndex->_skiplistIndex = SkiplistIndex_new(primary, paths->_length, 
-                                                    unique,false);
+  skiplistIndex->_skiplistIndex = SkiplistIndex_new(document, 
+                                                    paths->_length, 
+                                                    unique,
+                                                    false);
   // Note that the last argument is the "sparse" flag. This will be
   // implemented soon but has no consequences as of now.
 
@@ -1506,14 +1439,14 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when "
                 "creating skiplist structure");
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
   // Assign the function calls used by the query engine
   // ...........................................................................
 
-  result = SkiplistIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
+  int result = SkiplistIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
   result = result || SkiplistIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
   result = result || SkiplistIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
@@ -1523,7 +1456,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
     SkiplistIndex_free(skiplistIndex->_skiplistIndex);
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
-    return NULL;
+    return nullptr;
   }
 
   return idx;
@@ -1534,16 +1467,14 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_primary_collection_t* primary,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
-  TRI_skiplist_index_t* sl;
-
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
 
   LOG_TRACE("destroying skiplist index");
   TRI_DestroyVectorString(&idx->_fields);
 
-  sl = (TRI_skiplist_index_t*) idx;
+  TRI_skiplist_index_t* sl = (TRI_skiplist_index_t*) idx;
   TRI_DestroyVector(&sl->_paths);
 
   SkiplistIndex_free(sl->_skiplistIndex);
@@ -1554,16 +1485,12 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
   TRI_DestroySkiplistIndex(idx);
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    FULLTEXT INDEX
@@ -1572,11 +1499,6 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
@@ -1704,10 +1626,10 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
     return NULL;
   }
 
-  TRI_primary_collection_t* primary = idx->_collection;
+  TRI_document_collection_t* document = idx->_collection;
 
   // convert attribute to string
-  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, fulltextIndex->_attribute);
+  path = document->_shaper->lookupAttributePathByPid(document->_shaper, fulltextIndex->_attribute);
 
   if (path == 0) {
     return NULL;
@@ -1766,24 +1688,15 @@ static int CleanupFulltextIndex (TRI_index_t* idx) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
                                       TRI_idx_iid_t iid,
                                       const char* attributeName,
                                       const bool indexSubstrings,
@@ -1795,7 +1708,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
   TRI_shape_pid_t attribute;
 
   // look up the attribute
-  shaper = primary->_shaper;
+  shaper = document->_shaper;
   attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
@@ -1814,7 +1727,7 @@ TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s* primary,
 
   idx = &fulltextIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, primary, false); 
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false);
 
   idx->memory   = MemoryFulltextIndex;
   idx->json     = JsonFulltextIndex;
@@ -1866,10 +1779,6 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
 // -----------------------------------------------------------------------------
@@ -1878,16 +1787,11 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // .............................................................................
 // Helper function for TRI_LookupBitarrayIndex
 // .............................................................................
 
-static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_primary_collection_t* collection) {
+static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_document_collection_t* collection) {
   if (indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
@@ -2226,8 +2130,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
     return NULL;
   }
 
-  TRI_primary_collection_t* primary = idx->_collection;
-
+  TRI_document_collection_t* document = idx->_collection;
 
   // ..........................................................................
   // Allocate sufficent memory for the field list
@@ -2241,7 +2144,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
   for (j = 0; j < baIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
-    const TRI_shape_path_t* path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, shape);
+    const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -2435,7 +2338,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx,
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
                                       TRI_idx_iid_t iid,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
@@ -2504,7 +2407,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s* primary,
   TRI_bitarray_index_t* baIndex = static_cast<TRI_bitarray_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false));
   idx = &baIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, primary, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, document, false);
 
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;
@@ -2818,10 +2721,6 @@ bool IndexComparator (TRI_json_t const* lhs,
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

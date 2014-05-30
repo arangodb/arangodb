@@ -40,7 +40,6 @@
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -267,22 +266,22 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     assert(json != 0);
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json, true, true);
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->_shaper, json, true, true);
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
       memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
-      int res = primary->readDocument(trxCollection, key, &mptr, false);
+      int res = document->readDocument(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
         if (type == MARKER_EDGE) {
           // edge
-          if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+          if (document->base._info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -306,22 +305,22 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
           // document
-          if (primary->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->base._info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
       else {
         // update
-        res = primary->updateDocument(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
+        res = document->updateDocument(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
       }
       
       TRI_FreeShapedJson(zone, shaped);
@@ -338,8 +337,8 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
   else if (type == MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    int res = primary->removeDocument(trxCollection, key, rid, &_policy, false, false);
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    int res = document->removeDocument(trxCollection, key, rid, &_policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -524,17 +523,17 @@ int Syncer::createIndex (TRI_json_t const* json) {
   }
 
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary = col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  int res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, indexJson, &idx);
+  int res = TRI_FromJsonIndexDocumentCollection(document, indexJson, &idx);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_SaveIndex(primary, idx, _masterInfo._serverId);
+    res = TRI_SaveIndex(document, idx, _masterInfo._serverId);
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   TRI_ReleaseCollectionVocBase(_vocbase, col);
   
@@ -570,7 +569,7 @@ int Syncer::dropIndex (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   
-  TRI_document_collection_t* document = (TRI_document_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   bool result = TRI_DropIndexDocumentCollection(document, iid, _masterInfo._serverId);
 

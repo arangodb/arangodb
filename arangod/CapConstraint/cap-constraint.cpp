@@ -42,24 +42,17 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ApplyCap (TRI_cap_constraint_t* cap,
-                     TRI_primary_collection_t* primary,
+                     TRI_document_collection_t* document,
                      TRI_transaction_collection_t* trxCollection) {
-  TRI_document_collection_t* document;
   TRI_headers_t* headers;
   int64_t currentSize;
   size_t currentCount;
   int res;
 
-  document     = (TRI_document_collection_t*) primary;
   headers      = document->_headers;
   currentCount = headers->count(headers);
   currentSize  = headers->size(headers);
@@ -109,15 +102,13 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitialiseCap (TRI_cap_constraint_t* cap, 
-                          TRI_primary_collection_t* primary) { 
-  TRI_document_collection_t* document;
+                          TRI_document_collection_t* document) { 
   TRI_headers_t* headers;
   size_t currentCount;
   int64_t currentSize;
   
   TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
   
-  document = (TRI_document_collection_t*) primary;
   headers = document->_headers;
   currentCount = headers->count(headers);
   currentSize = headers->size(headers);
@@ -133,8 +124,8 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     TRI_voc_cid_t cid;
     int res;
 
-    vocbase = primary->base._vocbase;
-    cid = primary->base._info._cid;
+    vocbase = document->base._vocbase;
+    cid = document->base._info._cid;
 
     trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), true, 0.0, false);
 
@@ -153,7 +144,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
         res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER, TRI_TRANSACTION_TOP_LEVEL);
 
         if (res == TRI_ERROR_NO_ERROR) {
-          res = ApplyCap(cap, primary, trxCollection);
+          res = ApplyCap(cap, document, trxCollection);
 
           if (res == TRI_ERROR_NO_ERROR) {
             res = TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
@@ -210,8 +201,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveIndexCapConstraint (TRI_index_t* idx,
-                                      TRI_primary_collection_t* primary) {
-  primary->_capConstraint = NULL;
+                                      TRI_document_collection_t* document) {
+  document->_capConstraint = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,9 +212,7 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 static int InsertCapConstraint (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 const bool isRollback) {
-  TRI_cap_constraint_t* cap;
-
-  cap = (TRI_cap_constraint_t*) idx;
+  TRI_cap_constraint_t* cap = (TRI_cap_constraint_t*) idx;
 
   if (cap->_size > 0) {
     // there is a size restriction
@@ -266,24 +255,15 @@ static int RemoveCapConstraint (TRI_index_t* idx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateCapConstraint (TRI_document_collection_t* document,
                                       TRI_idx_iid_t iid,
                                       size_t count,
                                       int64_t size) {
@@ -295,7 +275,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
 
   TRI_index_t* idx = &cap->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, primary, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, document, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->memory      = MemoryCapConstraint;
@@ -308,7 +288,7 @@ TRI_index_t* TRI_CreateCapConstraint (struct TRI_primary_collection_s* primary,
   cap->_count      = count;
   cap->_size       = size;
 
-  InitialiseCap(cap, primary);
+  InitialiseCap(cap, document);
 
   return idx;
 }
@@ -329,10 +309,6 @@ void TRI_FreeCapConstraint (TRI_index_t* idx) {
   TRI_DestroyCapConstraint(idx);
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

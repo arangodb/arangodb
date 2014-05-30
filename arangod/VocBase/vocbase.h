@@ -41,7 +41,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_primary_collection_s;
+struct TRI_document_collection_s;
 struct TRI_col_info_s;
 struct TRI_general_cursor_store_s;
 struct TRI_json_s;
@@ -411,7 +411,7 @@ typedef struct TRI_vocbase_col_s {
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
   TRI_vocbase_col_status_e          _status;     // status of the collection
-  struct TRI_primary_collection_s*  _collection; // NULL or pointer to loaded collection
+  struct TRI_document_collection_s*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
   char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
