@@ -46,6 +46,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -54,11 +55,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for read-only transaction class type
@@ -72,10 +68,6 @@ using namespace triagens::arango;
 
 #define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<ReadTransactionType>(__VA_ARGS__)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -83,11 +75,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo coordinate container, also containing the distance
@@ -109,18 +96,9 @@ typedef enum {
 }
 query_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an empty result set
@@ -1414,43 +1392,6 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts geo coordinates
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left,
-                                         geo_coordinate_distance_t* right) {
-  if (left->_distance < right->_distance) {
-    return -1;
-  }
-  else if (left->_distance > right->_distance) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-#define FSRT_INSTANCE SortGeo
-#define FSRT_NAME SortGeoCoordinates
-#define FSRT_NAM2 SortGeoCoordinatesTmp
-#define FSRT_TYPE geo_coordinate_distance_t
-
-#define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
-
-uint32_t SortGeoFSRT_Rand = 0;
-
-static uint32_t SortGeoRandomGenerator (void) {
-  return (SortGeoFSRT_Rand = SortGeoFSRT_Rand * 31415 + 27818);
-}
-
-#define FSRT__RAND ((fs_b) + FSRT__UNIT * (SortGeoRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
-
-#include "BasicsC/fsrt.inc"
-
-#undef FSRT__RAND
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1462,7 +1403,6 @@ static int StoreGeoResult (ReadTransactionType& trx,
   GeoCoordinate* end;
   GeoCoordinate* ptr;
   double* dtr;
-  geo_coordinate_distance_t* gnd;
   geo_coordinate_distance_t* gtr;
   geo_coordinate_distance_t* tmp;
   size_t n;
@@ -1478,13 +1418,14 @@ static int StoreGeoResult (ReadTransactionType& trx,
   }
 
   gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
-  if (gtr == 0) {
+
+  if (gtr == nullptr) {
     GeoIndex_CoordinatesFree(cors);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  gnd = tmp + n;
+  
+  geo_coordinate_distance_t* gnd = tmp + n;
 
   ptr = cors->coordinates;
   end = cors->coordinates + n;
@@ -1498,7 +1439,18 @@ static int StoreGeoResult (ReadTransactionType& trx,
 
   GeoIndex_CoordinatesFree(cors);
 
-  SortGeoCoordinates(tmp, gnd);
+  // sort result by distance
+  auto compareSort = [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    if (left._distance < right._distance) {
+      return -1;
+    } 
+    else if (left._distance > right._distance) {
+      return 1;
+    }
+
+    return 0;
+  };
+  std::sort(tmp, gnd, compareSort);
 
   barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
 
@@ -1537,10 +1489,6 @@ static int StoreGeoResult (ReadTransactionType& trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   QUERY FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -1548,11 +1496,6 @@ static int StoreGeoResult (ReadTransactionType& trx,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges for given direction
@@ -1730,18 +1673,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
   return scope.Close(documents);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all documents from a collection
@@ -3145,10 +3079,6 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
@@ -3156,11 +3086,6 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the query functions
@@ -3204,10 +3129,6 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "OUTEDGES", JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
