@@ -40,6 +40,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/ApplicationScheduler.h"
+#include "Scheduler/Scheduler.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -741,6 +743,25 @@ bool ApplicationV8::start () {
 void ApplicationV8::close () {
   _stopping = 1;
   _contextCondition.broadcast();
+
+  // unregister all tasks
+  if (_scheduler != nullptr) {
+    _scheduler->scheduler()->unregisterUserTasks();
+  }
+
+  // wait for all contexts to finish
+  for (size_t n = 0;  n < 10 * 5;  ++n) {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    if (_busyContexts.empty()) {
+      LOG_DEBUG("no busy V8 contexts");
+      break;
+    }
+ 
+    LOG_DEBUG("waiting for %d busy V8 contexts to finish", (int) _busyContexts.size());
+
+    guard.wait(100000);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -748,6 +769,28 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+
+  //send all busy contexts a termate signal
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    for (auto it = _busyContexts.begin(); it != _busyContexts.end(); ++it) {
+      LOG_WARNING("sending termination signal to V8 context");
+      v8::V8::TerminateExecution((*it)->_isolate);
+    }
+  }
+
+  // wait for one minute
+  for (size_t n = 0;  n < 10 * 60;  ++n) {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    if (_busyContexts.empty()) {
+      break;
+    }
+ 
+    guard.wait(100000);
+  }
+
   // stop GC
   _gcThread->shutdown();
 

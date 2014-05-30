@@ -1630,7 +1630,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a string
+/// @brief converts a V8 object to a string
 ////////////////////////////////////////////////////////////////////////////////
 
 string TRI_ObjectToString (v8::Handle<v8::Value> const value) {

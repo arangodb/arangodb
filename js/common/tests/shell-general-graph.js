@@ -1600,8 +1600,8 @@ function EdgesAndVerticesSuite() {
 
     test_dropGraph : function () {
       var myGraphName = unitTestGraphName + "2";
-      var myEdgeColName = ec1;
-      var myVertexColName = "unitTestVertexCollection4711";
+      var myEdgeColName = "unitTestEdgeCollection4711";
+      var myVertexColName = vc1;
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
@@ -1610,8 +1610,68 @@ function EdgesAndVerticesSuite() {
       );
       graph._drop(myGraphName);
       assertFalse(graph._exists(myGraphName));
-      assertTrue(db._collection(myVertexColName) === null);
-      assertTrue(db._collection(myEdgeColName) !== null);
+      assertTrue(db._collection(myVertexColName) !== null);
+      assertTrue(db._collection(myEdgeColName) === null);
+    },
+
+    test_createGraphWithCollectionDuplicateOK : function () {
+      var myGraphName = unitTestGraphName + "2";
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(ec1, vc1)
+        )
+      );
+      assertTrue(graph._exists(myGraphName));
+      graph._drop(myGraphName);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(vc1) !== null);
+      assertTrue(db._collection(ec1) !== null);
+    },
+
+    test_createGraphWithCollectionDuplicateNOK1 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      try {
+        graph._create(
+          myGraphName,
+          graph._edgeDefinitions(
+            graph._undirectedRelationDefinition(ec1, vc2)
+          )
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          ec1 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(vc2) !== null);
+      assertTrue(db._collection(ec1) !== null);
+    },
+
+    test_createGraphWithCollectionDuplicateNOK2 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myED = "unitTestEdgeCollection4711";
+      var myVD1 = "unitTestVertexCollection4711";
+      var myVD2 = "unitTestVertexCollection4712";
+      try {
+        graph._create(
+          myGraphName,
+          graph._edgeDefinitions(
+            graph._undirectedRelationDefinition(myED, myVD1),
+            graph._undirectedRelationDefinition(myED, myVD2)
+          )
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVD1) === null);
+      assertTrue(db._collection(myVD2) === null);
+      assertTrue(db._collection(myED) === null);
     },
 
     test_edgeCollections : function () {
@@ -1762,6 +1822,12 @@ function EdgesAndVerticesSuite() {
       var myGraphName = unitTestGraphName + "0815";
       var myEC02 = "unitTestEdgeCollection02";
       var myVC01 = "unitTestVertexCollection01";
+      try {
+        graph._drop(myGraphName);
+        db._drop(myEC02);
+        db._drop(myVC01);
+      } catch (ignore) {
+      }
       var g2 = graph._create(
         myGraphName,
         graph._edgeDefinitions(
@@ -1800,6 +1866,21 @@ function EdgesAndVerticesSuite() {
       var vC2 = "unitTestVertexCollectionCircle2";
       var vC3 = "unitTestVertexCollectionCircle3";
       var vC4 = "unitTestVertexCollectionCircle4";
+      try {
+        graph._drop(gN1);
+        graph._drop(gN2);
+        graph._drop(gN3);
+        graph._drop(gN4);
+        db._drop(eC1);
+        db._drop(eC2);
+        db._drop(eC3);
+        db._drop(eC4);
+        db._drop(vC1);
+        db._drop(vC2);
+        db._drop(vC3);
+        db._drop(vC4);
+      } catch (ignore) {
+      }
 
       db._createEdgeCollection(eC1)
       db._createEdgeCollection(eC2)
@@ -1893,6 +1974,275 @@ function EdgesAndVerticesSuite() {
   };
 }
 
+
+
+function GeneralGraphCommonNeighborsSuite() {
+  var vertex = null;
+  var edge = null;
+  var testGraph, actual;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlEdge1");
+
+      vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
+
+      vertex1.save({ _key: "v1" , hugo : true});
+      vertex1.save({ _key: "v2" ,hugo : true});
+      vertex1.save({ _key: "v3" , heinz : 1});
+      vertex1.save({ _key: "v4" , harald : "meier"});
+      vertex2.save({ _key: "v5" , ageing : true});
+      vertex2.save({ _key: "v6" , harald : "meier", ageing : true});
+      vertex2.save({ _key: "v7" ,harald : "meier"});
+      vertex2.save({ _key: "v8" ,heinz : 1, harald : "meier"});
+
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
+      }
+
+      makeEdge("UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex1/v2", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex1/v3", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v5", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex2/v6", edge1);
+      makeEdge("UnitTestsAhuacatlVertex2/v6", "UnitTestsAhuacatlVertex2/v7", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v4", "UnitTestsAhuacatlVertex2/v7", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v7", edge1);
+      makeEdge("UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex1/v1", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v5", edge1);
+      makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v8", edge1);
+
+      try {
+        db._collection("_graphs").remove("_graphs/bla3")
+      } catch (err) {
+      }
+      testGraph = graph._create(
+        "bla3",
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition("UnitTestsAhuacatlEdge1",
+            ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
+            ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"]
+          )
+        )
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlEdge1");
+      try {
+        db._collection("_graphs").remove("_graphs/bla3")
+      } catch (err) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_COMMON_NEIGHBORS() and GRAPH_COMMON_PROPERTIES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonNeighborsAny: function () {
+      actual = testGraph._listCommonNeighbors('UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id  , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][1]._id  , "UnitTestsAhuacatlVertex2/v7");
+
+
+      actual = testGraph._amountCommonNeighbors('UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"][0]["UnitTestsAhuacatlVertex2/v6"] , 2);
+
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_COMMON_NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonNeighborsIn: function () {
+      actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id  , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"]["UnitTestsAhuacatlVertex2/v8"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"]["UnitTestsAhuacatlVertex2/v7"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+
+
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex2/v6"]["UnitTestsAhuacatlVertex1/v3"][0]._id  , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v7"]["UnitTestsAhuacatlVertex2/v5"][0]._id   , "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v7"]["UnitTestsAhuacatlVertex2/v8"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"]["UnitTestsAhuacatlVertex2/v5"][0]._id   , "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"]["UnitTestsAhuacatlVertex2/v7"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+
+      actual = testGraph._amountCommonNeighbors({} , {},  {direction : 'inbound'});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"][0]["UnitTestsAhuacatlVertex2/v6"] , 1);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"][0]["UnitTestsAhuacatlVertex2/v8"] , 1);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"][1]["UnitTestsAhuacatlVertex2/v7"] , 1);
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex2/v6"][0]["UnitTestsAhuacatlVertex1/v3"] , 1);
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v7"][0]["UnitTestsAhuacatlVertex2/v5"] , 1);
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v7"][1]["UnitTestsAhuacatlVertex2/v8"] , 1);
+
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"][0]["UnitTestsAhuacatlVertex2/v5"] , 1);
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v8"][1]["UnitTestsAhuacatlVertex2/v7"] , 1);
+
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_COMMON_NEIGHBORS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonNeighborsOut: function () {
+      actual = testGraph._listCommonNeighbors( { hugo : true } , {heinz : 1},  {direction : 'outbound', minDepth : 1, maxDepth : 3});
+      assertEqual(Object.keys(actual[1])[0] , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]) , ["UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex1/v3"]);
+
+      assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v8"].length  , 3);
+      assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex1/v3"].length  , 4);
+
+      assertEqual(Object.keys(actual[0])[0] , "UnitTestsAhuacatlVertex1/v1");
+      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]) , ["UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v8"]);
+
+      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex1/v3"].length  , 4);
+      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v8"].length  , 3);
+
+      actual = testGraph._amountCommonNeighbors({ hugo : true } , {heinz : 1},  {direction : 'outbound', minDepth : 1, maxDepth : 3});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][0]["UnitTestsAhuacatlVertex1/v3"] , 4);
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][1]["UnitTestsAhuacatlVertex2/v8"] , 3);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][0]["UnitTestsAhuacatlVertex2/v8"] , 3);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][1]["UnitTestsAhuacatlVertex1/v3"] , 4);
+
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks GRAPH_COMMON_PROPERTIES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCommonProperties: function () {
+      actual = testGraph._listCommonProperties( { } , {},  {});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][0]._id  , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][0]._id  , "UnitTestsAhuacatlVertex1/v1");
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"][0]._id  , "UnitTestsAhuacatlVertex2/v8");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][0]._id  , "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][1]._id  , "UnitTestsAhuacatlVertex2/v8");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][2]._id  , "UnitTestsAhuacatlVertex2/v7");
+
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v5"][0]._id  , "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][0]._id  , "UnitTestsAhuacatlVertex1/v4");
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][1]._id  , "UnitTestsAhuacatlVertex2/v5");
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][2]._id  , "UnitTestsAhuacatlVertex2/v8");
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][3]._id  , "UnitTestsAhuacatlVertex2/v7");
+
+
+      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][0]._id  , "UnitTestsAhuacatlVertex1/v4");
+      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][1]._id  , "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][2]._id  , "UnitTestsAhuacatlVertex2/v8");
+
+      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][1]._id  , "UnitTestsAhuacatlVertex1/v4");
+      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][2]._id  , "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][3]._id  , "UnitTestsAhuacatlVertex2/v7");
+
+
+      actual = testGraph._amountCommonProperties( { } , {},  {});
+      assertEqual(actual, [
+        {
+          "UnitTestsAhuacatlVertex1/v1" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex1/v2" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex1/v3" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex1/v4" : 3
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v5" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v6" : 4
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v7" : 3
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v8" : 4
+        }
+      ]);
+
+
+
+    },
+
+    testCommonPropertiesWithFilters: function () {
+      actual = testGraph._listCommonProperties({ageing : true} , {harald : 'meier'},  {});
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex2/v5"][0]._id  , "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][0]._id  , "UnitTestsAhuacatlVertex1/v4");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][1]._id  , "UnitTestsAhuacatlVertex2/v8");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][2]._id  , "UnitTestsAhuacatlVertex2/v7");
+
+      actual = testGraph._amountCommonProperties({ageing : true} , {harald : 'meier'},  {});
+      assertEqual(actual, [
+        {
+          "UnitTestsAhuacatlVertex2/v5" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v6" : 3
+        }
+      ]);
+
+    },
+
+    testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
+      actual = testGraph._listCommonProperties( {} , {},  {ignoreProperties : 'harald'});
+
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][0]._id  , "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][0]._id  , "UnitTestsAhuacatlVertex1/v1");
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"][0]._id  , "UnitTestsAhuacatlVertex2/v8");
+
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v5"][0]._id  , "UnitTestsAhuacatlVertex2/v6");
+
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v6"][0]._id  , "UnitTestsAhuacatlVertex2/v5");
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v8"][0]._id  , "UnitTestsAhuacatlVertex1/v3");
+
+      actual = testGraph._amountCommonProperties({} , {},  {ignoreProperties : 'harald'});
+      assertEqual(actual, [
+        {
+          "UnitTestsAhuacatlVertex1/v1" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex1/v2" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex1/v3" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v5" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v6" : 1
+        },
+        {
+          "UnitTestsAhuacatlVertex2/v8" : 1
+        }
+      ]);
+
+
+    }
+  }
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
@@ -1901,6 +2251,7 @@ function EdgesAndVerticesSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);

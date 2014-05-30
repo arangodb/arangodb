@@ -36,6 +36,7 @@
 #include "ShapedJson/json-shaper.h"
 #include "VocBase/barrier.h"
 #include "VocBase/marker.h"
+#include "VocBase/primary-index.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
@@ -124,7 +125,7 @@ typedef struct TRI_doc_mptr_s {
   TRI_voc_rid_t          _rid;      // this is the revision identifier
   TRI_voc_fid_t          _fid;      // this is the datafile identifier
   void const*            _data;     // this is the pointer to the beginning of the raw marker
-  char*                  _key;      // this is the document identifier (string)
+  uint64_t               _hash;     // the pre-calculated hash value of the key
   struct TRI_doc_mptr_s* _prev;     // previous master pointer
   struct TRI_doc_mptr_s* _next;     // next master pointer
 }
@@ -306,7 +307,7 @@ typedef struct TRI_primary_collection_s {
   TRI_barrier_list_t           _barrierList;
   TRI_associative_pointer_t    _datafileInfo;
 
-  TRI_associative_pointer_t    _primaryIndex;
+  TRI_primary_index_t          _primaryIndex;
   struct TRI_key_generator_s*  _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
 

@@ -329,7 +329,7 @@ module.exports = {
 			return function pseudoArgs(elem){
 				return func(elem, subselect) && next(elem);
 			};
-		} else {
+		} else {
 			throw new SyntaxError("unmatched pseudo-class :" + name);
 		}
 	},

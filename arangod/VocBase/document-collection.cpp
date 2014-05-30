@@ -43,6 +43,7 @@
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/marker.h"
+#include "VocBase/primary-index.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
@@ -114,7 +115,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsVisible (TRI_doc_mptr_t const* header) {
-  return (header != NULL);
+  return (header != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,12 +163,12 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
   TRI_ASSERT_MAINTAINER(document != nullptr);
   TRI_ASSERT_MAINTAINER(header != nullptr);
-  TRI_ASSERT_MAINTAINER(header->_key != nullptr);
+  TRI_ASSERT_MAINTAINER(header->_data != nullptr);
   
   primary = &document->base;
 
   // add a new header
-  res = TRI_InsertKeyAssociativePointer2(&primary->_primaryIndex, header->_key, (void*) header, (const void**) &found);
+  res = TRI_InsertKeyPrimaryIndex(&primary->_primaryIndex, header, (void const**) &found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -183,7 +184,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   // we found a previous revision in the index
   // the found revision is still alive
   LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-            header->_key,
+            TRI_EXTRACT_MARKER_KEY(header),
             (unsigned long long) found->_rid,
             (unsigned long long) header->_rid);
 
@@ -232,7 +233,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   // .............................................................................
 
   TRI_primary_collection_t* primary = &document->base;
-  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyAssociativePointer(&primary->_primaryIndex, header->_key));
+  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&primary->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header)));
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -283,15 +284,14 @@ static int CreateHeader (TRI_document_collection_t* document,
   // get a new header pointer
   header = document->_headers->request(document->_headers, markerSize);
 
-  if (header == NULL) {
+  if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  header->_rid       = marker->_rid;
-  header->_fid       = fid;
-  header->_data      = marker;
-  header->_key       = ((char*) marker) + marker->_offsetKey;
-
+  header->_rid     = marker->_rid;
+  header->_fid     = fid;
+  header->_data    = marker;
+  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -439,7 +439,6 @@ static void UpdateHeader (TRI_voc_fid_t fid,
   newHeader->_rid     = marker->_rid;
   newHeader->_fid     = fid;
   newHeader->_data    = marker;
-  newHeader->_key     = ((char*) marker) + marker->_offsetKey;
 }
 
 // -----------------------------------------------------------------------------
@@ -572,7 +571,7 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* collectio
     if (p) {
       printf("fid %llu, key %s, rid %llu\n",
              (unsigned long long) p->_fid,
-             (char*) p->_key,
+             (char*) TRI_EXTRACT_MARKER_KEY(p),
              (unsigned long long) p->_rid);
     }
   }
@@ -676,7 +675,6 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   // TODO: isRestore is not used yet!
   assert(mptr != nullptr);
   mptr->_data = nullptr;
-  mptr->_key = nullptr;
 
   rid = GetRevisionId(rid);
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
@@ -765,10 +763,9 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
     // update the header we got
     void* mem = operation.marker->mem();
-    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(mem);
     header->_rid  = rid;
     header->_data = mem;
-    header->_key  = static_cast<char*>(const_cast<void*>(mem)) + m->_offsetKey; 
+    header->_hash = TRI_FnvHashString(keyString.c_str());
 
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
@@ -776,14 +773,12 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     if (res != TRI_ERROR_NO_ERROR) {
       // release the header. nobody else should point to it now
       assert(mptr->_data == nullptr);
-      assert(mptr->_key == nullptr);
   
       // something has failed.... now delete from the indexes again
       RollbackInsert(document, header);
     }
     else {
       assert(mptr->_data != nullptr);
-      assert(mptr->_key != nullptr);
     }
   }
 
@@ -799,7 +794,7 @@ static int LookupDocument (TRI_primary_collection_t* primary,
                            TRI_voc_key_t key,
                            TRI_doc_update_policy_t const* policy,
                            TRI_doc_mptr_t*& header) {
-  header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+  header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
   
   if (! IsVisible(header)) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -822,7 +817,6 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    bool lock) {
   assert(mptr != nullptr);
   mptr->_data = nullptr;
-  mptr->_key = nullptr;
 
   {
     TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
@@ -839,7 +833,6 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
     *mptr = *header;
   }
 
-  assert(mptr->_key != nullptr);
   assert(mptr->_data != nullptr);
   assert(mptr->_rid > 0);
 
@@ -933,7 +926,6 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   // initialise the result
   assert(mptr != nullptr);
-  mptr->_key  = nullptr;
   mptr->_data = nullptr;
     
   TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
@@ -997,12 +989,10 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
    
   if (res == TRI_ERROR_NO_ERROR) { 
-    assert(mptr->_key != nullptr);
     assert(mptr->_data != nullptr);
     assert(mptr->_rid > 0);
   }
   else {
-    assert(mptr->_key == nullptr);
     assert(mptr->_data == nullptr);
     assert(mptr->_rid == 0);
   }
@@ -1300,7 +1290,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     primary->_keyGenerator->trackKey(primary->_keyGenerator, key);
   }
 
-  found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+  found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
 
   // it is a new entry
   if (found == NULL) {
@@ -1432,7 +1422,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     primary->_keyGenerator->trackKey(primary->_keyGenerator, key);
   }
 
-  found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(&primary->_primaryIndex, key));
+  found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&primary->_primaryIndex, key));
 
   // it is a new entry, so we missed the create
   if (found == NULL) {
@@ -2940,7 +2930,7 @@ static int FillIndex (TRI_document_collection_t* document,
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
                     (unsigned long long) primary->base._info._cid,
-                    (char*) mptr->_key,
+                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),
                     (unsigned long long) idx->_iid);
 
         return res;
@@ -5140,7 +5130,7 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return RemoveDocumentShapedJson(trxCollection, doc->_key, 0, policy, false, false);
+  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

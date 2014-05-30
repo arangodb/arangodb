@@ -969,8 +969,6 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
     operation.header->_data = slotInfo.mem;
-    triagens::wal::document_marker_t const* m = static_cast<triagens::wal::document_marker_t const*>(operation.header->_data);
-    operation.header->_key  = static_cast<char*>(const_cast<void*>(slotInfo.mem)) + m->_offsetKey; 
   } 
 
   operation.handled(isSingleOperationTransaction);

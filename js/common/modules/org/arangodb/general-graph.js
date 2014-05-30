@@ -222,8 +222,14 @@ AQLStatement.prototype.allowsRestrict = function() {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             AQL Generator
+// --SECTION--                                AQL Generator for fluent interface
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Starting point of the fluent interface.
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
 
 var AQLGenerator = function(graph) {
   this.stack = [];
@@ -235,6 +241,12 @@ var AQLGenerator = function(graph) {
   this.lastVar = "";
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Dispose and reset the current cursor of the query
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype._clearCursor = function() {
   if (this.cursor) {
     this.cursor.dispose();
@@ -242,11 +254,27 @@ AQLGenerator.prototype._clearCursor = function() {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Execute the query and keep the cursor
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype._createCursor = function() {
   if (!this.cursor) {
     this.cursor = this.execute();
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General edge query, takes direction as parameter
+///
+/// This will create the general AQL statement to load edges
+/// connected to the vertices selected in the step before.
+/// Will also bind the options into bindVars.
+///
+/// Only for internal use, user gets different functions for directions
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype._edges = function(edgeExample, options) {
   this._clearCursor();
@@ -272,6 +300,79 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   this.lastVar = edgeName;
   return this;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_edges
+/// @brief select all connected edges
+/// 
+/// @FUN{graph-query.edges(@FA{examples})}
+///
+/// Creates an AQL statement to select all edges for each of the vertices selected
+/// in the step before.
+/// This will include `inbound` as well as `outbound` edges.
+/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered edges:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered edges by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges({type: "married"}).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered edges by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// To define a relation between several vertex collections:
+///
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.edges = function(example) {
   return this._edges(example, {direction: "any"});
@@ -599,6 +700,42 @@ var _create = function (graphName, edgeDefinitions) {
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
     throw "at least one edge definition is required to create a graph.";
   }
+  //check, if a collection is already used in a different edgeDefinition
+  var tmpCollections = [];
+  var tmpEdgeDefinitions = {};
+  edgeDefinitions.forEach(
+    function(edgeDefinition) {
+      var col = edgeDefinition.collection;
+      if (tmpCollections.indexOf(col) !== -1) {
+        var err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
+        err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
+        throw err;
+      }
+      tmpCollections.push(col);
+      tmpEdgeDefinitions[col] = edgeDefinition;
+    }
+  );
+  gdb.toArray().forEach(
+    function(singleGraph) {
+      var sGEDs = singleGraph.edgeDefinitions;
+      sGEDs.forEach(
+        function(sGED) {
+          var col = sGED.collection;
+          if (tmpCollections.indexOf(col) !== -1) {
+            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+              var err = new ArangoError();
+              err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
+              err.errorMessage = col
+                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+              throw err;
+            }
+          }
+        }
+      );
+    }
+  );
+
   try {
     g = gdb.document(graphName);
   } catch (e) {
@@ -634,6 +771,44 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
 
+  var removeEdge = function (edgeId, options) {
+    options = options || {};
+    var edgeCollection = edgeId.split("/")[0];
+    var graphs = getGraphCollection().toArray();
+    var result = db._remove(edgeId, options);
+//    var result = old_remove(edgeId, options);
+    graphs.forEach(
+      function(graph) {
+        var edgeDefinitions = graph.edgeDefinitions;
+        if (graph.edgeDefinitions) {
+          edgeDefinitions.forEach(
+            function(edgeDefinition) {
+              var from = edgeDefinition.from;
+              var to = edgeDefinition.to;
+              var collection = edgeDefinition.collection;
+              // if collection of edge to be deleted is in from or to
+              if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+                //search all edges of the graph
+                var edges = db[collection].toArray();
+                edges.forEach(
+                  function (edge) {
+                    // if from is
+                    if (edge._from === edgeId || edge._to === edgeId) {
+                      var newGraph = exports._graph(graph._key);
+                      newGraph[collection].remove(edge._id, options);
+                    }
+                  }
+                );
+              }
+            }
+          );
+        }
+      }
+    );
+    return result;
+  };
+
+
   _.each(vertexCollections, function(obj, key) {
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
@@ -657,7 +832,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
                   edges.forEach(
                     function(edge) {
                       if (edge._from === vertexId || edge._to === vertexId) {
-                        db._remove(edge._id);
+                        removeEdge(edge._id, options);
                       }
                     }
                   );
@@ -705,39 +880,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
-      options = options || {};
-      var edgeCollection = edgeId.split("/")[0];
-      var graphs = getGraphCollection().toArray();
-      var result = old_remove(edgeId, options);
-      graphs.forEach(
-        function(graph) {
-          var edgeDefinitions = graph.edgeDefinitions;
-          if (graph.edgeDefinitions) {
-            edgeDefinitions.forEach(
-              function(edgeDefinition) {
-                var from = edgeDefinition.from;
-                var to = edgeDefinition.to;
-                var collection = edgeDefinition.collection;
-                // if collection of edge to be deleted is in from or to
-                if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
-                  //search all edges of the graph
-                  var edges = db[collection].toArray();
-                  edges.forEach(
-                    function (edge) {
-                      // if from is
-                      if (edge._from === edgeId || edge._to === edgeId) {
-                        var newGraph = exports._graph(graph._key);
-                        newGraph[collection].remove(edge._id, options);
-                      }
-                    }
-                  );
-                }
-              }
-            );
-          }
-        }
-      );
-      return result;
+      return (removeEdge(edgeId, options));
     };
     self[key] = wrap;
   });
@@ -1092,7 +1235,25 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// @brief get common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
+Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  return db._query(query, bindVars, {count: true}).toArray();
+
 
 };
 
@@ -1100,15 +1261,63 @@ Graph.prototype._listCommonNeighbors = function(vertex1, vertex2, options) {
 /// @brief get amount of common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._amountCommonNeighbors = function(vertex1, vertex2, options) {
-
+Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a])  '
+    + 'SORT  ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars, {count: true}).toArray(),
+    tmp = {}, tmp2={}, returnHash = [];
+  result.forEach(function (r) {
+    if (!tmp[r[0]]) {
+      tmp[r[0]] = [];
+    }
+    tmp2 = {};
+    tmp2[r[1]] = r[2];
+    tmp[r[0]].push(tmp2);
+  });
+  Object.keys(tmp).forEach(function(w) {
+    tmp2 = {};
+    tmp2[w] = tmp[w];
+    returnHash.push(tmp2);
+  });
+  return returnHash;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get common properties of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
+Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example, options) {
+
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  return db._query(query, bindVars, {count: true}).toArray();
 
 };
 
@@ -1116,8 +1325,29 @@ Graph.prototype._listCommonProperties = function(vertex1, vertex2, options) {
 /// @brief get amount of common properties of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._amountCommonProperties = function(vertex1, vertex2, options) {
-
+Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Example, options) {
+  var ex1 = transformExample(vertex1Example);
+  var ex2 = transformExample(vertex2Example);
+  var query = "FOR e"
+    + " IN GRAPH_COMMON_PROPERTIES(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ') FOR a in ATTRIBUTES(e)  SORT  ATTRIBUTES(e)[0] RETURN [ ATTRIBUTES(e)[0], LENGTH(e[a]) ]';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars, {count: true}).toArray(), returnHash = [];
+  result.forEach(function (r) {
+    var tmp = {};
+    tmp[r[0]] = r[1];
+    returnHash.push(tmp);
+  });
+  return returnHash;
 };
 
 // -----------------------------------------------------------------------------

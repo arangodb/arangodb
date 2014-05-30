@@ -359,14 +359,14 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  assert(document._key != 0);
+  assert(document._data != nullptr);
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid, document._key, document._rid);
+    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
   }
   else {
-    generateAccepted(cid, document._key, document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
   }
 
   return true;
@@ -592,14 +592,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  if (document._key == 0 || document._data == 0) {
+  if (document._data == nullptr) {
     generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
   // generate result
-  assert(document._key != 0);
-
   const TRI_voc_rid_t rid = document._rid;
 
   if (ifNoneRid == 0) {
@@ -607,7 +605,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(cid, &document, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -615,7 +613,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
     }
   }
   else {
@@ -623,7 +621,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(cid, &document, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, document._key, rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
     }
   }
 
@@ -1375,7 +1373,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    if (oldDocument._key == 0 || oldDocument._data == 0) {
+    if (oldDocument._data == nullptr) {
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1387,7 +1385,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-    if (old == 0) {
+    if (old == nullptr) {
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1444,7 +1442,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
 
-      if (oldDocument._key == 0 || oldDocument._data == 0) {
+      if (oldDocument._data == nullptr) {
         trx.abort();
         generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

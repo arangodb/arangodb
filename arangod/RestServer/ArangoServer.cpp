@@ -716,6 +716,7 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
+  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -738,8 +739,21 @@ int ArangoServer::startupServer () {
   assert(vocbase != 0);
 
   // initialise V8
+  size_t concurrency = _dispatcherThreads;
+
+  if (mode == OperationMode::MODE_CONSOLE) {
+    // one V8 instance is taken by the console
+    ++concurrency;
+  }
+  else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
+    if (concurrency == 1) {
+      // at least two to allow the test-runner and the scheduler to use a V8
+      concurrency = 2;
+    }
+  }
+
   _applicationV8->setVocbase(vocbase);
-  _applicationV8->setConcurrency(_dispatcherThreads);
+  _applicationV8->setConcurrency(concurrency);
 
   if (_applicationServer->programOptions().has("upgrade")) {
     _applicationV8->performUpgrade();
@@ -804,8 +818,6 @@ int ArangoServer::startupServer () {
   }
 
   LOG_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
-
-  OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
   int res;
 

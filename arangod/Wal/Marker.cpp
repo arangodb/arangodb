@@ -55,7 +55,7 @@ Marker::Marker (TRI_df_marker_type_e type,
   m->_crc  = 0;
   m->_tick = 0;
 
-  std::cout << "CREATED A MARKER OF SIZE: " << size << ", buffer: " << (void*) _buffer << "\n";
+  std::cout << "CREATED A MARKER OF SIZE: " << size << ", type: " << type << ", buffer: " << (void*) _buffer << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

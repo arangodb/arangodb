@@ -29,6 +29,7 @@
 
 #include "BasicsC/logging.h"
 #include "VocBase/primary-collection.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -526,7 +527,7 @@ static void DumpHeaders (TRI_headers_t const* h) {
               next, 
               next->_prev, 
               next->_next, 
-              next->_key);
+              TRI_EXTRACT_MARKER_KEY(next));
     i++;
 
     if (next->_next == nullptr) {

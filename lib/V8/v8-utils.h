@@ -49,20 +49,40 @@
 
 class TRI_Utf8ValueNFC {
   public:
-    TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, v8::Handle<v8::Value> obj);
-    ~TRI_Utf8ValueNFC ();
-    char* operator* () { return _str; }
-    const char* operator* () const { return _str; }
-    size_t length () const { return _length; }
-    char* steal () { char* tmp = _str; _str = 0; return tmp; }
-  private:
-    char* _str;
-    size_t _length;
-    TRI_memory_zone_t* _memoryZone;
+    TRI_Utf8ValueNFC (TRI_memory_zone_t*, 
+                      v8::Handle<v8::Value> const);
 
+    ~TRI_Utf8ValueNFC ();
+    
     // Disallow copying and assigning.
-    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&);
-    void operator=(const TRI_Utf8ValueNFC&);
+    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&) = delete;
+    void operator=(const TRI_Utf8ValueNFC&) = delete;
+
+    inline char* operator* () { 
+      return _str; 
+    }
+
+    inline const char* operator* () const { 
+      return _str; 
+    }
+
+    inline size_t length () const { 
+      return _length; 
+    }
+
+    char* steal () { 
+      char* tmp = _str; 
+      _str = nullptr; 
+      return tmp; 
+    }
+
+  private:
+
+    char* _str;
+
+    size_t _length;
+
+    TRI_memory_zone_t* _memoryZone;
 };
 
 // -----------------------------------------------------------------------------

@@ -225,7 +225,7 @@ int usersOnCoordinator (std::string const& dbname,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all",
                            body,
                            true,
-                           headers, NULL, 300.0);
+                           headers, NULL, 10.0);
     delete res;
   }
 

@@ -122,6 +122,7 @@ add_executable(
     VocBase/key-generator.cpp
     VocBase/marker.cpp
     VocBase/primary-collection.cpp
+    VocBase/primary-index.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp

@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect, jQuery, _, jqconsole, $*/
-/*global arangoHelper*/
+/*global arangoHelper, ace*/
 
 
 (function() {
@@ -11,6 +11,16 @@
     var view, div, div2, jQueryDummy;
 
     beforeEach(function() {
+      window.App = {
+        notificationList: {
+          add: function() {
+            throw "Should be a spy";
+          }
+        }
+      };
+
+      spyOn(window.App.notificationList, "add");
+      
       div = document.createElement("div");
       div.id = "content";
       document.body.appendChild(div);
@@ -20,19 +30,13 @@
 
       window.modalView = new window.ModalView();
 
-      window.App = {
-        notificationList: {
-          add: function() {
-          }
-        }
-      }
-
-      spyOn(view, "getSystemQueries").andCallFake(function(){});
+      spyOn(view, "getSystemQueries");
 
       view.render();
     });
 
     afterEach(function() {
+      delete window.App;
       document.body.removeChild(div);
     });
 
@@ -290,7 +294,9 @@
       spyOn(localStorage, "setItem");
 
       view.deleteAQL(e);
-      expect(localStorage.setItem).toHaveBeenCalledWith("customQueries", JSON.stringify(view.customQueries));
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        "customQueries", JSON.stringify(view.customQueries)
+      );
       expect(view.renderSelectboxes).toHaveBeenCalled();
       expect(view.updateTable).toHaveBeenCalled();
     });
@@ -301,7 +307,7 @@
         value: "for var yx do something"
       }], e = {
         target: "dontcare",
-        stopPropagation: function() {}
+        stopPropagation: function() {throw "Should be a spy";}
       };
       localStorage.setItem("customQueries", JSON.stringify(customQueries));
       view.initialize();
@@ -331,7 +337,9 @@
         value: "for var yx do something"
       }], e = {
         target: "dontcare",
-        stopPropagation: function() {}
+        stopPropagation: function() {
+          throw "Should be a spy";
+        }
       };
       localStorage.setItem("customQueries", JSON.stringify(customQueries));
       view.initialize();
@@ -361,7 +369,9 @@
         value: "for var yx do something"
       }], e = {
         target: "dontcare",
-        stopPropagation: function() {}
+        stopPropagation: function() {
+          throw "Should be a spy";
+        }
       };
       localStorage.setItem("customQueries", JSON.stringify(customQueries));
       view.initialize();
@@ -391,7 +401,9 @@
         value: "for var yx do something"
       }], e = {
         target: "dontcare",
-        stopPropagation: function() {}
+        stopPropagation: function() {
+          throw "Should be a spy";
+        }
       };
       localStorage.setItem("customQueries", JSON.stringify(customQueries));
       view.initialize();
@@ -419,11 +431,12 @@
       var customQueries = [{
         name: "hallotest",
         value: "for var yx do something"
-      }];
+      }],
+      returnValue;
       localStorage.setItem("customQueries", JSON.stringify(customQueries));
       view.initialize();
 
-      var returnValue = view.getCustomQueryValueByName("hallotest");
+      returnValue = view.getCustomQueryValueByName("hallotest");
       expect(returnValue).toEqual("for var yx do something");
     });
 
@@ -432,14 +445,6 @@
       div2.id = "test123";
       document.body.appendChild(div2);
 
-      var customQueries = [{
-        name: "hallotest",
-        value: "for var yx do something"
-      }], e = {
-        currentTarget: {
-          id: "test123"
-        }
-      };
       localStorage.setItem("querySize", 5000);
 
       view.initialize();

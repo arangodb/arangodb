@@ -116,7 +116,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   TRI_socket_t listenSocket;
   listenSocket = TRI_socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
-  if (!TRI_isvalidsocket(listenSocket)) {
+  if (! TRI_isvalidsocket(listenSocket)) {
     LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
     return listenSocket;
   }
@@ -191,7 +191,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     }
   }
 
-  if (!setSocketFlags(listenSocket)) { // set some common socket flags for a server
+  if (! setSocketFlags(listenSocket)) { // set some common socket flags for client and server
     TRI_CLOSE_SOCKET(listenSocket);
     TRI_invalidatesocket(&listenSocket);
     return listenSocket;

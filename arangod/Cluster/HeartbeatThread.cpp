@@ -367,6 +367,17 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
   return 0;
 }
 
+// We need to sort the _system database to the beginning:
+static bool myDBnamesComparer(std::string const& a, std::string const& b) {
+  if (a == "_system") {
+    return true;
+  }
+  if (b == "_system") {
+    return false;
+  }
+  return a < b;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan version change, coordinator case
 /// this is triggered if the heartbeat thread finds a new plan version number
@@ -391,17 +402,27 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     }
   }
 
-  bool mustRetry = false;
-  
   if (result.successful()) {
     result.parse(prefix + "/", false);
 
     vector<TRI_voc_tick_t> ids;
 
-    // loop over all database names we got and create a local database instance if not yet present
-    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
-    while (it != result._values.end()) {
-      string const& name = (*it).first;
+    // When we run through the databases, we need to do the _system database
+    // first, otherwise, we cannot handle incoming requests from DBservers
+    // as they are for example received when we ask for users of a database!
+    std::map<std::string, AgencyCommResultEntry>::iterator it;
+    std::vector<std::string> names;
+    for (it = result._values.begin(); it != result._values.end(); ++it) {
+      names.push_back(it->first);
+    }
+    std::sort(names.begin(), names.end(), &myDBnamesComparer);
+
+    // loop over all database names we got and create a local database
+    // instance if not yet present:
+    std::vector<std::string>::iterator it1;
+    for (it1 = names.begin(); it1 != names.end(); ++it1) {
+      it = result._values.find(*it1);
+      string const& name = *it1;
       TRI_json_t const* options = (*it).second._json;
         
       TRI_voc_tick_t id = 0;
@@ -460,8 +481,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
             // delete the database again (and try again next time)
             TRI_ReleaseVocBase(vocbase);
             TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
-
-            mustRetry = true;
+            if (json != 0) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+            } 
+            return false;  // We give up, we will try again in the
+                           // next heartbeat, because we did not
+                           // touch remotePlanVersion
           }
 
           if (json != 0) {
@@ -476,7 +501,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       ++it;
     }
 
-   
     TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server); 
 
     if (localIds != 0) {
@@ -496,13 +520,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     }
   }
   else {
-    mustRetry = true;
+    return false;
   }  
  
-  if (mustRetry) {
-    return false;
-  }
-
   remotePlanVersion = currentPlanVersion;
 
   // turn on error logging now
