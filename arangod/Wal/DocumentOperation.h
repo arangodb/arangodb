@@ -22,15 +22,38 @@ namespace triagens {
           trxCollection(trxCollection),
           header(nullptr),
           type(type),
-          rid(rid) {
+          rid(rid),
+          handled(false) {
 
         assert(marker != nullptr);
       }
 
       ~DocumentOperation () {
+        if (handled) {
+          if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+            TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+            document->_headers->release(document->_headers, header, false);
+          }
+        }
+        else {
+          revert();
+        }
+
         if (marker != nullptr) {
           delete marker;
         }
+      }
+
+      DocumentOperation* swap () {
+        DocumentOperation* copy = new DocumentOperation(marker, trxCollection, type, rid);
+        copy->header = header;
+        copy->oldHeader = oldHeader;
+
+        type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN; 
+        marker = nullptr;
+        handled = true;
+
+        return copy;
       }
 
       void init () {
@@ -42,8 +65,9 @@ namespace triagens {
         }
       }
 
-      void handled (bool isSingleOperationTransaction) {
+      void handle () {
         assert(header != nullptr);
+        assert(! handled);
         
         TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
@@ -55,23 +79,20 @@ namespace triagens {
           document->_headers->moveBack(document->_headers, header, &oldHeader);
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          // free or unlink the header
-          if (isSingleOperationTransaction) {
-            document->_headers->release(document->_headers, header, true);
-          }
-          else {
-            document->_headers->unlink(document->_headers, header);
-          }
+          // unlink the header
+          document->_headers->unlink(document->_headers, header);
         }
  
         // free the local marker buffer 
         delete[] marker->steal();
+        handled = true;
       }
 
-      void revert (bool isSingleOperationTransaction) {
+      void revert () {
         assert(header != nullptr);
         
         TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+        TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
           document->_headers->release(document->_headers, header, true);
@@ -88,8 +109,9 @@ namespace triagens {
       struct TRI_transaction_collection_s* trxCollection;
       TRI_doc_mptr_t* header;
       TRI_doc_mptr_t oldHeader;
-      TRI_voc_document_operation_e const type;
+      TRI_voc_document_operation_e type;
       TRI_voc_rid_t const rid;
+      bool handled;
     };
   }
 }

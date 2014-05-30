@@ -240,7 +240,6 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
                                              TRI_voc_document_operation_e,
                                              TRI_doc_mptr_t*,
-                                             TRI_doc_mptr_t*,
                                              TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
