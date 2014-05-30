@@ -135,7 +135,8 @@ typedef uint64_t TRI_server_id_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_VOC_DOCUMENT_OPERATION_INSERT = 1,
+  TRI_VOC_DOCUMENT_OPERATION_UNKNOWN = 0,
+  TRI_VOC_DOCUMENT_OPERATION_INSERT,
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
   TRI_VOC_DOCUMENT_OPERATION_REMOVE
 }

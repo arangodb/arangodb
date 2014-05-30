@@ -371,24 +371,16 @@ static int RollbackInsert (TRI_document_collection_t* document,
 
 static int RollbackUpdate (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader,
-                           bool adjustHeader) {
-  int res;
-
-  assert(newHeader != NULL);
-  assert(oldHeader != NULL);
+                           TRI_doc_mptr_t* oldHeader) {
+  assert(newHeader != nullptr);
+  assert(oldHeader != nullptr);
 
   // ignore any errors we're getting from this
   DeleteSecondaryIndexes(document, newHeader, true);
 
-  if (adjustHeader) {  
-    // put back the header into its old position
-    document->_headers->move(document->_headers, newHeader, oldHeader);
-  }
-
   *newHeader = *oldHeader; 
 
-  res = InsertSecondaryIndexes(document, newHeader, true);
+  int res = InsertSecondaryIndexes(document, newHeader, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("error rolling back update operation");
@@ -402,8 +394,7 @@ static int RollbackUpdate (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RollbackRemove (TRI_document_collection_t* document,
-                           TRI_doc_mptr_t* header, 
-                           bool adjustHeader) {
+                           TRI_doc_mptr_t* header) { 
   int res = InsertPrimaryIndex(document, header, true);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -411,11 +402,6 @@ static int RollbackRemove (TRI_document_collection_t* document,
   }
   else {
     LOG_ERROR("error rolling back remove operation");
-  }
-
-  if (adjustHeader) {
-    // put back the header into its old position
-    document->_headers->relink(document->_headers, header, header);
   }
 
   return res;
@@ -901,7 +887,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     *mptr = *((TRI_doc_mptr_t*) newHeader);
   }
   else {
-    RollbackUpdate(document, newHeader, &oldData, false); // TODO: check whether "false" is correct!
+    RollbackUpdate(document, newHeader, &oldData);
   }
     
   return res;
@@ -1046,7 +1032,13 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
     if (res != TRI_ERROR_NO_ERROR) {
       InsertSecondaryIndexes(document, header, true);
-
+      return res;
+    }
+  
+    res = DeletePrimaryIndex(document, header, false);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      InsertSecondaryIndexes(document, header, true);
       return res;
     }
 
@@ -1054,7 +1046,7 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   
     if (res != TRI_ERROR_NO_ERROR) {
       // deletion failed. roll back
-      RollbackRemove(document, header, false);
+      RollbackRemove(document, header);
     }
   }
 
@@ -2502,26 +2494,20 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
 
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document,
                                              TRI_voc_document_operation_e type,
-                                             TRI_doc_mptr_t* newHeader,
-                                             TRI_doc_mptr_t* oldHeader,
+                                             TRI_doc_mptr_t* header,
                                              TRI_doc_mptr_t* oldData) {
-  int res;
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    res = RollbackInsert(document, newHeader);
+    return RollbackInsert(document, header);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    res = RollbackUpdate(document, newHeader, oldData, true);
+    return RollbackUpdate(document, header, oldData);
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    res = RollbackRemove(document, oldHeader, true);
-  }
-  else {
-    res = TRI_ERROR_INTERNAL;
-    LOG_ERROR("logic error in TRI_RollbackOperationDocumentCollection");
+    return RollbackRemove(document, header);
   }
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -38,6 +38,12 @@
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
 
+namespace triagens {
+  namespace wal {
+    struct DocumentOperation;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -140,7 +146,7 @@ typedef struct TRI_transaction_s {
   int                                  _nestingLevel;
   TRI_server_id_t                      _generatingServer;  // id of server that generated the trx
   uint64_t                             _timeout;           // timeout for lock acquisition
-  bool                                 _hasOperations;     // whether or not there are write operations in the trx
+  bool                                 _hasOperations;
   bool                                 _replicate;         // replicate this transaction?
   bool                                 _waitForSync;       // whether or not the collection had a synchronous op
 }
@@ -157,6 +163,7 @@ typedef struct TRI_transaction_collection_s {
   int                                  _nestingLevel;      // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
   TRI_vector_t*                        _operations;        // buffered CRUD operations
+  std::vector<triagens::wal::DocumentOperation*>*   _ops;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
   bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?

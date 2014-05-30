@@ -106,125 +106,39 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise operations for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int InitCollectionOperations (TRI_transaction_collection_t* trxCollection) {
-  trxCollection->_operations = static_cast<TRI_vector_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_t), false));
-
-  if (trxCollection->_operations == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  int res = TRI_InitVector2(trxCollection->_operations, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_operation_t), 4);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection->_operations);
-    trxCollection->_operations = nullptr;
-  }
-   
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rollback all operations for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int RollbackCollectionOperations (TRI_transaction_collection_t* trxCollection) {
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
-  size_t i = trxCollection->_operations->_length;
-
-  assert(i > 0);
-  int res = TRI_ERROR_NO_ERROR;
-
-  // revert the individual operations
-  while (i-- > 0) {
-    TRI_transaction_operation_t* trxOperation = static_cast<TRI_transaction_operation_t*>(TRI_AtVector(trxCollection->_operations, i));
-
-    // note: rolling back an insert operation will also free the new header
-    int r = TRI_RollbackOperationDocumentCollection(document, 
-                                                    trxOperation->_type,
-                                                    trxOperation->_newHeader, 
-                                                    trxOperation->_oldHeader, 
-                                                    &trxOperation->_oldData); 
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to rollback operation in collection");
-      // we'll return the first error
-      res = r;
-    }
-    
-  }
-
-  TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
-  
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rollback all operations for a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-static void RollbackOperations (TRI_transaction_t* trx) {
-  TRI_ASSERT_MAINTAINER(trx->_hasOperations);
-  
-  size_t const n = trx->_collections._length;
-  
-  for (size_t i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-
-    if (trxCollection->_operations == nullptr) {
-      continue;
-    }
-
-    RollbackCollectionOperations(trxCollection);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free all operations for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeCollectionOperations (TRI_transaction_collection_t* trxCollection,
-                                      bool wasCommitted) {
-  if (wasCommitted) {
-    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
-  
-    size_t const n = trxCollection->_operations->_length;
-  
-    for (size_t i = 0; i < n; ++i) {
-      TRI_transaction_operation_t* trxOperation = static_cast<TRI_transaction_operation_t*>(TRI_AtVector(trxCollection->_operations, i));
-    
-      if (trxOperation->_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        document->_headers->release(document->_headers, trxOperation->_oldHeader, false);
-      }
-    }
-  }
-}
-                
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free all operations for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeOperations (TRI_transaction_t* trx) {
-  TRI_ASSERT_MAINTAINER(trx->_hasOperations);
-    
   size_t const n = trx->_collections._length;
   
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
 
-    if (trxCollection->_operations == nullptr) {
+    if (trxCollection->_ops == nullptr) {
       continue;
     }
+ 
+    if (trx->_status == TRI_TRANSACTION_ABORTED) {
+      for (auto it = trxCollection->_ops->rbegin(); it != trxCollection->_ops->rend(); ++it) {
+        triagens::wal::DocumentOperation* op = (*it);
 
-    FreeCollectionOperations(trxCollection, trx->_status == TRI_TRANSACTION_COMMITTED);
+        op->revert();
+      }
+    }
 
-    TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, trxCollection->_operations);
-    trxCollection->_operations = nullptr;
+    for (auto it = trxCollection->_ops->rbegin(); it != trxCollection->_ops->rend(); ++it) {
+      triagens::wal::DocumentOperation* op = (*it);
+  
+      delete op;
+    }
+    
+    TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
+
+    delete trxCollection->_ops;
+    trxCollection->_ops = nullptr;
   }
-
-  trx->_hasOperations = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +196,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_accessType       = accessType;
   trxCollection->_nestingLevel     = nestingLevel;
   trxCollection->_collection       = nullptr;
-  trxCollection->_operations       = nullptr;
+  trxCollection->_ops              = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
   trxCollection->_compactionLocked = false;
@@ -297,7 +211,6 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
 
 static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
   assert(trxCollection != nullptr);
-  assert(trxCollection->_operations == nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
 }
@@ -960,19 +873,33 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
-    operation.revert(isSingleOperationTransaction);
+ //   operation.revert();
 
     return slotInfo.errorCode;
   }
+
     
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
     operation.header->_data = slotInfo.mem;
   } 
-
-  operation.handled(isSingleOperationTransaction);
   
+  if (isSingleOperationTransaction) {
+    operation.handle();
+  }
+  else {
+    // buffer the operation
+    if (trxCollection->_ops == nullptr) {
+      trxCollection->_ops = new std::vector<triagens::wal::DocumentOperation*>;
+      trx->_hasOperations = true;
+    }
+
+    triagens::wal::DocumentOperation* copy = operation.swap();
+    trxCollection->_ops->push_back(copy);
+    copy->handle();
+  }
+
   if (operation.rid > 0) {
     TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
     TRI_SetRevisionDocumentCollection(document, operation.rid, false);
@@ -1052,9 +979,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
   if (nestingLevel == 0) {
     res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
 
-    if (trx->_hasOperations) {
-      FreeOperations(trx);
-    }
+    FreeOperations(trx);
   }
 
   ReleaseCollections(trx, nestingLevel);
@@ -1075,15 +1000,9 @@ int TRI_AbortTransaction (TRI_transaction_t* trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
-    if (trx->_hasOperations) {
-      RollbackOperations(trx);
-    }
-      
     res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
 
-    if (trx->_hasOperations) {
-      FreeOperations(trx);
-    }
+    FreeOperations(trx);
   }
 
   ReleaseCollections(trx, nestingLevel);
