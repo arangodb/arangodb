@@ -327,7 +327,6 @@ typedef struct TRI_primary_collection_s {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void (*dump) (struct TRI_primary_collection_s*);
 #endif  
-  int (*notifyTransaction) (struct TRI_primary_collection_s*, TRI_transaction_status_e);
   
   // WAL-based CRUD methods
   int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, bool, bool);
