@@ -114,7 +114,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  assert(datafile->_fd > 0);
+  assert(datafile->_fd >= 0);
 
   if (begin == end) {
     // no need to sync
@@ -212,7 +212,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
     assert(fd == -1);
   }
   else {
-    assert(fd > 0);
+    assert(fd >= 0);
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
