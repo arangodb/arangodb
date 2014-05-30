@@ -39,11 +39,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of paths of the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,11 +119,7 @@ static void FreeSubObjectsHashIndexElement (TRI_hash_index_element_t* element) {
 static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
                             TRI_hash_index_element_t* hashElement,
                             TRI_doc_mptr_t const* document) {
-  int res;
-  size_t j;
-
   TRI_shaper_t* shaper;                 // underlying shaper
-  TRI_shape_access_t const* acc;        // shape accessor
   TRI_shaped_json_t shapedObject;       // the sub-object
   TRI_shaped_json_t shapedJson;         // the object behind document
   TRI_shaped_sub_t shapedSub;           // the relative sub-object
@@ -148,13 +139,13 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   // Extract the attribute values
   // .............................................................................
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
-  for (j = 0;  j < hashIndex->_paths._length;  ++j) {
+  for (size_t j = 0;  j < hashIndex->_paths._length;  ++j) {
     TRI_shape_pid_t path = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, j)));
 
     // determine if document has that particular shape
-    acc = TRI_FindAccessorVocShaper(shaper, shapedJson._sid, path);
+    TRI_shape_access_t const*acc = TRI_FindAccessorVocShaper(shaper, shapedJson._sid, path);
 
     // field not part of the object
     if (acc == NULL || acc->_shape == NULL) {
@@ -231,10 +222,6 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              HASH INDEX MANAGMENT
 // -----------------------------------------------------------------------------
@@ -242,11 +229,6 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 // -----------------------------------------------------------------------------
 // --SECTION--                                             hash array management
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a data element into the hash array
@@ -344,18 +326,9 @@ static TRI_index_result_t HashIndex_find (TRI_hash_index_t* hashIndex,
   return results;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                       multi hash array management
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a data element into the hash array
@@ -447,10 +420,6 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
   return results;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
 // -----------------------------------------------------------------------------
@@ -458,11 +427,6 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the index
@@ -489,13 +453,13 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
   // .............................................................................
 
   TRI_hash_index_t const* hashIndex = (TRI_hash_index_t const*) idx;
-  TRI_primary_collection_t* primary = idx->_collection;
+  TRI_document_collection_t* document = idx->_collection;
 
   // .............................................................................
   // Allocate sufficent memory for the field list
   // .............................................................................
 
-  fieldList = TRI_FieldListByPathList(primary->_shaper, &hashIndex->_paths);
+  fieldList = TRI_FieldListByPathList(document->_shaper, &hashIndex->_paths);
 
   if (fieldList == NULL) {
     return NULL;
@@ -604,24 +568,15 @@ static int SizeHintHashIndex (TRI_index_t* idx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
@@ -633,7 +588,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s* primary,
   TRI_hash_index_t* hashIndex = static_cast<TRI_hash_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false));
   TRI_index_t* idx = &hashIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, primary, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique);
  
   idx->memory   = MemoryHashIndex; 
   idx->json     = JsonHashIndex;
@@ -699,18 +654,9 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
@@ -729,10 +675,6 @@ TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
     return MultiHashIndex_find(hashIndex, searchValue);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

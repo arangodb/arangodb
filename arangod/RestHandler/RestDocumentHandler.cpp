@@ -570,16 +570,16 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_t mptr;
 
-  res = trx.read(&document, key);
+  res = trx.read(&mptr, key);
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  assert(primary != 0);
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  assert(document != nullptr);
+  TRI_shaper_t* shaper = document->_shaper;
 
   // register a barrier. will be destroyed automatically
-  Barrier barrier(primary);
+  Barrier barrier(document);
 
   res = trx.finish(res);
 
@@ -592,20 +592,20 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  if (document._data == nullptr) {
+  if (mptr._data == nullptr) {
     generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
   // generate result
-  const TRI_voc_rid_t rid = document._rid;
+  const TRI_voc_rid_t rid = mptr._rid;
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, &document, shaper, generateBody);
+      generateDocument(cid, &mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -613,15 +613,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, &document, shaper, generateBody);
+      generateDocument(cid, &mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
     }
   }
 
@@ -1317,7 +1317,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
                                      waitForSync, isPatch, json);
   }
 
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_t mptr;
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -1336,11 +1336,11 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   const TRI_voc_cid_t cid = trx.cid();
   TRI_voc_rid_t rid = 0;
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  assert(primary != 0);
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  assert(document != nullptr);
+  TRI_shaper_t* shaper = document->_shaper;
 
-  const string cidString = StringUtils::itoa(primary->base._info._planId);
+  const string cidString = StringUtils::itoa(document->base._info._planId);
 
   if (isPatch) {
     // patching an existing document
@@ -1419,7 +1419,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
 
     // do not acquire an extra lock
-    res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
+    res = trx.updateDocument(key, &mptr, patchedJson, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   }
   else {
@@ -1469,7 +1469,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
+    res = trx.updateDocument(key, &mptr, json, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
@@ -1489,10 +1489,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
+    generateCreated(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
   }
   else {
-    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
   }
 
   return true;

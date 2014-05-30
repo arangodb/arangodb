@@ -35,7 +35,6 @@
 #include "Rest/HttpRequest.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 #include "RestServer/VocbaseContext.h"
 

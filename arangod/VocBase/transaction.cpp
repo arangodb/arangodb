@@ -33,7 +33,6 @@
 
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -114,7 +113,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
   
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
     if (trxCollection->_ops == nullptr) {
       continue;
@@ -222,7 +221,6 @@ static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
 static int LockCollection (TRI_transaction_collection_t* trxCollection,
                            const TRI_transaction_type_e type,
                            const int nestingLevel) {
-  TRI_primary_collection_t* primary;
   int res;
 
   assert(trxCollection != nullptr);
@@ -238,7 +236,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   assert(trxCollection->_collection->_collection != nullptr);
   assert(trxCollection->_locked == false);
 
-  primary = trxCollection->_collection->_collection;
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx,
@@ -246,10 +244,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "read-locking collection %llu", 
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = primary->beginRead(primary); 
+      res = document->beginRead(document); 
     }
     else {
-      res = primary->beginReadTimed(primary, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginReadTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
   else {
@@ -258,10 +256,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "write-locking collection %llu", 
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = primary->beginWrite(primary); 
+      res = document->beginWrite(document); 
     }
     else {
-      res = primary->beginWriteTimed(primary, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginWriteTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
 
@@ -279,7 +277,6 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
                              const TRI_transaction_type_e type,
                              const int nestingLevel) {
-  TRI_primary_collection_t* primary;
 
   assert(trxCollection != nullptr);
   
@@ -292,7 +289,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
   assert(trxCollection->_collection->_collection != nullptr);
   assert(trxCollection->_locked == true);
 
-  primary = trxCollection->_collection->_collection;
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
     
   if (trxCollection->_nestingLevel < nestingLevel) {
     // only process our own collections
@@ -304,14 +301,14 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
             nestingLevel, 
             "read-unlocking collection %llu", 
             (unsigned long long) trxCollection->_cid);
-    primary->endRead(primary);
+    document->endRead(document);
   }
   else {
     LOG_TRX(trxCollection->_transaction, 
             nestingLevel, 
             "write-unlocking collection %llu", 
             (unsigned long long) trxCollection->_cid);
-    primary->endWrite(primary);
+    document->endWrite(document);
   }
 
   trxCollection->_locked = false;
@@ -901,7 +898,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
 
   if (operation.rid > 0) {
-    TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_SetRevisionDocumentCollection(document, operation.rid, false);
   }
 

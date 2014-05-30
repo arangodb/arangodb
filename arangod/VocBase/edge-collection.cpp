@@ -50,7 +50,7 @@ static TRI_edge_index_t* FindEdgesIndex (
                          TRI_document_collection_t* const document) {
   size_t i, n;
 
-  if (document->base.base._info._type != TRI_COL_TYPE_EDGE) {
+  if (document->base._info._type != TRI_COL_TYPE_EDGE) {
     // collection is not an edge collection... caller must handle that
     return NULL;
   }

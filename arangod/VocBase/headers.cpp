@@ -28,7 +28,6 @@
 #include "headers.h"
 
 #include "BasicsC/logging.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------

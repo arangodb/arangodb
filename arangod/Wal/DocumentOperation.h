@@ -31,7 +31,7 @@ namespace triagens {
       ~DocumentOperation () {
         if (handled) {
           if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-            TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+            TRI_document_collection_t* document = trxCollection->_collection->_collection;
             document->_headers->release(document->_headers, header, false);
           }
         }
@@ -69,7 +69,7 @@ namespace triagens {
         assert(header != nullptr);
         assert(! handled);
         
-        TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+        TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
           // nothing to do for insert
@@ -91,7 +91,7 @@ namespace triagens {
       void revert () {
         assert(header != nullptr);
         
-        TRI_document_collection_t* document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+        TRI_document_collection_t* document = trxCollection->_collection->_collection;
         TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {

@@ -86,7 +86,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     TRI_barrier_t* element;
     bool hasUnloaded = false;
 
-    container = &document->base._barrierList;
+    container = &document->_barrierList;
     element = NULL;
 
     // check and remove all callback elements at the beginning of the list
@@ -259,16 +259,15 @@ void TRI_CleanupVocBase (void* data) {
 
       for (i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection;
-        TRI_primary_collection_t* primary;
         TRI_document_collection_t* document;
 
         collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-        primary = collection->_collection;
+        document = collection->_collection;
 
-        if (primary == NULL) {
+        if (document == NULL) {
           TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
@@ -279,8 +278,6 @@ void TRI_CleanupVocBase (void* data) {
         // the collection pointer outside the lock is ok
 
         // maybe cleanup indexes, unload the collection or some datafiles
-        document = (TRI_document_collection_t*) primary;
-
         // clean indexes?
         if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
           document->cleanupIndexes(document);

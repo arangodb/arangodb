@@ -48,7 +48,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_s;
-struct TRI_primary_collection_s;
+struct TRI_document_collection_s;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_s;
 

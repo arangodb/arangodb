@@ -75,7 +75,7 @@ static bool CheckSyncDocumentCollection (TRI_document_collection_t* document) {
   size_t n;
 
   worked = false;
-  base = &document->base.base;
+  base = &document->base;
 
   // .............................................................................
   // the only thread MODIFYING the _journals variable is this thread,
@@ -138,7 +138,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
   size_t n;
 
   worked = false;
-  base = &document->base.base;
+  base = &document->base;
 
   if (base->_state != TRI_COL_STATE_WRITE) {
     return false;
@@ -160,7 +160,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
 
       LOG_DEBUG("closing full journal '%s'", journal->getName(journal));
 
-      TRI_CloseJournalPrimaryCollection(&document->base, i);
+      TRI_CloseJournalPrimaryCollection(document, i);
 
       n = base->_journals._length;
       i = 0;
@@ -175,7 +175,7 @@ static bool CheckJournalDocumentCollection (TRI_document_collection_t* document)
   // the collection is still empty)
   if (base->_journals._length == 0 && 
       document->_requestedJournalSize > 0) {
-    TRI_voc_size_t targetSize = document->base.base._info._maximalSize;
+    TRI_voc_size_t targetSize = document->base._info._maximalSize;
 
     if (document->_requestedJournalSize > 0 && 
         document->_requestedJournalSize > targetSize) {
@@ -267,13 +267,13 @@ void TRI_SynchroniserVocBase (void* data) {
         continue;
       }
 
-      TRI_primary_collection_t* primary = collection->_collection;
+      TRI_document_collection_t* document = collection->_collection;
 
       // for document collection, first sync and then seal
-      bool result = CheckSyncDocumentCollection((TRI_document_collection_t*) primary);
+      bool result = CheckSyncDocumentCollection(document);
       worked |= result;
 
-      result = CheckJournalDocumentCollection((TRI_document_collection_t*) primary);
+      result = CheckJournalDocumentCollection(document);
       worked |= result;
 
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

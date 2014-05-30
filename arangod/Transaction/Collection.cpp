@@ -166,7 +166,7 @@ int Collection::lock () {
 
   if (hasResponsibility()) {
     if (! isLocked()) { 
-      TRI_primary_collection_t* p = primary();
+      TRI_document_collection_t* p = primary();
 
       if (p == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -197,7 +197,7 @@ int Collection::unlock () {
 
   if (hasResponsibility()) {
     if (isLocked()) { 
-      TRI_primary_collection_t* p = primary();
+      TRI_document_collection_t* p = primary();
       
       if (p == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

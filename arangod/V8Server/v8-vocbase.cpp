@@ -1413,7 +1413,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
   const string collectionName = string(collection->_name);
 
   bool created = false;
@@ -2238,7 +2238,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  assert(col != 0);
+  assert(col != nullptr);
   assert(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -2258,10 +2258,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
     
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_t mptr;
   
   // we must lock here, because below we are
   // - reading the old document in coordinator case
@@ -2270,7 +2270,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(primary->base._info._planId);
+    const string cidString = StringUtils::itoa(document->base._info._planId);
 
     TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
@@ -2279,17 +2279,17 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
   
-    res = trx.read(&document, key);
+    res = trx.read(&mptr, key);
 
-    if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
+    if (res != TRI_ERROR_NO_ERROR || mptr._data == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, res);
     }
   
     TRI_shaped_json_t shaped;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
-    TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._data);
+    TRI_json_t* old = TRI_JsonShapedJson(document->_shaper, &shaped);
 
     if (old == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2308,16 +2308,16 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
   }
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], primary->_shaper, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], document->_shaper, true);
 
   if (shaped == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
   
-  Barrier barrier(primary);
+  Barrier barrier(document);
 
-  res = trx.updateDocument(key, &document, shaped, policy, options.waitForSync, rid, &actualRevision);
+  res = trx.updateDocument(key, &mptr, shaped, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
   
@@ -2328,14 +2328,14 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._data != nullptr);
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
+  assert(mptr._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
     
@@ -2374,22 +2374,22 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_primary_collection_t* primary = trx->primaryCollection();
-  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+  TRI_document_collection_t* document = trx->primaryCollection();
+  TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   trx->lockWrite();
 
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], primary->_shaper, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], document->_shaper, true);
 
   if (shaped == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  Barrier barrier(primary);
+  Barrier barrier(document);
 
-  TRI_doc_mptr_t document;
-  res = trx->createDocument(key, &document, shaped, forceSync);
+  TRI_doc_mptr_t mptr;
+  res = trx->createDocument(key, &mptr, shaped, forceSync);
 
   res = trx->finish(res);
   
@@ -2401,13 +2401,13 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._data != nullptr);
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
+  assert(mptr._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   v8::Handle<v8::Object> result = v8::Object::New();
   
   result->Set(v8g->_IdKey, V8DocumentId(trx->resolver().getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
   
   return scope.Close(result);
@@ -2493,12 +2493,12 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx->primaryCollection();
-  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+  TRI_document_collection_t* document = trx->primaryCollection();
+  TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   trx->lockWrite();
   // extract shaped data
-  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], primary->_shaper, true);
+  TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], document->_shaper, true);
 
   if (shaped == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -2507,10 +2507,10 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  TRI_doc_mptr_t document;
-  res = trx->createEdge(key, &document, shaped, forceSync, &edge);
+  TRI_doc_mptr_t mptr;
+  res = trx->createEdge(key, &mptr, shaped, forceSync, &edge);
 
-  Barrier barrier(primary);
+  Barrier barrier(document);
 
   res = trx->finish(res);
    
@@ -2523,12 +2523,12 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._data != nullptr);
+  assert(mptr._data != nullptr);
 
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
   return scope.Close(result);
@@ -2669,8 +2669,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   // otherwise the operation is not atomic
   trx.lockWrite();
 
-  TRI_doc_mptr_t document;
-  res = trx.read(&document, key);
+  TRI_doc_mptr_t mptr;
+  res = trx.read(&mptr, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2678,14 +2678,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
+  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   TRI_shaped_json_t shaped;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document._data);
-  TRI_json_t* old = TRI_JsonShapedJson(primary->_shaper, &shaped);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._data);
+  TRI_json_t* old = TRI_JsonShapedJson(document->_shaper, &shaped);
 
-  if (old == 0) {
+  if (old == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2693,10 +2693,10 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(primary->base._info._planId);
+    const string cidString = StringUtils::itoa(document->base._info._planId);
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
-      TRI_FreeJson(primary->_shaper->_memoryZone, old);
+      TRI_FreeJson(document->_shaper->_memoryZone, old);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       FREE_STRING(TRI_CORE_MEM_ZONE, key);
     
@@ -2713,9 +2713,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  res = trx.updateDocument(key, &document, patchedJson, policy, options.waitForSync, rid, &actualRevision);
+  res = trx.updateDocument(key, &mptr, patchedJson, policy, options.waitForSync, rid, &actualRevision);
 
-  Barrier barrier(primary);
+  Barrier barrier(document);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
@@ -2725,14 +2725,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(document._data != nullptr);
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&document);
+  assert(mptr._data != nullptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(document._rid));
+  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
@@ -5537,9 +5537,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_primary_collection_t* primary = collection->_collection;
-
-  TRI_collection_t* col = &primary->base;
+  TRI_collection_t* col = &collection->_collection->base;
 
 #ifdef TRI_ENABLE_LOGGER
   const char* name = col->_info._name;
@@ -6086,12 +6084,12 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
 
   // READ-LOCK start
   trx.lockRead();
 
-  const TRI_voc_size_t s = primary->size(primary);
+  const TRI_voc_size_t s = document->size(document);
 
   trx.finish(res);
   // READ-LOCK end
@@ -6384,7 +6382,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
 
   v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], true, &err);
@@ -6493,8 +6491,8 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_primary_collection_t* primary = collection->_collection;
-  TRI_doc_collection_info_t* info = primary->figures(primary);
+  TRI_document_collection_t* document = collection->_collection;
+  TRI_doc_collection_info_t* info = document->figures(document);
 
   res = trx.finish(res);
   // READ-LOCK end
@@ -6714,7 +6712,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = (TRI_document_collection_t*) trx.primaryCollection();
+  TRI_document_collection_t* document = trx.primaryCollection();
   const string collectionName = string(collection->_name);
 
   // get list of indexes
@@ -7013,10 +7011,8 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_primary_collection_t* primary = collection->_collection;
-  TRI_collection_t* base = &primary->base;
-
-  TRI_document_collection_t* document = (TRI_document_collection_t*) primary;
+  TRI_document_collection_t* document = collection->_collection;
+  TRI_collection_t* base = &document->base;
 
   // check if we want to change some parameters
   if (0 < argv.Length()) {
@@ -7100,7 +7096,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
   result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
 
-  TRI_json_t* keyOptions = primary->_keyGenerator->toJson(primary->_keyGenerator);
+  TRI_json_t* keyOptions = document->_keyGenerator->toJson(document->_keyGenerator);
 
   if (keyOptions != 0) {
     result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
@@ -7337,9 +7333,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
 
   // READ-LOCK start
   trx.lockRead();
-  TRI_primary_collection_t* primary = collection->_collection;
-  rid = primary->base._info._revision;
-
+  rid = collection->_collection->base._info._revision;
   trx.finish(res);
   // READ-LOCK end
 
@@ -7436,7 +7430,7 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  TRI_document_collection_t* document = (TRI_document_collection_t*) collection->_collection;
+  TRI_document_collection_t* document = collection->_collection;
 
   int res = TRI_RotateJournalDocumentCollection(document);
 
@@ -9221,7 +9215,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
   }
 
-  if (TRI_V8RunVersionCheck(vocbase, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
+  if (TRI_V8RunVersionCheck(vocbase, static_cast<JSLoader*>(v8g->_loader), v8::Context::GetCurrent())) {
     // version check ok
     TRI_V8InitialiseFoxx(vocbase, v8::Context::GetCurrent());
   }
@@ -9361,7 +9355,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
   }
 
-  if (TRI_V8RunVersionCheck(database, (JSLoader*) v8g->_loader, v8::Context::GetCurrent())) {
+  if (TRI_V8RunVersionCheck(database, static_cast<JSLoader*>(v8g->_loader), v8::Context::GetCurrent())) {
     // version check ok
     TRI_V8InitialiseFoxx(database, v8::Context::GetCurrent());
   }
@@ -9719,7 +9713,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   // get the underlying collection
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_primary_collection_t* collection = barrier->_container->_collection;
+  TRI_document_collection_t* collection = barrier->_container->_collection;
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
@@ -9768,7 +9762,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   }
 
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_primary_collection_t* collection = barrier->_container->_collection;
+  TRI_document_collection_t* collection = barrier->_container->_collection;
 
   // check for array shape
   TRI_shaper_t* shaper = collection->_shaper;
@@ -9853,7 +9847,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
 
   // get underlying collection
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
-  TRI_primary_collection_t* collection = barrier->_container->_collection;
+  TRI_document_collection_t* collection = barrier->_container->_collection;
 
   // get shape accessor
   TRI_shaper_t* shaper = collection->_shaper;
@@ -10120,7 +10114,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   if (doCopy) {
     // we'll create a full copy of the document
 
-    TRI_primary_collection_t* collection = barrier->_container->_collection;
+    TRI_document_collection_t* collection = barrier->_container->_collection;
     TRI_shaper_t* shaper = collection->_shaper;
   
     TRI_shaped_json_t json;

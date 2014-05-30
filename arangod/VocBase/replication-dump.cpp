@@ -304,7 +304,7 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
+static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
                                        TRI_voc_tick_t dataMin,
                                        TRI_voc_tick_t dataMax) {
   TRI_vector_t datafiles;
@@ -316,12 +316,12 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
   // determine the datafiles of the collection
   TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
 
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  IterateDatafiles(&primary->base._datafiles, &datafiles, dataMin, dataMax, false);
-  IterateDatafiles(&primary->base._journals, &datafiles, dataMin, dataMax, true);
+  IterateDatafiles(&document->base._datafiles, &datafiles, dataMin, dataMax, false);
+  IterateDatafiles(&document->base._journals, &datafiles, dataMin, dataMax, true);
   
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   return datafiles;
 }
@@ -421,7 +421,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->base._shaper, buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->_shaper, buffer, &shaped, true);
 
     APPEND_STRING(buffer, "}}\n");
   }
@@ -556,7 +556,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
   TRI_shaped_json_t shaped;
   
   assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
-  shaper = document->base._shaper;
+  shaper = document->_shaper;
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
@@ -661,14 +661,13 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpCollection (TRI_replication_dump_t* dump, 
-                           TRI_primary_collection_t* primary,
+                           TRI_document_collection_t* document,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
                            uint64_t chunkSize,
                            bool withTicks,
                            bool translateCollectionIds) {
   TRI_vector_t datafiles;
-  TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
@@ -679,14 +678,13 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool ignoreMarkers;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) document->base._info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
-  document       = (TRI_document_collection_t*) primary;
+  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
  
   // setup some iteration state
   lastFoundTick  = 0;
@@ -710,7 +708,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
       if (document->_failedTransactions._length > 0) {
         // there are failed transactions. just reference them
@@ -720,7 +718,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     else {
       assert(datafile->_isSealed);
 
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
       
       if (document->_failedTransactions._length > 0) {
         // there are failed transactions. copy the list of ids
@@ -731,7 +729,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         }
       }
 
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     
     ptr = datafile->_data;
@@ -853,7 +851,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 NEXT_DF:
     if (e->_isJournal) {
       // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
       // free our copy of the failed list
@@ -892,12 +890,11 @@ NEXT_DF:
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpLog (TRI_replication_dump_t* dump, 
-                    TRI_primary_collection_t* primary,
+                    TRI_document_collection_t* document,
                     TRI_voc_tick_t dataMin,
                     TRI_voc_tick_t dataMax,
                     uint64_t chunkSize) {
   TRI_vector_t datafiles;
-  TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   size_t i, n; 
@@ -906,14 +903,13 @@ static int DumpLog (TRI_replication_dump_t* dump,
   bool bufferFull;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) document->base._info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
-  document       = (TRI_document_collection_t*) primary;
+  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
  
   // setup some iteration state
   lastFoundTick  = 0;
@@ -932,7 +928,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
       assert(datafile->_isSealed);
@@ -1010,7 +1006,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
 NEXT_DF:
     if (e->_isJournal) {
       // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
 
     if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
@@ -1062,28 +1058,27 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    uint64_t chunkSize,
                                    bool withTicks,
                                    bool translateCollectionIds) {
-  TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
 
-  assert(col != NULL);
-  assert(col->_collection != NULL);
+  assert(col != nullptr);
+  assert(col->_collection != nullptr);
 
-  primary = (TRI_primary_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+  b = TRI_CreateBarrierReplication(&document->_barrierList);
 
-  if (b == NULL) {
+  if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
   // block compaction
-  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
+  res = DumpCollection(dump, document, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
   
-  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
 
@@ -1100,7 +1095,6 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
                             TRI_voc_tick_t dataMax,
                             uint64_t chunkSize) {
   TRI_vocbase_col_t* col;
-  TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
 
@@ -1110,10 +1104,10 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  primary = (TRI_primary_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+  b = TRI_CreateBarrierReplication(&document->_barrierList);
 
   if (b == NULL) {
     TRI_ReleaseCollectionVocBase(vocbase, col);
@@ -1122,11 +1116,11 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   }
   
   // block compaction
-  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  res = DumpLog(dump, primary, dataMin, dataMax, chunkSize);
+  res = DumpLog(dump, document, dataMin, dataMax, chunkSize);
   
-  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
   

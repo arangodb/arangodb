@@ -163,13 +163,10 @@ static uint64_t HashKey (TRI_hash_array_t* array,
 static uint64_t HashElement (TRI_hash_array_t* array,
                              TRI_hash_index_element_t* element) {
   uint64_t hash = TRI_FnvHashBlockInitial();
-  char* ptr;
-  size_t j;
 
-  for (j = 0;  j < array->_numFields;  j++) {
-
+  for (size_t j = 0;  j < array->_numFields;  j++) {
     // ignore the sid for hashing
-    ptr = ((char*) element->_document->_data) + element->_subObjects[j]._offset;
+    char* ptr = ((char*) element->_document->_data) + element->_subObjects[j]._offset;
 
     // only hash the data block
     hash = TRI_FnvHashBlock(hash, ptr, element->_subObjects[j]._length);

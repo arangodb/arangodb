@@ -49,7 +49,6 @@
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
-#include "VocBase/primary-collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
@@ -233,7 +232,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
 
-  document = (TRI_document_collection_t*) collection->_collection;
+  document = collection->_collection;
 
   res = TRI_CloseDocumentCollection(document);
 
@@ -302,7 +301,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   // .............................................................................
 
   if (collection->_collection != NULL) {
-    TRI_document_collection_t* document = (TRI_document_collection_t*) collection->_collection;
+    TRI_document_collection_t* document = collection->_collection;
 
     res = TRI_CloseDocumentCollection(document);
 
@@ -567,8 +566,6 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_server_id_t generatingServer) {
   TRI_vocbase_col_t* collection;
   TRI_collection_t* col;
-  TRI_primary_collection_t* primary;
-  TRI_document_collection_t* document;
   TRI_json_t* json;
   char const* name;
   void const* found;
@@ -596,7 +593,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   // ok, construct the collection
   // .............................................................................
 
-  document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
+  TRI_document_collection_t* document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
 
   if (document == NULL) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -604,8 +601,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  primary = &document->base;
-  col = &primary->base;
+  col = &document->base;
 
   // add collection container
   collection = AddCollection(vocbase,
@@ -632,9 +628,9 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   cid = col->_info._cid;
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
-  collection->_collection = primary;
+  collection->_collection = document;
   TRI_CopyString(collection->_path,
-                 primary->base._directory,
+                 document->base._directory,
                  sizeof(collection->_path) - 1);
 
   json = TRI_CreateJsonCollectionInfo(&col->_info);
@@ -1122,9 +1118,9 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
 
-    collection->_collection = &document->base;
+    collection->_collection = document;
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
-    TRI_CopyString(collection->_path, document->base.base._directory, sizeof(collection->_path) - 1);
+    TRI_CopyString(collection->_path, document->base._directory, sizeof(collection->_path) - 1);
 
     // release the WRITE lock and try again
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);

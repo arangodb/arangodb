@@ -245,7 +245,7 @@ static size_t BufferSize = 256;
 static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type,
                                                                TRI_document_collection_t const* document) {
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT || type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    const bool isEdgeCollection = (document->base.base._info._type == TRI_COL_TYPE_EDGE);
+    const bool isEdgeCollection = (document->base._info._type == TRI_COL_TYPE_EDGE);
 
     return isEdgeCollection ? MARKER_EDGE : MARKER_DOCUMENT;
   }
@@ -289,15 +289,14 @@ static void FreeCap (TRI_replication_logger_t* logger) {
   assert(logger != NULL);
 
   if (logger->_cap != NULL) {
-    TRI_primary_collection_t* primary;
   
     assert(logger->_trxCollection != NULL);
     assert(logger->_trxCollection->_collection != NULL);
 
-    primary = logger->_trxCollection->_collection->_collection;
-    assert(primary != NULL);
+    TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
+    assert(document != NULL);
 
-    TRI_DropIndex2DocumentCollection((TRI_document_collection_t*) primary,
+    TRI_DropIndex2DocumentCollection(document,
                                      logger->_cap->_iid,
                                      TRI_GetIdServer());
 
@@ -312,7 +311,6 @@ static void FreeCap (TRI_replication_logger_t* logger) {
 
 static bool CreateCap (TRI_replication_logger_t* logger) {
   TRI_index_t* idx;
-  TRI_primary_collection_t* primary;
   size_t maxEvents;
   int64_t maxEventsSize;
 
@@ -321,8 +319,8 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
     return true;
   }
 
-  primary = logger->_trxCollection->_collection->_collection;
-  assert(primary != NULL);
+  TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
+  assert(document != NULL);
 
   assert(logger->_configuration._maxEvents > 0ULL ||
          logger->_configuration._maxEventsSize > 0ULL);
@@ -346,7 +344,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
     maxEventsSize = (int64_t) logger->_configuration._maxEventsSize;
   }
 
-  idx = TRI_EnsureCapConstraintDocumentCollection((TRI_document_collection_t*) primary,
+  idx = TRI_EnsureCapConstraintDocumentCollection(document,
                                                   0,
                                                   maxEvents,
                                                   maxEventsSize,
@@ -431,7 +429,6 @@ static int LogEvent (TRI_replication_logger_t* logger,
                      bool isStandaloneOperation,
                      TRI_replication_operation_e type,
                      TRI_string_buffer_t* buffer) {
-  TRI_primary_collection_t* primary;
   TRI_memory_zone_t* zone;
   TRI_shaped_json_t* shaped;
   TRI_json_t json;
@@ -510,9 +507,9 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
   lock = isStandaloneOperation;
   
-  primary = logger->_trxCollection->_collection->_collection;
-  zone = primary->_shaper->_memoryZone;
-  shaped = TRI_ShapedJsonJson(primary->_shaper, &json, true, ! lock);
+  TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
+  zone = document->_shaper->_memoryZone;
+  shaped = TRI_ShapedJsonJson(document->_shaper, &json, true, ! lock);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
   ReturnBuffer(logger, buffer);
@@ -521,7 +518,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
 
-  res = primary->insertDocument(logger->_trxCollection, 
+  res = document->insertDocument(logger->_trxCollection, 
                         NULL, 
                         0,
                         &mptr, 
@@ -756,7 +753,7 @@ static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
   APPEND_CHAR(buffer, '{');
   
   if (withCid) {
-    if (! StringifyCollection(buffer, document->base.base._info._cid, document->base.base._info._name)) {
+    if (! StringifyCollection(buffer, document->base._info._cid, document->base._info._name)) {
       return false;
     }
     APPEND_CHAR(buffer, ',');
@@ -829,7 +826,7 @@ static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->base._shaper, buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->_shaper, buffer, &shaped, true);
 
     APPEND_STRING(buffer, "}}");
   }
@@ -859,8 +856,6 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
   n = trx->_collections._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_document_collection_t* document;
-
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_operations == NULL) {
@@ -873,7 +868,7 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
       continue;
     }
     
-    document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
       
     if (printed) {
       APPEND_CHAR(buffer, ',');
@@ -883,10 +878,10 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
     }
   
     APPEND_STRING(buffer, "{\"cid\":\"");
-    APPEND_UINT64(buffer, (uint64_t) document->base.base._info._cid);
+    APPEND_UINT64(buffer, (uint64_t) document->base._info._cid);
     APPEND_STRING(buffer, "\",\"name\":\"");
     // no escaping needed for collection name
-    APPEND_STRING(buffer, document->base.base._info._name);
+    APPEND_STRING(buffer, document->base._info._name);
     APPEND_STRING(buffer, "\",\"operations\":");
     APPEND_UINT64(buffer, (uint64_t) trxCollection->_operations->_length);
     APPEND_CHAR(buffer, '}');
@@ -1088,7 +1083,6 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
                              TRI_replication_logger_state_t* dst) {
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t* col;
-  TRI_primary_collection_t* primary;
 
   vocbase = logger->_vocbase;
 
@@ -1107,9 +1101,9 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  primary = (TRI_primary_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
-  dst->_lastLogTick  = primary->base._info._revision;
+  dst->_lastLogTick  = document->base._info._revision;
   dst->_totalEvents  = 0;
   dst->_active       = false;
 
@@ -1241,9 +1235,6 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
   assert(n > 0);
 
   for (i = 0; i < n; ++i) {
-    TRI_document_collection_t* document;
-    size_t j, k;
-
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_operations == NULL) {
@@ -1256,12 +1247,12 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
       continue;
     }
 
-    document = (TRI_document_collection_t*) trxCollection->_collection->_collection;
-    k = trxCollection->_operations->_length;
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    size_t k = trxCollection->_operations->_length;
 
     assert(k > 0);
 
-    for (j = 0; j < k; ++j) {
+    for (size_t j = 0; j < k; ++j) {
       TRI_replication_operation_e type;
 
       TRI_transaction_operation_t* trxOperation = static_cast<TRI_transaction_operation_t*>(TRI_AtVector(trxCollection->_operations, j));
@@ -1905,17 +1896,15 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
   }
 
   if (HasRelevantOperations(trx)) {
-    TRI_primary_collection_t* primary;
+    TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
 
-    primary = logger->_trxCollection->_collection->_collection;
-
-    assert(primary != NULL);
+    assert(document != nullptr);
 
     // set a lock around all individual operations
     // so a transaction is logged as an uninterrupted sequence
-    primary->beginWrite(primary);
+    document->beginWrite(document);
     res = HandleTransaction(logger, trx);
-    primary->endWrite(primary);
+    document->endWrite(document);
   }
 
   TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
@@ -2191,7 +2180,7 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   char* name;
   int res;
 
-  name = document->base.base._info._name;
+  name = document->base._info._name;
   
   if (TRI_ExcludeCollectionReplication(name)) {
     return TRI_ERROR_NO_ERROR;

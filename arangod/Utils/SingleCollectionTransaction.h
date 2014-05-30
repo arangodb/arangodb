@@ -36,7 +36,7 @@
 #include "Utils/Transaction.h"
 
 #include "VocBase/barrier.h"
-#include "VocBase/primary-collection.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -121,7 +121,7 @@ namespace triagens {
 /// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_primary_collection_t* primaryCollection () {
+        inline TRI_document_collection_t* primaryCollection () {
           TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
           TRI_ASSERT_MAINTAINER(trxCollection != 0);

@@ -28,7 +28,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "arangod/VocBase/datafile.h"
-#include "arangod/VocBase/primary-collection.h"
+#include "arangod/VocBase/document-collection.h"
 #include "arangod/VocBase/voc-shaper.h"
 #include "arangod/Wal/Marker.h"
 
