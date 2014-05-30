@@ -674,7 +674,7 @@ typedef unsigned char bool;
 #define TRI_CLOSE                       _close
 #define TRI_CREATE(a,b,c)               TRI_createFile((a), (b), (c))
 #define TRI_GETCWD                      _getcwd
-#define TRI_LSEEK                       _lseek
+#define TRI_LSEEK                       _lseeki64
 #define TRI_MKDIR(a,b)                  _mkdir((a))
 #define TRI_OPEN(a,b)                   TRI_OPEN_WIN32((a), (b))
 #define TRI_READ                        _read
@@ -682,9 +682,9 @@ typedef unsigned char bool;
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
 
-#define TRI_write_t                     unsigned long
-#define TRI_read_t                      unsigned long
-#define TRI_lseek_t                     long
+#define TRI_write_t                     unsigned int
+#define TRI_read_t                      unsigned int
+#define TRI_lseek_t                     __int64
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
