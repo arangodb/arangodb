@@ -874,7 +874,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     };
 
     // remove
-    var old_remove = wrap.remove;
     wrap.remove = function(edgeId, options) {
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
@@ -1215,10 +1214,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._neighbors = function(vertexExample, options) {
-  var current_vertex,
-    target_array = [],
-    addNeighborToList,
-    AQLStmt;
+  var AQLStmt;
 
   if (! options) {
     options = { };
