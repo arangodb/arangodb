@@ -190,7 +190,7 @@
       var k = getStarter();
       var shutdownInfo = k.shutdown();
       if (shutdownInfo.error) {
-        require("console").log(JSON.stringify(shutdownInfo.results));
+        require("console").log("%s", JSON.stringify(shutdownInfo.results));
       }
       plans.removeRunInfo();
     });
@@ -217,7 +217,7 @@
       var shutdownInfo = k.shutdown();
       cleanUp();
       if (shutdownInfo.error) {
-        require("console").log(JSON.stringify(shutdownInfo.results));
+        require("console").log("%s", JSON.stringify(shutdownInfo.results));
         return;
       }
     });

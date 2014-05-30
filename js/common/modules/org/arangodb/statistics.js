@@ -87,8 +87,6 @@ function createStatisticsCollection (name) {
 /// TODO need to fix this
 ////////////////////////////////////////////////////////////////////////////////
 
-var StatisticsNames = [ "_statisticsRaw", "_statistics", "_statistics15" ];
-
 function createStatisticsCollections () {
   'use strict';
 
