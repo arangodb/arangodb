@@ -54,7 +54,6 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
 	lib/BasicsC/memory-map-posix.c \
-	lib/BasicsC/mersenne.c \
 	lib/BasicsC/mimetypes.c \
 	lib/BasicsC/prime-numbers.c \
 	lib/BasicsC/process-utils.c \

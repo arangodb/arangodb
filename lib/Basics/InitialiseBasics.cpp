@@ -47,7 +47,7 @@ namespace triagens {
       // use the rng so the linker does not remove it from the executable
       // we might need it later because .so files might refer to the symbols
       Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-      Random::UniformInteger random(0, 1);
+      Random::UniformInteger random(0, INT32_MAX);
       random.random();
       Random::selectVersion(v);
 
