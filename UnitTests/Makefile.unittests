@@ -247,7 +247,6 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/json-test.cpp \
 	UnitTests/Basics/json-utilities-test.cpp \
 	UnitTests/Basics/hashes-test.cpp \
-	UnitTests/Basics/mersenne-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
