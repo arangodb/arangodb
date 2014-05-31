@@ -409,7 +409,7 @@
 
     getStatistics: function () {
       var self = this;
-      var url = "statistics/short";
+      var url = "/_db/_system/_admin/aardvark/statistics/short";
       var urlParams = "?start=";
 
       if (self.nextStart) {
