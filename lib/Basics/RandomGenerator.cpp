@@ -28,13 +28,15 @@
 
 #include "RandomGenerator.h"
 
-#include "BasicsC/mersenne.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/socket-utils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/Thread.h"
+
+#include <random>
+#include <chrono>
 
 using namespace std;
 using namespace triagens::basics;
@@ -92,8 +94,8 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceDirect : public RandomDevice {
     public:
-      RandomDeviceDirect (string path)
-        : fd(1), pos(0)  {
+      RandomDeviceDirect (std::string const& path)
+        : fd(-1), pos(0)  {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
@@ -106,7 +108,9 @@ namespace RandomHelper {
 
 
       ~RandomDeviceDirect () {
-        TRI_CLOSE(fd);
+        if (fd >= 0) {
+          TRI_CLOSE(fd);
+        }
       }
 
 
@@ -121,6 +125,7 @@ namespace RandomHelper {
     private:
       void fillBuffer () {
         size_t n = sizeof(buffer);
+
         char* ptr = reinterpret_cast<char*>(&buffer);
 
         while (0 < n) {
@@ -151,7 +156,8 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceCombined : public RandomDevice {
     public:
-      RandomDeviceCombined (string path) : fd(0),  pos(0), rseed(0) {
+      RandomDeviceCombined (std::string const& path) 
+        : fd(-1),  pos(0), rseed(0) {
 
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
@@ -183,7 +189,9 @@ namespace RandomHelper {
 
 
       ~RandomDeviceCombined () {
-        TRI_CLOSE(fd);
+        if (fd >= 0) {
+          TRI_CLOSE(fd);
+        }
       }
 
 
@@ -224,11 +232,12 @@ namespace RandomHelper {
         }
 
         if (0 < n) {
+          std::mt19937 engine;
           unsigned long seed = RandomDevice::getSeed();
-          TRI_SeedMersenneTwister((uint32_t) (rseed ^ (uint32_t) seed));
+          engine.seed((uint32_t) (rseed ^ (uint32_t) seed));
 
           while (0 < n) {
-            *ptr++ = TRI_Int32MersenneTwister();
+            *ptr++ = engine();
             --n;
           }
         }
@@ -431,16 +440,21 @@ namespace triagens {
 
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
+        UniformIntegerMersenne ()
+          : engine(std::chrono::system_clock::now().time_since_epoch().count()) {
+        }
+
         int32_t random (int32_t left, int32_t right) {
           const int64_t range = (int64_t) right - (int64_t) left + 1LL;
-          int32_t result = (int32_t) TRI_Int32MersenneTwister();
-
           assert(range > 0);
 
+          uint32_t result = engine();
           result = (int32_t) (abs((int64_t) result % range) + (int64_t) left);
 
           return result;
         }
+
+        std::mt19937 engine;
       };
 
 

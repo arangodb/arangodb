@@ -4900,14 +4900,15 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     options.direction =  'any';
   }
 
-  var neighbors = [],match,
-  params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  var neighbors = [],
+    params = TRAVERSAL_PARAMS(), 
+    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
   options.edgeExamples = options.edgeExamples || [];
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
