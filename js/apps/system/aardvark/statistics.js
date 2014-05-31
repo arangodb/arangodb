@@ -31,7 +31,6 @@
 var internal = require("internal");
 var cluster = require("org/arangodb/cluster");
 var actions = require("org/arangodb/actions");
-var console = require("console");
 
 var FoxxController = require("org/arangodb/foxx").Controller;
 var controller = new FoxxController(applicationContext);
