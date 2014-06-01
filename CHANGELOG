@@ -1,6 +1,9 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #881: [2.1.0] Bombarded (every 10 sec or so) with 
+  "WARNING format string is corrupt" when in non-system DB Dashboard
+
 * specialized primary index implementation to allow faster hash table 
   rebuilding and reduce lookups in datafiles for the actual value of `_key`.
 
