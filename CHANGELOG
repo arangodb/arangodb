@@ -1,3 +1,10 @@
+v2.1.1 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #881: [2.1.0] Bombarded (every 10 sec or so) with 
+  "WARNING format string is corrupt" when in non-system DB Dashboard
+
+
 v2.1.0 (2014-05-29)
 -------------------
 
