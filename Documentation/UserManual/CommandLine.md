@@ -23,7 +23,32 @@ General Options {#CommandLineGeneralOptions}
 
 @CLEARPAGE
 @anchor CommandLineUpgrade
-@copydetails triagens::arango::ApplicationV8::_performUpgrade
+@CMDOPT{\--upgrade}
+
+Specifying this option will make the server perform a database upgrade at
+start. A database upgrade will first compare the version number stored in
+the file VERSION in the database directory with the current server version.
+
+If the two version numbers match, the server will start normally.
+
+If the version number found in the database directory is higher than the
+version number the server is running, the server expects this is an
+unintentional downgrade and will warn about this. It will however start
+normally. Using the server in these conditions is however not recommended
+nor supported.
+
+If the version number found in the database directory is lower than the
+version number the server is running, the server will check whether there
+are any upgrade tasks to perform. It will then execute all required upgrade
+tasks and print their statuses. If one of the upgrade tasks fails, the
+server will exit and refuse to start.
+Re-starting the server with the upgrade option will then again trigger the
+upgrade check and execution until the problem is fixed. If all tasks are
+finished, the server will start normally.
+
+Whether or not this option is specified, the server will always perform a
+version check on startup. Running the server with a non-matching version
+number in the VERSION file will make the server refuse to start.
 
 @CLEARPAGE
 @anchor CommandLineConfiguration

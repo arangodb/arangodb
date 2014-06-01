@@ -10401,6 +10401,28 @@ bool TRI_V8RunVersionCheck (void* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief run upgrade check
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_V8RunUpgradeCheck (void* vocbase, 
+                           JSLoader* startupLoader,
+                           v8::Handle<v8::Context> context) {
+  assert(startupLoader != 0);
+  
+  v8::HandleScope scope;
+  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  void* orig = v8g->_vocbase;
+  v8g->_vocbase = vocbase;      
+      
+  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/upgrade-check.js");
+  int code = (int) TRI_ObjectToInt64(result);
+
+  v8g->_vocbase = orig;
+  
+  return code;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize foxx
 ////////////////////////////////////////////////////////////////////////////////
 
