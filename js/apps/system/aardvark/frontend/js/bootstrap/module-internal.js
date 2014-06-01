@@ -17,7 +17,7 @@
   COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
   COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
   COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
-  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION, UPGRADE,
+  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
@@ -203,17 +203,6 @@
   if (typeof VERSION !== "undefined") {
     exports.version = VERSION;
     delete VERSION;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade
-////////////////////////////////////////////////////////////////////////////////
-
-  exports.upgrade = "unknown";
-
-  if (typeof UPGRADE !== "undefined") {
-    exports.upgrade = UPGRADE;
-    delete UPGRADE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,14 +1,17 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, module */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true nonpropdel: true*/
+/*global require, exports, module, UPGRADE_ARGS */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ShapedJson
+/// @brief upgrade check
 ///
 /// @file
+/// 
+/// Version check at the start of the server, will optionally perform necessary
+/// upgrades.
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2011-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,15 +27,17 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     upgrade check
+// -----------------------------------------------------------------------------
 
-exports.register    = internal.registerTask;
-exports.unregister  = internal.unregisterTask;
-exports.get         = internal.getTask;
+(function() {
+  return require("org/arangodb/database-version").databaseVersion().result;
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -40,5 +45,5 @@ exports.get         = internal.getTask;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
