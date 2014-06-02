@@ -1,0 +1,67 @@
+<a name="http_interface_for_documents"></a>
+# HTTP Interface for Documents
+
+<a name="documents,_identifiers,_handles"></a>
+### Documents, Identifiers, Handles
+
+This is an introduction to ArangoDB's REST interface for documents.
+
+Documents in ArangoDB are JSON objects. These objects can be nested (to any depth) and may contain lists. Each document is uniquely identified by its document handle.
+
+An example document:
+
+    {
+      "_id" : "myusers/2345678",
+      "_key" : "3456789",
+      "_rev" : "3456789",
+      "firstName" : "Hugo",
+      "lastName" : "Schlonz",
+      "address" : {
+        "street" : "Street of Happiness",
+        "city" : "Heretown"
+      },
+      "hobbies" : [
+        "swimming",
+        "biking",
+        "programming"
+      ]
+    }
+
+All documents contain special attributes: the document handle in `_id`, the
+document's unique key in `_key` and and the etag aka document revision in
+`_rev`. The value of the `_key` attribute can be specified by the user when
+creating a document.  `_id` and `_key` values are immutable once the document
+has been created. The `_rev` value is maintained by ArangoDB autonomously.
+
+*Document Handle*
+
+A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (_key attribute) separated by /.
+
+*Document Key*
+
+A document key uniquely identifies a document in a given collection. It can and should be used by clients when specific documents are searched. Document keys are stored in the _key attribute of documents. The key values are automatically indexed by ArangoDB in a collection's primary index. Thus looking up a document by its key is regularly a fast operation. The _key value of a document is immutable once the document has been created.
+By default, ArangoDB will auto-generate a document key if no _key attribute is specified, and use the user-specified _key otherwise.
+
+This behavior can be changed on a per-collection level by creating collections with the keyOptions attribute.
+
+Using keyOptions it is possible to disallow user-specified keys completely, or to force a specific regime for auto-generating the _key values.
+
+*Document Revision*
+
+As ArangoDB supports MVCC, documents can exist in more than one revision. The document revision is the MVCC token used to identify a particular revision of a document. It is a string value currently containing an integer number and is unique within the list of document revisions for a single document. Document revisions can be used to conditionally update, replace or delete documents in the database. In order to find a particular revision of a document, you need the document handle and the document revision.
+ArangoDB currently uses 64bit unsigned integer values to maintain document revisions internally. When returning document revisions to clients, ArangoDB will put them into a string to ensure the revision id is not clipped by clients that do not support big integers. Clients should treat the revision id returned by ArangoDB as an opaque string when they store or use it locally. This will allow ArangoDB to change the format of revision ids later if this should be required. Clients can use revisions ids to perform simple equality/non-equality comparisons (e.g. to check whether a document has changed or not), but they should not use revision ids to perform greater/less than comparisons with them to check if a document revision is older than one another, even if this might work for some cases.
+
+Note: Revision ids have been returned as integers up to including ArangoDB 1.1
+
+*Document Etag*
+
+The document revision enclosed in double quotes. The revision is returned by several HTTP API methods in the Etag HTTP header.
+
+The basic operations (create, read, update, delete) for documents are mapped to
+the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`). There is also a 
+partial update method, which is mapped to the HTTP `PATCH` method.
+
+An identifier for the document revision is returned in the `ETag` HTTP header. 
+If you modify a document, you can use the `If-Match` field to detect conflicts. 
+The revision of a document can be checking using the HTTP method `HEAD`.
+
