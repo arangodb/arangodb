@@ -1,0 +1,203 @@
+<a name="command-line_options_for_logging"></a>
+# Command-Line Options for Logging
+
+There are two different kinds of logs. Human-readable logs and machine-readable
+logs. The human-readable logs are used to provide an administration with
+information about the server. The machine-readable logs are used to provide
+statistics about executed requests and timings about computation steps.
+
+<a name="general_logging_options"></a>
+### General Logging Options
+
+`--log.file filename`
+
+This option allows the user to specify the name of a file to which information is logged. By default, if no log file is specified, the standard output is used. Note that if the file named by filename does not exist, it will be created. If the file cannot be created (e.g. due to missing file privileges), the server will refuse to start. If the specified file already exists, output is appended to that file.
+
+Use + to log to standard error. Use - to log to standard output. Use "" to disable logging to file.
+
+
+`--log.requests-file filename`
+
+This option allows the user to specify the name of a file to which requests are logged. By default, no log file is used and requests are not logged. Note that if the file named by filename does not exist, it will be created. If the file cannot be created (e.g. due to missing file privileges), the server will refuse to start. If the specified file already exists, output is appended to that file.
+
+Use + to log to standard error. Use - to log to standard output. Use "" to disable request logging altogether.
+
+
+`--log.severity severity`
+
+This parameter provides a set of standard log severities which can be used. The currently accepted severities are:
+
+* exception
+* technical
+* functional
+* development
+* human
+* all (human and non-human)
+* non-human (exception, technical, functional, and development)
+
+The default is all.
+
+
+`--log.syslog arg`
+
+If this option is set, then in addition to output being directed to the standard output (or to a specified file, in the case that the command line log.file option was set), log output is also sent to the system logging facility. The arg is the system log facility to use. See syslog for further details.
+
+The value of arg depends on your syslog configuration. In general it will be user. Fatal messages are mapped to crit, so if arg is user, these messages will be logged as user.crit. Error messages are mapped to err. Warnings are mapped to warn. Info messages are mapped to notice. Debug messages are mapped to info. Trace messages are mapped to debug.
+
+
+<!--
+@anchor CommandLineLoggingLogFile
+@copydetails triagens::rest::ApplicationServer::_logFile
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogRequestsFile
+@copydetails triagens::rest::ApplicationServer::_logRequestsFile
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogSeverity
+@copydetails triagens::rest::ApplicationServer::_logSeverity
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogSyslog
+@copydetails triagens::rest::ApplicationServer::_logSyslog
+-->
+<a name="human_readable_logging"></a>
+### Human Readable Logging
+
+`--log.level level`
+`--log level`
+
+Allows the user to choose the level of information which is logged by the server. The argument level is specified as a string and can be one of the values listed below. Note that, fatal errors, that is, errors which cause the server to terminate, are always logged irrespective of the log level assigned by the user. The variant log.level can be used in configuration files, the variant log for command line options.
+
+* fatal: Logs errors which cause the server to terminate.
+
+Fatal errors generally indicate some inconsistency with the manner in which the server has been coded. Fatal errors may also indicate a problem with the platform on which the server is running. Fatal errors always cause the server to terminate. For example,
+
+	2010-09-20T07:32:12Z [4742] FATAL a http server has already been created
+
+* error: Logs errors which the server has encountered.
+
+These errors may not necessarily result in the termination of the server. For example,
+
+	2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors', going to 'warning'
+
+* warning: Provides information on errors encountered by the server, which are not necessarily detrimental to it's continued operation.
+For example,
+
+	2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'
+
+Note that, setting the log level to warning will also result in all errors to be logged as well.
+
+* info: Logs information about the status of the server.
+
+For example,
+
+	2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business
+
+Note that, setting the log level to info will also result in all errors and warnings to be logged as well.
+
+* debug: Logs all errors, all warnings and debug information.
+
+Debug log information is generally useful to find out the state of the server in the case of an error. For example,
+
+	2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any
+
+Note that, setting the log level to debug will also result in all errors, warnings and server status information to be logged as well.
+
+* trace: As the name suggests, logs information which may be useful to trace problems encountered with using the server.
+
+For example,
+
+	2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000
+
+Note that, setting the log level to trace will also result in all errors, warnings, status information, and debug information to be logged as well.
+
+
+`--log.line-number`
+
+Normally, if an human readable fatal, error, warning or info message is logged, no information about the file and line number is provided. The file and line number is only logged for debug and trace message. This option can be use to always log these pieces of information.
+
+
+`--log.prefix prefix`
+
+This option is used specify an prefix to logged text.
+
+
+`--log.thread`
+
+Whenever log output is generated, the process ID is written as part of the log information. Setting this option appends the thread id of the calling thread to the process id. For example,
+
+	2010-09-20T13:04:01Z [19355] INFO ready for business
+
+when no thread is logged and
+
+	2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business
+
+when this command line option is set.
+
+
+`--log.source-filter arg`
+
+For debug and trace messages, only log those messages originated from the C source file arg. The argument can be used multiple times.
+
+
+`--log.content-filter arg`
+
+Only log message containing the specified string arg.
+
+
+<!--
+@anchor CommandLineLoggingLogLevel
+@copydetails triagens::rest::ApplicationServer::_logLevel
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogLineNumber
+@copydetails triagens::rest::ApplicationServer::_logLineNumber
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogPrefix
+@copydetails triagens::rest::ApplicationServer::_logPrefix
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogThread
+@copydetails triagens::rest::ApplicationServer::_logThreadId
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogSourceFilter
+@copydetails triagens::rest::ApplicationServer::_logSourceFilter
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogContentFilter
+@copydetails triagens::rest::ApplicationServer::_logContentFilter
+-->
+
+<a name="machine_readable_logging"></a>
+### Machine Readable Logging
+
+`--log.application name`
+
+Specifies the name of the application which should be logged if this item of information is to be logged.
+
+
+`--log.facility name`
+
+Specifies the name of the server instance which should be logged if this item of information is to be logged.
+
+
+`--log.hostname name`
+
+Specifies the name of the operating environment (the "hostname") which should be logged if this item of information is to be logged. Note that there is no default hostname.
+
+
+<!--
+@anchor CommandLineLoggingLogApplication
+@copydetails triagens::rest::ApplicationServer::_logApplicationName
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogFacility
+@copydetails triagens::rest::ApplicationServer::_logFacility
+
+@CLEARPAGE
+@anchor CommandLineLoggingLogHostName
+@copydetails triagens::rest::ApplicationServer::_logHostName
+-->
