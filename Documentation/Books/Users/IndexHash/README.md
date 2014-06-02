@@ -14,6 +14,60 @@ same set of attribute values.
 <a name="accessing_hash_indexes_from_the_shell"></a>
 ## Accessing Hash Indexes from the Shell
 
+`ensureUniqueConstraint(field1, field2, ..., fieldn)`
+
+Creates a unique hash index on all documents using field1, field2, ... as attribute paths. At least one attribute path must be given.
+
+When a unique constraint is in effect for a collection, then all documents which contain the given attributes must differ in the attribute values. Creating a new document or updating a document will fail, if the uniqueness is violated. If any attribute value is null for a document, this document is ignored by the index.
+
+Note that non-existing attribute paths in a document are treated as if the value were null.
+
+In case that the index was successfully created, the index identifier is returned.
+
+*Examples*
+
+	arango> db.four.ensureUniqueConstraint("a", "b.c");
+	{ "id" : "four/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
+	
+	arango> db.four.save({ a : 1, b : { c : 1 } });
+	{ "_id" : "four/1868341", "_key" : "1868341", "_rev" : "1868341" }
+	
+	arango> db.four.save({ a : 1, b : { c : 1 } });
+	JavaScript exception in file '(arango)' at 1,9: [ArangoError 1210: cannot save document]
+	!db.four.save({ a : 1, b : { c : 1 } });
+	!        ^
+	stacktrace: [ArangoError 1210: cannot save document]
+    at (arango):1:9
+	
+	arango> db.four.save({ a : 1, b : { c : null } });
+	{ "_id" : "four/2196021", "_key" : "2196021", "_rev" : "2196021" }
+	
+	arango> db.four.save({ a : 1 });
+	{ "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
+
+`ensureHashIndex(field1, field2, ..., fieldn)`
+
+Creates a non-unique hash index on all documents using field1, field2, ... as attribute paths. At least one attribute path must be given.
+
+Note that non-existing attribute paths in a document are treated as if the value were null.
+
+In case that the index was successfully created, the index identifier is returned.
+
+*Examples*
+
+	arango> db.test.ensureHashIndex("a");
+	{ "id" : "test/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
+	
+	arango> db.test.save({ a : 1 });
+	{ "_id" : "test/6381143", "_key" : "6381143", "_rev" : "6381143" }
+	
+	arango> db.test.save({ a : 1 });
+	{ "_id" : "test/6446679", "_key" : "6446679", "_rev" : "6446679" }
+	
+	arango> db.test.save({ a : null });
+	{ "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }
+
+<!--
 @anchor IndexHashShellEnsureUniqueConstraint
 @copydetails JSF_ArangoCollection_prototype_ensureUniqueConstraint
 
@@ -21,3 +75,4 @@ same set of attribute values.
 @anchor IndexHashShellEnsureHashIndex
 @copydetails JSF_ArangoCollection_prototype_ensureHashIndex
 
+-->
