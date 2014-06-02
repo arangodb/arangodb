@@ -120,7 +120,6 @@ add_executable(
     VocBase/headers.cpp
     VocBase/index.cpp
     VocBase/key-generator.cpp
-    VocBase/marker.cpp
     VocBase/primary-index.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp

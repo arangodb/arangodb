@@ -98,7 +98,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
-	arangod/VocBase/marker.cpp \
 	arangod/VocBase/primary-index.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \

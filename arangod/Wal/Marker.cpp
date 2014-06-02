@@ -27,7 +27,6 @@
 
 #include "Marker.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/marker.h"
 
 #undef DEBUG_WAL 
 #undef DEBUG_WAL_DETAIL 
