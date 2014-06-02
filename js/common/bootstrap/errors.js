@@ -208,6 +208,8 @@
     "ERROR_GRAPH_INVALID_FILTER_RESULT" : { "code" : 1910, "message" : "invalid filter result" }, 
     "ERROR_GRAPH_COLLECTION_MULTI_USE" : { "code" : 1920, "message" : "an edge collection may only be used once in one edge definition of a graph." },
     "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : " is already used by another graph in a different edge definition." },
+    "ERROR_GRAPH_CREATE_MISSING_NAME" : { "code" : 1922, "message" : "a graph name is required to create a graph." },
+    "ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION" : { "code" : 1923, "message" : "at least one edge definition is required to create a graph." },
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
