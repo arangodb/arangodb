@@ -188,7 +188,7 @@ TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
 /// @brief free a transaction 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction (TRI_transaction_t* const);
+void TRI_FreeTransaction (TRI_transaction_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -220,7 +220,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 /// @brief add a collection to a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddCollectionTransaction (TRI_transaction_t* const,
+int TRI_AddCollectionTransaction (TRI_transaction_t*,
                                   const TRI_voc_cid_t,
                                   const TRI_transaction_type_e, 
                                   const int);

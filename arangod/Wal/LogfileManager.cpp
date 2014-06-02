@@ -327,10 +327,10 @@ void LogfileManager::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a WAL marker protector
+/// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
   
-bool LogfileManager::registerMarkerProtector (TRI_voc_tid_t id) {
+bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
   {
     WRITE_LOCKER(_logfilesLock);
 
@@ -344,13 +344,15 @@ std::cout << "ACQUIRED PROTECTOR FOR TRANSACTION " << id << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a WAL marker protector
+/// @brief unregisters a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-void LogfileManager::unregisterMarkerProtector (TRI_voc_tid_t id) {
+void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
+                                            bool markAsFailed) {
   WRITE_LOCKER(_logfilesLock);
   _transactions.erase(id);
 
+  // TODO: handle markAsFailed
 std::cout << "RELEASED PROTECTOR FOR TRANSACTION " << id << "\n";
 }
 
