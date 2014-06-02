@@ -435,6 +435,7 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_CMDLINE]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("upgrade", "perform a database upgrade")
+    ("check-version", "checks the versions of the database and exit")
   ;
  
   // other options 
@@ -755,24 +756,45 @@ int ArangoServer::startupServer () {
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
 
+  bool performUpgrade = false;
+
   if (_applicationServer->programOptions().has("upgrade")) {
-    _applicationV8->performUpgrade();
+    performUpgrade = true;
   }
 
   // skip an upgrade even if VERSION is missing
+  bool skipUpgrade = false;
+
   if (_applicationServer->programOptions().has("no-upgrade")) {
-    _applicationV8->skipUpgrade();
+    skipUpgrade = true;
   }
 
+  // .............................................................................
+  // prepare everything
+  // .............................................................................
+
+  // prepare scheduler and dispatcher
   _applicationServer->prepare();
 
-  // .............................................................................
-  // create the dispatcher
-  // .............................................................................
-
+  // now we can create the queues
   _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
 
+  // and finish prepare
   _applicationServer->prepare2();
+
+  // run version check
+  if (_applicationServer->programOptions().has("check-version")) {
+    _applicationV8->runUpgradeCheck();
+  }
+
+  _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
+
+  // setup the V8 actions
+  _applicationV8->prepareActions();
+
+  // .............................................................................
+  // create endpoints and handlers
+  // .............................................................................
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
