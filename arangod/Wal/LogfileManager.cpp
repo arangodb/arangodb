@@ -335,11 +335,11 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
     WRITE_LOCKER(_logfilesLock);
 
     _transactions.insert(make_pair(id, make_pair(_lastCollectedId, _lastSealedId)));
-std::cout << "LC: " << _lastCollectedId << ", LS: " << _lastSealedId << "\n";    
     assert(_lastCollectedId <= _lastSealedId);
   }
 
-std::cout << "ACQUIRED PROTECTOR FOR TRANSACTION " << id << "\n";
+  LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
+
   return true;
 }
 
@@ -349,11 +349,13 @@ std::cout << "ACQUIRED PROTECTOR FOR TRANSACTION " << id << "\n";
         
 void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
                                             bool markAsFailed) {
-  WRITE_LOCKER(_logfilesLock);
-  _transactions.erase(id);
+  {
+    WRITE_LOCKER(_logfilesLock);
+    _transactions.erase(id);
+  }
 
   // TODO: handle markAsFailed
-std::cout << "RELEASED PROTECTOR FOR TRANSACTION " << id << "\n";
+  LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
