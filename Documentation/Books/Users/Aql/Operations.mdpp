@@ -1,0 +1,224 @@
+!CHAPTER High-level operations
+
+
+!SUBSECTION FOR
+
+The `FOR` keyword can be to iterate over all elements of a list.
+The general syntax is:
+
+    FOR variable-name IN expression
+
+Each list element returned by `expression` is visited exactly once. It is
+required that `expression` returns a list in all cases. The empty list is
+allowed, too. The current list element is made available for further processing 
+in the variable specified by `variable-name`.
+
+    FOR u IN users
+      RETURN u
+
+This will iterate over all elements from the list `users` (note: this list
+consists of all documents from the collection named "users" in this case) and
+make the current list element available in variable `u`. `u` is not modified in
+this example but simply pushed into the result using the `RETURN` keyword.
+
+Note: When iterating over collection-based lists as shown here, the order of
+documents is undefined unless an explicit sort order is defined using a `SORT`
+statement.
+
+The variable introduced by `FOR` is available until the scope the `FOR` is
+placed in is closed.
+
+Another example that uses a statically declared list of values to iterate over:
+
+    FOR year IN [ 2011, 2012, 2013 ]
+      RETURN { "year" : year, "isLeapYear" : year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) }
+
+Nesting of multiple `FOR` statements is allowed, too. When `FOR` statements are
+nested, a cross product of the list elements returned by the individual `FOR`
+statements will be created.
+
+    FOR u IN users
+      FOR l IN locations
+	RETURN { "user" : u, "location" : l }
+
+In this example, there are two list iterations: an outer iteration over the list
+`users` plus an inner iteration over the list `locations`.  The inner list is
+traversed as many times as there are elements in the outer list.  For each
+iteration, the current values of `users` and `locations` are made available for
+further processing in the variable `u` and `l`.
+
+!SUBSECTION RETURN 
+
+The `RETURN` statement can (and must) be used to produce the result of a query.
+It is mandatory to specify a `RETURN` statement at the end of each block in a
+query, otherwise the query result would be undefined.
+
+The general syntax for `return` is:
+
+    RETURN expression
+
+The `expression` returned by `RETURN` is produced for each iteration the
+`RETURN` statement is placed in. That means the result of a `RETURN` statement
+is always a list (this includes the empty list).  To return all elements from
+the currently iterated list without modification, the following simple form can
+be used:
+
+    FOR variable-name IN expression
+      RETURN variable-name
+
+As `RETURN` allows specifying an expression, arbitrary computations can be
+performed to calculate the result elements. Any of the variables valid in the
+scope the `RETURN` is placed in can be used for the computations.
+
+Note: Return will close the current scope and eliminate all local variables in
+it.
+
+!SUBSECTION FILTER
+
+The `FILTER` statement can be used to restrict the results to elements that
+match an arbitrary logical condition. The general syntax is:
+
+    FILTER condition
+
+`condition` must be a condition that evaluates to either `false` or `true`. If
+the condition result is false, the current element is skipped, so it will not be
+processed further and not be part of the result. If the condition is true, the
+current element is not skipped and can be further processed.
+
+    FOR u IN users
+      FILTER u.active == true && u.age < 39
+      RETURN u
+
+In the above example, all list elements from `users` will be included that have
+an attribute `active` with value `true` and that have an attribute `age` with a
+value less than `39`. All other elements from `users` will be skipped and not be
+included the result produced by `RETURN`.
+
+It is allowed to specify multiple `FILTER` statements in a query, and even in
+the same block. If multiple `FILTER` statements are used, their results will be
+combined with a logical and, meaning all filter conditions must be true to
+include an element.
+
+    FOR u IN users
+      FILTER u.active == true
+      FILTER u.age < 39
+      RETURN u
+
+!SUBSECTION SORT 
+
+The `SORT` statement will force a sort of the list of already produced
+intermediate results in the current block. `SORT` allows specifying one or
+multiple sort criteria and directions.  The general syntax is:
+
+    SORT expression direction
+
+Specifying the `direction` is optional. The default (implicit) direction for a
+sort is the ascending order. To explicitly specify the sort direction, the
+keywords `ASC` (ascending) and `DESC` can be used. Multiple sort criteria can be
+separated using commas.
+
+Note: when iterating over collection-based lists, the order of documents is
+always undefined unless an explicit sort order is defined using `SORT`.
+
+    FOR u IN users
+      SORT u.lastName, u.firstName, u.id DESC
+      RETURN u
+
+!SUBSECTION LIMIT
+
+The `LIMIT` statement allows slicing the list of result documents using an
+offset and a count. It reduces the number of elements in the result to at most
+the specified number.  Two general forms of `LIMIT` are followed:
+
+    LIMIT count
+    LIMIT offset, count
+
+The first form allows specifying only the `count` value whereas the second form
+allows specifying both `offset` and `count`. The first form is identical using
+the second form with an `offset` value of `0`.
+
+The `offset` value specifies how many elements from the result shall be
+discarded.  It must be 0 or greater. The `count` value specifies how many
+elements should be at most included in the result.
+
+    FOR u IN users
+      SORT u.firstName, u.lastName, u.id DESC
+      LIMIT 0, 5
+      RETURN u
+
+!SUBSECTION LET 
+
+The `LET` statement can be used to assign an arbitrary value to a variable.  The
+variable is then introduced in the scope the `LET` statement is placed in.  The
+general syntax is:
+
+    LET variable-name = expression
+
+`LET` statements are mostly used to declare complex computations and to avoid
+repeated computations of the same value at multiple parts of a query.
+
+    FOR u IN users
+      LET numRecommendations = LENGTH(u.recommendations)
+      RETURN { "user" : u, "numRecommendations" : numRecommendations, "isPowerUser" : numRecommendations >= 10 } 
+
+In the above example, the computation of the number of recommendations is
+factored out using a `LET` statement, thus avoiding computing the value twice in
+the `RETURN` statement.
+
+Another use case for `LET` is to declare a complex computation in a subquery,
+making the whole query more readable.
+
+    FOR u IN users
+      LET friends = (
+	FOR f IN friends 
+	  FILTER u.id == f.userId
+	  RETURN f
+      )
+      LET memberships = (
+	FOR m IN memberships
+	  FILTER u.id == m.userId
+	  RETURN m
+      )
+      RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }
+
+!SUBSECTION COLLECT
+
+The `COLLECT` keyword can be used to group a list by one or multiple group
+criteria.  The two general syntaxes for `COLLECT` are:
+
+    COLLECT variable-name = expression
+    COLLECT variable-name = expression INTO groups
+
+The first form only groups the result by the defined group criteria defined by
+`expression`. In order to further process the results produced by `COLLECT`, a
+new variable (specified by `variable-name`) is introduced. This variable
+contains the group value.
+
+The second form does the same as the first form, but additionally introduces a
+variable (specified by `groups`) that contains all elements that fell into the
+group. Specifying the `INTO` clause is optional-
+
+    FOR u IN users
+      COLLECT city = u.city INTO g
+      RETURN { "city" : city, "users" : g }
+
+In the above example, the list of `users` will be grouped by the attribute
+`city`. The result is a new list of documents, with one element per distinct
+`city` value. The elements from the original list (here: `users`) per city are
+made available in the variable `g`. This is due to the `INTO` clause.
+
+`COLLECT` also allows specifying multiple group criteria. Individual group
+criteria can be separated by commas.
+
+    FOR u IN users
+      COLLECT first = u.firstName, age = u.age INTO g
+      RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(g) }
+
+In the above example, the list of `users` is grouped by first names and ages
+first, and for each distinct combination of first name and age, the number of
+users found is returned.
+
+Note: The `COLLECT` statement eliminates all local variables in the current
+scope. After `COLLECT` only the variables introduced by `COLLECT` itself are
+available.
+
