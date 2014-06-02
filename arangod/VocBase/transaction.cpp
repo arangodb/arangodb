@@ -576,7 +576,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
 /// @brief free a transaction container
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction (TRI_transaction_t* const trx) {
+void TRI_FreeTransaction (TRI_transaction_t* trx) {
   assert(trx != nullptr);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
@@ -584,7 +584,8 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   }
   
   // release the marker protector
-  triagens::wal::LogfileManager::instance()->unregisterMarkerProtector(trx->_id);  
+  bool const hasFailedOperations = (trx->_hasOperations && (trx->_status == TRI_TRANSACTION_FAILED || trx->_status == TRI_TRANSACTION_ABORTED)); 
+  triagens::wal::LogfileManager::instance()->unregisterTransaction(trx->_id, hasFailedOperations);  
 
   // free all collections
   size_t i = trx->_collections._length;
@@ -660,7 +661,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 /// @brief add a collection to a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddCollectionTransaction (TRI_transaction_t* const trx,
+int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
                                   const TRI_voc_cid_t cid,
                                   const TRI_transaction_type_e accessType,
                                   const int nestingLevel) {
@@ -926,7 +927,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     trx->_hints = hints;
   
     // register a protector
-    triagens::wal::LogfileManager::instance()->registerMarkerProtector(trx->_id);  
+    triagens::wal::LogfileManager::instance()->registerTransaction(trx->_id);  
   }
   else {
     assert(trx->_status == TRI_TRANSACTION_RUNNING);
