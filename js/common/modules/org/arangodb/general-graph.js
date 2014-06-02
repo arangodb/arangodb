@@ -30,6 +30,7 @@
 
 
 var arangodb = require("org/arangodb"),
+  internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
   ArangoError = arangodb.ArangoError,
   db = arangodb.db,
@@ -127,6 +128,22 @@ var getGraphCollection = function() {
     throw "_graphs collection does not exist.";
   }
   return gCol;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to print edge definitions in _PRINT
+////////////////////////////////////////////////////////////////////////////////
+
+var printEdgeDefinitions = function(defs) {
+  return _.map(defs, function(d) {
+    var out = d.collection;
+    out += ": [";
+    out += d.from.join(", ");
+    out += "] -> [";
+    out += d.to.join(", ");
+    out += "]";
+    return out;
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,12 +250,52 @@ AQLStatement.prototype.allowsRestrict = function() {
 
 var AQLGenerator = function(graph) {
   this.stack = [];
+  this.callStack = [];
   this.bindVars = {
     "graphName": graph.__name
   };
   this.graph = graph;
   this.cursor = null;
   this.lastVar = "";
+};
+
+AQLGenerator.prototype._addToPrint = function(name) {
+  var args = Array.prototype.slice.call(arguments);
+  args.shift(); // The Name
+  var stackEntry = {};
+  stackEntry.name = name;
+  if (args.length > 0 && args[0] !== undefined) {
+    stackEntry.params = args;
+  } else {
+    stackEntry.params = [];
+  }
+  this.callStack.push(stackEntry);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Print the call stack of this query
+////////////////////////////////////////////////////////////////////////////////
+
+AQLGenerator.prototype._PRINT = function(context) {
+  context.output = "[ GraphAQL ";
+  context.output += this.graph.__name;
+  _.each(this.callStack, function(call) {
+    if(context.prettyPrint) {
+      context.output += "\n";
+    }
+    context.output += ".";
+    context.output += call.name;
+    context.output += "(";
+    var i = 0;
+    for(i = 0; i < call.params.length; ++i) {
+      if (i > 0) {
+        context.output += ", ";
+      }
+      internal.printRecursive(call.params[i], context);
+    }
+    context.output += ")";
+  });
+  context.output += " ] ";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,14 +432,17 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.edges = function(example) {
+  this._addToPrint("edges", example);
   return this._edges(example, {direction: "any"});
 };
 
 AQLGenerator.prototype.outEdges = function(example) {
+  this._addToPrint("outEdges", example);
   return this._edges(example, {direction: "outbound"});
 };
 
 AQLGenerator.prototype.inEdges = function(example) {
+  this._addToPrint("inEdges", example);
   return this._edges(example, {direction: "inbound"});
 };
 
@@ -405,6 +465,7 @@ AQLGenerator.prototype._vertices = function(example, options) {
 };
 
 AQLGenerator.prototype.vertices = function(example) {
+  this._addToPrint("vertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -422,6 +483,7 @@ AQLGenerator.prototype.vertices = function(example) {
 };
 
 AQLGenerator.prototype.fromVertices = function(example) {
+  this._addToPrint("fromVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -437,6 +499,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 };
 
 AQLGenerator.prototype.toVertices = function(example) {
+  this._addToPrint("toVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -459,6 +522,7 @@ AQLGenerator.prototype.getLastVar = function() {
 };
 
 AQLGenerator.prototype.neighbors = function(vertexExample, options) {
+  this._addToPrint("neighbors", vertexExample, options);
   var ex = transformExample(vertexExample);
   var resultName = "neighbors_" + this.stack.length;
   var query = "FOR " + resultName
@@ -466,9 +530,14 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     + this.getLastVar()
     + ',@options_'
     + this.stack.length + ')';
-  options = options || {};
-  options.vertexExamples = ex;
-  this.bindVars["options_" + this.stack.length] = options;
+  var opts;
+  if (options) {
+    opts = _.clone(options);
+  } else {
+    opts = {};
+  }
+  opts.vertexExamples = ex;
+  this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
   this.lastVar = resultName + ".vertex";
@@ -487,6 +556,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  this._addToPrint("restrict", restrictions);
   this._clearCursor();
   var rest = stringToArray(restrictions);
   var lastQueryInfo = this._getLastRestrictableStatementInfo();
@@ -514,6 +584,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 AQLGenerator.prototype.filter = function(example) {
+  this._addToPrint("filter", example);
   this._clearCursor();
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
@@ -1344,6 +1415,20 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
     returnHash.push(tmp);
   });
   return returnHash;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print basic information for the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._PRINT = function(context) {
+  var name = this.__name;
+  var edgeDefs = printEdgeDefinitions(this.__edgeDefinitions);
+  context.output += "[ Graph ";
+  context.output += name;
+  context.output += " EdgeDefinitions: ";
+  internal.printRecursive(edgeDefs, context);
+  context.output += " ]";
 };
 
 // -----------------------------------------------------------------------------
