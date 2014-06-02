@@ -269,7 +269,7 @@ buster.testCase("sinon.mock", {
                 });
             },
 
-            "nots be met with too few calls": function () {
+            "should not be met with too few calls": function () {
                 this.expectation.atLeast(2);
                 this.expectation();
 
@@ -293,7 +293,7 @@ buster.testCase("sinon.mock", {
                 assert(this.expectation.met());
             },
 
-            "nots throw when exceeding at least expectation": function () {
+            "should not throw when exceeding at least expectation": function () {
                 var obj = { foobar: function () {} };
                 var mock = sinon.mock(obj);
                 mock.expects("foobar").atLeast(1);
@@ -352,7 +352,7 @@ buster.testCase("sinon.mock", {
                 assert(this.expectation.met());
             },
 
-            "nots be met with excessive calls": function () {
+            "should not be met with excessive calls": function () {
                 var expectation = this.expectation;
                 this.expectation.atMost(2);
                 this.expectation();
@@ -372,7 +372,7 @@ buster.testCase("sinon.mock", {
                 this.expectation.atMost(3);
             },
 
-            "nots be met with too few calls": function () {
+            "should not be met with too few calls": function () {
                 this.expectation();
 
                 assert.isFalse(this.expectation.met());
@@ -406,7 +406,7 @@ buster.testCase("sinon.mock", {
         },
 
         "met": {
-            "nots be met when not called enough times": function () {
+            "should not be met when not called enough times": function () {
                 assert.isFalse(this.expectation.met());
             },
 
@@ -416,7 +416,7 @@ buster.testCase("sinon.mock", {
                 assert(this.expectation.met());
             },
 
-            "nots be met when called too many times": function () {
+            "should not be met when called too many times": function () {
                 this.expectation();
 
                 try {
@@ -546,7 +546,7 @@ buster.testCase("sinon.mock", {
                 }, "ExpectationError");
             },
 
-            "nots allow excessive args": function () {
+            "should not allow excessive args": function () {
                 var expectation = this.expectation;
                 expectation.withExactArgs(1, 2, 3);
 

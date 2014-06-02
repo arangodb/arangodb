@@ -40,6 +40,8 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/ApplicationScheduler.h"
+#include "Scheduler/Scheduler.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
@@ -232,8 +234,6 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _useActions(true),
     _developmentMode(false),
     _frontendDevelopmentMode(false),
-    _performUpgrade(false),
-    _skipUpgrade(false),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -279,22 +279,6 @@ void ApplicationV8::setConcurrency (size_t n) {
 
 void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
   _vocbase = vocbase;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform a database upgrade
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationV8::performUpgrade () {
-  _performUpgrade = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip a database upgrade
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationV8::skipUpgrade () {
-  _skipUpgrade = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,6 +596,194 @@ void ApplicationV8::enableDevelopmentMode () {
   _developmentMode = true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the version check
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::runVersionCheck (bool skip, bool perform) {
+  LOG_TRACE("starting version check");
+
+  // enter context and isolate
+  V8Context* context = _contexts[0];
+
+  context->_locker = new v8::Locker(context->_isolate);
+  context->_isolate->Enter();
+  context->_context->Enter();
+
+  // run upgrade script
+  if (! skip) {
+    LOG_DEBUG("running database version check");
+
+    // can do this without a lock as this is the startup
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+
+      if (vocbase != 0) {
+        // special check script to be run just once in first thread (not in all)
+        // but for all databases
+        v8::HandleScope scope;
+
+        v8::Handle<v8::Object> args = v8::Object::New();
+        args->Set(v8::String::New("upgrade"), v8::Boolean::New(perform));
+
+        context->_context->Global()->Set(v8::String::New("UPGRADE_ARGS"), args);
+
+        bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
+
+        if (! ok) {
+          if (context->_context->Global()->Has(v8::String::New("UPGRADE_STARTED"))) {
+            if (perform) {
+              LOG_FATAL_AND_EXIT(
+                "Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure",
+                vocbase->_name);
+            }
+            else {
+              LOG_FATAL_AND_EXIT(
+                "Database version check failed for '%s'. Please start the server with the --upgrade option",
+                vocbase->_name);
+            }
+          }
+          else {
+            LOG_FATAL_AND_EXIT("JavaScript error during server start");
+          }
+        }
+
+        LOG_DEBUG("database version check passed for '%s'", vocbase->_name);
+      }
+    }
+  }
+
+  if (perform) {
+
+    // issue #391: when invoked with --upgrade, the server will not always shut down
+    LOG_INFO("database upgrade passed");
+    context->_context->Exit();
+    context->_isolate->Exit();
+    delete context->_locker;
+
+    // regular shutdown... wait for all threads to finish
+
+    // again, can do this without the lock
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+
+      if (vocbase != 0) {
+        vocbase->_state = 2;
+
+        int res = TRI_ERROR_NO_ERROR;
+
+        res |= TRI_JoinThread(&vocbase->_synchroniser);
+        res |= TRI_JoinThread(&vocbase->_compactor);
+        vocbase->_state = 3;
+        res |= TRI_JoinThread(&vocbase->_cleanup);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
+        }
+      }
+    }
+
+    LOG_INFO("finished");
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+
+  // and return from the context
+  context->_context->Exit();
+  context->_isolate->Exit();
+  delete context->_locker;
+
+  LOG_TRACE("finished version check");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the upgrade check
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::runUpgradeCheck () {
+  LOG_TRACE("starting upgrade check");
+
+  // enter context and isolate
+  V8Context* context = _contexts[0];
+
+  context->_locker = new v8::Locker(context->_isolate);
+  context->_isolate->Enter();
+  context->_context->Enter();
+
+  // run upgrade script
+  LOG_DEBUG("running database upgrade check");
+
+  // can do this without a lock as this is the startup
+  int result = 1;
+
+  for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+    TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+
+    if (vocbase != 0) {
+      // special check script to be run just once in first thread (not in all)
+      // but for all databases
+      v8::HandleScope scope;
+
+      int status = TRI_V8RunUpgradeCheck(vocbase, &_startupLoader, context->_context);
+
+      if (status < 0) {
+        LOG_FATAL_AND_EXIT(
+          "Database upgrade check failed for '%s'. Please inspect the logs from any errors",
+          vocbase->_name);
+      }
+      else if (status == 3) {
+        result = 3;
+      }
+      else if (status == 2 && result == 1) {
+        result = 2;
+      }
+    }
+  }
+
+  // issue #391: when invoked with --upgrade, the server will not always shut down
+  context->_context->Exit();
+  context->_isolate->Exit();
+  delete context->_locker;
+
+  // regular shutdown... wait for all threads to finish
+
+  // again, can do this without the lock
+  for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+    TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+
+    if (vocbase != 0) {
+      vocbase->_state = 2;
+
+      int res = TRI_ERROR_NO_ERROR;
+
+      res |= TRI_JoinThread(&vocbase->_synchroniser);
+      res |= TRI_JoinThread(&vocbase->_compactor);
+      vocbase->_state = 3;
+      res |= TRI_JoinThread(&vocbase->_cleanup);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
+      }
+    }
+  }
+
+  if (result == 1) {
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+  else {
+    TRI_EXIT_FUNCTION(result, NULL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the actions
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::prepareActions () {
+  for (size_t i = 0;  i < _nrInstances;  ++i) {
+    prepareV8Actions(i);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -644,7 +816,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::prepare2 () {
+bool ApplicationV8::prepare () {
 
   // check the startup path
   if (_startupPath.empty()) {
@@ -712,6 +884,15 @@ bool ApplicationV8::prepare2 () {
     _gcFrequency = 1;
   }
 
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool ApplicationV8::prepare2 () {
+
   // setup instances
   _contexts = new V8Context*[_nrInstances];
 
@@ -744,6 +925,25 @@ bool ApplicationV8::start () {
 void ApplicationV8::close () {
   _stopping = 1;
   _contextCondition.broadcast();
+
+  // unregister all tasks
+  if (_scheduler != nullptr) {
+    _scheduler->scheduler()->unregisterUserTasks();
+  }
+
+  // wait for all contexts to finish
+  for (size_t n = 0;  n < 10 * 5;  ++n) {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    if (_busyContexts.empty()) {
+      LOG_DEBUG("no busy V8 contexts");
+      break;
+    }
+ 
+    LOG_DEBUG("waiting for %d busy V8 contexts to finish", (int) _busyContexts.size());
+
+    guard.wait(100000);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,6 +951,28 @@ void ApplicationV8::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::stop () {
+
+  //send all busy contexts a termate signal
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    for (auto it = _busyContexts.begin(); it != _busyContexts.end(); ++it) {
+      LOG_WARNING("sending termination signal to V8 context");
+      v8::V8::TerminateExecution((*it)->_isolate);
+    }
+  }
+
+  // wait for one minute
+  for (size_t n = 0;  n < 10 * 60;  ++n) {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    if (_busyContexts.empty()) {
+      break;
+    }
+ 
+    guard.wait(100000);
+  }
+
   // stop GC
   _gcThread->shutdown();
 
@@ -816,7 +1038,6 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8Cluster(context->_context);
 #endif
 
-
   if (_useActions) {
     TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);
   }
@@ -841,12 +1062,6 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     }
   }
 
-  // set global flag before loading system files
-  if (i == 0 && ! _skipUpgrade) {
-    v8::HandleScope scope;
-    TRI_AddGlobalVariableVocbase(context->_context, "UPGRADE", v8::Boolean::New(_performUpgrade));
-  }
-
   // load all init files
   for (size_t j = 0;  j < files.size();  ++j) {
     bool ok = _startupLoader.loadScript(context->_context, files[j]);
@@ -856,78 +1071,40 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     }
   }
 
+  // and return from the context
+  context->_context->Exit();
+  context->_isolate->Exit();
+  delete context->_locker;
 
-  // run upgrade script
-  if (i == 0 && ! _skipUpgrade) {
-    LOG_DEBUG("running database version check");
+  // initialise garbage collection for context
+  context->_numExecutions  = 0;
+  context->_hasDeadObjects = true;
+  context->_lastGcStamp    = TRI_microtime();
 
-    // can do this without a lock as this is the startup
-    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+  LOG_TRACE("initialised V8 context #%d", (int) i);
 
-      if (vocbase != 0) {
-        // special check script to be run just once in first thread (not in all)
-        // but for all databases
-        v8::HandleScope scope;
+  _freeContexts.push_back(context);
 
-        context->_context->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
+  return true;
+}
 
-        bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the V8 actions
+////////////////////////////////////////////////////////////////////////////////
 
-        if (! ok) {
-          if (context->_context->Global()->Has(v8::String::New("UPGRADE_STARTED"))) {
-            if (_performUpgrade) {
-              LOG_FATAL_AND_EXIT("Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure", vocbase->_name);
-            }
-            else {
-              LOG_FATAL_AND_EXIT("Database version check failed for '%s'. Please start the server with the --upgrade option", vocbase->_name);
-            }
-          }
-          else {
-            LOG_FATAL_AND_EXIT("JavaScript error during server start");
-          }
-        }
+void ApplicationV8::prepareV8Actions (const size_t i) {
+  LOG_TRACE("initialising V8 actions #%d", (int) i);
 
-        LOG_DEBUG("database version check passed for '%s'", vocbase->_name);
-      }
-    }
-  }
+  // enter context and isolate
+  V8Context* context = _contexts[i];
 
-  if (_performUpgrade) {
-    // issue #391: when invoked with --upgrade, the server will not always shut down
-    LOG_INFO("database upgrade passed");
-    context->_context->Exit();
-    context->_isolate->Exit();
-    delete context->_locker;
-
-    // regular shutdown... wait for all threads to finish
-
-    // again, can do this without the lock
-    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
-
-      if (vocbase != 0) {
-        vocbase->_state = 2;
-
-        int res = TRI_ERROR_NO_ERROR;
-
-        res |= TRI_JoinThread(&vocbase->_synchroniser);
-        res |= TRI_JoinThread(&vocbase->_compactor);
-        vocbase->_state = 3;
-        res |= TRI_JoinThread(&vocbase->_cleanup);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
-        }
-      }
-    }
-
-    LOG_INFO("finished");
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
-  }
+  context->_locker = new v8::Locker(context->_isolate);
+  context->_isolate->Enter();
+  context->_context->Enter();
 
   // scan for foxx applications
   if (i == 0) {
+
     // once again, we don't need the lock as this is the startup
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
       TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
@@ -964,15 +1141,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   delete context->_locker;
 
   // initialise garbage collection for context
-  context->_numExecutions   = 0;
-  context->_hasDeadObjects  = true;
-  context->_lastGcStamp     = TRI_microtime();
-
-  LOG_TRACE("initialised V8 context #%d", (int) i);
-
-  _freeContexts.push_back(context);
-
-  return true;
+  LOG_TRACE("initialised V8 actions #%d", (int) i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1010,6 +1179,10 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
   LOG_TRACE("closed V8 context #%d", (int) i);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

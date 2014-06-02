@@ -247,7 +247,6 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/json-test.cpp \
 	UnitTests/Basics/json-utilities-test.cpp \
 	UnitTests/Basics/hashes-test.cpp \
-	UnitTests/Basics/mersenne-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
@@ -855,6 +854,7 @@ unittests-arangob:
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test aqltrx --complexity 1 || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 100 --concurrency 3 --test counttrx || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test multitrx || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 500 --concurrency 3 --test import-document --complexity 500 || test "x$(FORCE)" == "x1"
 
 
 	kill `cat $(PIDFILE)`

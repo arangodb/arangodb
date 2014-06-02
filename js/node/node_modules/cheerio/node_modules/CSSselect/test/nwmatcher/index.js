@@ -137,7 +137,7 @@ var RUN_BENCHMARKS = false;
 		},
 		"E[foo]": function(){
 			this.assertEquivalent(select('h1[class]'), select('#fixtures h1'), "h1[class]");
-			//  this.assertEquivalent(select('h1[CLASS]'), select('#fixtures h1'), "h1[CLASS]"); //TODO
+			this.assertEquivalent(select('h1[CLASS]'), select('#fixtures h1'), "h1[CLASS]");
 			this.assertEqual(select('li#item_3[class]')[0], getById('item_3'), "li#item_3[class]");
 			this.assertEquivalent(select('#troubleForm2 input[name="brackets[5][]"]'), getById('chk_1', 'chk_2'));
 			//Brackets in attribute value

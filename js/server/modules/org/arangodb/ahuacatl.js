@@ -1333,11 +1333,8 @@ function RELATIONAL_EQUAL (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return true;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1379,11 +1376,8 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return false;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1426,11 +1420,8 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return null;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1495,11 +1486,8 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return null;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1564,11 +1552,8 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return null;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1633,11 +1618,8 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
   }
   
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return null;
   }
   
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -1705,11 +1687,8 @@ function RELATIONAL_CMP (lhs, rhs) {
   }
 
   // primitive type
-  if (TYPEWEIGHT(lhs) === TYPEWEIGHT_NULL) {
-    lhs = null;
-  }
-  if (TYPEWEIGHT(rhs) === TYPEWEIGHT_NULL) {
-    rhs = null;
+  if (leftWeight === TYPEWEIGHT_NULL) {
+    return 0;
   }
 
   if (leftWeight === TYPEWEIGHT_STRING) {
@@ -2460,12 +2439,9 @@ function SORT (value, sortFunction) {
 
   LIST(value);
  
-  var n = value.length;
-  if (n > 0) {
+  if (value.length > 0) {
     value.sort(sortFunction);
   }
-
-  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4774,12 +4750,12 @@ function GRAPH_NEIGHBORS (vertexCollection,
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CHECK IF RESTRICTION LIST MATCHES
 ////////////////////////////////////////////////////////////////////////////////
+
 function FILTER_RESTRICTION (list, restrictionList) {
-  if (!restrictionList) {
+  if (! restrictionList) {
     return list;
   }
   if (typeof restrictionList === "string") {
@@ -4797,8 +4773,8 @@ function FILTER_RESTRICTION (list, restrictionList) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getAllDocsByExample
 ////////////////////////////////////////////////////////////////////////////////
-function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
 
+function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   var res = [];
   if (!example) {
     example = [{}];
@@ -4815,20 +4791,16 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
     });
   });
   return res;
-
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
 ////////////////////////////////////////////////////////////////////////////////
 
 function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
-
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
-  if (!graph) {
+  if (! graph) {
     THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
@@ -4893,8 +4865,8 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge list of edges with list of examples
 ////////////////////////////////////////////////////////////////////////////////
-function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
 
+function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   var result = [],filter;
   if (examples.length === 0) {
     return edges;
@@ -4910,7 +4882,6 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   });
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
@@ -4929,14 +4900,15 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     options.direction =  'any';
   }
 
-  var neighbors = [],match,
-  params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  var neighbors = [],
+    params = TRAVERSAL_PARAMS(), 
+    factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
   options.edgeExamples = options.edgeExamples || [];
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
@@ -4961,19 +4933,17 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   });
 
   return result;
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected edges
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_EDGES (
   graphName,
   vertexExample,
   options) {
   "use strict";
-
 
   var neighbors = GENERAL_GRAPH_NEIGHBORS(graphName,
     vertexExample,
@@ -4991,6 +4961,7 @@ function GENERAL_GRAPH_EDGES (
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected edges
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_VERTICES (
   graphName,
   vertexExamples,
@@ -5000,7 +4971,7 @@ function GENERAL_GRAPH_VERTICES (
   if (! options) {
     options = {  };
   }
-  if (!options.direction) {
+  if (! options.direction) {
     options.direction =  'any';
   }
 
@@ -5013,11 +4984,11 @@ function GENERAL_GRAPH_VERTICES (
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return common neighbors of two vertices lists
 ////////////////////////////////////////////////////////////////////////////////
-function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 
+function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
   var ret = {};
   result.forEach(function (r) {
-    if (!ret[r.startVertex]) {
+    if (! ret[r.startVertex]) {
       ret[r.startVertex] = [];
     }
     ret[r.startVertex].push(r.vertex);
@@ -5025,10 +4996,10 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
   return ret;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return common neighbors of two vertices lists
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_COMMON_NEIGHBORS (
   graphName,
   vertex1Examples,
@@ -5076,6 +5047,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return common neighbors of two vertices lists
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_COMMON_PROPERTIES (
   graphName,
   vertex1Examples,
@@ -5084,7 +5056,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   "use strict";
 
   if (! options) {
-    options = {  };
+    options = { };
   }
   options.fromVertexExample = vertex1Examples;
   options.direction =  'any';
@@ -5138,13 +5110,9 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
       res.push(tmp);
     }
   });
+
   return res;
-
 }
-
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS

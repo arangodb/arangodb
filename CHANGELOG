@@ -1,7 +1,19 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* cleanup of version-check, added module org/arangodb/database-version,
+  added --check-version option
+
+* fixed issue #881: [2.1.0] Bombarded (every 10 sec or so) with 
+  "WARNING format string is corrupt" when in non-system DB Dashboard
+
+* specialized primary index implementation to allow faster hash table 
+  rebuilding and reduce lookups in datafiles for the actual value of `_key`.
+
 * issue #862: added `--overwrite` option to arangoimp
+
+* removed number of property lookups for documents during AQL queries that
+  access documents
 
 * prevent buffering of long print results in arangosh's and arangod's print
   command
@@ -14,13 +26,30 @@ v2.2.0 (XXXX-XX-XX)
 
   sorting attribute names was done on document insert to keep attributes 
   of a collection in sorted order for faster comparisons. The sort order
-  of attributes was only used in one particular and unlikey case, so it
+  of attributes was only used in one particular and unlikely case, so it
   was removed. Collections with many different attribute names should 
   benefit from this change by faster inserts and slightly less memory usage.
 
 
-v2.1.0 (XXXX-XX-XX)
+v2.1.0 (2014-05-29)
 -------------------
+
+* implemented upgrade procedure for clusters
+
+* fixed communication issue with agency which prevented reconnect
+  after an agent failure
+
+* fixed cluster dashboard in the case that one but not all servers
+  in the cluster are down
+
+* fixed a bug with coordinators creating local database objects
+  in the wrong order (_system needs to be done first)
+
+* improved cluster dashboard
+
+
+v2.1.0-rc2 (2014-05-25)
+-----------------------
 
 * fixed issue #864: Inconsistent behavior of AQL REVERSE(list) function
 

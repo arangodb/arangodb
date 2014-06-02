@@ -30,12 +30,10 @@
 #include "BasicsC/files.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/mersenne.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/random.h"
 #include "BasicsC/socket-utils.h"
 #include "ShapedJson/json-shaper.h"
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -53,7 +51,6 @@
 void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseMemory();
   TRI_InitialiseDebugging();
-  TRI_InitialiseMersenneTwister();
   TRI_InitialiseError();
   TRI_InitialiseFiles();
   TRI_InitialiseMimetypes();

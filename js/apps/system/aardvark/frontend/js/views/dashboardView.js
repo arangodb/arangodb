@@ -409,7 +409,7 @@
 
     getStatistics: function () {
       var self = this;
-      var url = "statistics/short";
+      var url = "/_db/_system/_admin/aardvark/statistics/short";
       var urlParams = "?start=";
 
       if (self.nextStart) {
@@ -551,18 +551,13 @@
     },
 
     prepareD3Charts: function (update) {
-      var v, self = this, f;
+      var self = this;
 
       var barCharts = {
         totalTimeDistribution: [
           "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
         dataTransferDistribution: [
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
-      };
-
-      var dists = {
-        totalTimeDistribution: "Time Distribution",
-        dataTransferDistribution: "Size Distribution"
       };
 
       if (this.d3NotInitialised) {
@@ -575,7 +570,6 @@
           + 'Container .dashboard-interior-chart');
 
         var selector = "#" + k + "Container svg";
-        var dist = dists[k];
 
         nv.addGraph(function () {
           var tickMarks = [0, 0.25, 0.5, 0.75, 1];  

@@ -525,15 +525,15 @@ void ApplicationServer::prepare2 () {
   for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
     ApplicationFeature* feature = *i;
 
-    LOG_DEBUG("preparing server feature '%s'", feature->getName().c_str());
+    LOG_DEBUG("preparing(2) server feature '%s'", feature->getName().c_str());
 
     bool ok = feature->prepare2();
 
     if (! ok) {
-      LOG_FATAL_AND_EXIT("failed to prepare server feature '%s'", feature->getName().c_str());
+      LOG_FATAL_AND_EXIT("failed to prepare(2) server feature '%s'", feature->getName().c_str());
     }
 
-    LOG_TRACE("prepared server feature '%s'", feature->getName().c_str());
+    LOG_TRACE("prepared(2) server feature '%s'", feature->getName().c_str());
   }
 }
 

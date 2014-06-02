@@ -33,6 +33,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "VocBase/key-generator.h"
+#include "VocBase/primary-index.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 
@@ -44,34 +45,6 @@
 /// @addtogroup VocBase
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the document id
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashKeyHeader (TRI_associative_pointer_t* array, void const* key) {
-  return TRI_FnvHashString((char const*) key);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the document header
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashElementDocument (TRI_associative_pointer_t* array, void const* element) {
-  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
-  return TRI_FnvHashString((char const*) e->_key);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a document id and a document
-////////////////////////////////////////////////////////////////////////////////
-
-static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
-
-  char const * k = static_cast<char const*>(key);
-  return (strcmp(k, e->_key) == 0);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a datafile identifier
@@ -530,12 +503,7 @@ int TRI_InitPrimaryCollection (TRI_primary_collection_t* primary,
     return res;
   }
 
-  res = TRI_InitAssociativePointer(&primary->_primaryIndex,
-                                   TRI_UNKNOWN_MEM_ZONE,
-                                   HashKeyHeader,
-                                   HashElementDocument,
-                                   IsEqualKeyDocument,
-                                   NULL);
+  res = TRI_InitPrimaryIndex(&primary->_primaryIndex, TRI_UNKNOWN_MEM_ZONE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyAssociativePointer(&primary->_datafileInfo);
@@ -565,7 +533,7 @@ void TRI_DestroyPrimaryCollection (TRI_primary_collection_t* primary) {
   TRI_DestroyReadWriteLock(&primary->_compactionLock);
   TRI_DestroyReadWriteLock(&primary->_lock);
 
-  TRI_DestroyAssociativePointer(&primary->_primaryIndex);
+  TRI_DestroyPrimaryIndex(&primary->_primaryIndex);
 
   if (primary->_shaper != NULL) {
     TRI_FreeVocShaper(primary->_shaper);

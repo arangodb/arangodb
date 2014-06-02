@@ -438,13 +438,14 @@ static int GenerateMessage (char* buffer,
   // .............................................................................
 
   n = 0;
+
+  // TODO: can this lock be removed? the prefix is only set at the server startup once
   TRI_LockSpin(&OutputPrefixLock);
 
 
   if (OutputPrefix && *OutputPrefix) {
     n = snprintf(buffer, size, "%s ", OutputPrefix);
   }
-
 
   TRI_UnlockSpin(&OutputPrefixLock);
 

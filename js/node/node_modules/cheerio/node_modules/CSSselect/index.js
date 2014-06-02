@@ -9,11 +9,12 @@ var Pseudos       = require("./lib/pseudos.js"),
     getChildren   = DomUtils.getChildren,
     removeSubsets = DomUtils.removeSubsets,
     falseFunc     = require("./lib/basefunctions.js").falseFunc,
-    compile       = require("./lib/compile.js");
+    compile       = require("./lib/compile.js"),
+    compileUnsafe = compile.compileUnsafe;
 
 function getSelectorFunc(searchFunc){
 	return function select(query, elems, options){
-		if(typeof query !== "function") query = compile(query, options);
+		if(typeof query !== "function") query = compileUnsafe(query, options);
 		if(!Array.isArray(elems)) elems = getChildren(elems);
 		else elems = removeSubsets(elems);
 		return searchFunc(query, elems);
