@@ -114,7 +114,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  assert(datafile->_fd > 0);
+  assert(datafile->_fd >= 0);
 
   if (begin == end) {
     // no need to sync
@@ -146,7 +146,7 @@ static int TruncateDatafile (TRI_datafile_t* const datafile, const off_t length)
 
 static int CreateSparseFile (char const* filename,
                              const TRI_voc_size_t maximalSize) {
-  off_t offset;
+  TRI_lseek_t offset;
   char zero;
   ssize_t res;
   int fd;
@@ -162,9 +162,9 @@ static int CreateSparseFile (char const* filename,
   }
 
   // create sparse file
-  offset = TRI_LSEEK(fd, maximalSize - 1, SEEK_SET);
+  offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
 
-  if (offset == (off_t) -1) {
+  if (offset == (TRI_lseek_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
@@ -192,7 +192,6 @@ static int CreateSparseFile (char const* filename,
   return fd;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +211,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
     assert(fd == -1);
   }
   else {
-    assert(fd > 0);
+    assert(fd >= 0);
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
@@ -266,7 +265,6 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   int fd;
   int res;
   size_t maximalSize;
-  off_t offset;
   void* data;
   void* mmHandle;
     
@@ -295,9 +293,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   }
 
   // create sparse file
-  offset = TRI_LSEEK(fd, (TRI_lseek_t) maximalSize - 1, SEEK_SET);
+  TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
 
-  if (offset == (off_t) -1) {
+  if (offset == (TRI_lseek_t) -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 

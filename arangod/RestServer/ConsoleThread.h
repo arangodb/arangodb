@@ -96,7 +96,6 @@ namespace triagens {
 
         void userAbort () {
           _userAborted = true;
-          TRI_CLOSE(0);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

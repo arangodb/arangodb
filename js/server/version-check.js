@@ -846,7 +846,7 @@
 
   // version match!
   if (lastVersion === currentVersion) {
-    if (internal.upgrade) {
+    if (args.upgrade) {
       runUpgrade(currentVersion, true);
     }
     else {
@@ -871,7 +871,7 @@
 
   // upgrade
   if (lastVersion < currentVersion) {
-    if (internal.upgrade) {
+    if (args.upgrade) {
       return runUpgrade(currentVersion, true);
     }
 

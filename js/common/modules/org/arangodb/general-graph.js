@@ -222,8 +222,14 @@ AQLStatement.prototype.allowsRestrict = function() {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             AQL Generator
+// --SECTION--                                AQL Generator for fluent interface
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Starting point of the fluent interface.
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
 
 var AQLGenerator = function(graph) {
   this.stack = [];
@@ -235,6 +241,12 @@ var AQLGenerator = function(graph) {
   this.lastVar = "";
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Dispose and reset the current cursor of the query
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype._clearCursor = function() {
   if (this.cursor) {
     this.cursor.dispose();
@@ -242,11 +254,27 @@ AQLGenerator.prototype._clearCursor = function() {
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Execute the query and keep the cursor
+///
+/// Only for internal use.
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype._createCursor = function() {
   if (!this.cursor) {
     this.cursor = this.execute();
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General edge query, takes direction as parameter
+///
+/// This will create the general AQL statement to load edges
+/// connected to the vertices selected in the step before.
+/// Will also bind the options into bindVars.
+///
+/// Only for internal use, user gets different functions for directions
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype._edges = function(edgeExample, options) {
   this._clearCursor();
@@ -272,6 +300,79 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   this.lastVar = edgeName;
   return this;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_edges
+/// @brief select all connected edges
+/// 
+/// @FUN{graph-query.edges(@FA{examples})}
+///
+/// Creates an AQL statement to select all edges for each of the vertices selected
+/// in the step before.
+/// This will include `inbound` as well as `outbound` edges.
+/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered edges:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered edges by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges({type: "married"}).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered edges by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
+///   var graph = require("org/arangodb/general-graph");
+///   var edgeDefinition = [];
+///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
+///   var g = graph._create("social", edgeDefinition);
+///   var a = g.user.save({name: "Alice"});
+///   var b = g.user.save({name: "Bob"});
+///   var c = g.user.save({name: "Charly"});
+///   var d = g.user.save({name: "Diana"});
+///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
+///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
+///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
+///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// To define a relation between several vertex collections:
+///
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.edges = function(example) {
   return this._edges(example, {direction: "any"});
@@ -779,7 +880,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
     };
 
     // remove
-    var old_remove = wrap.remove;
     wrap.remove = function(edgeId, options) {
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
@@ -1120,10 +1220,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._neighbors = function(vertexExample, options) {
-  var current_vertex,
-    target_array = [],
-    addNeighborToList,
-    AQLStmt;
+  var AQLStmt;
 
   if (! options) {
     options = { };

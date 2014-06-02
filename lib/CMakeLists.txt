@@ -85,7 +85,6 @@ add_library(
     BasicsC/linked-list.c
     BasicsC/logging.c
     BasicsC/memory.c
-    BasicsC/mersenne.c
     BasicsC/mimetypes.c
     BasicsC/prime-numbers.c
     BasicsC/process-utils.c

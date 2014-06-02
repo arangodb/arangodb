@@ -402,8 +402,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     }
   }
 
-  bool mustRetry = false;
-  
   if (result.successful()) {
     result.parse(prefix + "/", false);
 
@@ -483,8 +481,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
             // delete the database again (and try again next time)
             TRI_ReleaseVocBase(vocbase);
             TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
-
-            mustRetry = true;
+            if (json != 0) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+            } 
+            return false;  // We give up, we will try again in the
+                           // next heartbeat, because we did not
+                           // touch remotePlanVersion
           }
 
           if (json != 0) {
@@ -499,7 +501,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       ++it;
     }
 
-   
     TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server); 
 
     if (localIds != 0) {
@@ -519,13 +520,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     }
   }
   else {
-    mustRetry = true;
+    return false;
   }  
  
-  if (mustRetry) {
-    return false;
-  }
-
   remotePlanVersion = currentPlanVersion;
 
   // turn on error logging now
