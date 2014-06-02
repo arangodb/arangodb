@@ -763,13 +763,19 @@ var _create = function (graphName, edgeDefinitions) {
   var gdb = getGraphCollection(),
     g,
     graphAlreadyExists = true,
-    collections;
-
+    collections,
+    err;
   if (!graphName) {
-    throw "a graph name is required to create a graph.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
+    throw err;
   }
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
-    throw "at least one edge definition is required to create a graph.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.message;
+    throw err;
   }
   //check, if a collection is already used in a different edgeDefinition
   var tmpCollections = [];
