@@ -834,6 +834,17 @@ function require (path) {
       }
     }
 
+    // check if there is a package containing this module
+    path = path.substr(1);
+    if (path.indexOf('/') !== -1) {
+      var p = path.split('/');
+      localModule = requirePackage(currentModule, '/' + p.shift());
+      if (localModule !== null) {
+        localModule = requirePackage(localModule, '/' + p.join('/'));
+        return localModule;
+      }
+    }
+
     // nothing found
     return null;
   }
