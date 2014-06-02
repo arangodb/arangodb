@@ -1,0 +1,64 @@
+<a name="what_is_arangodb?"></a>
+# What is ArangoDB?
+
+For installation instructions, please refer to the 
+[Installation Manual](../Installing/README.md).
+
+As you know from the introduction ArangoDB is a multi-purpose open-source Database. Following you can see the Key features or look at the programs in the ArangoDB package. 
+
+Key features include:
+
+- *Schema-free schemata*: Let you combine the space efficiency of MySQL with
+  the performance power of NoSQL
+- *Application server*: Use ArangoDB as an application server and fuse your application and
+  database together for maximal throughput
+- *JavaScript for all*: No language zoo, you can use one language from your
+  browser to your back-end
+- *Flexible data modeling*: Model your data as combination of key-value pairs,
+  documents or graphs - perfect for social relations
+- *Free index choice*: Use the correct index for your problem, may it be a skip
+  list or a fulltext search 
+- *Configurable durability*: Let the application decide if it needs more
+  durability or more performance
+- *No-nonsense storage*: ArangoDB uses all of the power of modern storage
+  hardware, like SSD and large caches
+- *Powerful query language* (AQL) to retrieve data 
+- *Transactions*: Run queries on multiple documents or collections with 
+  optional transactional consistency and isolation
+- *Replication*: Set up the database in a master-slave configuration
+- It is open source (*Apache Licence 2.0*)
+
+For more in-depth information:
+
+- Read more on the 
+  [Design Goals](http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives) 
+  of ArangoDB
+- [Watch the video](http://vimeo.com/36411892): Martin Schönert, 
+  architect of ArangoDB, gives an introduction of what the ArangoDB project 
+  is about
+- Or give it a [try](http://www.arangodb.org/try)
+
+
+<a name="arangodb_programs"></a>
+## ArangoDB programs
+
+The ArangoDB package comes with the following programs:
+
+- _arangod_: The ArangoDB database daemon. This server program is
+  intended to run as daemon process and to server the various clients
+  connection to the server via TCP / HTTP. See [Details about the ArangoDB Server](../FirstSteps/Arangod.md) 
+- _arangosh_: The ArangoDB shell. A client that implements a
+  read-eval-print loop (REPL) and provides functions to access and
+  administrate the ArangoDB server. See [Details about the ArangoDB Shell](../FirstSteps/Arangosh.md).
+- _arangoimp_: A bulk importer for the ArangoDB server
+  See [Details about Arangoimp](../Arangoimp/README.md).
+- _arangodump_: A tool to create backups of an ArangoDB database. See
+   [Details about Arangodump](../Arangodump/README.md).
+- _arangorestore_: A tool to reload data from a backup into an ArangoDB database.
+  See  [Details about Arangorestore](../ArangoRestore/README.md).
+- _foxx-manager_: A shell script to administer Foxx applications.
+  See [Foxx Manager](../FoxxManager/README.md)
+- _arango-dfdb_: A datafile debugger for ArangoDB. It is intended to be
+  used primarily during development of ArangoDB. See @ref DbaManualDatafileDebugger
+
+

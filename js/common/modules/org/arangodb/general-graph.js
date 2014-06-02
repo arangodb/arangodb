@@ -1097,12 +1097,17 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
+  this.__idsToRemove = [];
+  this.__collectionsToLock = [];
 
+  // fills this.__idsToRemove and this.__collectionsToLock
   var removeEdge = function (edgeId, options) {
     options = options || {};
     var edgeCollection = edgeId.split("/")[0];
     var graphs = getGraphCollection().toArray();
-    var result = db._remove(edgeId, options);
+//    var result = db._remove(edgeId, options);
+    self.__idsToRemove.push(edgeId);
+    self.__collectionsToLock.push(edgeCollection);
 //    var result = old_remove(edgeId, options);
     graphs.forEach(
       function(graph) {
@@ -1120,9 +1125,14 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
                 edges.forEach(
                   function (edge) {
                     // if from is
-                    if (edge._from === edgeId || edge._to === edgeId) {
+                    if(self.__idsToRemove.indexOf(edge._id) === -1) {
+                      if (edge._from === edgeId || edge._to === edgeId) {
+                        removeEdge(edge._id, options);
+                      }
+/*
                       var newGraph = exports._graph(graph._key);
                       newGraph[collection].remove(edge._id, options);
+*/
                     }
                   }
                 );
@@ -1132,17 +1142,19 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       }
     );
-    return result;
+    return;
   };
 
 
   _.each(vertexCollections, function(obj, key) {
+    var result;
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
       //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
       var vertexCollectionName = vertexId.split("/")[0];
+      self.__collectionsToLock.push(vertexCollectionName);
       graphs.forEach(
         function(graph) {
           var edgeDefinitions = graph.edgeDefinitions;
@@ -1170,10 +1182,42 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       );
 
-      if (options === null || options === undefined) {
-        return old_remove(vertexId);
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+            if (params.options) {
+              db._remove(params.vertexId, params.options);
+            } else {
+              db._remove(params.vertexId);
+            }
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options,
+            vertexId: vertexId
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
       }
-      return old_remove(vertexId, options);
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+
+      return result;
     };
 
     self[key] = wrap;
@@ -1202,12 +1246,57 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
     // remove
     wrap.remove = function(edgeId, options) {
+      var result;
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
-      return (removeEdge(edgeId, options));
+//      return (removeEdge(edgeId, options));
+      removeEdge(edgeId, options);
+
+/*
+      var collectionsToLock = [];
+      self.__idsToRemove.forEach(
+        function(idToRemove) {
+          var collectionOfIdToRemove = idToRemove.split("/")[0];
+          if(collectionsToLock.indexOf(collectionOfIdToRemove) === -1) {
+            collectionsToLock.push(collectionOfIdToRemove);
+          }
+        }
+      );
+*/
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+      return result;
     };
+
     self[key] = wrap;
   });
 };
