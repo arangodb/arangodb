@@ -569,9 +569,6 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
-  // register a marker protector
-  trx->_protectorId       = triagens::wal::LogfileManager::instance()->registerMarkerProtector();  
-
   return trx;
 }
 
@@ -587,7 +584,7 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   }
   
   // release the marker protector
-  triagens::wal::LogfileManager::instance()->unregisterMarkerProtector(trx->_protectorId);  
+  triagens::wal::LogfileManager::instance()->unregisterMarkerProtector(trx->_id);  
 
   // free all collections
   size_t i = trx->_collections._length;
@@ -927,6 +924,9 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
 
     // set hints
     trx->_hints = hints;
+  
+    // register a protector
+    triagens::wal::LogfileManager::instance()->registerMarkerProtector(trx->_id);  
   }
   else {
     assert(trx->_status == TRI_TRANSACTION_RUNNING);

@@ -139,7 +139,6 @@ add_executable(
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
     Wal/Marker.cpp
-    Wal/MarkerProtector.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
