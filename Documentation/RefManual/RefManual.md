@@ -7,6 +7,7 @@ ArangoDB's Reference Manual (@VERSION) {#RefManual}
 @CHAPTER_REF{JSModuleConsole}
 @CHAPTER_REF{JSModuleFs}
 @CHAPTER_REF{JSModuleGraph}
+@CHAPTER_REF{JSModuleGeneralGraph}
 @CHAPTER_REF{JSModuleActions}
 @CHAPTER_REF{JSModuleCluster}
 @CHAPTER_REF{jsUnity}

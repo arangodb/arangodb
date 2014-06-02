@@ -1812,8 +1812,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
-///                 "waitForSync": true, "limit": 2 }';
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "waitForSync": true, "limit": 2 }';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1832,8 +1831,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
-///                   "options": {"waitForSync": true, "limit": 2} }';
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "options": {"waitForSync": true, "limit": 2} }';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
