@@ -13,8 +13,8 @@ md-files:
 build-books: md-files
 	@test -d books || mkdir books
 	make build-book NAME=Users
-	make build-book NAME=ApiImplementors
-
+	
 build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
 	cd $(NAME) && gitbook build -o ../books/$(NAME)
+	cp Users/arangodb_logo2.png books/Users/

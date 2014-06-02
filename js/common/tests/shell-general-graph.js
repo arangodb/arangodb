@@ -292,7 +292,7 @@ function GeneralGraphCreationSuite() {
         );
         fail();
       } catch (err) {
-        assertEqual(err, "at least one edge definition is required to create a graph.");
+        assertEqual(err.errorMessage, "at least one edge definition is required to create a graph.");
       }
     },
 
@@ -312,7 +312,7 @@ function GeneralGraphCreationSuite() {
         );
         fail();
       } catch (err) {
-        assertEqual(err, "a graph name is required to create a graph.");
+        assertEqual(err.errorMessage, "a graph name is required to create a graph.");
       }
     },
 
