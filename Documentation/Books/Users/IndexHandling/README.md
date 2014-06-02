@@ -144,6 +144,115 @@ Currently it is not possible to index system attributes in user-defined indexes.
 <a name="collection_methods"></a>
 ### Collection Methods
 
+`collection.index( index-handle)`
+
+Returns the index with index-handle or null if no such index exists.
+
+*Examples*
+
+	arango> db.example.getIndexes().map(function(x) { return x.id; });
+	["example/0"]
+	arango> db.example.index("93013/0");
+	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+
+returns information about the indexes
+
+`getIndexes()`
+
+Returns a list of all indexes defined for the collection.
+
+*Examples*
+
+	arango> db.demo.getIndexes()
+	[
+	  { 
+	    "id" : "demo/0", 
+	    "type" : "primary",
+	    "fields" : [ "_id" ]
+	  }, 
+	  { 
+	    "id" : "demo/2290971", 
+	    "unique" : true, 
+	    "type" : "hash", 
+	    "fields" : [ "a" ] 
+	  }, 
+	  { 
+	    "id" : "demo/2946331",
+	    "unique" : false, 
+	    "type" : "hash", 
+	    "fields" : [ "b" ] 
+	  },
+	  { 
+	    "id" : "demo/3077403", 
+	    "unique" : false, 
+	    "type" : "skiplist", 
+	    "fields" : [ "c" ]
+	  }
+	]
+
+drops an index
+
+`collection.dropIndex( index)`
+
+Drops the index. If the index does not exist, then false is returned. If the index existed and was dropped, then true is returned. Note that you cannot drop some special indexes (e.g. the primary index of a collection or the edge index of an edge collection).
+
+`collection.dropIndex( index-handle)`
+
+Same as above. Instead of an index an index handle can be given.
+
+*Examples*
+
+	arango> db.example.ensureSkiplist("a", "b");
+	{ "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+	
+	arango> i = db.example.getIndexes();
+	[
+	  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+	  { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
+	  ]
+	
+	arango> db.example.dropIndex(i[0])
+	false
+	
+	arango> db.example.dropIndex(i[1].id)
+	true
+	
+	arango> i = db.example.getIndexes();
+	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+
+`collection.ensureIndex( index-description)`
+
+Ensures that an index according to the index-description exists. A new index will be created if none exists with the given description.
+
+The index-description must contain at least a type attribute. type can be one of the following values:
+
+* hash: hash index
+* skiplist: skiplist index
+* fulltext: fulltext index
+* bitarray: bitarray index
+* geo1: geo index, with one attribute
+* geo2: geo index, with two attributes
+* cap: cap constraint
+
+Other attributes may be necessary, depending on the index type.
+
+Calling this method returns an index object. Whether or not the index object existed before the call is indicated in the return attribute isNewlyCreated.
+
+*Examples*
+
+	arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+	{
+	"id" : "example/30242599562",
+	"type" : "hash",
+	"unique" : true,
+	"fields" : [
+	"name"
+	],
+	"isNewlyCreated" : true
+	}
+
+
+<!--
 @anchor HandlingIndexesRead
 @copydetails JSF_ArangoCollection_prototype_index
 
@@ -158,14 +267,53 @@ Currently it is not possible to index system attributes in user-defined indexes.
 @CLEARPAGE
 @anchor HandlingIndexesEnsure
 @copydetails JS_EnsureIndexVocbaseCol
+-->
 
 <a name="database_methods"></a>
 ### Database Methods
 
+`db._index(index-handle)`
+
+Returns the index with index-handle or null if no such index exists.
+
+*Examples*
+
+	arango> db.example.getIndexes().map(function(x) { return x.id; });
+	["example/0"]
+	arango> db._index("example/0");
+	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+
+`db._dropIndex(index)`
+
+Drops the index. If the index does not exists, then false is returned. If the index existed and was dropped, then true is returned. Note that you cannot drop the primary index.
+
+`db._dropIndex(index-handle)`
+
+Drops the index with index-handle.
+
+*Examples*
+
+	arango> db.example.ensureSkiplist("a", "b");
+	{ "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+	
+	arango> i = db.example.getIndexes();
+	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+	 { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
+	 
+	 arango> db._dropIndex(i[0]);
+	 false
+	 
+	 arango> db._dropIndex(i[1].id);
+	true
+	
+	arango> i = db.example.getIndexes();
+	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+
+<!--
 @anchor HandlingIndexesDbRead
 @copydetails JSF_ArangoDatabase_prototype__index
 
 @CLEARPAGE
 @anchor HandlingIndexesDbDelete
 @copydetails JSF_ArangoDatabase_prototype__dropIndex
-
+-->

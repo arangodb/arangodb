@@ -32,5 +32,30 @@ of "old" documents, and so save the user from implementing own jobs to purge
 <a name="accessing_cap_constraints_from_the_shell"></a>
 ## Accessing Cap Constraints from the Shell
 
+`collection.ensureCapConstraint( size, {byteSize})`
+
+Creates a size restriction aka cap for the collection of size documents and/or byteSize data size. If the restriction is in place and the ( size plus one) document is added to the collection, or the total active data size in the collection exceeds byteSize, then the least recently created or updated documents are removed until all constraints are satisfied.
+
+It is allowed to specify either size or byteSize, or both at the same time. If both are specified, then the automatic document removal will be triggered by the first non-met constraint.
+
+Note that at most one cap constraint is allowed per collection. Trying to create additional cap constraints will result in an error. Creating cap constraints is also not supported in sharded collections with more than one shard.
+
+Note that this does not imply any restriction of the number of revisions of documents.
+
+*Examples*
+
+Restrict the number of document to at most 10 documents:
+
+	arango> db.examples.ensureCapConstraint(10);
+	{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
+	
+	arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+	
+	arango> db.examples.count();
+	10
+
+
+<!--
 @anchor IndexCapShellEnsureCapConstraint
 @copydetails JSF_ArangoCollection_prototype_ensureCapConstraint
+-->

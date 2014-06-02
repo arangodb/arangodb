@@ -12,13 +12,33 @@ fashion. The collection `_users` contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
+	{ 
+	  "_id" : "_users/1172449", 
+	  "_rev" : "1172449", 
+	  "_key" : "1172449", 
+	  "active" : true, 
+	  "changePassword" : false, 
+	  "user" : "root", 
+	  "password" : "$1$bd5458a8$8b23e2e1a762f75001ab182235b8ab1b8665bc572b0734a042a501b3c34e567a" 
+	}
+
+<!--
+
 @EXAMPLE_ARANGOSH_OUTPUT{AuthenticationExample1}
     db._users.firstExample("user", "root")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
+-->
+
 !SUBSECTION Command-Line Options for the Authentication and Authorization
 
-@copydetails triagens::arango::ArangoServer::_disableAuthentication
+`--server.disable-authentication value`
+
+Setting value to true will turn off authentication on the server side so all clients can execute any action without authorization and privilege checks.
+
+The default value is false.
+
+<!--@copydetails triagens::arango::ArangoServer::_disableAuthentication-->
 
 !SECTION Introduction to User Management
 
