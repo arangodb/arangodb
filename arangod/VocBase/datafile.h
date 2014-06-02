@@ -181,6 +181,11 @@ typedef enum {
   TRI_WAL_MARKER_BEGIN_TRANSACTION   = 4020,
   TRI_WAL_MARKER_COMMIT_TRANSACTION  = 4021,
   TRI_WAL_MARKER_ABORT_TRANSACTION   = 4022,
+  
+  TRI_WAL_MARKER_CREATE_COLLECTION   = 4030,
+  TRI_WAL_MARKER_DROP_COLLECTION     = 4031,
+  TRI_WAL_MARKER_RENAME_COLLECTION   = 4032,
+  TRI_WAL_MARKER_CHANGE_COLLECTION   = 4033,
 
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
