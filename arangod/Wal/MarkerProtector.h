@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief WAL read operation
+/// @brief WAL marker protector
 ///
 /// @file
 ///
@@ -25,55 +25,63 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Wal/ReadOperation.h"
-#include "Wal/LogfileManager.h"
+#ifndef TRIAGENS_WAL_MARKER_PROTECTOR_H
+#define TRIAGENS_WAL_MARKER_PROTECTOR_H 1
 
-using namespace triagens::wal;
+#include "Basics/Common.h"
+
+namespace triagens {
+  namespace wal {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class MarkerProtector
+// -----------------------------------------------------------------------------
+
+    class MarkerProtector {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+      public:
+        
+        MarkerProtector (MarkerProtector const&) = delete;
+        MarkerProtector& operator= (MarkerProtector const&) = delete;
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a read operation
+/// @brief create a marker protector
+////////////////////////////////////////////////////////////////////////////////
+        
+        explicit MarkerProtector (void**);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a marker protector without an address
+////////////////////////////////////////////////////////////////////////////////
+        
+        MarkerProtector ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a marker protector
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadOperation::ReadOperation (void** address) 
-  : _address(reinterpret_cast<ReadOperation**>(address)),
-    _id(0) {
+        ~MarkerProtector ();
 
-  if (address == nullptr || *address == nullptr) {
-    _id = wal::LogfileManager::instance()->registerReadOperation(); 
-    
-    if (_id == 0) {
-      throw "fail!"; // TODO: throw proper exception
-    }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
-    if (_address != nullptr) {
-      *address = this;
-    }
+      private:
+
+        MarkerProtector** _address;
+
+        uint64_t _id;
+
+    };
+
   }
 }
 
-ReadOperation::ReadOperation () 
-  : ReadOperation(nullptr) {
-}  
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a read operation
-////////////////////////////////////////////////////////////////////////////////
-
-ReadOperation::~ReadOperation () {
-  if (_address == nullptr || *_address == this) {
-    assert(_id != 0);
-
-    wal::LogfileManager::instance()->unregisterReadOperation(_id);
-
-    if (_address != nullptr) {
-      *_address = nullptr;
-    }
-  }
-}
+#endif
 
 // Local Variables:
 // mode: outline-minor

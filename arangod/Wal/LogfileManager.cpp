@@ -326,10 +326,10 @@ void LogfileManager::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a WAL read operation
+/// @brief registers a WAL marker protector
 ////////////////////////////////////////////////////////////////////////////////
   
-uint64_t LogfileManager::registerReadOperation () {
+uint64_t LogfileManager::registerMarkerProtector () {
   uint64_t id = static_cast<uint64_t>(TRI_NewTickServer());
 
   {
@@ -337,16 +337,19 @@ uint64_t LogfileManager::registerReadOperation () {
     _readOperations.insert(make_pair(id, _lastCollectedId));
   }
 
+std::cout << "ACQUIRED PROTECTOR " << id << "\n";
   return id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a WAL read operation
+/// @brief unregisters a WAL marker protector
 ////////////////////////////////////////////////////////////////////////////////
         
-void LogfileManager::unregisterReadOperation (uint64_t id) {
+void LogfileManager::unregisterMarkerProtector (uint64_t id) {
   WRITE_LOCKER(_logfilesLock);
   _readOperations.erase(id);
+
+std::cout << "RELEASED PROTECTOR " << id << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

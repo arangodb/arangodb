@@ -883,7 +883,7 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
     // no escaping needed for collection name
     APPEND_STRING(buffer, document->base._info._name);
     APPEND_STRING(buffer, "\",\"operations\":");
-    APPEND_UINT64(buffer, (uint64_t) trxCollection->_operations->_length);
+    APPEND_UINT64(buffer, (uint64_t) trxCollection->_operations->size());
     APPEND_CHAR(buffer, '}');
   }
   APPEND_STRING(buffer, "]}");
@@ -1183,10 +1183,10 @@ static bool HasRelevantOperations (TRI_transaction_t const* trx) {
 
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    assert(trxCollection != NULL);
+    assert(trxCollection != nullptr);
 
-    if (trxCollection->_operations == NULL ||
-        trxCollection->_operations->_length == 0) {
+    if (trxCollection->_operations == nullptr ||
+        trxCollection->_operations->size() == 0) {
       // no markers available for collection
       continue;
     }
@@ -1248,14 +1248,16 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     }
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    size_t k = trxCollection->_operations->_length;
+    size_t k = trxCollection->_operations->size();
 
     assert(k > 0);
 
     for (size_t j = 0; j < k; ++j) {
       TRI_replication_operation_e type;
 
-      TRI_transaction_operation_t* trxOperation = static_cast<TRI_transaction_operation_t*>(TRI_AtVector(trxCollection->_operations, j));
+      // TODO: fix replication
+      /*
+      TRI_transaction_operation_t* trxOperation = trxCollection->_operations[j];
   
       buffer = GetBuffer(logger);
 
@@ -1278,6 +1280,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 
         return TRI_ERROR_INTERNAL;
       }
+      */
 
       res = LogEvent(logger, trx->_id, false, type, buffer);
 

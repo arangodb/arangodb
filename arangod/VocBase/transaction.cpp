@@ -131,19 +131,19 @@ static void FreeOperations (TRI_transaction_t* trx) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-    if (trxCollection->_ops == nullptr) {
+    if (trxCollection->_operations == nullptr) {
       continue;
     }
  
     if (trx->_status == TRI_TRANSACTION_ABORTED) {
-      for (auto it = trxCollection->_ops->rbegin(); it != trxCollection->_ops->rend(); ++it) {
+      for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
         triagens::wal::DocumentOperation* op = (*it);
 
         op->revert();
       }
     }
 
-    for (auto it = trxCollection->_ops->rbegin(); it != trxCollection->_ops->rend(); ++it) {
+    for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
       triagens::wal::DocumentOperation* op = (*it);
   
       delete op;
@@ -151,8 +151,8 @@ static void FreeOperations (TRI_transaction_t* trx) {
     
     TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
 
-    delete trxCollection->_ops;
-    trxCollection->_ops = nullptr;
+    delete trxCollection->_operations;
+    trxCollection->_operations = nullptr;
   }
 }
 
@@ -211,7 +211,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_accessType       = accessType;
   trxCollection->_nestingLevel     = nestingLevel;
   trxCollection->_collection       = nullptr;
-  trxCollection->_ops              = nullptr;
+  trxCollection->_operations       = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
   trxCollection->_compactionLocked = false;
@@ -569,6 +569,9 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
 
+  // register a marker protector
+  trx->_protectorId       = triagens::wal::LogfileManager::instance()->registerMarkerProtector();  
+
   return trx;
 }
 
@@ -582,6 +585,9 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx, 0);
   }
+  
+  // release the marker protector
+  triagens::wal::LogfileManager::instance()->unregisterMarkerProtector(trx->_protectorId);  
 
   // free all collections
   size_t i = trx->_collections._length;
@@ -592,7 +598,7 @@ void TRI_FreeTransaction (TRI_transaction_t* const trx) {
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
-
+  
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
 }
 
@@ -878,13 +884,13 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
   else {
     // buffer the operation
-    if (trxCollection->_ops == nullptr) {
-      trxCollection->_ops = new std::vector<triagens::wal::DocumentOperation*>;
+    if (trxCollection->_operations == nullptr) {
+      trxCollection->_operations = new std::vector<triagens::wal::DocumentOperation*>;
       trx->_hasOperations = true;
     }
 
     triagens::wal::DocumentOperation* copy = operation.swap();
-    trxCollection->_ops->push_back(copy);
+    trxCollection->_operations->push_back(copy);
     copy->handle();
   }
 
