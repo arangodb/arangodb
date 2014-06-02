@@ -1081,7 +1081,7 @@ namespace triagens {
           // check in the context if we are running embedded
           _trx = this->getParentTransaction();
 
-          if (_trx != 0) {
+          if (_trx != nullptr) {
             // yes, we are embedded
             _setupState = setupEmbedded();
           }

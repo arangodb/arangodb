@@ -146,6 +146,7 @@ typedef struct TRI_transaction_s {
   int                                  _nestingLevel;
   TRI_server_id_t                      _generatingServer;  // id of server that generated the trx
   uint64_t                             _timeout;           // timeout for lock acquisition
+  uint64_t                             _protectorId;       // marker protector id
   bool                                 _hasOperations;
   bool                                 _replicate;         // replicate this transaction?
   bool                                 _waitForSync;       // whether or not the collection had a synchronous op
@@ -162,8 +163,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
-  TRI_vector_t*                        _operations;        // buffered CRUD operations
-  std::vector<triagens::wal::DocumentOperation*>*   _ops;
+  std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
   bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?
