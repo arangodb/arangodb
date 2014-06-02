@@ -118,7 +118,6 @@ bin_arangod_SOURCES = \
 	arangod/Wal/Marker.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
-	arangod/Wal/TestThread.cpp \
 	arangod/Wal/SynchroniserThread.cpp \
         arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \

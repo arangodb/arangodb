@@ -141,7 +141,6 @@ add_executable(
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
-    Wal/TestThread.cpp
 )
 
 target_link_libraries(
