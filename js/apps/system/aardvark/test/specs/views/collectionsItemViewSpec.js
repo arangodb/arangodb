@@ -133,7 +133,186 @@
         expect(window.modalView.show).toHaveBeenCalled();
       });
 
+      it("should stop an events propagination", function() {
+        var e = {
+          stopPropagation: function(){}
+        };
+        spyOn(e, "stopPropagation");
+        tile1.noop(e);
+        expect(e.stopPropagation).toHaveBeenCalled();
+      });
+
+      it("should load a collection", function() {
+        spyOn(tile1.model, "loadCollection");
+        spyOn(tile1, "render");
+        spyOn(window.modalView, "hide");
+        tile1.loadCollection();
+        expect(tile1.model.loadCollection).toHaveBeenCalled();
+        expect(tile1.render).toHaveBeenCalled();
+        expect(window.modalView.hide).toHaveBeenCalled();
+      });
+
+      it("should unload a collection", function() {
+        spyOn(tile1.model, "unloadCollection");
+        spyOn(tile1, "render");
+        spyOn(window.modalView, "hide");
+        tile1.unloadCollection();
+        expect(tile1.model.unloadCollection).toHaveBeenCalled();
+        expect(tile1.render).toHaveBeenCalled();
+        expect(window.modalView.hide).toHaveBeenCalled();
+      });
+
+      it("should delete a collection with success", function() {
+        spyOn(tile1.model, "destroy");
+        spyOn(tile1.collectionsView, "render");
+        spyOn(window.modalView, "hide");
+        tile1.deleteCollection();
+        expect(tile1.model.destroy).toHaveBeenCalled();
+        expect(tile1.collectionsView.render).toHaveBeenCalled();
+        expect(window.modalView.hide).toHaveBeenCalled();
+      });
+
+      it("should save a modified collection (unloaded collection, save error)", function() {
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        spyOn(arangoHelper, "arangoError");
+        spyOn(tile1.model, "renameCollection");
+
+        tile1.saveModifiedCollection();
+
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+        expect(arangoHelper.arangoError).toHaveBeenCalled();
+      });
+
+      it("should save a modified collection (loaded collection, save error)", function() {
+        tile1.model.set('status', "loaded");
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        spyOn(arangoHelper, "arangoError");
+        spyOn(tile1.model, "renameCollection");
+
+        tile1.saveModifiedCollection();
+
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+        expect(arangoHelper.arangoError).toHaveBeenCalled();
+      });
     });
+
+      it("should save a modified collection (unloaded collection, success)", function() {
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        spyOn(tile1.model, "renameCollection").andReturn(true);
+        spyOn(tile1.collectionsView, "render");
+        spyOn(window.modalView, "hide");
+        tile1.saveModifiedCollection();
+
+        expect(window.modalView.hide).toHaveBeenCalled();
+        expect(tile1.collectionsView.render).toHaveBeenCalled();
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+      });
+
+      it("should save a modified collection (loaded collection, success)", function() {
+        tile1.model.set('status', "loaded");
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        var tempdiv = document.createElement("div");
+        tempdiv.id = "change-collection-size";
+        document.body.appendChild(tempdiv);
+        $('#change-collection-size').val(123123123123);
+
+        spyOn(tile1.model, "changeCollection").andReturn(true);
+        spyOn(tile1.model, "renameCollection").andReturn(true);
+        spyOn(tile1.collectionsView, "render");
+        spyOn(window.modalView, "hide");
+        tile1.saveModifiedCollection();
+
+        expect(window.modalView.hide).toHaveBeenCalled();
+        expect(tile1.collectionsView.render).toHaveBeenCalled();
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+
+        document.body.removeChild(tempdiv);
+      });
+
+      it("should not save a modified collection (invalid data, result)", function() {
+        tile1.model.set('status', "loaded");
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        var tempdiv = document.createElement("div");
+        tempdiv.id = "change-collection-size";
+        document.body.appendChild(tempdiv);
+        $('#change-collection-size').val(123123123123);
+
+        spyOn(arangoHelper, "arangoError");
+        spyOn(arangoHelper, "arangoNotification");
+        spyOn(tile1.model, "changeCollection").andReturn(false);
+        spyOn(tile1.model, "renameCollection").andReturn(false);
+        spyOn(tile1.collectionsView, "render");
+        spyOn(window.modalView, "hide");
+        tile1.saveModifiedCollection();
+
+        expect(window.modalView.hide).not.toHaveBeenCalled();
+        expect(tile1.collectionsView.render).not.toHaveBeenCalled();
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+        expect(arangoHelper.arangoError).toHaveBeenCalled();
+
+        document.body.removeChild(tempdiv);
+      });
+
+      it("should not save a modified collection (invalid data, result)", function() {
+        tile1.model.set('status', "loaded");
+        window.App = {
+          notificationList: {
+            add: function() {
+            }
+          }
+        };
+
+        var tempdiv = document.createElement("div");
+        tempdiv.id = "change-collection-size";
+        document.body.appendChild(tempdiv);
+        $('#change-collection-size').val(123123123123);
+
+        spyOn(arangoHelper, "arangoError");
+        spyOn(arangoHelper, "arangoNotification");
+        spyOn(tile1.model, "changeCollection").andReturn(false);
+        spyOn(tile1.model, "renameCollection").andReturn(true);
+        spyOn(tile1.collectionsView, "render");
+        spyOn(window.modalView, "hide");
+        tile1.saveModifiedCollection();
+
+        expect(window.modalView.hide).not.toHaveBeenCalled();
+        expect(tile1.collectionsView.render).not.toHaveBeenCalled();
+        expect(tile1.model.renameCollection).toHaveBeenCalled();
+        expect(arangoHelper.arangoNotification).toHaveBeenCalled();
+
+        document.body.removeChild(tempdiv);
+      });
+
 
   });
 }());
