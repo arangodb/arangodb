@@ -106,7 +106,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-logger.cpp \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
-	arangod/VocBase/synchroniser.cpp \
 	arangod/VocBase/transaction.cpp \
 	arangod/VocBase/update-policy.cpp \
 	arangod/VocBase/voc-shaper.cpp \

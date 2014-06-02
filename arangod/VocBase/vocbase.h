@@ -135,46 +135,6 @@ struct TRI_vocbase_defaults_s;
     usleep(1000); \
   } 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks the synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_LOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
-  TRI_LockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WAIT_SYNCHRONISER_WAITER_VOCBASE(a, b) \
-  TRI_TimedWaitCondition(&(a)->_syncWaitersCondition, (b))
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reduces the number of sync waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(a)          \
-  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
-  --((a)->_syncWaiters);                                \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reduces the number of sync waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_INC_SYNCHRONISER_WAITER_VOCBASE(a)          \
-  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
-  ++((a)->_syncWaiters);                                \
-  TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -357,7 +317,6 @@ typedef struct TRI_vocbase_s {
 
   sig_atomic_t               _state;
 
-  TRI_thread_t               _synchroniser;
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
   
@@ -372,8 +331,6 @@ typedef struct TRI_vocbase_s {
 
   TRI_condition_t            _compactorCondition;
   TRI_condition_t            _cleanupCondition;
-  TRI_condition_t            _syncWaitersCondition;
-  int64_t                    _syncWaiters;
 }
 TRI_vocbase_t;
 

@@ -669,7 +669,6 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
 
         int res = TRI_ERROR_NO_ERROR;
 
-        res |= TRI_JoinThread(&vocbase->_synchroniser);
         res |= TRI_JoinThread(&vocbase->_compactor);
         vocbase->_state = 3;
         res |= TRI_JoinThread(&vocbase->_cleanup);
@@ -752,7 +751,6 @@ void ApplicationV8::runUpgradeCheck () {
 
       int res = TRI_ERROR_NO_ERROR;
 
-      res |= TRI_JoinThread(&vocbase->_synchroniser);
       res |= TRI_JoinThread(&vocbase->_compactor);
       vocbase->_state = 3;
       res |= TRI_JoinThread(&vocbase->_cleanup);
