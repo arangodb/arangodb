@@ -1803,7 +1803,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// Using Parameter: waitForSync and limit
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var products = db._create(cn, { waitForSync: true });
@@ -1812,8 +1812,8 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
-///                 "waitForSync": true, "limit": 2 }';
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } },' + 
+///                 '"waitForSync": true, "limit": 2 }';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1823,7 +1823,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// Using Parameter: waitForSync and limit with new signature
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_2}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var products = db._create(cn, { waitForSync: true });
@@ -1832,8 +1832,11 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } }, 
-///                   "options": {"waitForSync": true, "limit": 2} }';
+///     var body = '{'+
+///                '"collection": "products",' +
+///                '"example" : { "a" : { "j" : 1 } },' +
+///                '"options": {"waitForSync": true, "limit": 2} ' +
+///                '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1986,7 +1989,7 @@ actions.defineHttp({
 ///       '"collection": "products", ' +
 ///       '"example" : { "a" : { "j" : 1 } }, ' +
 ///       '"newValue" : {"foo" : "bar"}, ' +
-///       options: {'"limit" : 3  "waitForSync": true'  }+
+///       '"options": {"limit" : 3,  "waitForSync": true  }'+
 ///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
@@ -2136,7 +2139,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// using new signature for options
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var products = db._create(cn, { waitForSync: true });
@@ -2149,7 +2152,7 @@ actions.defineHttp({
 ///       '"collection": "products", ' +
 ///       '"example" : { "a" : { "j" : 1 } }, ' +
 ///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"options" :  { "limit" : 3, waitForSync: true }  ' + 
+///       '"options" :  { "limit" : 3, "waitForSync": true }  ' + 
 ///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
