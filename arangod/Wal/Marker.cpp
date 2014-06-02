@@ -56,7 +56,7 @@ Marker::Marker (TRI_df_marker_type_e type,
   m->_crc  = 0;
   m->_tick = 0;
 
-//  std::cout << "CREATED A MARKER OF SIZE: " << size << ", type: " << type << " (" << TRI_NameMarker(m) << "), buffer: " << (void*) _buffer << "\n";
+  // std::cout << "CREATED A MARKER OF SIZE: " << size << ", type: " << type << " (" << TRI_NameMarker(m) << "), buffer: " << (void*) _buffer << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +122,8 @@ AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
   m->_attributeId = attributeId;
 
   storeSizedString(sizeof(attribute_marker_t), attributeName);
+
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,6 +131,21 @@ AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 AttributeMarker::~AttributeMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void AttributeMarker::dump () const {
+  attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
+
+  std::cout << "WAL ATTRIBUTE MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId 
+            << ", ATTRIBUTE ID: " << m->_attributeId
+            << ", ATTRIBUTE: " << attributeName() 
+            << ", SIZE: " << size()
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -154,6 +171,8 @@ ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
   m->_collectionId = collectionId;
 
   memcpy(this->shape(), shape, shape->_size); 
+
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +180,20 @@ ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 ShapeMarker::~ShapeMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void ShapeMarker::dump () const {
+  shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
+
+  std::cout << "WAL SHAPE MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId 
+            << ", SHAPE ID: " << shapeId()
+            << ", SIZE: " << size()
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -183,6 +216,8 @@ BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
+  
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +225,19 @@ BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 BeginTransactionMarker::~BeginTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void BeginTransactionMarker::dump () const {
+  transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
+
+  std::cout << "WAL TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId 
+            << ", TRANSACTION " << m->_transactionId
+            << ", SIZE: " << size()
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -212,6 +260,8 @@ CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
+  
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +269,19 @@ CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CommitTransactionMarker::~CommitTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void CommitTransactionMarker::dump () const {
+  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
+
+  std::cout << "WAL TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId 
+            << ", TRANSACTION " << m->_transactionId
+            << ", SIZE: " << size()
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -241,6 +304,8 @@ AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
 
   m->_databaseId = databaseId;
   m->_transactionId = transactionId; 
+  
+  dump();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +313,19 @@ AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 AbortTransactionMarker::~AbortTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+void AbortTransactionMarker::dump () const {
+  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
+
+  std::cout << "WAL TRANSACTION ABORT MARKER FOR DB " << m->_databaseId 
+            << ", TRANSACTION " << m->_transactionId
+            << ", SIZE: " << size()
+            << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -322,7 +400,7 @@ void DocumentMarker::dump () const {
             << ", OFFSETJSON: " << m->_offsetJson 
             << ", SIZE: " << size()
             << "\n";
-
+return;
   std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
   std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
   std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
@@ -461,6 +539,7 @@ void EdgeMarker::dump () const {
             << ", SIZE: " << size()
             << "\n";
 
+return;
   std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
   std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
   std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
@@ -574,8 +653,7 @@ void RemoveMarker::dump () const {
             << ", KEY: " << key()
             << "\n";
   
-  std::cout << "BEGIN: " << begin() << ", SIZE: " << size() << "\n";
-  
+return;
   std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n";
 }
 

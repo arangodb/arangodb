@@ -59,11 +59,27 @@ static triagens::wal::LogfileManager* GetLogfileManager () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction is read-only
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool IsReadOnlyTransaction (TRI_transaction_t const* trx) {
+  return (trx->_type == TRI_TRANSACTION_READ);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a transaction consists of a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
+static inline bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
   return ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a marker needs to be written
+////////////////////////////////////////////////////////////////////////////////
+  
+static inline bool NeedWriteMarker (TRI_transaction_t const* trx) {
+  return (trx->_nestingLevel == 0 && ! IsReadOnlyTransaction(trx) && ! IsSingleOperationTransaction(trx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,8 +459,8 @@ static int ReleaseCollections (TRI_transaction_t* const trx,
 /// @brief write WAL begin marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteBeginMarker (TRI_transaction_t* trx) {    
-  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+static int WriteBeginMarker (TRI_transaction_t* trx) {
+  if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -457,8 +473,8 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
 /// @brief write WAL abort marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteAbortMarker (TRI_transaction_t* trx) {    
-  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+static int WriteAbortMarker (TRI_transaction_t* trx) {
+  if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -471,8 +487,8 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 /// @brief write WAL commit marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteCommitMarker (TRI_transaction_t* trx) {    
-  if (trx->_nestingLevel != 0 || IsSingleOperationTransaction(trx)) {
+static int WriteCommitMarker (TRI_transaction_t* trx) {
+  if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -485,8 +501,8 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
 /// @brief update the status of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateTransactionStatus (TRI_transaction_t* const trx,
-                                    TRI_transaction_status_e status) {
+static void UpdateTransactionStatus (TRI_transaction_t* const trx,
+                                     TRI_transaction_status_e status) {
   assert(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_status == TRI_TRANSACTION_CREATED) {
@@ -496,32 +512,7 @@ static int UpdateTransactionStatus (TRI_transaction_t* const trx,
     assert(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (status == TRI_TRANSACTION_RUNNING) {
-    // write a begin marker
-    res = WriteBeginMarker(trx);
-  }
-  else if (status == TRI_TRANSACTION_COMMITTED) {
-    res = WriteCommitMarker(trx);
-  }
-
-  // an error might have happened until now. if yes, then we'll abort the transaction
-  if (res != TRI_ERROR_NO_ERROR) {
-    status = TRI_TRANSACTION_FAILED;
-
-    // reset the error, because we have set status "failed" already
-    res = TRI_ERROR_NO_ERROR;
-  }
-
-  // if the transaction has failed or was aborted, we'll write an abort marker
-  if (status == TRI_TRANSACTION_ABORTED || status == TRI_TRANSACTION_FAILED) {
-    res = WriteAbortMarker(trx);
-  }
-
   trx->_status = status;
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -920,8 +911,6 @@ TRI_voc_tid_t TRI_GetIdTransaction (TRI_transaction_t const* trx) {
 int TRI_BeginTransaction (TRI_transaction_t* trx, 
                           TRI_transaction_hint_t hints,
                           int nestingLevel) {
-  int res;
-
   LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
 
   if (nestingLevel == 0) {
@@ -937,21 +926,22 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     assert(trx->_status == TRI_TRANSACTION_RUNNING);
   }
 
-  res = UseCollections(trx, nestingLevel);
+  int res = UseCollections(trx, nestingLevel);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // all valid
     if (nestingLevel == 0) {
-      res = UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
+      UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
+      
+      res = WriteBeginMarker(trx);
     }
   }
-  else {
+  
+
+  if (res != TRI_ERROR_NO_ERROR) {
     // something is wrong
     if (nestingLevel == 0) {
       UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
-
-      // res contains an error anyway, so we don't need the return value of UpdateTransactionStatus
-      assert(res != TRI_ERROR_NO_ERROR);
     }
 
     // free what we have got so far
@@ -974,7 +964,16 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
-    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
+    res = WriteCommitMarker(trx);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_AbortTransaction(trx, nestingLevel);
+
+      // return original error
+      return res;
+    }
+      
+    UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
 
     FreeOperations(trx);
   }
@@ -997,7 +996,9 @@ int TRI_AbortTransaction (TRI_transaction_t* trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
-    res = UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
+    res = WriteAbortMarker(trx);
+
+    UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
 
     FreeOperations(trx);
   }

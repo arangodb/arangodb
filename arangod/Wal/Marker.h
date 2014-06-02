@@ -261,6 +261,8 @@ namespace triagens {
           // pointer to attribute name
           return begin() + sizeof(attribute_marker_t);
         }
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -282,6 +284,12 @@ namespace triagens {
         inline char* shape () const {
           return begin() + sizeof(shape_marker_t);
         }
+        
+        inline TRI_shape_sid_t shapeId () const {
+          return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
+        }
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -296,6 +304,10 @@ namespace triagens {
                                 TRI_voc_tid_t); 
 
         ~BeginTransactionMarker ();
+
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -310,6 +322,10 @@ namespace triagens {
                                  TRI_voc_tid_t);
 
         ~CommitTransactionMarker ();
+      
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -324,6 +340,10 @@ namespace triagens {
                                 TRI_voc_tid_t);
 
         ~AbortTransactionMarker ();
+      
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
