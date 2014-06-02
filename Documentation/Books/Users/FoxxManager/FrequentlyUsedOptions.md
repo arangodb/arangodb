@@ -1,0 +1,18 @@
+<a name="frequently_used_options"></a>
+# Frequently Used Options
+
+Internally, `foxx-manager` is a wrapper around `arangosh`. That means you can
+use the options of `arangosh`. To retrieve a list of the options for `arangosh`, try
+    
+    unix> foxx-manager --help
+
+To most relevant `arangosh` options to pass to the `foxx-manager` will be:
+
+    --server.database <string>                database name to use when connecting
+    --server.disable-authentication <bool>    disable the password prompt and authentication when connecting to the server 
+    --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server 
+    --server.password <string>                password to use when connecting
+    --server.username <string>                username to use when connecting
+
+These options allow you to use the foxx-manager with a different database or with another
+than the default user.

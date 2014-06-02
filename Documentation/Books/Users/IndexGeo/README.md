@@ -1,0 +1,253 @@
+<a name="geo_indexes"></a>
+# Geo Indexes
+
+<a name="introduction_to_geo_indexes"></a>
+### Introduction to Geo Indexes
+
+This is an introduction to ArangoDB's geo indexes.
+
+ArangoDB uses Hilbert curves to implement geo-spatial indexes. See this [blog](http://www.arangodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
+for details.
+
+A geo-spatial index assumes that the latitude is between -90 and 90 degree and
+the longitude is between -180 and 180 degree. A geo index will ignore all
+documents which do not fulfill these requirements.
+
+A geo-spatial constraint makes the same assumptions, but documents not
+fulfilling these requirements are rejected.
+
+<a name="accessing_geo_indexes_from_the_shell"></a>
+## Accessing Geo Indexes from the Shell
+
+`collection.ensureGeoIndex( location)`
+
+Creates a geo-spatial index on all documents using location as path to the coordinates. The value of the attribute must be a list with at least two double values. The list must contain the latitude (first value) and the longitude (second value). All documents, which do not have the attribute path or with value that are not suitable, are ignored.
+
+In case that the index was successfully created, the index identifier is returned.
+
+`collection.ensureGeoIndex( location, true)`
+
+As above which the exception, that the order within the list is longitude followed by latitude. This corresponds to the format described in
+
+http://geojson.org/geojson-spec.html
+
+`collection.ensureGeoIndex( latitude, longitude)`
+
+Creates a geo-spatial index on all documents using latitude and longitude as paths the latitude and the longitude. The value of the attribute latitude and of the attribute longitude must a double. All documents, which do not have the attribute paths or which values are not suitable, are ignored.
+
+In case that the index was successfully created, the index identifier is returned.
+
+*Examples*
+
+Create an geo index for a list attribute:
+
+	arango> db.geo.ensureGeoIndex("loc");
+	{ "id" : "geo/47772301", "type" : "geo1", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
+	
+	arango> for (i = -90;  i <= 90;  i += 10) {
+	.......>   for (j = -180; j <= 180; j += 10) {
+	.......>     db.geo.save({ name : "Name/" + i + "/" + j,
+	.......>                   loc: [ i, j ] });
+	.......>   }
+	.......> }
+	
+	arango> db.geo.count();
+	703
+	
+	arango> db.geo.near(0,0).limit(3).toArray();
+	[ { "_id" : "geo/24861164", "_key" : "24861164", "_rev" : "24861164", "name" : "Name/0/0", "loc" : [ 0, 0 ]},
+	  { "_id" : "geo/24926700", "_key" : "24926700", "_rev" : "24926700", "name" : "Name/0/10", "loc" : [ 0, 10 ]},
+	  { "_id" : "geo/22436332", "_key" : "22436332", "_rev" : "22436332", "name" : "Name/-10/0", "loc" : [ -10, 0 ]}]
+	
+	arango> db.geo.near(0,0).count();
+	100
+
+Create an geo index for a hash array attribute:
+
+	arango> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+	{ "id" : "geo2/1070652", "type" : "geo2", "fields" : ["location.latitude", "location.longitude"], "isNewlyCreated" : true }
+	
+	arango> for (i = -90;  i <= 90;  i += 10) {
+	.......>   for (j = -180; j <= 180; j += 10) {
+	.......>     db.geo2.save({ name : "Name/" + i + "/" + j,
+	.......>                    location: { latitude : i,
+	.......>                                longitude : j } });
+	.......>   }
+	.......> }
+	
+	arango> db.geo2.near(0,0).limit(3).toArray();
+	[
+	  {
+	    "_id" : "geo2/72964588",
+	    "_key" : "72964588",
+	    "_rev" : "72964588", 
+	    "location" : { "latitude" : 0, "longitude" : 0 }, 
+	    "name" : "Name/0/0"
+	  },
+	  {
+	    "_id" : "geo2/73030124",
+	    "_key" : "73030124",
+	    "_rev" : "73030124", 
+	    "location" : { "latitude" : 0, "longitude" : 10 }, 
+	    "name" : "Name/0/10"
+	  },
+	  {
+	    "_id" : "geo2/70539756",
+	    "_key" : "70539756",
+	    "_rev" : "70539756",
+	    "location" : { "latitude" : -10, "longitude" : 0 },
+	    "name" : "Name/-10/0"
+	  }
+	]
+
+`collection.ensureGeoConstraint( location, ignore-null)`
+
+`collection.ensureGeoConstraint( location, true, ignore-null)`
+
+`collection.ensureGeoConstraint( latitude, longitude, ignore-null)`
+
+Works like ensureGeoIndex but requires that the documents contain a valid geo definition. If ignore-null is true, then documents with a null in location or at least one null in latitude or longitude are ignored.
+
+`collection.geo( location-attribute)`
+
+Looks up a geo index defined on attribute location-attribute.
+
+Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+
+This is useful for collections with multiple defined geo indexes.
+
+`collection.geo( location-attribute, true)`
+
+Looks up a geo index on a compound attribute location-attribute.
+
+Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+
+`collection.geo( latitude-attribute, longitude-attribute)`
+
+Looks up a geo index defined on the two attributes latitude-attribute and longitude-attribute.
+
+Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+
+*Examples*
+
+Assume you have a location stored as list in the attribute home and a destination stored in the attribute work. Then you can use the geo operator to select which geo-spatial attributes (and thus which index) to use in a near query.
+
+	arango> for (i = -90;  i <= 90;  i += 10) {
+	.......>   for (j = -180;  j <= 180;  j += 10) {
+	.......>     db.complex.save({ name : "Name/" + i + "/" + j, 
+	.......>                       home : [ i, j ], 
+	.......>                       work : [ -i, -j ] });
+	.......>   }
+	.......> }
+	
+	arango> db.complex.near(0, 170).limit(5);
+	exception in file '/simple-query' at 1018,5: a geo-index must be known
+	
+	arango> db.complex.ensureGeoIndex(""home"");
+	arango> db.complex.near(0, 170).limit(5).toArray();
+	[ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" : "Name/0/170", "home" : [ 0, 170 ], "work" : [ 0, -170 ] },
+	  { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] }, 
+	  { "_id" : "complex/77080108", "_key" : "77080108", "_rev" : "77080108", "name" : "Name/10/170", "home" : [ 10, 170 ], "work" : [ -10, -170 ] },
+	  { "_id" : "complex/72230444", "_key" : "72230444", "_rev" : "72230444", "name" : "Name/-10/170", "home" : [ -10, 170 ], "work" : [ 10, -170 ] },
+	  { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]      
+	
+	arango> db.complex.geo("work").near(0, 170).limit(5);
+	exception in file '/simple-query' at 1018,5: a geo-index must be known
+	
+	arango> db.complex.ensureGeoIndex("work");
+	arango> db.complex.geo("work").near(0, 170).limit(5).toArray();
+	[ { "_id" : "complex/72427052", "_key" : "72427052", "_rev" : "72427052", "name" : "Name/0/-170", "home" : [ 0, -170 ], "work" : [ 0, 170 ] }, 
+	  { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] }, 
+	  { "_id" : "complex/70002220", "_key" : "70002220", "_rev" : "70002220", "name" : "Name/-10/-170", "home" : [ -10, -170 ], "work" : [ 10, 170 ] }, 
+	  { "_id" : "complex/74851884", "_key" : "74851884", "_rev" : "74851884", "name" : "Name/10/-170", "home" : [ 10, -170 ], "work" : [ -10, 170 ] }, 
+	  { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] } ]
+
+`collection.near( latitude, longitude)`
+
+The returned list is sorted according to the distance, with the nearest document to the coordinate ( latitude, longitude) coming first. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached. It is possible to change the limit using the limit operator.
+
+In order to use the near operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
+
+*Note*
+near does not support negative skips. However, you can still use limit followed to skip.
+
+`collection.near( latitude, longitude).limit( limit)`
+
+Limits the result to limit documents instead of the default 100.
+
+`Note`
+
+Unlike with multiple explicit limits, limit will raise the implicit default limit imposed by within.
+collection.near( latitude, longitude).distance()
+This will add an attribute distance to all documents returned, which contains the distance between the given point and the document in meter.
+
+`collection.near( latitude, longitude).distance( name)`
+
+This will add an attribute name to all documents returned, which contains the distance between the given point and the document in meter.
+
+*Examples*
+
+To get the nearst two locations:
+
+	arango> db.geo.near(0,0).limit(2).toArray();
+	[ { "_id" : "geo/24773376", "_key" : "24773376", "_rev" : "24773376", "name" : "Name/0/0", "loc" : [ 0, 0 ] }, 
+	  { "_id" : "geo/22348544", "_key" : "22348544", "_rev" : "22348544", "name" : "Name/-10/0", "loc" : [ -10, 0 ] } ]
+
+If you need the distance as well, then you can use the distance operator:
+
+	arango> db.geo.near(0,0).distance().limit(2).toArray();
+	[ 
+	  { "_id" : geo/24773376", "_key" : "24773376", "_rev" : "24773376", "distance" : 0, "name" : "Name/0/0", "loc" : [ 0, 0 ] },
+	  { "_id" : geo/22348544", "_key" : "22348544", "_rev" : "22348544", "distance" : 1111949.3, "name" : "Name/-10/0", "loc" : [ -10, 0 ] } 
+	  ]
+
+`collection.within( latitude, longitude, radius)`
+
+This will find all documents within a given radius around the coordinate ( latitude, longitude). The returned list is sorted by distance, beginning with the nearest document.
+
+In order to use the within operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
+
+`collection.within( latitude, longitude, radius).distance()`
+
+This will add an attribute _distance to all documents returned, which contains the distance between the given point and the document in meter.
+
+`collection.within( latitude, longitude, radius).distance( name)`
+
+This will add an attribute name to all documents returned, which contains the distance between the given point and the document in meter.
+
+*Examples*
+
+To find all documents within a radius of 2000 km use:
+
+	arango> db.geo.within(0, 0, 2000 * 1000).distance().toArray();
+	[ { "_id" : "geo/24773376", "_key" : "24773376", "_rev" : "24773376", "distance" : 0, "name" : "Name/0/0", "loc" : [ 0, 0 ] }, 
+	  { "_id" : "geo/24707840", "_key" : "24707840", "_rev" : "24707840", "distance" : 1111949.3, "name" : "Name/0/-10", "loc" : [ 0, -10 ] },
+	  { "_id" : "geo/24838912", "_key" : "24838912", "_rev" : "24838912", "distance" : 1111949.3, "name" : "Name/0/10", "loc" : [ 0, 10 ] },
+	  { "_id" : "geo/22348544", "_key" : "22348544", "_rev" : "22348544", "distance" : 1111949.3, "name" : "Name/-10/0", "loc" : [ -10, 0 ] },
+	  { "_id" : "geo/27198208", "_key" : "27198208", "_rev" : "27198208", "distance" : 1111949.3, "name" : "Name/10/0", "loc" : [ 10, 0 ] },
+	  { "_id" : "geo/22414080", "_key" : "22414080", "_rev" : "22414080", "distance" : 1568520.6, "name" : "Name/-10/10", "loc" : [ -10, 10 ] },
+	  { "_id" : "geo/27263744", "_key" : "27263744", "_rev" : "27263744", "distance" : 1568520.6, "name" : "Name/10/10", "loc" : [ 10, 10 ] },
+	  { "_id" : "geo/22283008", "_key" : "22283008", "_rev" : "22283008", "distance" : 1568520.6, "name" : "Name/-10/-10", "loc" : [ -10, -10 ] },
+	  { "_id" : "geo/27132672", "_key" : "27132672", "_rev" : "27132672", "distance" : 1568520.6, "name" : "Name/10/-10", "loc" : [ 10, -10 ] } ]
+
+
+<!--
+@anchor IndexGeoShellEnsureGeoIndex
+@copydetails JSF_ArangoCollection_prototype_ensureGeoIndex
+
+@CLEARPAGE
+@anchor IndexGeoShellEnsureGeoConstraint
+@copydetails JSF_ArangoCollection_prototype_ensureGeoConstraint
+
+@CLEARPAGE
+@anchor IndexGeoShellGeo
+@copydetails JSF_ArangoCollection_prototype_geo
+
+@CLEARPAGE
+@anchor IndexGeoShellNear
+@copydetails JSF_ArangoCollection_prototype_near
+
+@CLEARPAGE
+@anchor IndexGeoShellWithin
+@copydetails JSF_ArangoCollection_prototype_within
+-->
