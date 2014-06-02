@@ -1,0 +1,19 @@
+<a name="foxx_manager"></a>
+# Foxx Manager
+
+<a name="foxx_applications"></a>
+## Foxx Applications
+
+Foxx is an easy way to create APIs and simple web applications from within ArangoDB. 
+It is inspired by Sinatra, the classy Ruby web framework.  An application built 
+with Foxx is written in JavaScript and deployed to ArangoDB directly. ArangoDB 
+serves this application, you do not need a separate application server.
+
+In order to share your applications with the community, we have created a central GitHub repository
+
+    https://github.com/arangodb/foxx-apps
+
+where you can register your applications. This repository also contains the hello world application for Foxx.
+
+Applications are managed using the Foxx manager `foxx-manager`. It is similar to tools like `brew` or `aptitude`.
+

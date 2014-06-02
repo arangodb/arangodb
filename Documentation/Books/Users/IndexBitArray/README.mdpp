@@ -1,0 +1,11 @@
+!CHAPTER BitArray Indexes
+
+!SUBSECTION Introduction to Bit-Array Indexes
+
+It is possible to define a bit-array index on one or more attributes (or paths)
+of a documents.
+
+!SUBSECTION Accessing BitArray Indexes from the Shell
+
+@anchor IndexBitArrayShellEnsureBitarray
+@copydetails JSF_ArangoCollection_prototype_ensureBitarray
