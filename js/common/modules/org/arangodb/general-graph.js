@@ -692,16 +692,16 @@ var _create = function (graphName, edgeDefinitions) {
   var gdb = getGraphCollection(),
     g,
     graphAlreadyExists = true,
-    collections;
-
+    collections,
+    err;
   if (!graphName) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
     throw err;
   }
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.message;
     throw err;
