@@ -739,10 +739,10 @@ static int RotateJournal (TRI_document_collection_t* document) {
       datafile->_full = true;
 
       document->_rotateRequested = true;
-    
-      TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+
+      // TODO: this will probably never be triggered after
+      // the introduction of WAL    
       TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-      TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
 
       res = TRI_ERROR_NO_ERROR;
     }

@@ -52,7 +52,6 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
-#include "VocBase/synchroniser.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
 
@@ -1300,8 +1299,6 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   TRI_InitReadWriteLock(&vocbase->_inventoryLock);
   TRI_InitReadWriteLock(&vocbase->_lock);
 
-  vocbase->_syncWaiters = 0;
-  TRI_InitCondition(&vocbase->_syncWaitersCondition);
   TRI_InitCondition(&vocbase->_compactorCondition);
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
@@ -1326,7 +1323,6 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
 
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
   TRI_DestroyCondition(&vocbase->_compactorCondition);
-  TRI_DestroyCondition(&vocbase->_syncWaitersCondition);
     
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
@@ -1405,10 +1401,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   // .............................................................................
   // start helper threads
   // .............................................................................
-
-  // start synchroniser thread
-  TRI_InitThread(&vocbase->_synchroniser);
-  TRI_StartThread(&vocbase->_synchroniser, NULL, "[synchroniser]", TRI_SynchroniserVocBase, vocbase);
 
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
@@ -1501,13 +1493,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
 
-
-  // wait until synchroniser and compactor are finished
-  res = TRI_JoinThread(&vocbase->_synchroniser);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to join synchroniser thread: %s", TRI_errno_string(res));
-  }
 
   TRI_LockCondition(&vocbase->_compactorCondition);
   TRI_SignalCondition(&vocbase->_compactorCondition);
