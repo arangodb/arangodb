@@ -18,7 +18,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/FileUtils.cpp \
 	lib/Basics/InitialiseBasics.cpp \
 	lib/Basics/JsonHelper.cpp \
-	lib/Basics/LibraryLoader.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \

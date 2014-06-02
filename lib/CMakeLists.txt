@@ -51,7 +51,6 @@ add_library(
     Basics/FileUtils.cpp
     Basics/InitialiseBasics.cpp
     Basics/JsonHelper.cpp
-    Basics/LibraryLoader.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
