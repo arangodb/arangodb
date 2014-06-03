@@ -28,8 +28,8 @@
 #include "Marker.h"
 #include "VocBase/document-collection.h"
 
-#undef DEBUG_WAL 
-#undef DEBUG_WAL_DETAIL 
+#undef DEBUG_WAL  
+#undef DEBUG_WAL_DETAIL  
 
 using namespace triagens::wal;
 
@@ -660,7 +660,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   m->_rid          = revisionId;
-  m->_tid          = transactionId;
+  m->_transactionId= transactionId;
   m->_shape        = shapedJson->_sid;
   m->_offsetKey    = sizeof(document_marker_t); // start position of key
   m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 1);
@@ -703,7 +703,7 @@ void DocumentMarker::dump () const {
   std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
             << ", REV: " << m->_rid 
-            << ", TRX: " << m->_tid 
+            << ", TRX: " << m->_transactionId
             << ", KEY: " << key()
             << ", OFFSETKEY: " << m->_offsetKey 
             << ", OFFSETLEGEND: " << m->_offsetLegend 
@@ -792,7 +792,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_databaseId    = databaseId;
   m->_collectionId  = collectionId;
   m->_rid           = revisionId;
-  m->_tid           = transactionId;
+  m->_transactionId = transactionId;
   m->_shape         = shapedJson->_sid;
   m->_offsetKey     = sizeof(edge_marker_t); // start position of key
   m->_toCid         = edge->_toCid;
@@ -945,7 +945,7 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
   m->_databaseId = databaseId;
   m->_collectionId = collectionId;
   m->_rid = revisionId;
-  m->_tid = transactionId;
+  m->_transactionId = transactionId;
 
   storeSizedString(sizeof(remove_marker_t), key);
 
@@ -972,7 +972,7 @@ void RemoveMarker::dump () const {
   std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
             << ", REV: " << m->_rid 
-            << ", TRX: " << m->_tid 
+            << ", TRX: " << m->_transactionId 
             << ", KEY: " << key()
             << "\n";
 

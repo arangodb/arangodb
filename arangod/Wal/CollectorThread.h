@@ -32,10 +32,14 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
+struct TRI_datafile_s;
+struct TRI_df_marker_s;
+
 namespace triagens {
   namespace wal {
 
     class LogfileManager;
+    class Logfile;
     
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CollectorThread
@@ -116,6 +120,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool removeLogfiles ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to handle one marker during collection
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool ScanMarker (struct TRI_df_marker_s const*,
+                                void*,
+                                struct TRI_datafile_s*,
+                                bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect one logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        int collect (Logfile*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

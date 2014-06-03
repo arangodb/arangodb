@@ -86,6 +86,7 @@ LogfileManager::LogfileManager (std::string* databasePath)
     _lastSealedId(0),
     _logfiles(),
     _transactions(),
+    _failedTransactions(),
     _filenameRegex(),
     _shutdown(0) {
   
@@ -352,10 +353,40 @@ void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
   {
     WRITE_LOCKER(_logfilesLock);
     _transactions.erase(id);
+
+    if (markAsFailed) {
+      _failedTransactions.insert(id);
+    }
   }
 
-  // TODO: handle markAsFailed
   LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the set of failed transactions
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions () {
+  std::unordered_set<TRI_voc_tid_t> failedTransactions;
+
+  {
+    READ_LOCKER(_logfilesLock);
+    failedTransactions = _failedTransactions;
+  }
+
+  return failedTransactions;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister a list of failed transactions
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
+  WRITE_LOCKER(_logfilesLock);
+ 
+  std::for_each(failedTransactions.begin(), failedTransactions.end(), [&] (TRI_voc_tid_t id) {
+    _failedTransactions.erase(id);
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

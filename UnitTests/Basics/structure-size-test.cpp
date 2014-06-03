@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE (tst_wal_document_marker) {
   BOOST_CHECK_EQUAL(24, offsetOf(&triagens::wal::document_marker_t::_databaseId));
   BOOST_CHECK_EQUAL(32, offsetOf(&triagens::wal::document_marker_t::_collectionId));
   BOOST_CHECK_EQUAL(40, offsetOf(&triagens::wal::document_marker_t::_rid));
-  BOOST_CHECK_EQUAL(48, offsetOf(&triagens::wal::document_marker_t::_tid));
+  BOOST_CHECK_EQUAL(48, offsetOf(&triagens::wal::document_marker_t::_transactionId));
   BOOST_CHECK_EQUAL(56, offsetOf(&triagens::wal::document_marker_t::_shape));
   BOOST_CHECK_EQUAL(64, offsetOf(&triagens::wal::document_marker_t::_offsetKey));
   BOOST_CHECK_EQUAL(66, offsetOf(&triagens::wal::document_marker_t::_offsetLegend));
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE (tst_wal_remove_marker) {
   BOOST_CHECK_EQUAL(24, offsetOf(&triagens::wal::remove_marker_t::_databaseId));
   BOOST_CHECK_EQUAL(32, offsetOf(&triagens::wal::remove_marker_t::_collectionId));
   BOOST_CHECK_EQUAL(40, offsetOf(&triagens::wal::remove_marker_t::_rid));
-  BOOST_CHECK_EQUAL(48, offsetOf(&triagens::wal::remove_marker_t::_tid));
+  BOOST_CHECK_EQUAL(48, offsetOf(&triagens::wal::remove_marker_t::_transactionId));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
