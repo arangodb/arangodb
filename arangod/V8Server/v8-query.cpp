@@ -2392,20 +2392,21 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculates a checksum for the data in a collection
+/// @startDocuBlock collection_checksum
+/// `collection.checksum(withRevisions, withData)`
 ///
-/// @FUN{@FA{collection}.checksum(@FA{withRevisions}, @FA{withData})}
+/// The *checksum* operation calculates a CRC32 checksum of the keys 
+/// contained in collection *collection*.
 ///
-/// The @FN{checksum} operation calculates a CRC32 checksum of the keys 
-/// contained in collection @FA{collection}.
-///
-/// If the optional argument @FA{withRevisions} is set to @LIT{true}, then the 
+/// If the optional argument *withRevisions* is set to *true*, then the 
 /// revision ids of the documents are also included in the checksumming.
 /// 
-/// If the optional argument @FA{withData} is set to @LIT{true}, then the 
+/// If the optional argument *withData* is set to *true*, then the 
 /// actual document data is also checksummed. Including the document data in
 /// checksumming will make the calculation slower, but is more accurate.
 ///
 /// Note: this method is not available in a cluster.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
