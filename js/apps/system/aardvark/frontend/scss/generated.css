@@ -1479,6 +1479,8 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
     font-weight: 600;
     font-variant: small-caps;
     padding: 0 15px; }
+  ul.link-dropdown-menu li.dropdown-header:hover, ul.user-dropdown-menu li.dropdown-header:hover, ul.gv-dropdown-menu li.dropdown-header:hover {
+    cursor: default; }
   ul.link-dropdown-menu li.divider, ul.user-dropdown-menu li.divider, ul.gv-dropdown-menu li.divider {
     background-color: #e5e5e5;
     height: 1px;
