@@ -32,6 +32,7 @@ var Model,
   _ = require("underscore"),
   is = require("org/arangodb/is"),
   backbone_helpers = require("backbone"),
+  metadataKeys = ['_id', '_key', '_rev'],
   parseAttributes,
   parseRequiredAttributes;
 
@@ -56,22 +57,30 @@ var Model,
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-var whitelistProperties = function (properties, constructorProperties) {
+var whitelistProperties = function (properties, constructorProperties, whitelistMetadata) {
   'use strict';
-  var filteredProperties,
-    whitelistedProperties = _.keys(constructorProperties);
-
-  if (whitelistedProperties) {
-    filteredProperties = _.pick(properties, whitelistedProperties);
-  } else {
-    filteredProperties = properties;
+  if (!properties) {
+    return {};
   }
 
-  return filteredProperties;
+  if (!constructorProperties) {
+    return _.clone(properties);
+  }
+
+  var whitelistedKeys = _.keys(constructorProperties);
+
+  if (whitelistMetadata) {
+    whitelistedKeys = whitelistedKeys.concat(metadataKeys);
+  }
+
+  return _.pick(properties, whitelistedKeys);
 };
 
 var fillInDefaults = function (properties, constructorProperties) {
   'use strict';
+  if (!constructorProperties) {
+    return properties;
+  }
   var defaults = _.reduce(constructorProperties, function (result, value, key) {
     if (_.has(value, "defaultValue")) {
       result[key] = value.defaultValue;
@@ -91,12 +100,15 @@ Model = function (attributes) {
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (is.object(this.constructor.attributes)) {
-    this.attributes = whitelistProperties(attributes, this.constructor.attributes);
-    this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
-  } else {
-    this.attributes = attributes || {};
-  }
+  this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
+  this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+};
+
+Model.fromClient = function (attributes) {
+  var instance = new this();
+  instance.attributes = whitelistProperties(attributes, this.attributes, false);
+  instance.attributes = fillInDefaults(instance.attributes, this.attributes);
+  return instance;
 };
 
 parseAttributes = function (rawAttributes) {
@@ -156,7 +168,7 @@ _.extend(Model.prototype, {
 /// @FUN{FoxxModel::get(@FA{name})}
 ///
 /// Get the value of an attribute
-/// 
+///
 /// @EXAMPLES
 ///
 /// @code
@@ -255,7 +267,8 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    return this.attributes;
+    var result = whitelistProperties(this.attributes, this.constructor.attributes);
+    return result;
   }
 });
 
