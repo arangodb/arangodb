@@ -10,6 +10,10 @@
     isOfflineCounter: 0,
     firstLogin: true,
 
+    events: {
+      'click .footer-center p' : 'showShortcutModal'
+    },
+
     initialize: function () {
       //also server online check
       var self = this;
@@ -32,6 +36,10 @@
         $('.serverStatusIndicator').removeClass('fa-check-circle-o');
         $('.serverStatusIndicator').addClass('fa-times-circle-o');
       }
+    },
+
+    showShortcutModal: function() {
+      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     getVersion: function () {

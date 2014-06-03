@@ -82,7 +82,8 @@ var isValidCollectionsParameter = function (x) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var findOrCreateCollectionByName = function (name, type, noCreate) {
-  var col = db._collection(name),res = false;
+  var col = db._collection(name),
+    res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
       col = db._create(name);
@@ -220,6 +221,10 @@ AQLStatement.prototype.printQuery = function() {
   return this.query;
 };
 
+AQLStatement.prototype.isPathQuery = function() {
+  return this.type === "path";
+};
+
 AQLStatement.prototype.isEdgeQuery = function() {
   return this.type === "edge";
 };
@@ -257,6 +262,8 @@ var AQLGenerator = function(graph) {
   this.graph = graph;
   this.cursor = null;
   this.lastVar = "";
+  this._path = [];
+  this._getPath = false;
 };
 
 AQLGenerator.prototype._addToPrint = function(name) {
@@ -355,6 +362,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
   this.lastVar = edgeName;
+  this._path.push(edgeName);
   return this;
 };
 
@@ -530,6 +538,7 @@ AQLGenerator.prototype._vertices = function(example, options) {
   var stmt = new AQLStatement(query, "vertex");
   this.stack.push(stmt);
   this.lastVar = vertexName;
+  this._path.push(vertexName);
   return this;
 
 };
@@ -727,6 +736,13 @@ AQLGenerator.prototype.getLastVar = function() {
   return this.lastVar;
 };
 
+AQLGenerator.prototype.path = function() {
+  this._clearCursor();
+  var statement = new AQLStatement("", "path");
+  this.stack.push(statement);
+//  this._getPath = true
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_general_graph_fluent_aql_neighbors
 /// @brief select all neighbors of the vertices selected in the step before.
@@ -791,6 +807,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
   this.lastVar = resultName + ".vertex";
+  this._path.push(resultName + ".path");
   return this;
 };
 
@@ -860,7 +877,11 @@ AQLGenerator.prototype.execute = function() {
   this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
-  query += " RETURN " + this.getLastVar();
+  if (this.stack[this.stack.length-1].isPathQuery()) {
+    query += " RETURN [" + this._path + "]";
+  } else {
+    query += " RETURN " + this.getLastVar();
+  }
   return db._query(query, bindVars, {count: true});
 };
 

@@ -191,22 +191,22 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
+/// @startDocuBlock collection_databaseDrop
+/// `db._drop(collection)`
 ///
-/// @FUN{db._drop(@FA{collection})}
+/// Drops a *collection* and all its indexes.
 ///
-/// Drops a @FA{collection} and all its indexes.
+/// `db._drop(collection-identifier)`
 ///
-/// @FUN{db._drop(@FA{collection-identifier})}
-///
-/// Drops a collection identified by @FA{collection-identifier} and all its
+/// Drops a collection identified by *collection-identifier* and all its
 /// indexes. No error is thrown if there is no such collection.
 ///
-/// @FUN{db._drop(@FA{collection-name})}
+/// `db._drop(collection-name)`
 ///
-/// Drops a collection named @FA{collection-name} and all its indexes. No error
+/// Drops a collection named *collection-name* and all its indexes. No error
 /// is thrown if there is no such collection.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Drops a collection:
 ///
@@ -215,6 +215,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 /// Drops a collection identified by name:
 ///
 /// @verbinclude shell_collection-drop-name-db
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._drop = function(name) {
@@ -233,23 +234,23 @@ ArangoDatabase.prototype._drop = function(name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
+/// @startDocuBlock collection_databaseTruncate
+/// `db._truncate(collection)`
 ///
-/// @FUN{db._truncate(@FA{collection})}
-///
-/// Truncates a @FA{collection}, removing all documents but keeping all its
+/// Truncates a *collection*, removing all documents but keeping all its
 /// indexes.
 ///
-/// @FUN{db._truncate(@FA{collection-identifier})}
+/// `db._truncate(collection-identifier)`
 ///
-/// Truncates a collection identified by @FA{collection-identified}. No error is
+/// Truncates a collection identified by *collection-identified*. No error is
 /// thrown if there is no such collection.
 ///
-/// @FUN{db._truncate(@FA{collection-name})}
+/// `db._truncate(collection-name)`
 ///
-/// Truncates a collection named @FA{collection-name}. No error is thrown if
+/// Truncates a collection named *collection-name*. No error is thrown if
 /// there is no such collection.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Truncates a collection:
 ///
