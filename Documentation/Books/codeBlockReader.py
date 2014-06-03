@@ -1,5 +1,6 @@
 import os
-
+import inspect
+    
 def file_content(filepath):
     """ Fetches and formats file's content to perform the required operation.
     """
@@ -10,9 +11,9 @@ def file_content(filepath):
     comments = []
 
     for line in enumerate(filelines):
-        if "@startBlockCode" in line[1]:
+        if "@startDocuBlock" in line[1]:
             _start = line[0]
-        if "@endBlockCode" in line[1]:
+        if "@endDocuBlock" in line[1]:
             _end = line[0] + 1
             comment_indexes.append([_start, _end])
 
@@ -34,13 +35,15 @@ def fetch_comments(dirpath):
             filepath = os.path.join(root, filename)
             file_comments = file_content(filepath)
             for comment in file_comments:
-                fh.write("\n<!-- %s -->\n" % filename)
+                fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
                     _text = _com.replace("/", "")
+                    if len(_text.strip()) == 0:
+                        _text = _text.replace("\n", "<br />")    
                     _text = _text.strip()
                     if _text:
-                        if ("@startBlockCode" in _text) or \
-                           ("@endBlockCode" in _text):
+                        if ("@startDocuBlock" in _text) or \
+                           ("@endDocuBlock" in _text):
                             fh.write("<!-- %s -->\n" % _text)
                         else:
                             fh.write("%s\n" % _text)
