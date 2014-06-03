@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectorThread.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
 #include "Utils/DatabaseGuard.h"
@@ -290,13 +291,6 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
       break;
     }
 
-    /* TODO: check whether these need to be handled
-    case TRI_WAL_MARKER_CREATE_COLLECTION:
-    case TRI_WAL_MARKER_DROP_COLLECTION:
-    case TRI_WAL_MARKER_RENAME_COLLECTION:
-    case TRI_WAL_MARKER_CHANGE_COLLECTION:
-    */
- 
     default: {
       // do nothing intentionally
     }
@@ -402,17 +396,211 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
 
   TRI_voc_tick_t minTransferTick = 0; // TODO: find the actual max tick of a collection
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
-    TRI_df_marker_t const* m = (*it2);
+    TRI_df_marker_t const* source = (*it2);
 
-    if (m->_tick <= minTransferTick) {
+    if (source->_tick <= minTransferTick) {
       // we have already transferred this marker in a previous run, nothing to do
       continue;
+    }
+
+    char const* base = reinterpret_cast<char const*>(source);
+
+    switch (source->_type) {
+      case TRI_WAL_MARKER_ATTRIBUTE: {
+        char const* name = base + sizeof(attribute_marker_t);
+        size_t n = strlen(name) + 1; // add NULL byte
+        TRI_voc_size_t const totalSize = sizeof(TRI_df_attribute_marker_t) + n;
+
+        char* mem = nextFreeMarkerPosition(TRI_DF_MARKER_ATTRIBUTE, totalSize);
+
+        if (mem == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        // set attribute id
+        TRI_df_attribute_marker_t* m = reinterpret_cast<TRI_df_attribute_marker_t*>(mem);
+        m->_aid = reinterpret_cast<attribute_marker_t const*>(source)->_attributeId;
+ 
+        // copy attribute name into marker
+        memcpy(mem + sizeof(TRI_df_attribute_marker_t), name, n);
+
+        finishMarker(mem, source->_tick);
+        break;
+      }
+
+      case TRI_WAL_MARKER_SHAPE: {
+        TRI_shape_t const* shape = reinterpret_cast<TRI_shape_t const*>(base + sizeof(shape_marker_t));
+        TRI_voc_size_t const totalSize = sizeof(TRI_df_shape_marker_t) + shape->_size;
+
+        char* mem = nextFreeMarkerPosition(TRI_DF_MARKER_SHAPE, totalSize);
+
+        if (mem == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        // copy shape into marker
+        memcpy(mem + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
+
+        finishMarker(mem, source->_tick);
+        break;
+      }
+
+      case TRI_WAL_MARKER_DOCUMENT: {
+        document_marker_t const* orig = reinterpret_cast<document_marker_t const*>(source);
+
+        TRI_shape_t const* shape = reinterpret_cast<TRI_shape_t const*>(base + orig->_offsetJson);
+        char const* key = base + orig->_offsetKey;
+        size_t n = strlen(key) + 1; // add NULL byte
+        TRI_voc_size_t const totalSize = sizeof(TRI_doc_document_key_marker_t) +
+                                         TRI_DF_ALIGN_BLOCK(n) + 
+                                         shape->_size;
+
+        char* mem = nextFreeMarkerPosition(TRI_DOC_MARKER_KEY_DOCUMENT, totalSize);
+
+        if (mem == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        TRI_doc_document_key_marker_t* m = reinterpret_cast<TRI_doc_document_key_marker_t*>(mem);
+        m->_rid        = orig->_revisionId;
+        m->_tid        = orig->_transactionId;
+        m->_shape      = orig->_shape;
+        m->_offsetKey  = sizeof(TRI_doc_document_key_marker_t);
+        m->_offsetJson = m->_offsetKey + TRI_DF_ALIGN_BLOCK(n);
+
+        // copy key into marker
+        memcpy(mem + m->_offsetKey, key, n);
+ 
+        // copy shape into marker
+        memcpy(mem + m->_offsetJson, shape, shape->_size);
+
+        finishMarker(mem, source->_tick);
+        break;
+      }
+
+      case TRI_WAL_MARKER_EDGE: {
+        edge_marker_t const* orig = reinterpret_cast<edge_marker_t const*>(source);
+
+        TRI_shape_t const* shape = reinterpret_cast<TRI_shape_t const*>(base + orig->_offsetJson);
+        char const* key = base + orig->_offsetKey;
+        size_t n = strlen(key) + 1; // add NULL byte
+        char const* toKey = base + orig->_offsetToKey;
+        size_t to = strlen(toKey) + 1; // add NULL byte
+        char const* fromKey = base + orig->_offsetFromKey;
+        size_t from = strlen(fromKey) + 1; // add NULL byte
+        TRI_voc_size_t const totalSize = sizeof(TRI_doc_edge_key_marker_t) + 
+                                         TRI_DF_ALIGN_BLOCK(n) + 
+                                         TRI_DF_ALIGN_BLOCK(to) + 
+                                         TRI_DF_ALIGN_BLOCK(from) + 
+                                         shape->_size;
+
+        char* mem = nextFreeMarkerPosition(TRI_DOC_MARKER_KEY_EDGE, totalSize);
+
+        if (mem == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        size_t offsetKey = sizeof(TRI_doc_edge_key_marker_t);
+        TRI_doc_edge_key_marker_t* m = reinterpret_cast<TRI_doc_edge_key_marker_t*>(mem);
+        m->base._rid           = orig->_revisionId;
+        m->base._tid           = orig->_transactionId;
+        m->base._shape         = orig->_shape;
+        m->base._offsetKey     = offsetKey;
+        m->base._offsetJson    = offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from);
+        m->_toCid              = orig->_toCid;
+        m->_fromCid            = orig->_fromCid;
+        m->_offsetToKey        = offsetKey + TRI_DF_ALIGN_BLOCK(n);
+        m->_offsetFromKey      = offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to);
+
+        // copy key into marker
+        memcpy(mem + offsetKey, key, n);
+        memcpy(mem + m->_offsetToKey, toKey, to);
+        memcpy(mem + m->_offsetFromKey, fromKey, from);
+ 
+        // copy shape into marker
+        memcpy(mem + m->base._offsetJson, shape, shape->_size);
+
+        finishMarker(mem, source->_tick);
+        break;
+      }
+
+      case TRI_WAL_MARKER_REMOVE: {
+        remove_marker_t const* orig = reinterpret_cast<remove_marker_t const*>(source);
+
+        char const* key = base + sizeof(remove_marker_t);
+        size_t n = strlen(key) + 1; // add NULL byte
+        TRI_voc_size_t const totalSize = sizeof(TRI_doc_deletion_key_marker_t) + n;
+
+        char* mem = nextFreeMarkerPosition(TRI_DOC_MARKER_KEY_DELETION, totalSize);
+
+        if (mem == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+
+        TRI_doc_deletion_key_marker_t* m = reinterpret_cast<TRI_doc_deletion_key_marker_t*>(mem);
+        m->_rid       = orig->_revisionId;
+        m->_tid       = orig->_transactionId;
+        m->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
+
+        // copy key into marker
+        memcpy(mem + m->_offsetKey, key, n);
+
+        finishMarker(mem, source->_tick);
+        break;
+      }
     }
   }
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the next position for a marker of the specified size
+////////////////////////////////////////////////////////////////////////////////
+
+char* CollectorThread::nextFreeMarkerPosition (TRI_df_marker_type_e type,
+                                               TRI_voc_size_t size) {
+  char* mem = nullptr;
+
+  if (mem != nullptr) {
+    initMarker(reinterpret_cast<TRI_df_marker_t*>(mem), type, size);
+  }
+
+  return mem;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a marker
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::initMarker (TRI_df_marker_t* marker,
+                                  TRI_df_marker_type_e type,
+                                  TRI_voc_size_t size) {
+  assert(marker != nullptr);
+
+  marker->_size = size; 
+  marker->_type = (TRI_df_marker_type_t) type;
+  marker->_crc  = 0;
+  marker->_tick = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the tick of a marker and calculate its CRC value
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectorThread::finishMarker (char* mem,
+                                    TRI_voc_tick_t tick) {
+  TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(mem);
+  
+  marker->_tick = tick;
+
+  // calculate the CRC
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+  crc = TRI_BlockCrc32(crc, (char const*) marker, marker->_size);
+  marker->_crc = TRI_FinalCrc32(crc);
 }
 
 // Local Variables:
