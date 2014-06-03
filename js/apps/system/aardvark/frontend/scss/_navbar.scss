@@ -94,6 +94,10 @@ ul.navlist {
     a {
       display: block;
     }
+
+    a:hover {
+      color: $c-white;
+    }
   }
 }
 
