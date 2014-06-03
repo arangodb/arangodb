@@ -1087,6 +1087,10 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
       return "rename collection (wal)";
     case TRI_WAL_MARKER_CHANGE_COLLECTION:
       return "change collection (wal)";
+    case TRI_WAL_MARKER_CREATE_DATABASE:
+      return "create database (wal)";
+    case TRI_WAL_MARKER_DROP_DATABASE:
+      return "drop database (wal)";
 
     default:
       return "unused/unknown";
