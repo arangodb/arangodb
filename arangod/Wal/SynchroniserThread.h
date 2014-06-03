@@ -50,8 +50,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        SynchroniserThread (SynchroniserThread const&);
-        SynchroniserThread& operator= (SynchroniserThread const&);
+        SynchroniserThread (SynchroniserThread const&) = delete;
+        SynchroniserThread& operator= (SynchroniserThread const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

@@ -39,6 +39,8 @@
 
 #include <regex.h>
 
+struct TRI_server_s;
+
 namespace triagens {
   namespace wal {
     
@@ -70,7 +72,8 @@ namespace triagens {
 
       public:
 
-        LogfileManager (std::string*);
+        LogfileManager (struct TRI_server_s*,
+                        std::string*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the logfile manager
@@ -88,7 +91,8 @@ namespace triagens {
 /// @brief initialise the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialise (std::string*);
+        static void initialise (std::string*,
+                                struct TRI_server_s*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -458,6 +462,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to the server
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_server_s* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the arangod config variable containing the database path
