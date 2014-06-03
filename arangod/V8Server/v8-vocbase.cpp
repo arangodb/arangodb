@@ -2209,9 +2209,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
   // check the arguments
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, <overwrite>, <waitForSync>) or"
-                                  "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})"
-                          );
+    TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
   }
   
   // we're only accepting "real" object documents
@@ -2603,8 +2601,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   // check the arguments
   if (argv.Length() < 2 || argv.Length() > 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>) or"
-                                  "update(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
+    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, {overwrite: booleanValue, keepNull: booleanValue, waitForSync: booleanValue})");
   }
 
   if (argv.Length() > 2) {
@@ -2886,9 +2883,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
 
   // check the arguments
   if (argv.Length() < 1 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <overwrite>, <waitForSync>) or"
-                                  "remove(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})"
-        );
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
   }
 
   if (argv.Length() > 1) {
