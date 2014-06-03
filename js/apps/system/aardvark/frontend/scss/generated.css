@@ -1449,9 +1449,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgrey; }
+  background-color: lightgray; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: grey; }
+    background-color: gray; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -1564,6 +1564,8 @@ ul.navlist {
     margin-left: 0; }
     ul.navlist li.dropdown-item a {
       display: block; }
+    ul.navlist li.dropdown-item a:hover {
+      color: white; }
 
 a.tab {
   color: white;
@@ -4651,7 +4653,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgrey;
+  background-color: lightgray;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -5338,7 +5340,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: grey; }
+  background-color: gray; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }
