@@ -2638,7 +2638,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                    policy, 
                                                    options.waitForSync,
                                                    true,  // isPatch
-                                                   ! options.keepNull,
+                                                   options.keepNull,
                                                    argv));
   }
 

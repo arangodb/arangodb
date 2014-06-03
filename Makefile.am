@@ -240,17 +240,26 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 ### @brief /share data
 ################################################################################
 
-nobase_pkgdata_DATA = \
-	$(shell find @srcdir@/js/actions -name "*.js" -print) \
-	$(shell find @srcdir@/js/common -name "*.js" -print) \
-	$(shell find @srcdir@/js/server -name "*.js" -print) \
-	$(shell find @srcdir@/js/client -name "*.js" -print) \
-	$(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")") \
-	$(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -print ")")
+pkgdataACTIONSdir = $(datadir)
+pkgdataCOMMONdir = $(datadir)
+pkgdataSERVERdir = $(datadir)
+pkgdataCLIENTdir = $(datadir)
+pkgdataNODEdir = $(datadir)
+pkgdataAPPSdir = $(datadir)
+pkgdataMRUBYdir = $(datadir)
+
+nobase_pkgdata_DATA =
+
+nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -print)
+nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
+nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
+nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
+nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")")
+nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -print ")")
 
 if ENABLE_MRUBY
 
-nobase_pkgdata_DATA += \
+nobase_pkgdataMRUBY_DATA = \
 	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
 	$(shell find @srcdir@/mr/common -name "*.rb" -print) 
 
