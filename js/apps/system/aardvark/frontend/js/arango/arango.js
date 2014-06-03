@@ -90,25 +90,22 @@
         },{
           label: "scroll down",
           letter: "k"
-        },{
-          label: "shortcuts help",
-          letter: "?"
         }]
       },
       jsoneditor: {
         name: "AQL editor",
         content: [{
           label: "Submit",
-          letter: "Ctrl/Cmd + Return"
+          letter: "Ctrl + Return"
         },{
           label: "Toggle comments",
-          letter: "Ctrl/Cmd + Shift + C"
+          letter: "Ctrl + Shift + C"
         },{
           label: "Undo",
-          letter: "Ctrl/Cmd + Z"
+          letter: "Ctrl + Z"
         },{
           label: "Redo",
-          letter: "Ctrl/Cmd + Shift + Z"
+          letter: "Ctrl + Shift + Z"
         }]
       },
       doceditor: {
@@ -165,14 +162,6 @@
       if (enable === true) {
         $(document).on('keydown', null, 'j', hotkeys.scrollDown);
         $(document).on('keydown', null, 'k', hotkeys.scrollUp);
-        $(document).keydown(function(e) {
-          if (e.shiftKey){
-            if (e.which === 191) {
-              hotkeys.showHotkeysModal();
-            }
-          }
-        });
-
       }
     },
 

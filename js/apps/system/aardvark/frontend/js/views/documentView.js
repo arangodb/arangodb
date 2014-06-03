@@ -13,8 +13,7 @@
 
     events: {
       "click #saveDocumentButton" : "saveDocument",
-      "dblclick #documentEditor tr" : "addProperty",
-      "click #tableDiv .showHotkeyHelp" : "shortcutModal"
+      "dblclick #documentEditor tr" : "addProperty"
     },
 
     editor: 0,
@@ -135,10 +134,6 @@
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
-    },
-
-    shortcutModal: function() {
-      window.arangoHelper.hotkeysFunctions.showHotkeysModal();
     },
 
     escaped: function (value) {
