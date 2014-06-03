@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_datafile_s;
@@ -164,6 +165,28 @@ namespace triagens {
         int transferMarkers (TRI_voc_cid_t,
                              TRI_voc_tick_t,
                              OperationsType const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the next free position for a new marker of the specified size
+////////////////////////////////////////////////////////////////////////////////
+
+        char* nextFreeMarkerPosition (TRI_df_marker_type_e,
+                                      TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a marker
+////////////////////////////////////////////////////////////////////////////////
+
+        void initMarker (struct TRI_df_marker_s*,
+                         TRI_df_marker_type_e,
+                         TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the tick of a marker and calculate its CRC value
+////////////////////////////////////////////////////////////////////////////////
+
+        void finishMarker (char*,
+                           TRI_voc_tick_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
