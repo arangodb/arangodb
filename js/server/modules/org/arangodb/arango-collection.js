@@ -93,15 +93,15 @@ ArangoCollection.prototype.toArray = function () {
 ///
 /// Truncates a collection:
 ///
-/// 	arango> col = db.examples;
-/// 	[ArangoCollection 91022, "examples" (status new born)]
-/// 	arango> col.save({ "Hello" : "World" });
-/// 	{ "_id" : "91022/1532814", "_rev" : 1532814 }
-/// 	arango> col.count();
-/// 	1
-/// 	arango> col.truncate();
-/// 	arango> col.count();
-/// 	0
+///     arango> col = db.examples;
+///     [ArangoCollection 91022, "examples" (status new born)]
+///     arango> col.save({ "Hello" : "World" });
+///     { "_id" : "91022/1532814", "_rev" : 1532814 }
+///     arango> col.count();
+///     1
+///     arango> col.truncate();
+///     arango> col.count();
+///     0
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
