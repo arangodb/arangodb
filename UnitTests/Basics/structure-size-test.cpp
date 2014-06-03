@@ -88,7 +88,6 @@ BOOST_AUTO_TEST_CASE (tst_df_marker) {
   BOOST_CHECK_EQUAL(24, s);
   BOOST_CHECK_EQUAL(true, s % 8 == 0); 
 
-    
   BOOST_CHECK_EQUAL( 0, offsetOf(&TRI_df_marker_t::_size));
   BOOST_CHECK_EQUAL( 4, offsetOf(&TRI_df_marker_t::_crc));
   BOOST_CHECK_EQUAL( 8, offsetOf(&TRI_df_marker_t::_type));
