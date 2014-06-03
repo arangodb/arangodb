@@ -1392,22 +1392,6 @@ function require (path) {
     );
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moduleFilename
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.foxxFilename = function (path) {
-    'use strict';
-
-    var prefix = fileUri2Path(this._origin);
-
-    if (path === null) {
-      return null;
-    }
-
-    return fs.safeJoin(prefix, path);
-  };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         ArangoApp
 // -----------------------------------------------------------------------------
@@ -1430,6 +1414,7 @@ function require (path) {
     this._root = root;
     this._path = path;
     this._options = options;
+    this._exports = {};
   };
 
 // -----------------------------------------------------------------------------
@@ -1659,8 +1644,6 @@ function require (path) {
     var prefix = fs.safeJoin(this._root, this._path);
 
     context.foxxFilename = function (path) {
-      console.log("XXXXXXXXXXXXXXXXX path %s", path);
-
       return fs.safeJoin(prefix, path);
     };
 
