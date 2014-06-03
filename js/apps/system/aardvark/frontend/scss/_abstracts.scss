@@ -250,6 +250,10 @@
     padding: 0 15px;
   }
 
+  li.dropdown-header:hover {
+    cursor: default;
+  }
+
   li.divider {
     background-color: $c-grey;
     height: 1px;
