@@ -246,7 +246,7 @@ nobase_pkgdata_DATA = \
 	$(shell find @srcdir@/js/server -name "*.js" -print) \
 	$(shell find @srcdir@/js/client -name "*.js" -print) \
 	$(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")") \
-	$(shell find @srcdir@/js/apps/system -type f -print)
+	$(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -print ")")
 
 if ENABLE_MRUBY
 
