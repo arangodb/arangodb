@@ -114,7 +114,7 @@ struct TRI_key_generator_s;
 typedef struct TRI_doc_mptr_s {
   TRI_voc_rid_t          _rid;      // this is the revision identifier
   TRI_voc_fid_t          _fid;      // this is the datafile identifier
-  void const*            _data;     // this is the pointer to the beginning of the raw marker
+  void const*            _dataptr;  // this is the pointer to the beginning of the raw marker
   uint64_t               _hash;     // the pre-calculated hash value of the key
   struct TRI_doc_mptr_s* _prev;     // previous master pointer
   struct TRI_doc_mptr_s* _next;     // next master pointer
@@ -582,12 +582,12 @@ size_t TRI_DocumentIteratorPrimaryCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*) mptr->_data) + ((TRI_doc_document_key_marker_t const*) mptr->_data)->_offsetKey;
+    return ((char const*) mptr->_dataptr) + ((TRI_doc_document_key_marker_t const*) mptr->_dataptr)->_offsetKey;
   }
   else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*) mptr->_data) + ((triagens::wal::document_marker_t const*) mptr->_data)->_offsetKey;
+    return ((char const*) mptr->_dataptr) + ((triagens::wal::document_marker_t const*) mptr->_dataptr)->_offsetKey;
   }
   return nullptr;
 }

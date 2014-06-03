@@ -321,7 +321,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  assert(document._data != nullptr);
+  assert(document._dataptr != nullptr);
 
   // generate result
   if (wasSynchronous) {

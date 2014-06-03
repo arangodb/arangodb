@@ -476,7 +476,7 @@ namespace triagens {
             *barrier = 0;
 
             // no document found
-            mptr->_data = nullptr;
+            mptr->_dataptr = nullptr;
           }
           else {
             size_t total = document->_primaryIndex._nrAlloc;

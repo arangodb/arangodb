@@ -1872,7 +1872,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
-  document._data = nullptr;
+  document._dataptr = nullptr;
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1894,7 +1894,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._data == nullptr) {
+  if (document._dataptr == nullptr) {
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
@@ -2275,7 +2275,7 @@ collection_checksum_t;
 template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
                                                            TRI_document_collection_t* document, 
                                                            void* data) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
