@@ -474,7 +474,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
       d = (TRI_doc_mptr_t const*) *ptr;
 
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_dataptr);
 
       auth = ConvertAuthInfo(vocbase, document, &shapedJson);
 

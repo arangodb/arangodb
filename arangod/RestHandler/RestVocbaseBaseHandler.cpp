@@ -320,10 +320,10 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_KEY, _key);
   }
 
-  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_dataptr)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_data;
+    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_dataptr;
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
@@ -338,7 +338,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_data);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);
   TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);

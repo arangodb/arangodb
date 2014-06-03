@@ -1944,7 +1944,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_FreeBarrier(barrier);
   }
 
-  if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
+  if (res != TRI_ERROR_NO_ERROR || document._dataptr == nullptr) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -2048,7 +2048,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
-  if (res != TRI_ERROR_NO_ERROR || document._data == nullptr) {
+  if (res != TRI_ERROR_NO_ERROR || document._dataptr == nullptr) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
     }
@@ -2279,14 +2279,14 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   
     res = trx.read(&mptr, key);
 
-    if (res != TRI_ERROR_NO_ERROR || mptr._data == nullptr) {
+    if (res != TRI_ERROR_NO_ERROR || mptr._dataptr == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, res);
     }
   
     TRI_shaped_json_t shaped;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._data);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._dataptr);
     TRI_json_t* old = TRI_JsonShapedJson(document->_shaper, &shaped);
 
     if (old == 0) {
@@ -2326,7 +2326,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr._data != nullptr);
+  assert(mptr._dataptr != nullptr);
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -2399,7 +2399,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr._data != nullptr);
+  assert(mptr._dataptr != nullptr);
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2521,7 +2521,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr._data != nullptr);
+  assert(mptr._dataptr != nullptr);
 
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2679,7 +2679,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   TRI_shaped_json_t shaped;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._data);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr._dataptr);
   TRI_json_t* old = TRI_JsonShapedJson(document->_shaper, &shaped);
 
   if (old == nullptr) {
@@ -2722,7 +2722,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr._data != nullptr);
+  assert(mptr._dataptr != nullptr);
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -10093,16 +10093,16 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
 
-  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_data)->_type;
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_dataptr)->_type;
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(document->_data);
+    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(document->_dataptr);
 
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(document->_data);
+    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(document->_dataptr);
 
     result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
     result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
@@ -10125,7 +10125,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   v8::HandleScope scope;
     
   TRI_ASSERT_MAINTAINER(document != nullptr);
-  TRI_ASSERT_MAINTAINER(document->_data != nullptr);
+  TRI_ASSERT_MAINTAINER(document->_dataptr != nullptr);
   TRI_ASSERT_MAINTAINER(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -10142,7 +10142,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     TRI_shaper_t* shaper = collection->_shaper;
   
     TRI_shaped_json_t json;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(json, document->_data);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(json, document->_dataptr);
   
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
@@ -10181,7 +10181,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     return scope.Close(result);
   }
 
-  void* data = const_cast<void*>(document->_data);
+  void* data = const_cast<void*>(document->_dataptr);
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));

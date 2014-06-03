@@ -67,8 +67,8 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
     if (oldest != NULL) {
       size_t oldSize;
      
-      assert(oldest->_data != NULL);
-      oldSize = ((TRI_df_marker_t*) (oldest->_data))->_size;
+      assert(oldest->_dataptr != NULL);
+      oldSize = ((TRI_df_marker_t*) (oldest->_dataptr))->_size;
 
       assert(oldSize > 0);
 
@@ -218,7 +218,7 @@ static int InsertCapConstraint (TRI_index_t* idx,
     // there is a size restriction
     TRI_df_marker_t* marker;
     
-    marker = (TRI_df_marker_t*) doc->_data;
+    marker = (TRI_df_marker_t*) doc->_dataptr;
 
     // check if the document would be too big
     if ((int64_t) marker->_size > (int64_t) cap->_size) {

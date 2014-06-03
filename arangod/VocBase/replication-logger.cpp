@@ -536,12 +536,12 @@ static int LogEvent (TRI_replication_logger_t* logger,
   }
 
   // assert the write was successful
-  assert(mptr._data != NULL);
+  assert(mptr._dataptr != NULL);
   
   // update the last tick that we've logged
   TRI_LockSpin(&logger->_idLock);
 
-  logger->_state._lastLogTick = ((TRI_df_marker_t*) mptr._data)->_tick;
+  logger->_state._lastLogTick = ((TRI_df_marker_t*) mptr._dataptr)->_tick;
   logger->_state._totalEvents++;
 
   TRI_UnlockSpin(&logger->_idLock);
