@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief document collection with global read-write lock, derived from
 /// TRI_document_collection_t
 ///
@@ -359,61 +359,6 @@ typedef struct TRI_document_collection_s {
   int (*cleanupIndexes)(struct TRI_document_collection_s*);
 }
 TRI_document_collection_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile marker with key
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_document_key_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-  TRI_voc_tid_t   _tid;
-
-  TRI_shape_sid_t _shape;
-
-  uint16_t        _offsetKey;
-  uint16_t        _offsetJson;
-
-#ifdef TRI_PADDING_32
-  char            _padding_df_marker[4];
-#endif
-}
-TRI_doc_document_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge datafile marker with key
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_edge_key_marker_s {
-  TRI_doc_document_key_marker_t base;
-
-  TRI_voc_cid_t   _toCid;
-  TRI_voc_cid_t   _fromCid;
-
-  uint16_t        _offsetToKey;
-  uint16_t        _offsetFromKey;
-
-#ifdef TRI_PADDING_32
-  char            _padding_df_marker[4];
-#endif
-}
-TRI_doc_edge_key_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile deletion marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_doc_deletion_key_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_voc_rid_t   _rid;        // this is the tick for the deletion
-  TRI_voc_tid_t   _tid;
-
-  uint16_t        _offsetKey;
-}
-TRI_doc_deletion_key_marker_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

@@ -29,8 +29,8 @@
 #define TRIAGENS_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
-
 #include "BasicsC/locks.h"
+#include "ShapedJson/shaped-json.h"
 
 #include "VocBase/vocbase.h"
 
@@ -404,6 +404,83 @@ typedef struct TRI_df_footer_marker_s {
   TRI_voc_size_t _totalSize;            //  4 bytes
 }
 TRI_df_footer_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile attribute marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_df_attribute_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_shape_aid_t _aid;
+  TRI_shape_size_t _size;
+
+  // char name[]
+}
+TRI_df_attribute_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile shape marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_df_shape_marker_s {
+  TRI_df_marker_t base;
+}
+TRI_df_shape_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile marker with key
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_document_key_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_rid_t   _rid;        // this is the tick for a create and update
+  TRI_voc_tid_t   _tid;
+
+  TRI_shape_sid_t _shape;
+
+  uint16_t        _offsetKey;
+  uint16_t        _offsetJson;
+
+#ifdef TRI_PADDING_32
+  char            _padding_df_marker[4];
+#endif
+}
+TRI_doc_document_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge datafile marker with key
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_edge_key_marker_s {
+  TRI_doc_document_key_marker_t base;
+
+  TRI_voc_cid_t   _toCid;
+  TRI_voc_cid_t   _fromCid;
+
+  uint16_t        _offsetToKey;
+  uint16_t        _offsetFromKey;
+
+#ifdef TRI_PADDING_32
+  char            _padding_df_marker[4];
+#endif
+}
+TRI_doc_edge_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile deletion marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_deletion_key_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_rid_t   _rid;        // this is the tick for the deletion
+  TRI_voc_tid_t   _tid;
+
+  uint16_t        _offsetKey;
+}
+TRI_doc_deletion_key_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin transaction marker
