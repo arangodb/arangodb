@@ -1,0 +1,58 @@
+!CHAPTER Cap Constraint
+
+
+!SUBSECTION Introduction to Cap Constraints
+
+This is an introduction to ArangoDB's size restrictions aka cap constraints for
+collections.
+
+It is possible to restrict the size of collections. If you add a document and
+the size exceeds the limit, then the least recently created or updated document(s)
+will be dropped. The size of a collection is measured in the number of
+active documents a collection contains, and optionally in the total size of
+the active documents' data in bytes.
+
+It is possible to only restrict the number of documents in a collection, or to
+only restrict the total active data size, or both at the same time. If there are
+restrictions on both document count and total size, then the first violated 
+constraint will trigger the auto-deletion of "too" old documents until all
+constraints are satisfied.
+
+Using a cap constraint, a collection can be used as a FIFO container, with just 
+the newest documents remaining in the collection. 
+
+For example, a cap constraint can be used to keep a list of just the most recent 
+log entries, and at the same time ensure that the collection does not grow
+indefinitely. Cap constraints can be used to automate the process of getting rid
+of "old" documents, and so save the user from implementing own jobs to purge
+"old" collection data.
+
+!SECTION Accessing Cap Constraints from the Shell
+
+`collection.ensureCapConstraint( size, {byteSize})`
+
+Creates a size restriction aka cap for the collection of size documents and/or byteSize data size. If the restriction is in place and the ( size plus one) document is added to the collection, or the total active data size in the collection exceeds byteSize, then the least recently created or updated documents are removed until all constraints are satisfied.
+
+It is allowed to specify either size or byteSize, or both at the same time. If both are specified, then the automatic document removal will be triggered by the first non-met constraint.
+
+Note that at most one cap constraint is allowed per collection. Trying to create additional cap constraints will result in an error. Creating cap constraints is also not supported in sharded collections with more than one shard.
+
+Note that this does not imply any restriction of the number of revisions of documents.
+
+*Examples*
+
+Restrict the number of document to at most 10 documents:
+
+	arango> db.examples.ensureCapConstraint(10);
+	{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
+	
+	arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+	
+	arango> db.examples.count();
+	10
+
+
+<!--
+@anchor IndexCapShellEnsureCapConstraint
+@copydetails JSF_ArangoCollection_prototype_ensureCapConstraint
+-->
