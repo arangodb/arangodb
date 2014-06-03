@@ -28,6 +28,7 @@
 #include "CollectorThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/server.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
@@ -385,7 +386,9 @@ int CollectorThread::collect (Logfile* logfile) {
 int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
                                       TRI_voc_tick_t databaseId,
                                       OperationsType const& operations) {
-  TRI_vocbase_t* vocbase = TRI_UseDatabaseByIdServer(_server, databaseId);
+  triagens::arango::DatabaseGuard guard(_server, databaseId);
+
+  TRI_vocbase_t* vocbase = guard.database();
 
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
@@ -394,7 +397,6 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
   TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, collectionId);
 
   if (collection == nullptr) {
-    TRI_ReleaseDatabaseServer(_server, vocbase);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -409,7 +411,6 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
   }
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
-  TRI_ReleaseDatabaseServer(_server, vocbase);
 
   return TRI_ERROR_NO_ERROR;
 }
