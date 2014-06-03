@@ -170,12 +170,12 @@ bool RestVocbaseBaseHandler::checkCreateCollection (const string& name,
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generate20x (const HttpResponse::HttpResponseCode responseCode,
-                                          const string& collectionName,
-                                          const TRI_voc_key_t key,
-                                          const TRI_voc_rid_t rid) {
-  const string handle = DocumentHelper::assembleDocumentId(collectionName, key);
-  const string rev = StringUtils::itoa(rid);
+void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode responseCode,
+                                          string const& collectionName,
+                                          TRI_voc_key_t key,
+                                          TRI_voc_rid_t rid) {
+  string const handle = DocumentHelper::assembleDocumentId(collectionName, key);
+  string const rev = StringUtils::itoa(rid);
 
   _response = createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
