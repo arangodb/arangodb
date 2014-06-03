@@ -178,10 +178,10 @@ namespace triagens {
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generate20x (const rest::HttpResponse::HttpResponseCode,
-                          const string&,
-                          const TRI_voc_key_t,
-                          const TRI_voc_rid_t);
+        void generate20x (rest::HttpResponse::HttpResponseCode,
+                          std::string const&,
+                          TRI_voc_key_t,
+                          TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates ok message without content
@@ -203,7 +203,7 @@ namespace triagens {
 /// @brief generates created message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (const TRI_voc_cid_t cid,
+        void generateCreated (TRI_voc_cid_t cid,
                               TRI_voc_key_t key,
                               TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
@@ -213,9 +213,9 @@ namespace triagens {
 /// @brief generates accepted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateAccepted (const TRI_voc_cid_t cid,
-                               const TRI_voc_key_t key,
-                               const TRI_voc_rid_t rid) {
+        void generateAccepted (TRI_voc_cid_t cid,
+                               TRI_voc_key_t key,
+                               TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
         }
 
@@ -223,9 +223,9 @@ namespace triagens {
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key,
-                              const TRI_voc_rid_t rid) {
+        void generateDeleted (TRI_voc_cid_t cid,
+                              TRI_voc_key_t key,
+                              TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
         }
 
@@ -233,9 +233,9 @@ namespace triagens {
 /// @brief generates updated message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key,
-                              const TRI_voc_rid_t rid) {
+        void generateUpdated (TRI_voc_cid_t cid,
+                              TRI_voc_key_t key,
+                              TRI_voc_rid_t rid) {
           generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
         }
 
