@@ -140,7 +140,7 @@ namespace triagens {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_cid_t   _collectionId;
 
-      TRI_voc_rid_t   _rid;        // this is the tick for a create and update
+      TRI_voc_rid_t   _revisionId;        // this is the tick for a create and update
       TRI_voc_tid_t   _transactionId;
 
       TRI_shape_sid_t _shape;
@@ -182,7 +182,7 @@ namespace triagens {
       TRI_voc_tick_t  _databaseId;
       TRI_voc_cid_t   _collectionId;
 
-      TRI_voc_rid_t   _rid;   // this is the tick for the deletion
+      TRI_voc_rid_t   _revisionId;   // this is the tick for the deletion
       TRI_voc_tid_t   _transactionId;
       
       // char* key
@@ -519,12 +519,12 @@ namespace triagens {
 
       public: 
         
-        inline TRI_voc_rid_t rid () const {
+        inline TRI_voc_rid_t revisionId () const {
           document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return m->_rid;
+          return m->_revisionId;
         }
         
-        inline TRI_voc_rid_t tid () const {
+        inline TRI_voc_tid_t transactionId () const {
           document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
           return m->_transactionId;
         }
@@ -586,12 +586,12 @@ namespace triagens {
 
         ~EdgeMarker ();
 
-        inline TRI_voc_rid_t rid () const {
+        inline TRI_voc_rid_t revisionId () const {
           edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return m->_rid;
+          return m->_revisionId;
         }
         
-        inline TRI_voc_rid_t tid () const {
+        inline TRI_voc_rid_t transactionId () const {
           edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
           return m->_transactionId;
         }
@@ -669,14 +669,14 @@ namespace triagens {
           return begin() + sizeof(remove_marker_t);
         }
 
-        inline TRI_voc_rid_t tid () const {
+        inline TRI_voc_tid_t transactionId () const {
           remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
           return m->_transactionId;
         }
 
-        inline TRI_voc_rid_t rid () const {
+        inline TRI_voc_rid_t revisionId () const {
           remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
-          return m->_rid;
+          return m->_revisionId;
         }
 
         void dump () const;
