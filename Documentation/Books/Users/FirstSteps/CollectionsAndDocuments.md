@@ -1,0 +1,304 @@
+
+<a name="exploring_collections_and_documents"></a>
+# Exploring Collections and Documents
+
+ArangoDB is a database that serves documents to clients.
+
+- A *document* contains zero or more attributes, each one of these
+  attributes has a value. A value can either be an atomic type, i. e.
+  integer, strings, boolean, a list or an embedded document. Documents
+  are normally represented as JSON objects
+- Documents are grouped into *collections*. A collection contains zero
+  or more documents
+- *Queries* are used to filter documents based on certain criteria.
+  Queries can be as simple as a ["query by example"](../SimpleQueries/Queries.md) or as complex as
+  ["joins"](../AqlExamples/Join.md) using many collections or graph structures
+- *Cursors* are used to iterate over the result of a query
+- *Indexes* are used to speed up of searches. There are various different
+  types of indexes like @ref IndexHash, @ref IndexGeo and @ref IndexBitArray
+
+If you are familiar with RDBMS then it is safe to compare collections
+to tables and documents to rows. However, bringing structure to the
+"rows" has many advantages - as you will see later.
+
+<a name="starting_the_javascript_shell"></a>
+## Starting the JavaScript shell
+
+The easiest way to connect to the database is the JavaScript shell
+_arangosh_. You can either start it from the command-line or as an
+embedded version in the browser. Using the command-line tool has the
+advantage that you can use autocompletion.
+
+    unix> arangosh --server.password ""
+					   _     
+      __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
+     / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
+    | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
+     \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
+			   |___/                 
+
+    Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
+    Using Google V8 3.9.4 JavaScript engine.
+    Using READLINE 6.1.
+
+    Connected to Arango DB 127.0.0.1:8529 Version 1.x.y
+
+    ------------------------------------- Help -------------------------------------
+    Predefined objects:                                                 
+      arango:                               ArangoConnection           
+      db:                                   ArangoDatabase             
+      fm:                                   FoxxManager  
+    Example:                                                            
+     > db._collections();                   list all collections       
+     > db._create(<name>)                   create a new collection    
+     > db._drop(<name>)                     drop a collection         
+     > db.<name>.toArray()                  list all documents         
+     > id = db.<name>.save({ ... })         save a document            
+     > db.<name>.remove(<_id>)              delete a document          
+     > db.<name>.document(<_id>)            retrieve a document        
+     > db.<name>.replace(<_id>, {...})      overwrite a document       
+     > db.<name>.update(<_id>, {...})       partially update a document
+     > db.<name>.exists(<_id>)              check if document exists   
+     > db._query(<query>).toArray()         execute an AQL query       
+     > db._useDatabase(<name>)              switch database            
+     > db._createDatabase(<name>)           create a new database      
+     > db._listDatabases()                  list existing databases    
+     > help                                 show help pages            
+     > exit                                         
+    arangosh>
+
+This gives you a prompt where you can issue JavaScript commands.
+
+The standard setup does not require a password. Depending on your
+setup you might need to specify the endpoint, username and password
+in order to run the shell on your system. You can use the options
+`--server.endpoint`, `--server.username` and `--server.password` for
+this.
+
+    unix> arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
+
+A default configuration is normally installed under
+`/etc/arangodb/arangosh.conf`. It contains a default endpoint and an
+empty password.
+
+<a name="troubleshooting"></a>
+### Troubleshooting
+
+If the ArangoDB server does not start or if you cannot connect to it 
+using `arangosh` or other clients, you can try to find the problem cause by 
+executing the following steps. If the server starts up without problems
+you can skip this section.
+
+* *Check the server log file*: If the server has written a log file you should 
+  check it because it might contain relevant error context information.
+
+* *Check the configuration*: The server looks for a configuration file 
+  named `arangod.conf` on startup. The contents of this file will be used
+  as a base configuration that can optionally be overridden with command-line 
+  configuration parameters. You should check the config file for the most
+  relevant parameters such as:
+  * `server.endpoint`: What IP address and port to bind to
+  * `log parameters`: If and where to log
+  * `database.directory`: Path the database files are stored in
+
+  If the configuration reveals that something is not configured right the config
+  file should be adjusted and the server be restarted.
+
+* *Start the server manually and check its output*: Starting the server might
+  fail even before logging is activated so the server will not produce log
+  output. This can happen if the server is configured to write the logs to
+  a file that the server has no permissions on. In this case the server 
+  cannot log an error to the specified log file but will write a startup 
+  error on stderr instead.
+  Starting the server manually will also allow you to override specific 
+  configuration options, e.g. to turn on/off file or screen logging etc.
+
+* *Check the TCP port*: If the server starts up but does not accept any incoming 
+  connections this might be due to firewall configuration between the server 
+  and any client(s). The server by default will listen on TCP port 8529. Please 
+  make sure this port is actually accessible by other clients if you plan to use 
+  ArangoDB in a network setup.
+
+  When using hostnames in the configuration or when connecting, please make
+  sure the hostname is actually resolvable. Resolving hostnames might invoke
+  DNS, which can be a source of errors on its own.
+
+  It is generally good advice to not use DNS when specifying the endpoints
+  and connection addresses. Using IP addresses instead will rule out DNS as 
+  a source of errors. Another alternative is to use a hostname specified
+  in the local `/etc/hosts` file, which will then bypass DNS.
+
+* *Test if `curl` can connect*: Once the server is started, you can quickly
+  verify if it responds to requests at all. This check allows you to
+  determine whether connection errors are client-specific or not. If at 
+  least one client can connect, it is likely that connection problems of
+  other clients are not due to ArangoDB's configuration but due to client
+  or in-between network configurations.
+
+  You can test connectivity using a simple command such as:
+
+  `curl --dump - -X GET http://127.0.0.1:8529/_api/version && echo` 
+
+  This should return a response with an `HTTP 200` status code when the
+  server is running. If it does it also means the server is generally 
+  accepting connections. Alternative tools to check connectivity are `lynx`
+  or `ab`.
+
+!SECTIONS Querying for Documents
+
+All documents are stored in collections. All collections are stored in a
+database. The database object is accessible via the variable `db`.
+
+Creating a collection is simple. You can use the `_create` method
+of the `db` variable.
+
+    arangosh> db._create("example");
+    [ArangoCollection 70628, "example" (status loaded)]
+
+After the collection has been created you can easily access it using
+the path `db.example`. The collection currently shows as `loaded`,
+meaning that it's loaded into memory. If you restart the server and
+access the collection again it will now show as `unloaded`. You can
+also manually unload a collection.
+
+    arangosh> db.example.unload();
+    arangosh> db.example;
+    [ArangoCollection 70628, "example" (status unloaded)]
+
+Whenever you use a collection ArangoDB will automatically load it
+into memory for you.
+
+In order to create new documents in a collection use the `save`
+operation. 
+
+    arangosh> db.example.save({ Hello : "World" });
+    { error : false, _id : "example/1512420", _key : "1512420", _rev : "1512420" }
+    arangosh> db.example.save({ name : "John Doe", age : 29 });
+    { error : false, _id : "example/1774564", _key : "1774564", _rev : "1774564" }
+    arangosh> db.example.save({ name : "Jane Smith", age : 31 });
+    { error : false, _id : "example/1993214", _key : "1993214", _rev : "1993214" }
+
+Just storing documents would be no fun. We now want to select some of
+the stored documents again.  In order to select all elements of a
+collection, one can use the `all` operator. Because this might return
+a lot of data, we switch on pretty printing before.
+
+    arangosh> start_pretty_print();
+    use pretty printing
+
+The command `stop_pretty_print()` will switch off pretty printing again.
+Now extract all elements:
+
+    arangosh> db.example.all().toArray()
+    [
+      { 
+	_id : "example/6308263", 
+        _key : "1993214",
+	_rev : "1993214",
+	age : 31, 
+	name : "Jane Smith"
+      }, 
+      { 
+	_id : "example/6242727", 
+        _key : "1774564",
+	_rev : "1774564", 
+	age : 29, 
+	name : "John Doe"
+      }, 
+      { 
+	_id : "example/5980583", 
+        _key : "1512420",
+	_rev : "1512420", 
+	Hello : "World"
+      }
+    ]
+
+The last document was a mistake – so let's delete it:
+
+    arangosh> db.example.remove("example/5980583")
+    true
+    arangosh> db.example.all().toArray()
+    [
+      { 
+	_id : "example/6308263", 
+        _key : "1993214",
+	_rev : "1993214",
+	age : 31, 
+	name : "Jane Smith"
+      }, 
+      { 
+	_id : "example/6242727", 
+        _key : "1774564",
+	_rev : "1774564", 
+	age : 29, 
+	name : "John Doe"
+      }
+    ]
+
+Now we want to look for a person with a given name. We can use
+`byExample` for this. The method returns a list of documents
+matching a given example.
+
+    arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()
+    [
+      { 
+	_id : "example/6308263", 
+        _key : "1993214",
+	_rev : "1993214",
+	age : 31, 
+	name : "Jane Smith"
+      }
+    ]
+
+While the `byExample` works very well for simple queries where you
+combine the conditions with an `and`. The syntax above becomes messy for joins
+and `or` conditions. Therefore ArangoDB also supports a full-blown
+query language.
+
+    arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
+    [
+      { 
+	_id : "example/6308263", 
+        _key : "1993214",
+	_rev : "1993214",
+	age : 31, 
+	name : "Jane Smith"
+      }
+    ]
+
+Search for all persons over 30:
+
+    arangosh> db._query('FOR user IN example FILTER user.age > 30 RETURN user').toArray()
+    [
+      { 
+	_id : "example/6308263", 
+        _key : "1993214",
+	_rev : "1993214",
+	age : 31, 
+	name : "Jane Smith"
+      }
+    ]
+
+You can learn all about the query language @ref Aql "here". Note that
+`_query` is a short-cut for `_createStatement` and `execute`. We will
+come back to these functions when we talk about cursors.
+
+<a name="arangodb's_front-end"></a>
+## ArangoDB's Front-End
+
+The ArangoDB server has a graphical front-end, which allows you to
+inspect the current state of the server from within your browser. You
+can use the front-end using the following URL:
+
+    http://localhost:8529/_admin/html/index.html
+
+Unless you have loaded an application into the ArangoDB server – which remaps
+the paths – the front-end will also be available under
+
+    http://localhost:8529/
+
+The front-end allows you to browse through the collections and
+documents. If you need to administrate the database, please use
+the ArangoDB shell described in the next section.
+
+
