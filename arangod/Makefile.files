@@ -98,7 +98,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
-	arangod/VocBase/marker.cpp \
 	arangod/VocBase/primary-index.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
@@ -106,7 +105,6 @@ bin_arangod_SOURCES = \
 	arangod/VocBase/replication-logger.cpp \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
-	arangod/VocBase/synchroniser.cpp \
 	arangod/VocBase/transaction.cpp \
 	arangod/VocBase/update-policy.cpp \
 	arangod/VocBase/voc-shaper.cpp \
@@ -117,10 +115,8 @@ bin_arangod_SOURCES = \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Marker.cpp \
-	arangod/Wal/ReadOperation.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
-	arangod/Wal/TestThread.cpp \
 	arangod/Wal/SynchroniserThread.cpp \
         arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \

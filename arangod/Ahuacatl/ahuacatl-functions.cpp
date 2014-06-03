@@ -706,7 +706,8 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
   REGISTER_FUNCTION("GRAPH_PATHS", "GENERAL_GRAPH_PATHS", false, false, "s|s,b,n,n", &OptimisePaths);
   REGISTER_FUNCTION("SHORTEST_PATH", "GRAPH_SHORTEST_PATH", false, false, "h,h,s,s,s|a", NULL);
-  REGISTER_FUNCTION("GRAPH_SHORTEST_PATH", "GENERAL_GRAPH_SHORTEST_PATH", false, false, "s,s,s,s|a", NULL);
+  REGISTER_FUNCTION("GRAPH_SHORTEST_PATH", "GENERAL_GRAPH_SHORTEST_PATH", false, false, "s,als,als|a", NULL);
+  REGISTER_FUNCTION("GRAPH_DISTANCE_TO", "GENERAL_GRAPH_DISTANCE_TO", false, false, "s,als,als|a", NULL);
   REGISTER_FUNCTION("TRAVERSAL", "GRAPH_TRAVERSAL", false, false, "h,h,s,s|a", NULL);
   REGISTER_FUNCTION("GRAPH_TRAVERSAL", "GENERAL_GRAPH_TRAVERSAL", false, false, "s,s,s|a", NULL);
   REGISTER_FUNCTION("TRAVERSAL_TREE", "GRAPH_TRAVERSAL_TREE", false, false, "h,h,s,s,s|a", NULL);
@@ -718,6 +719,11 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("GRAPH_NEIGHBORS", "GENERAL_GRAPH_NEIGHBORS", false, false, "s,als|a", NULL);
   REGISTER_FUNCTION("GRAPH_COMMON_NEIGHBORS", "GENERAL_GRAPH_COMMON_NEIGHBORS", false, false, "s,als,als|a", NULL);
   REGISTER_FUNCTION("GRAPH_COMMON_PROPERTIES", "GENERAL_GRAPH_COMMON_PROPERTIES", false, false, "s,als,als|a", NULL);
+  REGISTER_FUNCTION("GRAPH_ECCENTRICITY", "GENERAL_GRAPH_ECCENTRICITY", false, false, "s|a", NULL);
+  REGISTER_FUNCTION("GRAPH_BETWEENNESS", "GENERAL_GRAPH_BETWEENNESS", false, false, "s|a", NULL);
+  REGISTER_FUNCTION("GRAPH_CLOSENESS", "GENERAL_GRAPH_CLOSENESS", false, false, "s|a", NULL);
+  REGISTER_FUNCTION("GRAPH_DIAMETER", "GENERAL_GRAPH_DIAMETER", false, false, "s|a", NULL);
+  REGISTER_FUNCTION("GRAPH_RADIUS", "GENERAL_GRAPH_RADIUS", false, false, "s|a", NULL);
   
   // date functions
   REGISTER_FUNCTION("DATE_NOW", "DATE_NOW", false, false, "", NULL); // NOW is non-deterministic

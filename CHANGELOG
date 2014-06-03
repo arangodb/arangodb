@@ -1,6 +1,14 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* added mountedApp function for foxx-manager
+
+* cleanup of version-check, added module org/arangodb/database-version,
+  added --check-version option
+
+* fixed issue #881: [2.1.0] Bombarded (every 10 sec or so) with 
+  "WARNING format string is corrupt" when in non-system DB Dashboard
+
 * specialized primary index implementation to allow faster hash table 
   rebuilding and reduce lookups in datafiles for the actual value of `_key`.
 
@@ -24,6 +32,23 @@ v2.2.0 (XXXX-XX-XX)
   was removed. Collections with many different attribute names should 
   benefit from this change by faster inserts and slightly less memory usage.
 
+v2.1.1 (2014-06-06)
+-------------------
+
+* signature for collection functions was modified
+
+  The basic change was the substitution of the input parameter of the
+  function by an generic options object which can contain multiple
+  option parameter of the function.
+  Following functions were modified
+  remove
+  removeBySample
+  replace
+  replaceBySample
+  update
+  updateBySample
+  
+  Old signature is yet supported but it will be removed in future versions 
 
 v2.1.0 (2014-05-29)
 -------------------

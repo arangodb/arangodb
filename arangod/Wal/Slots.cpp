@@ -31,7 +31,6 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "VocBase/datafile.h"
-#include "VocBase/marker.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;

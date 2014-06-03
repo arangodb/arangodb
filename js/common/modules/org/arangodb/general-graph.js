@@ -30,6 +30,7 @@
 
 
 var arangodb = require("org/arangodb"),
+  internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
   ArangoError = arangodb.ArangoError,
   db = arangodb.db,
@@ -81,7 +82,8 @@ var isValidCollectionsParameter = function (x) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var findOrCreateCollectionByName = function (name, type, noCreate) {
-  var col = db._collection(name),res = false;
+  var col = db._collection(name),
+    res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
       col = db._create(name);
@@ -127,6 +129,22 @@ var getGraphCollection = function() {
     throw "_graphs collection does not exist.";
   }
   return gCol;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to print edge definitions in _PRINT
+////////////////////////////////////////////////////////////////////////////////
+
+var printEdgeDefinitions = function(defs) {
+  return _.map(defs, function(d) {
+    var out = d.collection;
+    out += ": [";
+    out += d.from.join(", ");
+    out += "] -> [";
+    out += d.to.join(", ");
+    out += "]";
+    return out;
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +221,10 @@ AQLStatement.prototype.printQuery = function() {
   return this.query;
 };
 
+AQLStatement.prototype.isPathQuery = function() {
+  return this.type === "path";
+};
+
 AQLStatement.prototype.isEdgeQuery = function() {
   return this.type === "edge";
 };
@@ -233,12 +255,54 @@ AQLStatement.prototype.allowsRestrict = function() {
 
 var AQLGenerator = function(graph) {
   this.stack = [];
+  this.callStack = [];
   this.bindVars = {
     "graphName": graph.__name
   };
   this.graph = graph;
   this.cursor = null;
   this.lastVar = "";
+  this._path = [];
+  this._getPath = false;
+};
+
+AQLGenerator.prototype._addToPrint = function(name) {
+  var args = Array.prototype.slice.call(arguments);
+  args.shift(); // The Name
+  var stackEntry = {};
+  stackEntry.name = name;
+  if (args.length > 0 && args[0] !== undefined) {
+    stackEntry.params = args;
+  } else {
+    stackEntry.params = [];
+  }
+  this.callStack.push(stackEntry);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Print the call stack of this query
+////////////////////////////////////////////////////////////////////////////////
+
+AQLGenerator.prototype._PRINT = function(context) {
+  context.output = "[ GraphAQL ";
+  context.output += this.graph.__name;
+  _.each(this.callStack, function(call) {
+    if(context.prettyPrint) {
+      context.output += "\n";
+    }
+    context.output += ".";
+    context.output += call.name;
+    context.output += "(";
+    var i = 0;
+    for(i = 0; i < call.params.length; ++i) {
+      if (i > 0) {
+        context.output += ", ";
+      }
+      internal.printRecursive(call.params[i], context);
+    }
+    context.output += ")";
+  });
+  context.output += " ] ";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,12 +362,13 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   var stmt = new AQLStatement(query, "edge");
   this.stack.push(stmt);
   this.lastVar = edgeName;
+  this._path.push(edgeName);
   return this;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_general_graph_fluent_aql_edges
-/// @brief select all connected edges
+/// @brief select all edges for the vertices selected before
 /// 
 /// @FUN{graph-query.edges(@FA{examples})}
 ///
@@ -317,74 +382,147 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// To request unfiltered edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
-///   var graph = require("org/arangodb/general-graph");
-///   var edgeDefinition = [];
-///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
-///   var g = graph._create("social", edgeDefinition);
-///   var a = g.user.save({name: "Alice"});
-///   var b = g.user.save({name: "Bob"});
-///   var c = g.user.save({name: "Charly"});
-///   var d = g.user.save({name: "Diana"});
-///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
-///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
-///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
-///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges().toArray();
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
-///   var graph = require("org/arangodb/general-graph");
-///   var edgeDefinition = [];
-///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
-///   var g = graph._create("social", edgeDefinition);
-///   var a = g.user.save({name: "Alice"});
-///   var b = g.user.save({name: "Bob"});
-///   var c = g.user.save({name: "Charly"});
-///   var d = g.user.save({name: "Diana"});
-///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
-///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
-///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
-///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges({type: "married"}).toArray();
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
-///   var graph = require("org/arangodb/general-graph");
-///   var edgeDefinition = [];
-///   edgeDefinition.push(graph._undirectedRelationDefinition("friend", "user"));
-///   var g = graph._create("social", edgeDefinition);
-///   var a = g.user.save({name: "Alice"});
-///   var b = g.user.save({name: "Bob"});
-///   var c = g.user.save({name: "Charly"});
-///   var d = g.user.save({name: "Diana"});
-///   var e1 = g.friend.save(a._id, b._id, {type: "married"});
-///   var e2 = g.friend.save(a._id, c._id, {type: "friend"});
-///   var e3 = g.friend.save(c._id, d._id, {type: "married"});
-///   var e4 = g.friend.save(b,_id, d._id, {type: "friend"});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// To define a relation between several vertex collections:
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.edges = function(example) {
+  this._addToPrint("edges", example);
   return this._edges(example, {direction: "any"});
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_outEdges
+/// @brief select all outbound edges for the vertices selected before
+/// 
+/// @FUN{graph-query.outEdges(@FA{examples})}
+///
+/// Creates an AQL statement to select all `outbound` edges for each of the vertices selected
+/// in the step before.
+/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered outbound edges:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.outEdges().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered outbound edges by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.outEdges({type: "married"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered outbound edges by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.outEdges = function(example) {
+  this._addToPrint("outEdges", example);
   return this._edges(example, {direction: "outbound"});
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_inEdges
+/// @brief select all inbound edges for the vertices selected before
+/// 
+/// @FUN{graph-query.inEdges(@FA{examples})}
+///
+/// Creates an AQL statement to select all `inbound` edges for each of the vertices selected
+/// in the step before.
+/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered inbound edges:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.inEdges().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered inbound edges by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.inEdges({type: "married"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered inbound edges by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
+///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.inEdges = function(example) {
+  this._addToPrint("inEdges", example);
   return this._edges(example, {direction: "inbound"});
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief General vertex query, takes direction as parameter
+///
+/// This will create the general AQL statement to load vertices
+/// connected to the edges selected in the step before.
+/// Will also bind the options into bindVars.
+///
+/// Only for internal use, user gets different functions for directions
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype._vertices = function(example, options) {
   this._clearCursor();
@@ -400,11 +538,58 @@ AQLGenerator.prototype._vertices = function(example, options) {
   var stmt = new AQLStatement(query, "vertex");
   this.stack.push(stmt);
   this.lastVar = vertexName;
+  this._path.push(vertexName);
   return this;
 
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_vertices
+/// @brief select all vertices connected to the edges selected before
+/// 
+/// @FUN{graph-query.vertices(@FA{examples})}
+///
+/// Creates an AQL statement to select all vertices for each of the edges selected
+/// in the step before.
+/// This includes all vertices contained in `_from` as well as `_to` attribute of the edges.
+/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered vertices:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.vertices().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered vertices by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.vertices({name: "Alice"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered vertices by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.vertices = function(example) {
+  this._addToPrint("vertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -421,7 +606,53 @@ AQLGenerator.prototype.vertices = function(example) {
   return this;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_fromVertices
+/// @brief select all vertices where the edges selected before start
+/// 
+/// @FUN{graph-query.vertices(@FA{examples})}
+///
+/// Creates an AQL statement to select the set of vertices where the edges selected
+/// in the step before start at.
+/// This includes all vertices contained in `_from` attribute of the edges.
+/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered starting vertices:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.fromVertices().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered starting vertices by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.fromVertices({name: "Alice"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered starting vertices by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.fromVertices = function(example) {
+  this._addToPrint("fromVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -436,7 +667,53 @@ AQLGenerator.prototype.fromVertices = function(example) {
   return this;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_toVertices
+/// @brief select all vertices targeted by the edges selected before
+/// 
+/// @FUN{graph-query.vertices(@FA{examples})}
+///
+/// Creates an AQL statement to select the set of vertices where the edges selected
+/// in the step before end in.
+/// This includes all vertices contained in `_to` attribute of the edges.
+/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered starting vertices:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered starting vertices by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices({name: "Alice"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered starting vertices by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.toVertices = function(example) {
+  this._addToPrint("toVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
   }
@@ -451,6 +728,7 @@ AQLGenerator.prototype.toVertices = function(example) {
   return this;
 };
 
+
 AQLGenerator.prototype.getLastVar = function() {
   if (this.lastVar === "") {
     return false;
@@ -458,7 +736,59 @@ AQLGenerator.prototype.getLastVar = function() {
   return this.lastVar;
 };
 
+AQLGenerator.prototype.path = function() {
+  this._clearCursor();
+  var statement = new AQLStatement("", "path");
+  this.stack.push(statement);
+//  this._getPath = true
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_general_graph_fluent_aql_neighbors
+/// @brief select all neighbors of the vertices selected in the step before.
+/// 
+/// @FUN{graph-query.neighbors(@FA{examples})}
+///
+/// Creates an AQL statement to select all neighbors for each of the vertices selected
+/// in the step before.
+/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @EXAMPLES
+///
+/// To request unfiltered neighbors:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsUnfiltered}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.neighbors().toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered neighbors by a single example:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredSingle}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.neighbors({name: "Bob"}).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// To request filtered neighbors by multiple examples:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredMultiple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.neighbors = function(vertexExample, options) {
+  this._addToPrint("neighbors", vertexExample, options);
   var ex = transformExample(vertexExample);
   var resultName = "neighbors_" + this.stack.length;
   var query = "FOR " + resultName
@@ -466,12 +796,18 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     + this.getLastVar()
     + ',@options_'
     + this.stack.length + ')';
-  options = options || {};
-  options.vertexExamples = ex;
-  this.bindVars["options_" + this.stack.length] = options;
+  var opts;
+  if (options) {
+    opts = _.clone(options);
+  } else {
+    opts = {};
+  }
+  opts.vertexExamples = ex;
+  this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
   this.lastVar = resultName + ".vertex";
+  this._path.push(resultName + ".path");
   return this;
 };
 
@@ -487,6 +823,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 };
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  this._addToPrint("restrict", restrictions);
   this._clearCursor();
   var rest = stringToArray(restrictions);
   var lastQueryInfo = this._getLastRestrictableStatementInfo();
@@ -514,6 +851,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 };
 
 AQLGenerator.prototype.filter = function(example) {
+  this._addToPrint("filter", example);
   this._clearCursor();
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
@@ -539,7 +877,11 @@ AQLGenerator.prototype.execute = function() {
   this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
-  query += " RETURN " + this.getLastVar();
+  if (this.stack[this.stack.length-1].isPathQuery()) {
+    query += " RETURN [" + this._path + "]";
+  } else {
+    query += " RETURN " + this.getLastVar();
+  }
   return db._query(query, bindVars, {count: true});
 };
 
@@ -692,13 +1034,19 @@ var _create = function (graphName, edgeDefinitions) {
   var gdb = getGraphCollection(),
     g,
     graphAlreadyExists = true,
-    collections;
-
+    collections,
+    err;
   if (!graphName) {
-    throw "a graph name is required to create a graph.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
+    throw err;
   }
   if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
-    throw "at least one edge definition is required to create a graph.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.message;
+    throw err;
   }
   //check, if a collection is already used in a different edgeDefinition
   var tmpCollections = [];
@@ -770,12 +1118,17 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
+  this.__idsToRemove = [];
+  this.__collectionsToLock = [];
 
+  // fills this.__idsToRemove and this.__collectionsToLock
   var removeEdge = function (edgeId, options) {
     options = options || {};
     var edgeCollection = edgeId.split("/")[0];
     var graphs = getGraphCollection().toArray();
-    var result = db._remove(edgeId, options);
+//    var result = db._remove(edgeId, options);
+    self.__idsToRemove.push(edgeId);
+    self.__collectionsToLock.push(edgeCollection);
 //    var result = old_remove(edgeId, options);
     graphs.forEach(
       function(graph) {
@@ -793,9 +1146,14 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
                 edges.forEach(
                   function (edge) {
                     // if from is
-                    if (edge._from === edgeId || edge._to === edgeId) {
+                    if(self.__idsToRemove.indexOf(edge._id) === -1) {
+                      if (edge._from === edgeId || edge._to === edgeId) {
+                        removeEdge(edge._id, options);
+                      }
+/*
                       var newGraph = exports._graph(graph._key);
                       newGraph[collection].remove(edge._id, options);
+*/
                     }
                   }
                 );
@@ -805,17 +1163,19 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       }
     );
-    return result;
+    return;
   };
 
 
   _.each(vertexCollections, function(obj, key) {
+    var result;
     var wrap = wrapCollection(obj);
     var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
       //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
       var vertexCollectionName = vertexId.split("/")[0];
+      self.__collectionsToLock.push(vertexCollectionName);
       graphs.forEach(
         function(graph) {
           var edgeDefinitions = graph.edgeDefinitions;
@@ -843,10 +1203,42 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
         }
       );
 
-      if (options === null || options === undefined) {
-        return old_remove(vertexId);
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+            if (params.options) {
+              db._remove(params.vertexId, params.options);
+            } else {
+              db._remove(params.vertexId);
+            }
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options,
+            vertexId: vertexId
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
       }
-      return old_remove(vertexId, options);
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+
+      return result;
     };
 
     self[key] = wrap;
@@ -875,12 +1267,57 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
     // remove
     wrap.remove = function(edgeId, options) {
+      var result;
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
-      return (removeEdge(edgeId, options));
+//      return (removeEdge(edgeId, options));
+      removeEdge(edgeId, options);
+
+/*
+      var collectionsToLock = [];
+      self.__idsToRemove.forEach(
+        function(idToRemove) {
+          var collectionOfIdToRemove = idToRemove.split("/")[0];
+          if(collectionsToLock.indexOf(collectionOfIdToRemove) === -1) {
+            collectionsToLock.push(collectionOfIdToRemove);
+          }
+        }
+      );
+*/
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+      return result;
     };
+
     self[key] = wrap;
   });
 };
@@ -1344,6 +1781,20 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
     returnHash.push(tmp);
   });
   return returnHash;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print basic information for the graph
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._PRINT = function(context) {
+  var name = this.__name;
+  var edgeDefs = printEdgeDefinitions(this.__edgeDefinitions);
+  context.output += "[ Graph ";
+  context.output += name;
+  context.output += " EdgeDefinitions: ";
+  internal.printRecursive(edgeDefs, context);
+  context.output += " ]";
 };
 
 // -----------------------------------------------------------------------------

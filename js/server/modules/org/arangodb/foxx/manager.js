@@ -52,6 +52,12 @@ var developmentMode = require("internal").developmentMode;
 
 var DEVELOPMENTMOUNTS = null;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mounted apps
+////////////////////////////////////////////////////////////////////////////////
+
+var MOUNTED_APPS = {};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -127,7 +133,8 @@ function checkManifest (filename, mf) {
     "setup":              [ false, "string" ],
     "teardown":           [ false, "string" ],
     "thumbnail":          [ false, "string" ],
-    "version":            [ true, "string" ]
+    "version":            [ true, "string" ],
+    "exports":            [ false, "object" ]
   };
 
   var att, failed = false;
@@ -642,6 +649,8 @@ function mountAalApp (app, mount, options) {
 function routingAalApp (app, mount, options) {
   'use strict';
 
+  MOUNTED_APPS[mount] = app;
+
   try {
     var i, prefix;
 
@@ -711,41 +720,67 @@ function routingAalApp (app, mount, options) {
       });
     }
 
-    // mount all applications
+    // template for app context
+    var devel = false;
+    var root;
+
+    if (app._manifest.isSystem) {
+      root = module.systemAppPath();
+    }
+    else if (app._id.substr(0,4) === "dev:") {
+      devel = true;
+      root = module.devAppPath();
+    }
+    else {
+      root = module.appPath();
+    }
+
+    var appContextTempl = app.createAppContext();
+
+    appContextTempl.mount = mount; // global mount
+    appContextTempl.options = options;
+    appContextTempl.collectionPrefix = prefix; // collection prefix
+    appContextTempl.basePath = fs.join(root, app._path);
+
+    appContextTempl.isDevelopment = devel;
+    appContextTempl.isProduction = ! devel;
+
+    var appContext;
+    var file;
+
+    // mount all exports
+    if (app._manifest.hasOwnProperty("exports")) {
+      var exps = app._manifest.exports;
+
+      for (i in exps) {
+        if (exps.hasOwnProperty(i)) {
+          file = exps[i];
+          var result = {};
+          var context = { exports: result };
+
+          appContext = Object.create(appContextTempl);
+          appContext.prefix = "/";
+          extendContext(appContext, app, root);
+
+          app.loadAppScript(appContext, file, { context: context });
+
+          app._exports[i] = result;
+        }
+      }
+    }
+
+    // mount all controllers
     var controllers = app._manifest.controllers;
 
     for (i in controllers) {
       if (controllers.hasOwnProperty(i)) {
-        var file = controllers[i];
-        var devel = false;
-        var root;
-
-        if (app._manifest.isSystem) {
-          root = module.systemAppPath();
-        }
-        else if (app._id.substr(0,4) === "dev:") {
-          devel = true;
-          root = module.devAppPath();
-        }
-        else {
-          root = module.appPath();
-        }
+        file = controllers[i];
 
         // set up a context for the application start function
-        var appContext = app.createAppContext();
-
-        appContext.mount = mount; // global mount
+        appContext = Object.create(appContextTempl);
         appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
-        appContext.collectionPrefix = prefix; // collection prefix
-        appContext.options = options;
-        appContext.basePath = fs.join(root, app._path);
-
-        appContext.isDevelopment = devel;
-        appContext.isProduction = ! devel;
-
         appContext.routingInfo = {};
         appContext.foxxes = [];
-
         extendContext(appContext, app, root);
 
         app.loadAppScript(appContext, file, { transform: transformScript(file) });
@@ -796,10 +831,15 @@ function routingAalApp (app, mount, options) {
     // install all files and assets
     installAssets(app, routes);
 
+    // remember mount point
+    MOUNTED_APPS[mount] = app;
+
     // and return all routes
     return routes;
   }
   catch (err) {
+    delete MOUNTED_APPS[mount];
+
     console.errorLines(
       "Cannot compute Foxx application routes: %s", String(err.stack || err));
   }
@@ -1362,6 +1402,18 @@ exports.developmentMounts = function () {
   }
 
   return DEVELOPMENTMOUNTS;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app for a mount path
+////////////////////////////////////////////////////////////////////////////////
+
+exports.mountedApp = function (path) {
+  if (MOUNTED_APPS.hasOwnProperty(path)) {
+    return MOUNTED_APPS[path]._exports;
+  }
+
+  return {};
 };
 
 // -----------------------------------------------------------------------------

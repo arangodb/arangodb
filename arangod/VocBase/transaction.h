@@ -162,8 +162,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
-  TRI_vector_t*                        _operations;        // buffered CRUD operations
-  std::vector<triagens::wal::DocumentOperation*>*   _ops;
+  std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
   bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?
@@ -189,7 +188,7 @@ TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
 /// @brief free a transaction 
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction (TRI_transaction_t* const);
+void TRI_FreeTransaction (TRI_transaction_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -221,7 +220,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 /// @brief add a collection to a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddCollectionTransaction (TRI_transaction_t* const,
+int TRI_AddCollectionTransaction (TRI_transaction_t*,
                                   const TRI_voc_cid_t,
                                   const TRI_transaction_type_e, 
                                   const int);

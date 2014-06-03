@@ -1,9 +1,9 @@
-!SECTION Linux
+!CHAPTER Linux
 
 You can find binary packages for various Linux distributions
 [here](http://www.arangodb.org/download/).
 
-We provide packages for
+We provide packages for:
 
 - Centos
 - Debian
@@ -16,22 +16,30 @@ We provide packages for
 - Ubuntu
 
 
-!SUBSECTION Using a Package Manager to install ArangoDB
+!SECTION Using a Package Manager to install ArangoDB
 
 Follow the instructions on the [downloads](http://www.arangodb.org/download)
 page to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
-aptitude, urpmi, or zypper.
+aptitude, urpmi or zypper.
 
 
-!SUBSUBSECTION Gentoo
+!SUBSECTION Gentoo
 
-Please use the 
-@EXTREF_S{https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB,portage}
-provided by @@mgiken.
+Please use the [portage](https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB)
+provided by @mgiken.
 
+!SUBSECTION Debian sid
 
-!SUBSUBSECTION Linux-Mint
+To use ArangoDB on Debian sid (the development version of Debian), a different version
+of ICU is required. User basir provided the following instructions for getting ArangoDB 2.0.7
+to work on an x86_64:
+
+[link to Github issue](https://github.com/triAGENS/ArangoDB/issues/865)
+
+Other versions of ArangoDB or other architectures should work similarly.
+
+!SUBSECTION Linux-Mint
 
 Download and import GPG-PublicKey:
 
@@ -55,9 +63,9 @@ In order to install arangodb:
     aptitude install arangodb
 
 
-!SUBSECTION Using Vagrant and Chef
+!SECTION Using Vagrant and Chef
 
-A Chef recipe is available from jbianquetti at
+A Chef recipe is available from jbianquetti at:
 
     https://github.com/jbianquetti/chef-arangodb
 

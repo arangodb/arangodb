@@ -35,7 +35,6 @@
 #include "VocBase/collection.h"
 #include "VocBase/headers.h"
 #include "VocBase/index.h"
-#include "VocBase/marker.h"
 #include "VocBase/primary-index.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
