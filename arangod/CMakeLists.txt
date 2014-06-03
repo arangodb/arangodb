@@ -207,7 +207,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
+  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common 
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
