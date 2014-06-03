@@ -11,8 +11,7 @@
 if ENABLE_MRUBY
 
 MRUBY_HEADER = \
-	mr/common/bootstrap/mr-error.h \
-	mr/server/mr-server.h
+	mr/common/bootstrap/mr-error.h 
 
 BUILT_SOURCES += $(MRUBY_HEADER)
 
@@ -26,13 +25,9 @@ BUILT_SOURCES += @builddir@/.setup-mr-directories
 
 @builddir@/.setup-mr-directories:
 	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
-	@test -d mr/server || mkdir -p mr/server
 	@touch $@
 
 mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-	@top_srcdir@/config/mr2c.sh $< > $@
-
-mr/server/mr-%.h: @srcdir@/mr/server/%.rb .setup-mr-directories
 	@top_srcdir@/config/mr2c.sh $< > $@
 
 ################################################################################
