@@ -2020,7 +2020,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
           tick = TRI_NewTickServer();
 
           // datafile header
-          TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+          TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
           header._version     = TRI_DF_VERSION;
           header._maximalSize = actualSize;
           header._fid         = tick;
@@ -2030,7 +2030,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
           written += TRI_WRITE(fdout, &header.base, header.base._size);
 
           // col header
-          TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+          TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
           cm._type      = (TRI_col_type_t) info->_type;
           cm._cid       = info->_cid;
           cm.base._tick = tick;
@@ -2086,7 +2086,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
           tick = TRI_NewTickServer();
 
           // datafile footer
-          TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+          TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
           footer.base._tick   = tick;
           footer.base._crc = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
           written += TRI_WRITE(fdout, &footer.base, footer.base._size);
@@ -2249,7 +2249,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
         tick = TRI_NewTickServer();
 
         // datafile header
-        TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+        TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
         header._maximalSize = 0; // TODO: seems ok to set this to 0, check if this is ok 
         header._fid         = tick;
@@ -2259,7 +2259,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
         written += TRI_WRITE(fdout, &header.base, header.base._size);
 
         // col header
-        TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+        TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
         cm._type      = (TRI_col_type_t) info->_type;
         cm._cid       = info->_cid;
         cm.base._tick = tick;
@@ -2299,7 +2299,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
       ssize_t minSize;
 
       tick = TRI_NewTickServer();
-      TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
+      TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
       footer.base._tick = tick;
       footer.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
           

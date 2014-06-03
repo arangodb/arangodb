@@ -31,11 +31,17 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "VocBase/voc-types.h"
+
+struct TRI_datafile_s;
+struct TRI_df_marker_s;
+struct TRI_server_s;
 
 namespace triagens {
   namespace wal {
 
     class LogfileManager;
+    class Logfile;
     
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CollectorThread
@@ -48,8 +54,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        CollectorThread (CollectorThread const&);
-        CollectorThread& operator= (CollectorThread const&);
+        CollectorThread (CollectorThread const&) = delete;
+        CollectorThread& operator= (CollectorThread const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -61,13 +67,32 @@ namespace triagens {
 /// @brief create the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectorThread (LogfileManager*);
+        CollectorThread (LogfileManager*,
+                         struct TRI_server_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
         ~CollectorThread ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   public typedefs
+// -----------------------------------------------------------------------------
+
+      public:
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef key => document marker 
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef std::unordered_map<std::string, struct TRI_df_marker_s const*> DocumentOperationsType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief typedef for structural operation (attributes, shapes) markers
+////////////////////////////////////////////////////////////////////////////////
+
+        typedef std::vector<struct TRI_df_marker_s const*> OperationsType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -117,6 +142,29 @@ namespace triagens {
 
         bool removeLogfiles ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to handle one marker during collection
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool ScanMarker (struct TRI_df_marker_s const*,
+                                void*,
+                                struct TRI_datafile_s*,
+                                bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collect one logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        int collect (Logfile*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transfer markers into a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int transferMarkers (TRI_voc_cid_t,
+                             TRI_voc_tick_t,
+                             OperationsType const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -128,6 +176,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         LogfileManager* _logfileManager;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to the server
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_server_s* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the collector thread
@@ -145,7 +199,7 @@ namespace triagens {
 /// @brief wait interval for the collector thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const uint64_t Interval;
+        static uint64_t const Interval;
 
     };
 

@@ -31,7 +31,7 @@
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
 #include "VocBase/datafile.h"
-#include "VocBase/marker.h"
+#include "Wal/Marker.h"
 
 namespace triagens {
   namespace wal {

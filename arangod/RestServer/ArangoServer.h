@@ -261,14 +261,15 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable authentication for ALL client requests
-///
-/// @CMDOPT{\--server.disable-authentication @CA{value}}
-///
-/// Setting @CA{value} to true will turn off authentication on the server side
-/// so all clients can execute any action without authorisation and privilege
+/// @startDocuBlock server_authentication
+/// `--server.disable-authentication` 
+///		
+/// Setting value to true will turn off authentication on the server side
+///	so all clients can execute any action without authorization and privilege
 /// checks.
 ///
-/// The default value is @LIT{false}.
+/// The default value is *false*.
+/// @endDocuBlock		
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableAuthentication;

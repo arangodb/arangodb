@@ -42,7 +42,6 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
-#include "VocBase/marker.h"
 #include "VocBase/primary-index.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
@@ -278,7 +277,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   }
 
 
-  TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
@@ -366,7 +365,7 @@ static TRI_datafile_t* CreateJournal (TRI_document_collection_t* document,
   }
 
 
-  TRI_InitMarker((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
+  TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
@@ -739,10 +738,10 @@ static int RotateJournal (TRI_document_collection_t* document) {
       datafile->_full = true;
 
       document->_rotateRequested = true;
-    
-      TRI_INC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
+
+      // TODO: this will probably never be triggered after
+      // the introduction of WAL    
       TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-      TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(base->_vocbase);
 
       res = TRI_ERROR_NO_ERROR;
     }

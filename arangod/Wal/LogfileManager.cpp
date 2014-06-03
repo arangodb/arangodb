@@ -68,8 +68,10 @@ const uint32_t LogfileManager::MinFilesize = 8 * 1024 * 1024;
 /// @brief create the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-LogfileManager::LogfileManager (std::string* databasePath)
+LogfileManager::LogfileManager (TRI_server_t* server,
+                                std::string* databasePath)
   : ApplicationFeature("logfile-manager"),
+    _server(server),
     _databasePath(databasePath),
     _directory(),
     _filesize(32 * 1024 * 1024),
@@ -83,14 +85,16 @@ LogfileManager::LogfileManager (std::string* databasePath)
     _collectorThread(nullptr),
     _logfilesLock(),
     _lastCollectedId(0),
+    _lastSealedId(0),
     _logfiles(),
-    _readOperations(),
-    _regex(),
+    _transactions(),
+    _failedTransactions(),
+    _filenameRegex(),
     _shutdown(0) {
   
   LOG_TRACE("creating wal logfile manager");
 
-  int res = regcomp(&_regex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
+  int res = regcomp(&_filenameRegex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
 
   if (res != 0) {
     THROW_INTERNAL_ERROR("could not compile regex"); 
@@ -108,7 +112,7 @@ LogfileManager::~LogfileManager () {
 
   stop();
 
-  regfree(&_regex);
+  regfree(&_filenameRegex);
 
   if (_slots != nullptr) {
     delete _slots;
@@ -132,10 +136,11 @@ LogfileManager* LogfileManager::instance () {
 /// @brief initialise the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::initialise (std::string* path) {
+void LogfileManager::initialise (std::string* path, 
+                                 TRI_server_t* server) {
   assert(Instance == nullptr);
 
-  Instance = new LogfileManager(path);
+  Instance = new LogfileManager(server, path);
 }
 
 // -----------------------------------------------------------------------------
@@ -250,13 +255,6 @@ bool LogfileManager::start () {
     return false;
   }
   
-  res = startCollectorThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start wal collector thread: %s", TRI_errno_string(res));
-    return false;
-  }
-
   if (shutdownFileExists) {
     // delete the shutdown file if it existed
     if (! basics::FileUtils::remove(shutdownFile, &res)) {
@@ -278,6 +276,13 @@ bool LogfileManager::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open () {
+  int res = startCollectorThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start wal collector thread: %s", TRI_errno_string(res));
+    return false;
+  }
+
   return true;
 }
 
@@ -326,27 +331,65 @@ void LogfileManager::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a WAL read operation
+/// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
   
-uint64_t LogfileManager::registerReadOperation () {
-  uint64_t id = static_cast<uint64_t>(TRI_NewTickServer());
-
+bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
   {
     WRITE_LOCKER(_logfilesLock);
-    _readOperations.insert(make_pair(id, _lastCollectedId));
+
+    _transactions.insert(make_pair(id, make_pair(_lastCollectedId, _lastSealedId)));
+    assert(_lastCollectedId <= _lastSealedId);
   }
 
-  return id;
+  LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a WAL read operation
+/// @brief unregisters a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-void LogfileManager::unregisterReadOperation (uint64_t id) {
+void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
+                                            bool markAsFailed) {
+  {
+    WRITE_LOCKER(_logfilesLock);
+    _transactions.erase(id);
+
+    if (markAsFailed) {
+      _failedTransactions.insert(id);
+    }
+  }
+
+  LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the set of failed transactions
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions () {
+  std::unordered_set<TRI_voc_tid_t> failedTransactions;
+
+  {
+    READ_LOCKER(_logfilesLock);
+    failedTransactions = _failedTransactions;
+  }
+
+  return failedTransactions;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister a list of failed transactions
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   WRITE_LOCKER(_logfilesLock);
-  _readOperations.erase(id);
+ 
+  std::for_each(failedTransactions.begin(), failedTransactions.end(), [&] (TRI_voc_tid_t id) {
+    _failedTransactions.erase(id);
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,8 +626,7 @@ void LogfileManager::setLogfileSealRequested (Logfile* logfile) {
 void LogfileManager::setLogfileSealed (Logfile* logfile) {
   assert(logfile != nullptr);
 
-  WRITE_LOCKER(_logfilesLock);
-  logfile->setStatus(Logfile::StatusType::SEALED);
+  setLogfileSealed(logfile->id());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,7 +642,9 @@ void LogfileManager::setLogfileSealed (Logfile::IdType id) {
     return;
   }
 
+std::cout << "SEALING LOGFILE\n";
   (*it).second->setStatus(Logfile::StatusType::SEALED);
+  _lastSealedId = id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -692,13 +736,31 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getCollectableLogfile () {
+  // iterate over all active readers and find their minimum used logfile id
+  Logfile::IdType minId = UINT64_MAX;
+
   READ_LOCKER(_logfilesLock);
+  
+  // iterate over all active transactions and find their minimum used logfile id
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    Logfile::IdType lastWrittenId = (*it).second.second;
+
+    if (lastWrittenId < minId) {
+      minId = lastWrittenId;
+    }
+  }
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
 
-    if (logfile != nullptr && logfile->canBeCollected()) {
-      return logfile;
+    if (logfile != nullptr) {
+      if (logfile->id() <= minId && logfile->canBeCollected()) {
+        return logfile;
+      }
+      else if (logfile->id() > minId) {
+        // abort early
+        break;
+      }
     }
   }
 
@@ -710,16 +772,19 @@ Logfile* LogfileManager::getCollectableLogfile () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getRemovableLogfile () {
+  Logfile::IdType minId = UINT64_MAX;
+
   uint32_t numberOfLogfiles = 0;
   Logfile* first = nullptr;
 
   READ_LOCKER(_logfilesLock);
 
   // iterate over all active readers and find their minimum used logfile id
-  Logfile::IdType minId = UINT64_MAX;
-  for (auto it = _readOperations.begin(); it != _readOperations.end(); ++it) {
-    if ((*it).second < minId) {
-      minId = (*it).second;
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    Logfile::IdType lastCollectedId = (*it).second.first;
+
+    if (lastCollectedId < minId) {
+      minId = lastCollectedId;
     }
   }
 
@@ -767,6 +832,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   {
     WRITE_LOCKER(_logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
+
     _lastCollectedId = logfile->id();
   }
 
@@ -796,17 +862,6 @@ void LogfileManager::closeLogfiles () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the id of the last fully collected logfile
-/// returns 0 if no logfile was yet collected or no information about the
-/// collection is present
-////////////////////////////////////////////////////////////////////////////////
-
-Logfile::IdType LogfileManager::lastCollected () {
-  READ_LOCKER(_logfilesLock);
-  return _lastCollectedId;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reads the shutdown information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -820,15 +875,24 @@ int LogfileManager::readShutdownInfo () {
   }
 
   // read last assigned tick (may be 0)
-  uint64_t const lastTick = basics::JsonHelper::stringUInt64(json, "lastTick");
+  uint64_t lastTick = basics::JsonHelper::stringUInt64(json, "lastTick");
   _slots->setLastAssignedTick(static_cast<Slot::TickType>(lastTick));
   
-  // read if of last collected logfile (maybe 0)
-  uint64_t const lastCollected = basics::JsonHelper::stringUInt64(json, "lastCollected");
+  // read id of last collected logfile (maybe 0)
+  uint64_t lastCollectedId = basics::JsonHelper::stringUInt64(json, "lastCollected");
+  
+  // read if of last sealed logfile (maybe 0)
+  uint64_t lastSealedId = basics::JsonHelper::stringUInt64(json, "lastSealed");
+
+  if (lastSealedId < lastCollectedId) {
+    // should not happen normally
+    lastSealedId = lastCollectedId;
+  }
   
   {
     WRITE_LOCKER(_logfilesLock);
-    _lastCollectedId = static_cast<Logfile::IdType>(lastCollected);
+    _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
+    _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
   }
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -847,7 +911,9 @@ int LogfileManager::writeShutdownInfo () {
   content.append("{\"lastTick\":\"");
   content.append(basics::StringUtils::itoa(_slots->lastAssignedTick()));
   content.append("\",\"lastCollected\":\"");
-  content.append(basics::StringUtils::itoa(lastCollected()));
+  content.append(basics::StringUtils::itoa(_lastCollectedId));
+  content.append("\",\"lastSealed\":\"");
+  content.append(basics::StringUtils::itoa(_lastSealedId));
   content.append("\"}");
 
   // TODO: spit() doesn't return success/failure. FIXME!
@@ -931,7 +997,7 @@ void LogfileManager::stopAllocatorThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::startCollectorThread () {
-  _collectorThread = new CollectorThread(this);
+  _collectorThread = new CollectorThread(this, _server);
 
   if (_collectorThread == nullptr) {
     return TRI_ERROR_INTERNAL;
@@ -981,7 +1047,7 @@ int LogfileManager::inventory () {
     std::string const file = (*it);
     char const* s = file.c_str();
 
-    if (regexec(&_regex, s, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
+    if (regexec(&_filenameRegex, s, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
       Logfile::IdType const id = basics::StringUtils::uint64(s + matches[1].rm_so, matches[1].rm_eo - matches[1].rm_so);
 
       if (id == 0) {
@@ -1028,6 +1094,11 @@ int LogfileManager::openLogfiles (bool wasCleanShutdown) {
     if (logfile == nullptr) {
       _logfiles.erase(it++);
       continue;
+    }
+  
+    if (logfile->status() == Logfile::StatusType::SEALED &&
+        id > _lastSealedId) {
+      _lastSealedId = id;
     }
       
     (*it).second = logfile;

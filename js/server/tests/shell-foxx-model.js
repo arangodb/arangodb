@@ -90,9 +90,80 @@ function ModelSpec () {
       };
 
       instance = new FoxxModel(raw);
+      var dbData = instance.forDB();
+      var clientData = instance.forClient();
 
-      assertEqual(instance.forDB(), raw);
-      assertEqual(instance.forClient(), raw);
+      Object.keys(raw).forEach(function(key) {
+        assertEqual(raw[key], dbData[key]);
+        assertEqual(raw[key], clientData[key]);
+      });
+    },
+
+    testFilterUnknownProperties: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          a: {type: 'integer'}
+        }
+      });
+
+      var raw = {
+        a: 1,
+        b: 2
+      };
+
+      instance = new Model(raw);
+      var dbData = instance.forDB();
+      var clientData = instance.forClient();
+
+      assertEqual(Object.keys(dbData).length, 1);
+      assertEqual(Object.keys(clientData).length, 1);
+      assertEqual(dbData.a, raw.a);
+      assertEqual(clientData.a, raw.a);
+    },
+
+    testFilterMetadata: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          a: {type: 'integer'}
+        }
+      });
+
+      var raw = {
+        a: 1,
+        _key: 2
+      };
+
+      instance = new Model(raw);
+      var dbData = instance.forDB();
+      var clientData = instance.forClient();
+
+      assertEqual(Object.keys(dbData).length, 2);
+      assertEqual(Object.keys(clientData).length, 1);
+      assertEqual(dbData.a, raw.a);
+      assertEqual(dbData._key, raw._key);
+      assertEqual(clientData.a, raw.a);
+    },
+
+    testFromClient: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          a: {type: 'integer'}
+        }
+      });
+
+      var raw = {
+        a: 1,
+        _key: 2
+      };
+
+      instance = Model.fromClient(raw);
+      var dbData = instance.forDB();
+      var clientData = instance.forClient();
+
+      assertEqual(Object.keys(dbData).length, 1);
+      assertEqual(Object.keys(clientData).length, 1);
+      assertEqual(dbData.a, raw.a);
+      assertEqual(clientData.a, raw.a);
     }
   };
 }

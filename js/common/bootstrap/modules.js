@@ -834,6 +834,17 @@ function require (path) {
       }
     }
 
+    // check if there is a package containing this module
+    path = path.substr(1);
+    if (path.indexOf('/') !== -1) {
+      var p = path.split('/');
+      localModule = requirePackage(currentModule, '/' + p.shift());
+      if (localModule !== null) {
+        localModule = requirePackage(localModule, '/' + p.join('/'));
+        return localModule;
+      }
+    }
+
     // nothing found
     return null;
   }
@@ -1381,22 +1392,6 @@ function require (path) {
     );
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moduleFilename
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.foxxFilename = function (path) {
-    'use strict';
-
-    var prefix = fileUri2Path(this._origin);
-
-    if (path === null) {
-      return null;
-    }
-
-    return fs.safeJoin(prefix, path);
-  };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         ArangoApp
 // -----------------------------------------------------------------------------
@@ -1419,6 +1414,7 @@ function require (path) {
     this._root = root;
     this._path = path;
     this._options = options;
+    this._exports = {};
   };
 
 // -----------------------------------------------------------------------------
@@ -1648,8 +1644,6 @@ function require (path) {
     var prefix = fs.safeJoin(this._root, this._path);
 
     context.foxxFilename = function (path) {
-      console.log("XXXXXXXXXXXXXXXXX path %s", path);
-
       return fs.safeJoin(prefix, path);
     };
 

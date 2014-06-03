@@ -53,6 +53,7 @@ namespace triagens {
       TRI_voc_cid_t    _collectionId;
 
       TRI_shape_aid_t  _attributeId;
+      // char* name
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +63,46 @@ namespace triagens {
     struct shape_marker_t : TRI_df_marker_t {
       TRI_voc_tick_t   _databaseId;
       TRI_voc_cid_t    _collectionId;
+      // char* shape
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal create collection marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct collection_create_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+      // char* properties
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal drop collection marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct collection_drop_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal rename collection marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct collection_rename_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+      // char* name
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal change collection marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct collection_change_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+      // char* properties
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,13 +141,16 @@ namespace triagens {
       TRI_voc_cid_t   _collectionId;
 
       TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-      TRI_voc_tid_t   _tid;
+      TRI_voc_tid_t   _transactionId;
 
       TRI_shape_sid_t _shape;
 
       uint16_t        _offsetKey;
       uint16_t        _offsetLegend;
       uint32_t        _offsetJson;
+
+      // char* key
+      // char* shapedJson
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,6 +167,11 @@ namespace triagens {
 #ifdef TRI_PADDING_32
       char            _padding_df_marker[4];
 #endif
+      
+      // char* key
+      // char* toKey
+      // char* fromKey
+      // char* shapedJson
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +183,9 @@ namespace triagens {
       TRI_voc_cid_t   _collectionId;
 
       TRI_voc_rid_t   _rid;   // this is the tick for the deletion
-      TRI_voc_tid_t   _tid;
+      TRI_voc_tid_t   _transactionId;
+      
+      // char* key
     };
 
 // -----------------------------------------------------------------------------
@@ -167,7 +218,7 @@ namespace triagens {
           _buffer = nullptr;
           return buffer;
         }
-      
+
         static inline size_t alignedSize (size_t size) {
           return TRI_DF_ALIGN_BLOCK(size);
         }
@@ -183,48 +234,54 @@ namespace triagens {
         inline char* end () const {
           return _buffer + _size;
         }
-      
+     /* 
         inline char* payload () const {
           return begin() + sizeof(TRI_df_marker_t);
         }
+*/
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the size of the marker
+////////////////////////////////////////////////////////////////////////////////
 
         inline uint32_t size () const {
           return _size;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a hex representation of a marker part
+////////////////////////////////////////////////////////////////////////////////
         
-        inline std::string hexifyPart (char const* offset, size_t length) const {
-          size_t destLength;
-          char* s = TRI_EncodeHexString(offset, length, &destLength);
+        std::string hexifyPart (char const*, size_t) const;
 
-          if (s != nullptr) {
-            std::string result(s);
-            TRI_Free(TRI_CORE_MEM_ZONE, s);
-            return result;
-          }
-
-          return "ERROR";
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a printable string representation of a marker part
+////////////////////////////////////////////////////////////////////////////////
   
-        inline std::string stringifyPart (char const* offset, size_t length) const {
-          char* s = TRI_PrintableString(offset, length);
+        std::string stringifyPart (char const*, size_t) const;
 
-          if (s != nullptr) {
-            std::string result(s);
-            TRI_Free(TRI_CORE_MEM_ZONE, s);
-            return result;
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print the marker in binary form
+////////////////////////////////////////////////////////////////////////////////
 
-          return "ERROR";
-        }
+        void dumpBinary () const;
+      
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
         
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a null-terminated string inside the marker
+////////////////////////////////////////////////////////////////////////////////
         
         void storeSizedString (size_t,
                                std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a null-terminated string inside the marker
+////////////////////////////////////////////////////////////////////////////////
 
         void storeSizedString (size_t,
                                char const*,
@@ -236,7 +293,16 @@ namespace triagens {
 
       protected:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to marker data
+////////////////////////////////////////////////////////////////////////////////
+
         char*          _buffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size of marker data
+////////////////////////////////////////////////////////////////////////////////
+
         uint32_t const _size;
     };
 
@@ -261,6 +327,8 @@ namespace triagens {
           // pointer to attribute name
           return begin() + sizeof(attribute_marker_t);
         }
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -282,6 +350,99 @@ namespace triagens {
         inline char* shape () const {
           return begin() + sizeof(shape_marker_t);
         }
+        
+        inline TRI_shape_sid_t shapeId () const {
+          return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
+        }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            CreateCollectionMarker
+// -----------------------------------------------------------------------------
+
+    class CreateCollectionMarker : public Marker {
+
+      public:
+
+        CreateCollectionMarker (TRI_voc_tick_t,
+                                TRI_voc_cid_t,
+                                std::string const&);
+
+        ~CreateCollectionMarker ();
+        
+      public:
+        
+        inline char* properties () const {
+          return begin() + sizeof(collection_create_marker_t);
+        }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              DropCollectionMarker
+// -----------------------------------------------------------------------------
+
+    class DropCollectionMarker : public Marker {
+
+      public:
+
+        DropCollectionMarker (TRI_voc_tick_t,
+                              TRI_voc_cid_t);
+
+        ~DropCollectionMarker ();
+        
+      public:
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            RenameCollectionMarker
+// -----------------------------------------------------------------------------
+
+    class RenameCollectionMarker : public Marker {
+
+      public:
+
+        RenameCollectionMarker (TRI_voc_tick_t,
+                                TRI_voc_cid_t,
+                                std::string const&);
+
+        ~RenameCollectionMarker ();
+        
+      public:
+        
+        inline char* name () const {
+          return begin() + sizeof(collection_rename_marker_t);
+        }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            ChangeCollectionMarker
+// -----------------------------------------------------------------------------
+
+    class ChangeCollectionMarker : public Marker {
+
+      public:
+
+        ChangeCollectionMarker (TRI_voc_tick_t,
+                                TRI_voc_cid_t,
+                                std::string const&);
+
+        ~ChangeCollectionMarker ();
+        
+      public:
+        
+        inline char* properties () const {
+          return begin() + sizeof(collection_change_marker_t);
+        }
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -296,6 +457,10 @@ namespace triagens {
                                 TRI_voc_tid_t); 
 
         ~BeginTransactionMarker ();
+
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -310,6 +475,10 @@ namespace triagens {
                                  TRI_voc_tid_t);
 
         ~CommitTransactionMarker ();
+      
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -324,6 +493,10 @@ namespace triagens {
                                 TRI_voc_tid_t);
 
         ~AbortTransactionMarker ();
+      
+      public:
+        
+        void dump () const;
     };
 
 // -----------------------------------------------------------------------------
@@ -353,7 +526,7 @@ namespace triagens {
         
         inline TRI_voc_rid_t tid () const {
           document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline char* key () const {
@@ -420,7 +593,7 @@ namespace triagens {
         
         inline TRI_voc_rid_t tid () const {
           edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline char const* key () const {
@@ -498,7 +671,7 @@ namespace triagens {
 
         inline TRI_voc_rid_t tid () const {
           remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline TRI_voc_rid_t rid () const {

@@ -48,8 +48,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        AllocatorThread (AllocatorThread const&);
-        AllocatorThread& operator= (AllocatorThread const&);
+        AllocatorThread (AllocatorThread const&) = delete;
+        AllocatorThread& operator= (AllocatorThread const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

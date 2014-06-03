@@ -296,11 +296,13 @@ namespace triagens {
 /// The name is automatically trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setCookie (string const& name, string const& value,
-
-        int lifeTimeSeconds, string const& path, string const& domain,
-
-        bool secure, bool httpOnly);
+        void setCookie (string const& name, 
+                        string const& value, 
+                        int lifeTimeSeconds, 
+                        string const& path, 
+                        string const& domain,
+                        bool secure, 
+                        bool httpOnly);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps data

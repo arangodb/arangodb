@@ -120,7 +120,6 @@ add_executable(
     VocBase/headers.cpp
     VocBase/index.cpp
     VocBase/key-generator.cpp
-    VocBase/marker.cpp
     VocBase/primary-index.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
@@ -128,7 +127,6 @@ add_executable(
     VocBase/replication-logger.cpp
     VocBase/replication-master.cpp
     VocBase/server.cpp
-    VocBase/synchroniser.cpp
     VocBase/transaction.cpp
     VocBase/update-policy.cpp
     VocBase/voc-shaper.cpp
@@ -139,11 +137,9 @@ add_executable(
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
     Wal/Marker.cpp
-    Wal/ReadOperation.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
-    Wal/TestThread.cpp
 )
 
 target_link_libraries(
@@ -211,7 +207,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
+  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common 
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 
