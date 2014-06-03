@@ -68,8 +68,10 @@ const uint32_t LogfileManager::MinFilesize = 8 * 1024 * 1024;
 /// @brief create the logfile manager
 ////////////////////////////////////////////////////////////////////////////////
 
-LogfileManager::LogfileManager (std::string* databasePath)
+LogfileManager::LogfileManager (TRI_server_t* server,
+                                std::string* databasePath)
   : ApplicationFeature("logfile-manager"),
+    _server(server),
     _databasePath(databasePath),
     _directory(),
     _filesize(32 * 1024 * 1024),
@@ -134,10 +136,11 @@ LogfileManager* LogfileManager::instance () {
 /// @brief initialise the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::initialise (std::string* path) {
+void LogfileManager::initialise (std::string* path, 
+                                 TRI_server_t* server) {
   assert(Instance == nullptr);
 
-  Instance = new LogfileManager(path);
+  Instance = new LogfileManager(server, path);
 }
 
 // -----------------------------------------------------------------------------
@@ -994,7 +997,7 @@ void LogfileManager::stopAllocatorThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::startCollectorThread () {
-  _collectorThread = new CollectorThread(this);
+  _collectorThread = new CollectorThread(this, _server);
 
   if (_collectorThread == nullptr) {
     return TRI_ERROR_INTERNAL;

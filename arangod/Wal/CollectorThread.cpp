@@ -28,10 +28,27 @@
 #include "CollectorThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "VocBase/server.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    CollectorState
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state that is built up when scanning a WAL logfile
+////////////////////////////////////////////////////////////////////////////////
+
+struct CollectorState {
+  std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t>                           collections;
+  std::unordered_map<TRI_voc_cid_t, CollectorThread::OperationsType>          structuralOperations;
+  std::unordered_map<TRI_voc_cid_t, CollectorThread::DocumentOperationsType>  documentOperations;
+  std::unordered_set<TRI_voc_tid_t>                                           failedTransactions;
+  std::unordered_set<TRI_voc_tid_t>                                           handledTransactions;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CollectorThread
@@ -41,7 +58,7 @@ using namespace triagens::wal;
 /// @brief wait interval for the collector thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint64_t CollectorThread::Interval = 1000000;
+uint64_t const CollectorThread::Interval = 1000000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -51,9 +68,11 @@ const uint64_t CollectorThread::Interval = 1000000;
 /// @brief create the collector thread
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectorThread::CollectorThread (LogfileManager* logfileManager) 
+CollectorThread::CollectorThread (LogfileManager* logfileManager,
+                                  TRI_server_t* server) 
   : Thread("WalCollector"),
     _logfileManager(logfileManager),
+    _server(server),
     _condition(),
     _stop(0) {
   
@@ -171,13 +190,6 @@ bool CollectorThread::removeLogfiles () {
   return true;
 }
 
-struct CollectorState {
-  std::unordered_map<TRI_voc_cid_t, std::vector<TRI_df_marker_t const*>>                     structuralOperations;
-  std::unordered_map<TRI_voc_cid_t, std::unordered_map<std::string, TRI_df_marker_t const*>> documentOperations;
-  std::unordered_set<TRI_voc_tid_t>                                                          failedTransactions;
-  std::unordered_set<TRI_voc_tid_t>                                                          handledTransactions;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to handle one marker during collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,6 +207,9 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_ATTRIBUTE: {
       attribute_marker_t const* m = reinterpret_cast<attribute_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
+      TRI_voc_tick_t databaseId = m->_databaseId;
+
+      state->collections[collectionId] = databaseId;
       
       // fill list of structural operations 
       state->structuralOperations[collectionId].push_back(marker);
@@ -204,6 +219,9 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_SHAPE: {
       shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
+      TRI_voc_tick_t databaseId = m->_databaseId;
+
+      state->collections[collectionId] = databaseId;
 
       // fill list of structural operations 
       state->structuralOperations[collectionId].push_back(marker);
@@ -222,6 +240,8 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
+      
+      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -237,6 +257,7 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
+      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -252,6 +273,7 @@ bool CollectorThread::ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + sizeof(remove_marker_t);
       state->documentOperations[collectionId][std::string(key)] = marker;
+      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -321,17 +343,19 @@ int CollectorThread::collect (Logfile* logfile) {
   for (auto it = collectionIds.begin(); it != collectionIds.end(); ++it) {
     auto cid = (*it);
     
-    std::vector<TRI_df_marker_t const*> sortedOperations;
+    OperationsType sortedOperations;
 
     // insert structural operations - those are already sorted by tick
     if (state.structuralOperations.find(cid) != state.structuralOperations.end()) {
-      std::vector<TRI_df_marker_t const*> const& ops = state.structuralOperations[cid];
+      OperationsType const& ops = state.structuralOperations[cid];
+
       sortedOperations.insert(sortedOperations.begin(), ops.begin(), ops.end());
     }
 
     // insert document operations - those are sorted by key, not by tick
     if (state.documentOperations.find(cid) != state.documentOperations.end()) {
-      std::unordered_map<std::string, TRI_df_marker_t const*> const& ops = state.documentOperations[cid];
+      DocumentOperationsType const& ops = state.documentOperations[cid];
+
       for (auto it2 = ops.begin(); it2 != ops.end(); ++it2) {
         sortedOperations.push_back((*it2).second);
       }
@@ -342,15 +366,7 @@ int CollectorThread::collect (Logfile* logfile) {
       });
     }
 
-    TRI_voc_tick_t minTransaferTick = 0; // TODO: find the actual max tick of a collection
-    for (auto it2 = sortedOperations.begin(); it2 != sortedOperations.end(); ++it2) {
-      TRI_df_marker_t const* m = (*it2);
-
-      if (m->_tick <= minTransferTick) {
-        // we have already transferred this marker in a previous run, nothing to do
-        continue;
-      }
-    }
+    transferMarkers(cid, state.collections[cid], sortedOperations);
   }
 
 
@@ -358,6 +374,42 @@ int CollectorThread::collect (Logfile* logfile) {
   if (! state.handledTransactions.empty()) {
     _logfileManager->unregisterFailedTransactions(state.handledTransactions);
   }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transfer markers into a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
+                                      TRI_voc_tick_t databaseId,
+                                      OperationsType const& operations) {
+  TRI_vocbase_t* vocbase = TRI_UseDatabaseByIdServer(_server, databaseId);
+
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+
+  TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, collectionId);
+
+  if (collection == nullptr) {
+    TRI_ReleaseDatabaseServer(_server, vocbase);
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  TRI_voc_tick_t minTransferTick = 0; // TODO: find the actual max tick of a collection
+  for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
+    TRI_df_marker_t const* m = (*it2);
+
+    if (m->_tick <= minTransferTick) {
+      // we have already transferred this marker in a previous run, nothing to do
+      continue;
+    }
+  }
+
+  TRI_ReleaseCollectionVocBase(vocbase, collection);
+  TRI_ReleaseDatabaseServer(_server, vocbase);
 
   return TRI_ERROR_NO_ERROR;
 }

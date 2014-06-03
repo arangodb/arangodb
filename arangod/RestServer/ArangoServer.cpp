@@ -358,7 +358,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
 
-  wal::LogfileManager::initialise(&_databasePath);
+  wal::LogfileManager::initialise(&_databasePath, _server);
   _applicationServer->addFeature(wal::LogfileManager::instance());
 
   // .............................................................................

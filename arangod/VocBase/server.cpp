@@ -2410,7 +2410,7 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
   for (size_t i = 0; i < n; ++i) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
-    if (vocbase != NULL && vocbase->_id == id) {
+    if (vocbase != nullptr && vocbase->_id == id) {
       bool result = TRI_UseVocBase(vocbase);
 
       // if we got here, no one else can have deleted the database
@@ -2422,7 +2422,7 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
   
   READ_UNLOCK_DATABASES(server->_databasesLock);
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2436,7 +2436,7 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
 
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
-  if (vocbase != NULL) {
+  if (vocbase != nullptr) {
     bool result = TRI_UseVocBase(vocbase);
 
     // if we got here, no one else can have deleted the database
@@ -2459,7 +2459,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
 
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
-  if (vocbase != NULL) {
+  if (vocbase != nullptr) {
     bool result = TRI_UseVocBase(vocbase);
 
     // if we got here, no one else can have deleted the database
@@ -2469,6 +2469,34 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   READ_UNLOCK_DATABASES(server->_databasesLock);
 
   return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a database by its id
+/// this will increase the reference-counter for the database
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
+                                          TRI_voc_tick_t id) {
+  READ_LOCK_DATABASES(server->_databasesLock);
+  size_t const n = server->_databases._nrAlloc;
+ 
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr && vocbase->_id == id) {
+      bool result = TRI_UseVocBase(vocbase);
+
+      // if we got here, no one else can have deleted the database
+      assert(result == true);
+      READ_UNLOCK_DATABASES(server->_databasesLock);
+      return vocbase;
+    }
+  }
+  
+  READ_UNLOCK_DATABASES(server->_databasesLock);
+
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
