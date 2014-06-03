@@ -4222,6 +4222,7 @@ function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, max
   return result;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -4394,7 +4395,10 @@ function TRAVERSAL_FUNC (func,
     strategy: params.strategy,
     order: params.order,
     itemOrder: params.itemOrder,
-    startVertex : startVertex
+    startVertex : startVertex,
+    endVertex : endVertex,
+    weight : params.weight,
+    defaultWeight : params.defaultWeight
 
   };
 
@@ -4455,7 +4459,138 @@ function TRAVERSAL_FUNC (func,
 
   return result;
 }
-  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief CHECK IF RESTRICTION LIST MATCHES
+////////////////////////////////////////////////////////////////////////////////
+
+function FILTER_RESTRICTION (list, restrictionList) {
+  if (! restrictionList) {
+    return list;
+  }
+  if (typeof restrictionList === "string") {
+    restrictionList =  [restrictionList];
+  }
+  var result = [];
+  restrictionList.forEach(function (r) {
+    if (list.indexOf(r) !== -1) {
+      result.push(r);
+    }
+  });
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getAllDocsByExample
+////////////////////////////////////////////////////////////////////////////////
+
+function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
+  var res = [];
+  if (!example) {
+    example = [{}];
+  }
+  if (typeof example === "string") {
+    example = {_id : example};
+  }
+  if (!Array.isArray(example)) {
+    example = [example];
+  }
+  collectionList.forEach(function (c) {
+    example.forEach(function (e) {
+      res = res.concat(COLLECTION(c).byExample(e).toArray());
+    });
+  });
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
+////////////////////////////////////////////////////////////////////////////////
+
+function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
+  // check graph exists and load edgeDefintions
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  var fromCollections = [], toCollection = [],edgeCollections = [];
+  graph.edgeDefinitions.forEach(function (def) {
+    if (options.direction === "outbound") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
+      );
+    }
+    else if (options.direction === "inbound") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
+      );
+    }
+    else if (options.direction === "any") {
+      edgeCollections = edgeCollections.concat(
+        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
+      );
+      fromCollections = fromCollections.concat(
+        FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
+      );
+      toCollection = toCollection.concat(
+        FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
+      );
+    }
+    else {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
+    }
+  });
+
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return {
+    fromVertices :DOCUMENTS_BY_EXAMPLE(
+      fromCollections.filter(removeDuplicates), options.fromVertexExample
+    ),
+    toVertices : DOCUMENTS_BY_EXAMPLE(
+      toCollection.filter(removeDuplicates), options.toVertexExample
+    ),
+    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample),
+    edgeCollections : edgeCollections,
+    fromCollections : fromCollections,
+    toCollection : toCollection
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate distance of an edge
+////////////////////////////////////////////////////////////////////////////////
+
+function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
+
+  if (!weight) {
+    return 1;
+  }
+  if (typeof edge[weight] === "number") {
+    return edge[weight];
+  }
+  if (defaultWeight) {
+    return defaultWeight;
+  }
+  return Infinity;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine parameters for SHORTEST_PATH and
 /// GRAPH_SHORTEST_PATH
@@ -4513,21 +4648,173 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
-                                      startVertex,
-                                      endVertex,
-                                      direction,
-                                      params) {
+                                      startVertexExample,
+                                      endVertexExample,
+                                      options) {
   "use strict";
 
-  params = SHORTEST_PATH_PARAMS(params);
+  if (! options) {
+    options = {  };
+  }
+  options.fromVertexExample = startVertexExample;
+  options.toVertexExample = endVertexExample;
+  if (!options.direction) {
+    options.direction =  'any';
+  }
 
-  return TRAVERSAL_FUNC("GRAPH_SHORTEST_PATH",
-    TRAVERSAL.generalGraphDatasourceFactory(graphName),
-    TO_ID(startVertex),
-    TO_ID(endVertex),
-    direction,
-    params);
+  var result = [];
+  options.edgeExamples = options.edgeExamples || [];
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+
+  graph.fromVerticesIDs = {};
+  graph.fromVertices.forEach(function (a) {
+    graph.fromVerticesIDs[a._id] = a;
+  });
+  graph.toVerticesIDs = {};
+  graph.toVertices.forEach(function (a) {
+    graph.toVerticesIDs[a._id] = a;
+  });
+
+  var paths = {};
+
+
+  var fromVertices = [];
+  var toVertices = [];
+  graph.edges.forEach(function(e) {
+    if (options.direction === "outbound") {
+      if (!paths[e._from]) {
+        paths[e._from] = {};
+      }
+      paths[e._from][e._to] =  {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , edges : [e], vertices : [e._from, e._to]};
+      fromVertices.push(e._from);
+      toVertices.push(e._to);
+    } else if (options.direction === "inbound") {
+      if (!paths[e.to]) {
+        paths[e._to] = {};
+      }
+      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , edges : [e], vertices : [e._from, e._to]};
+      fromVertices.push(e._to);
+      toVertices.push(e._from);
+    } else {
+      if (!paths[e._from]) {
+        paths[e._from] = {};
+      }
+      if (!paths[e._to]) {
+        paths[e._to] = {};
+      }
+      paths[e._from][e._to] = {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , edges : [e], vertices : [e._from, e._to]};
+      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , edges : [e], vertices : [e._from, e._to]};
+      fromVertices.push(e._to);
+      toVertices.push(e._from);
+      fromVertices.push(e._from);
+      toVertices.push(e._to);
+
+    }
+  });
+
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  fromVertices.filter(removeDuplicates);
+  toVertices.filter(removeDuplicates);
+
+  var allVertices = fromVertices.concat(toVertices).filter(removeDuplicates);
+  allVertices.forEach(function (k) {
+    allVertices.forEach(function (i) {
+      allVertices.forEach(function (j) {
+          if (i === j ) {
+            if (!paths[i]) {
+              paths[i] = {};
+            }
+            paths[i] [j] = null;
+            return;
+          }
+          if (paths[i] && paths[i][k] && paths[i][k].distance < Infinity &&
+            paths[k] && paths[k][j] && paths[k][j].distance < Infinity &&
+            ( !paths[i][j] ||
+              paths[i][k].distance + paths[k][j].distance  < paths[i][j].distance
+             )
+          ) {
+          if (!paths[i][j]) {
+            paths[i][j] = {};
+          }
+          paths[i][j].distance = paths[i][k].distance+paths[k][j].distance;
+          paths[i][j].edges = paths[i][k].edges.concat(paths[k][j].edges);
+          paths[i][j].vertices =
+            paths[i][k].vertices.concat(paths[k][j].vertices).filter(removeDuplicates);
+        }
+
+      });
+
+    });
+
+  });
+  Object.keys(paths).forEach(function (from) {
+    if (!graph.fromVerticesIDs[from]) {
+      return;
+    }
+    Object.keys(paths[from]).forEach(function (to) {
+      if (!graph.toVerticesIDs[to]) {
+        return;
+      }
+      if (from === to) {
+        result.push({
+          startVertex : from,
+          vertex : graph.toVerticesIDs[to],
+          path : {
+            edges : [],
+            vertices : []
+          },
+          distance : 0
+        });
+        return;
+      }
+      result.push({
+        startVertex : from,
+        vertex : graph.toVerticesIDs[to],
+        path : {
+          edges : paths[from][to].edges,
+          vertices : paths[from][to].vertices
+        },
+        distance : paths[from][to].distance
+      });
+    });
+  });
+  return result;
+
 }
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distance to
+////////////////////////////////////////////////////////////////////////////////
+
+function GENERAL_GRAPH_DISTANCE_TO (graphName,
+                                      startVertexExample,
+                                      endVertexExample,
+                                      options) {
+  "use strict";
+
+  if (! options) {
+    options = {};
+  }
+  options.distance = true;
+  return GENERAL_GRAPH_SHORTEST_PATH(graphName, startVertexExample, endVertexExample, options);
+
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine parameters for TRAVERSAL and
@@ -4750,117 +5037,6 @@ function GRAPH_NEIGHBORS (vertexCollection,
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CHECK IF RESTRICTION LIST MATCHES
-////////////////////////////////////////////////////////////////////////////////
-
-function FILTER_RESTRICTION (list, restrictionList) {
-  if (! restrictionList) {
-    return list;
-  }
-  if (typeof restrictionList === "string") {
-    restrictionList =  [restrictionList];
-  }
-  var result = [];
-  restrictionList.forEach(function (r) {
-     if (list.indexOf(r) !== -1) {
-        result.push(r);
-     }
-  });
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getAllDocsByExample
-////////////////////////////////////////////////////////////////////////////////
-
-function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
-  var res = [];
-  if (!example) {
-    example = [{}];
-  }
-  if (typeof example === "string") {
-    example = {_id : example};
-  }
-  if (!Array.isArray(example)) {
-    example = [example];
-  }
-  collectionList.forEach(function (c) {
-    example.forEach(function (e) {
-      res = res.concat(COLLECTION(c).byExample(e).toArray());
-    });
-  });
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
-////////////////////////////////////////////////////////////////////////////////
-
-function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
-  // check graph exists and load edgeDefintions
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
-  if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
-  }
-
-  var fromCollections = [], toCollection = [],edgeCollections = [];
-  graph.edgeDefinitions.forEach(function (def) {
-    if (options.direction === "outbound") {
-      edgeCollections = edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      fromCollections = fromCollections.concat(
-        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
-      );
-      toCollection = toCollection.concat(
-        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
-      );
-    }
-    else if (options.direction === "inbound") {
-      edgeCollections = edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      fromCollections = fromCollections.concat(
-        FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
-      );
-      toCollection = toCollection.concat(
-        FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
-      );
-    }
-    else if (options.direction === "any") {
-      edgeCollections = edgeCollections.concat(
-        FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
-      );
-      fromCollections = fromCollections.concat(
-        FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
-      );
-      toCollection = toCollection.concat(
-        FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
-      );
-    }
-    else {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
-    }
-  });
-
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-
-  return {
-    fromVertices :DOCUMENTS_BY_EXAMPLE(
-      fromCollections.filter(removeDuplicates), options.fromVertexExample
-    ),
-    toVertices : DOCUMENTS_BY_EXAMPLE(
-      toCollection.filter(removeDuplicates), options.toVertexExample
-    ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample),
-    edgeCollections : edgeCollections,
-    fromCollections : fromCollections,
-    toCollection : toCollection
-  };
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge list of edges with list of examples
@@ -5007,6 +5183,9 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
   options) {
   "use strict";
 
+  if (! options) {
+    options = { };
+  }
   var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
     GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options)
   );
@@ -5114,6 +5293,205 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   return res;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the eccentricity of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function VERTICES_ECCENTRICITY (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+
+  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options), result = {}, max = 0;
+  distanceMap.forEach(function(d) {
+    if (!result[d.startVertex]) {
+      result[d.startVertex] = d.distance;
+    } else {
+      result[d.startVertex] = Math.max(result[d.startVertex], d.distance);
+    }
+  });
+  return result;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the normalized eccentricity of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  var result = VERTICES_ECCENTRICITY(graphName, options), max = 0;
+  Object.keys(result).forEach(function (r) {
+    result[r] = 1 / result[r];
+    if (result[r] > max) {
+      max = result[r];
+    }
+  });
+  Object.keys(result).forEach(function (r) {
+    result[r] = result[r] / max;
+  });
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the normalized closeness of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_CLOSENESS (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options), result = {}, max = 0;
+  distanceMap.forEach(function(d) {
+    if (options.direction !==  'any') {
+      d.distance = d.distance === 0 ?  0 : 1 / d.distance;
+    }
+    if (!result[d.startVertex]) {
+      result[d.startVertex] = d.distance;
+    } else {
+      result[d.startVertex] = d.distance + result[d.startVertex];
+    }
+  });
+
+  Object.keys(result).forEach(function (r) {
+    if (options.direction ===  'any') {
+      result[r] = 1 / result[r];
+    }
+    if (result[r] > max) {
+      max = result[r];
+    }
+  });
+  Object.keys(result).forEach(function (r) {
+    result[r] = result[r] / max;
+  });
+  return result;
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the normalized betweenness of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  var distanceMap = GENERAL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
+    result = {}, max = 0, hits = {};
+  distanceMap.forEach(function(d) {
+    if (hits[d.startVertex + d.vertex._id] ||
+        hits[d.vertex._id + d.startVertex]
+      ) {
+      return;
+    }
+    hits[d.startVertex + d.vertex._id] = true;
+    hits[d.vertex._id + d.startVertex] = true;
+
+    d.path.vertices.forEach(function (v) {
+      if (v === d.vertex._id || v === d.startVertex) {
+        if (!result[d.vertex._id]) {
+          result[d.vertex._id] = 0;
+        }
+        if (!result[d.startVertex]) {
+          result[d.startVertex] = 0;
+        }
+        return;
+      }
+      if (!result[v]) {
+        result[v] = 1;
+      } else {
+        result[v] = result[v] + 1;
+      }
+    });
+  });
+  Object.keys(result).forEach(function (r) {
+    if (result[r] > max) {
+      max = result[r];
+    }
+  });
+  Object.keys(result).forEach(function (r) {
+    result[r] = result[r] / max;
+  });
+  return result;
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the radius of the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_RADIUS (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  var result = VERTICES_ECCENTRICITY(graphName, options), min = Infinity;
+  Object.keys(result).forEach(function (r) {
+    if (result[r] < min) {
+      min = result[r];
+    }
+  });
+
+  return min;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the diameter of the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_DIAMETER (graphName, options) {
+
+  "use strict";
+
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  var result = VERTICES_ECCENTRICITY(graphName, options), max = 0;
+  Object.keys(result).forEach(function (r) {
+    if (result[r] > max) {
+      max = result[r];
+    }
+  });
+
+  return max;
+}
+
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
@@ -5220,6 +5598,7 @@ exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
 exports.GENERAL_GRAPH_SHORTEST_PATH = GENERAL_GRAPH_SHORTEST_PATH;
+exports.GENERAL_GRAPH_DISTANCE_TO = GENERAL_GRAPH_DISTANCE_TO;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
 exports.GENERAL_GRAPH_TRAVERSAL = GENERAL_GRAPH_TRAVERSAL;
@@ -5232,6 +5611,11 @@ exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_COMMON_NEIGHBORS = GENERAL_GRAPH_COMMON_NEIGHBORS;
 exports.GENERAL_GRAPH_COMMON_PROPERTIES = GENERAL_GRAPH_COMMON_PROPERTIES;
+exports.GENERAL_GRAPH_ECCENTRICITY = GENERAL_GRAPH_ECCENTRICITY;
+exports.GENERAL_GRAPH_BETWEENNESS = GENERAL_GRAPH_BETWEENNESS;
+exports.GENERAL_GRAPH_CLOSENESS = GENERAL_GRAPH_CLOSENESS;
+exports.GENERAL_GRAPH_DIAMETER = GENERAL_GRAPH_DIAMETER;
+exports.GENERAL_GRAPH_RADIUS = GENERAL_GRAPH_RADIUS;
 exports.NOT_NULL = NOT_NULL;
 exports.FIRST_LIST = FIRST_LIST;
 exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
