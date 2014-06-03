@@ -657,14 +657,14 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   : Marker(TRI_WAL_MARKER_DOCUMENT, 
     sizeof(document_marker_t) + alignedSize(key.size() + 1) + legend.getSize() + shapedJson->_data.length) {
   document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
-  m->_databaseId   = databaseId;
-  m->_collectionId = collectionId;
-  m->_rid          = revisionId;
-  m->_transactionId= transactionId;
-  m->_shape        = shapedJson->_sid;
-  m->_offsetKey    = sizeof(document_marker_t); // start position of key
-  m->_offsetLegend = m->_offsetKey + alignedSize(key.size() + 1);
-  m->_offsetJson   = m->_offsetLegend + alignedSize(legend.getSize());
+  m->_databaseId    = databaseId;
+  m->_collectionId  = collectionId;
+  m->_revisionId    = revisionId;
+  m->_transactionId = transactionId;
+  m->_shape         = shapedJson->_sid;
+  m->_offsetKey     = sizeof(document_marker_t); // start position of key
+  m->_offsetLegend  = m->_offsetKey + alignedSize(key.size() + 1);
+  m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
           
   storeSizedString(m->_offsetKey, key);
 
@@ -791,7 +791,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 
   m->_databaseId    = databaseId;
   m->_collectionId  = collectionId;
-  m->_rid           = revisionId;
+  m->_revisionId    = revisionId;
   m->_transactionId = transactionId;
   m->_shape         = shapedJson->_sid;
   m->_offsetKey     = sizeof(edge_marker_t); // start position of key
@@ -942,9 +942,9 @@ RemoveMarker::RemoveMarker (TRI_voc_tick_t databaseId,
                             std::string const& key) 
   : Marker(TRI_WAL_MARKER_REMOVE, sizeof(remove_marker_t) + alignedSize(key.size() + 1)) {
   remove_marker_t* m = reinterpret_cast<remove_marker_t*>(begin());
-  m->_databaseId = databaseId;
-  m->_collectionId = collectionId;
-  m->_rid = revisionId;
+  m->_databaseId    = databaseId;
+  m->_collectionId  = collectionId;
+  m->_revisionId    = revisionId;
   m->_transactionId = transactionId;
 
   storeSizedString(sizeof(remove_marker_t), key);
