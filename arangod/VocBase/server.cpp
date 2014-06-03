@@ -60,6 +60,9 @@ size_t PageSize;
 
 class DatabaseReadLocker {
   public:
+    DatabaseReadLocker (DatabaseReadLocker const&) = delete;
+    DatabaseReadLocker& operator= (DatabaseReadLocker const&) = delete;
+
     DatabaseReadLocker (TRI_read_write_lock_t* lock) 
       : _lock(lock) {
       TRI_ReadLockReadWriteLock(_lock);
@@ -76,6 +79,9 @@ class DatabaseReadLocker {
 
 class DatabaseWriteLocker {
   public:
+    DatabaseWriteLocker (DatabaseWriteLocker const&) = delete;
+    DatabaseWriteLocker& operator= (DatabaseWriteLocker const&) = delete;
+
     DatabaseWriteLocker (TRI_read_write_lock_t* lock) 
       : _lock(lock) {
        while (! TRI_TryWriteLockReadWriteLock(lock)) { 
