@@ -165,14 +165,6 @@
       if (enable === true) {
         $(document).on('keydown', null, 'j', hotkeys.scrollDown);
         $(document).on('keydown', null, 'k', hotkeys.scrollUp);
-        $(document).keydown(function(e) {
-          if (e.shiftKey){
-            if (e.which === 191) {
-              hotkeys.showHotkeysModal();
-            }
-          }
-        });
-
       }
     },
 
