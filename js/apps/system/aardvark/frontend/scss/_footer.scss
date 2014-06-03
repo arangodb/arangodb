@@ -32,6 +32,17 @@ div.footer-left {
   }
 }
 
+div.footer-center {
+  @extend %pull-left;
+  background: none repeat scroll 0 0 $c-nav-bg;
+  color: $c-white;
+  width: 10%;
+
+  p:hover {
+    cursor: pointer;
+  }
+}
+
 div.footer-right {
   @extend %pull-right;
   background: none repeat scroll 0 0 $c-nav-bg;

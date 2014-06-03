@@ -83,27 +83,26 @@ ArangoCollection.prototype.toArray = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
+/// @startDocuBlock collection_truncates
+/// `collection.truncate()`
 ///
-/// @FUN{@FA{collection}.truncate()}
-///
-/// Truncates a @FA{collection}, removing all documents but keeping all its
+/// Truncates a *collection*, removing all documents but keeping all its
 /// indexes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Truncates a collection:
 ///
-/// @code
-/// arango> col = db.examples;
-/// [ArangoCollection 91022, "examples" (status new born)]
-/// arango> col.save({ "Hello" : "World" });
-/// { "_id" : "91022/1532814", "_rev" : 1532814 }
-/// arango> col.count();
-/// 1
-/// arango> col.truncate();
-/// arango> col.count();
-/// 0
-/// @endcode
+/// 	arango> col = db.examples;
+/// 	[ArangoCollection 91022, "examples" (status new born)]
+/// 	arango> col.save({ "Hello" : "World" });
+/// 	{ "_id" : "91022/1532814", "_rev" : 1532814 }
+/// 	arango> col.count();
+/// 	1
+/// 	arango> col.truncate();
+/// 	arango> col.count();
+/// 	0
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.truncate = function () {
@@ -292,11 +291,11 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns any document from a collection
+/// @startDocuBlock documents_collectionAny
+/// `collection.any()`
 ///
-/// @FUN{@FA{collection}.any()}
-///
-/// Returns a random document from the collection or @LIT{null} if none exists.
-///
+/// Returns a random document from the collection or *null* if none exists.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.any = function () {
@@ -336,16 +335,16 @@ ArangoCollection.prototype.any = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_ArangoCollection_prototype_first
-///
+/// 
 /// @brief selects the n first documents in the collection
+/// @startDocuBlock documents_collectionFirst
+/// `collection.first(count)`
 ///
-/// @FUN{@FA{collection}.first(@FA{count})}
-///
-/// The @FN{first} method returns the n first documents from the collection, in 
+/// The *first* method returns the n first documents from the collection, in 
 /// order of document insertion/update time. 
 ///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// If called with the *count* argument, the result is a list of up to
+/// *count* documents. If *count* is bigger than the number of documents
 /// in the collection, then the result will contain as many documents as there
 /// are in the collection.
 /// The result list is ordered, with the "oldest" documents being positioned at 
@@ -353,12 +352,12 @@ ArangoCollection.prototype.any = function () {
 ///
 /// When called without an argument, the result is the first document from the
 /// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
+/// returned is *null*.
 ///
 /// Note: this method is not supported in sharded collections with more than
 /// one shard.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arangod> db.example.first(1)
@@ -369,6 +368,7 @@ ArangoCollection.prototype.any = function () {
 /// arangod> db.example.first()
 /// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.first = function (count) {
@@ -419,14 +419,14 @@ ArangoCollection.prototype.first = function (count) {
 /// @fn JSF_ArangoCollection_prototype_last
 ///
 /// @brief selects the n last documents in the collection
+/// @startDocuBlock documents_collectionLast
+/// `collection.last(count)`
 ///
-/// @FUN{@FA{collection}.last(@FA{count})}
-///
-/// The @FN{last} method returns the n last documents from the collection, in 
+/// The *last* method returns the n last documents from the collection, in 
 /// order of document insertion/update time. 
 ///
-/// If called with the @FA{count} argument, the result is a list of up to
-/// @FA{count} documents. If @FA{count} is bigger than the number of documents
+/// If called with the *count* argument, the result is a list of up to
+/// *count* documents. If *count* is bigger than the number of documents
 /// in the collection, then the result will contain as many documents as there
 /// are in the collection.
 /// The result list is ordered, with the "latest" documents being positioned at 
@@ -434,12 +434,12 @@ ArangoCollection.prototype.first = function (count) {
 ///
 /// When called without an argument, the result is the last document from the
 /// collection. If the collection does not contain any documents, the result 
-/// returned is @LIT{null}.
+/// returned is *null*.
 ///
 /// Note: this method is not supported in sharded collections with more than
 /// one shard.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arangod> db.example.last(1)
@@ -450,6 +450,7 @@ ArangoCollection.prototype.first = function (count) {
 /// arangod> db.example.last()
 /// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.last = function (count) {
