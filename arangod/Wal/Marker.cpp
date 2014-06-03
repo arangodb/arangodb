@@ -260,6 +260,108 @@ void ShapeMarker::dump () const {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              CreateDatabaseMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+CreateDatabaseMarker::CreateDatabaseMarker (TRI_voc_tick_t databaseId,
+                                            std::string const& properties) 
+  : Marker(TRI_WAL_MARKER_CREATE_DATABASE, sizeof(database_create_marker_t) + alignedSize(properties.size() + 1)) {
+
+  database_create_marker_t* m = reinterpret_cast<database_create_marker_t*>(begin());
+
+  m->_databaseId = databaseId;
+  
+  storeSizedString(sizeof(database_create_marker_t), properties);
+  
+#ifdef DEBUG_WAL
+  dump();
+#endif  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+CreateDatabaseMarker::~CreateDatabaseMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void CreateDatabaseMarker::dump () const {
+  database_create_marker_t* m = reinterpret_cast<database_create_marker_t*>(begin());
+
+  std::cout << "WAL CREATE DATABASE MARKER FOR DB " << m->_databaseId 
+            << ", PROPERTIES " << properties()
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                DropDatabaseMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+DropDatabaseMarker::DropDatabaseMarker (TRI_voc_tick_t databaseId)
+  : Marker(TRI_WAL_MARKER_DROP_DATABASE, sizeof(database_drop_marker_t)) {
+
+  database_drop_marker_t* m = reinterpret_cast<database_drop_marker_t*>(begin());
+
+  m->_databaseId = databaseId;
+  
+#ifdef DEBUG_WAL
+  dump();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+DropDatabaseMarker::~DropDatabaseMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void DropDatabaseMarker::dump () const {
+  database_drop_marker_t* m = reinterpret_cast<database_drop_marker_t*>(begin());
+
+  std::cout << "WAL DROP DATABASE MARKER FOR DB " << m->_databaseId 
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            CreateCollectionMarker
 // -----------------------------------------------------------------------------
 
@@ -356,7 +458,7 @@ DropCollectionMarker::~DropCollectionMarker () {
 void DropCollectionMarker::dump () const {
   collection_drop_marker_t* m = reinterpret_cast<collection_drop_marker_t*>(begin());
 
-  std::cout << "WAL CREATE COLLECTION MARKER FOR DB " << m->_databaseId 
+  std::cout << "WAL DROP COLLECTION MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId
             << ", SIZE: " << size()
             << "\n";

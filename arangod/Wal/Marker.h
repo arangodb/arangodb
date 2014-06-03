@@ -67,6 +67,23 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wal create database marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct database_create_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      // char* properties
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal drop database marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct database_drop_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wal create collection marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -354,6 +371,45 @@ namespace triagens {
         inline TRI_shape_sid_t shapeId () const {
           return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
         }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              CreateDatabaseMarker
+// -----------------------------------------------------------------------------
+
+    class CreateDatabaseMarker : public Marker {
+
+      public:
+
+        CreateDatabaseMarker (TRI_voc_tick_t,
+                              std::string const&);
+
+        ~CreateDatabaseMarker ();
+        
+      public:
+        
+        inline char* properties () const {
+          return begin() + sizeof(database_create_marker_t);
+        }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                DropDatabaseMarker
+// -----------------------------------------------------------------------------
+
+    class DropDatabaseMarker : public Marker {
+
+      public:
+
+        DropDatabaseMarker (TRI_voc_tick_t);
+
+        ~DropDatabaseMarker ();
+        
+      public:
         
         void dump () const;
     };
