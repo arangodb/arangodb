@@ -962,12 +962,11 @@ function routeRequest (req, res) {
   };
 
   next = function (restart) {
-    action = exports.nextRouting(action);
-
     if (restart) {
       routeRequest(req, res);
     }
     else {
+      action = exports.nextRouting(action);
       execute();
     }
   };
