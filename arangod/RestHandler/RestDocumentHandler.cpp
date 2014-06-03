@@ -339,13 +339,13 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   Barrier barrier(trx.primaryCollection());
 
   TRI_doc_mptr_t document;
   res = trx.createDocument(&document, json, waitForSync);
-  const bool wasSynchronous = trx.synchronous();
+  bool const wasSynchronous = trx.synchronous();
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

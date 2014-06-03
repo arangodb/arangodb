@@ -141,7 +141,7 @@ namespace triagens {
       TRI_voc_cid_t   _collectionId;
 
       TRI_voc_rid_t   _rid;        // this is the tick for a create and update
-      TRI_voc_tid_t   _tid;
+      TRI_voc_tid_t   _transactionId;
 
       TRI_shape_sid_t _shape;
 
@@ -183,7 +183,7 @@ namespace triagens {
       TRI_voc_cid_t   _collectionId;
 
       TRI_voc_rid_t   _rid;   // this is the tick for the deletion
-      TRI_voc_tid_t   _tid;
+      TRI_voc_tid_t   _transactionId;
       
       // char* key
     };
@@ -526,7 +526,7 @@ namespace triagens {
         
         inline TRI_voc_rid_t tid () const {
           document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline char* key () const {
@@ -593,7 +593,7 @@ namespace triagens {
         
         inline TRI_voc_rid_t tid () const {
           edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline char const* key () const {
@@ -671,7 +671,7 @@ namespace triagens {
 
         inline TRI_voc_rid_t tid () const {
           remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
-          return m->_tid;
+          return m->_transactionId;
         }
 
         inline TRI_voc_rid_t rid () const {
