@@ -9,7 +9,7 @@ mr-*.h
 *.sdf
 *.suo
 
-
+*.iml
 *.orig
 *.rej
 
