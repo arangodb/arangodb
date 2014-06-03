@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* added mountedApp function for foxx-manager
+
 * cleanup of version-check, added module org/arangodb/database-version,
   added --check-version option
 
