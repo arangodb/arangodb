@@ -310,7 +310,7 @@ typedef struct TRI_document_collection_s {
   TRI_associative_pointer_t    _datafileInfo;
 
   TRI_primary_index_t          _primaryIndex;
-  TRI_headers_t*               _headers;
+  TRI_headers_t*               _headersPtr;
   struct TRI_key_generator_s*  _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
   

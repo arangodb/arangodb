@@ -694,7 +694,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   assert(markerSize > 0);
 
   // get a new header pointer
-  header = document->_headers->request(document->_headers, markerSize);
+  header = document->_headersPtr->request(document->_headersPtr, markerSize);  // ONLY IN OPENITERATOR
 
   if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1138,7 +1138,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headers->request(document->_headers, marker->size());  // PROTECTED by trx in trxCollection
+    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(document->_headersPtr, marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -1551,7 +1551,7 @@ static void DumpCollection (TRI_document_collection_t* document) {
   printf("----------------------------\n");
   printf("primary index, nrUsed: %lu\n", (unsigned long) document->_primaryIndex._nrUsed);
   printf("number of documents: %lu\n", (unsigned long) document->_numberDocuments);
-  document->_headers->dump(document->_headers);
+  document->_headersPtr->dump(document->_headersPtr);
   printf("----------------------------\n\n");
 }
 
@@ -1697,7 +1697,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (res != TRI_ERROR_NO_ERROR) {
       // insertion failed
       LOG_ERROR("inserting document into indexes failed");
-      document->_headers->release(document->_headers, header, true);
+      document->_headersPtr->release(document->_headersPtr, header, true);  // ONLY IN OPENITERATOR
 
       return res;
     }
@@ -1723,7 +1723,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headers->moveBack(document->_headers, newHeader, &oldData);
+    document->_headersPtr->moveBack(document->_headersPtr, newHeader, &oldData);  // ONLY IN OPENITERATOR
       
     // update the datafile info
     if (oldData._fid == state->_fid) {
@@ -1845,7 +1845,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headers->release(document->_headers, found, true); 
+    document->_headersPtr->release(document->_headersPtr, found, true);   // ONLY IN OPENITERATOR
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2472,9 +2472,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     return false;
   }
 
-  document->_headers = TRI_CreateSimpleHeaders();
+  document->_headersPtr = TRI_CreateSimpleHeaders();  // ONLY IN CREATE COLLECTION
 
-  if (document->_headers == NULL) {
+  if (document->_headersPtr == NULL) {  // ONLY IN CREATE COLLECTION
     TRI_DestroyPrimaryCollection(document);
 
     return false;
@@ -2693,7 +2693,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (false == InitDocumentCollection(document, shaper)) {
     LOG_ERROR("cannot initialise document collection");
 
-    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
@@ -2708,7 +2708,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", 
               collection->_directory, 
               TRI_last_error());
@@ -2736,7 +2736,7 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
 
   TRI_DestroyCondition(&document->_journalsCondition);
 
-  TRI_FreeSimpleHeaders(document->_headers);
+  TRI_FreeSimpleHeaders(document->_headersPtr);  // PROTECTED because collection is already closed
 
   // free memory allocated for indexes
   n = document->_allIndexes._length;
