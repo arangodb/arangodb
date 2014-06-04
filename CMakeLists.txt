@@ -729,10 +729,10 @@ if ((BUILD_PACKAGE STREQUAL "debian") OR (BUILD_PACKAGE STREQUAL "raspbian"))
 
   set(CPACK_DEBIAN_PACKAGE_SECTION "database")
   set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA 
-    "${PROJECT_SOURCE_DIR}/Installation/Debian/postinst;${PROJECT_SOURCE_DIR}/Installation/Debian/preinst;${PROJECT_SOURCE_DIR}/Installation/Debian/postrm;${PROJECT_SOURCE_DIR}/Installation/Debian/prerm;")
+    "${PROJECT_SOURCE_DIR}/Installation/ARM/postinst;${PROJECT_SOURCE_DIR}/Installation/ARM/preinst;${PROJECT_SOURCE_DIR}/Installation/ARM/postrm;${PROJECT_SOURCE_DIR}/Installation/ARM/prerm;")
 
   install(
-    FILES ${PROJECT_SOURCE_DIR}/Installation/Debian/rc.arangodb
+    FILES ${PROJECT_SOURCE_DIR}/Installation/ARM/rc.arangodb
     PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
     DESTINATION /etc/init.d
     RENAME arangodb)
