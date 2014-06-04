@@ -1422,7 +1422,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
-        vertexExamples: {}
+        neighborExamples: {}
       });
     },
 
@@ -1451,7 +1451,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
-        vertexExamples: [{
+        neighborExamples: [{
           name: uaName
         },{
           name: p1Name
@@ -1489,7 +1489,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {});
       assertEqual(query.bindVars.options_1, {
-        vertexExamples: {}
+        neighborExamples: {}
       });
       assertEqual(query.bindVars.options_2, {
         direction: "outbound",

@@ -1,0 +1,110 @@
+!CHAPTER Fluent AQL Interface
+
+!SECTION Starting Points
+**To be corrected**
+!SUBSECTION  Edges
+
+!SUBSUBSECTION All edges
+
+```javascript
+graph.edges(vertexId)
+```
+Returns all edges of a vertex
+
+- - -
+
+!SUBSUBSECTION All ingoing edges
+
+```javascript
+graph.inEdges(vertexId)
+```
+Returns all ingoing edges of a vertex
+
+- - -
+
+!SUBSUBSECTION All outgoing edges
+
+```javascript
+graph.outEdges(vertexId)
+```
+Returns all outgoing edges of a vertex
+
+- - -
+
+!SUBSECTION Vertices
+
+!SUBSUBSECTION Get ingoing vertex
+
+```javascript
+graph.getInVertex(edgeId)
+```
+Returns the ingoing vertex of an edge
+
+- - -
+
+!SUBSUBSECTION Get outgoing vertex
+
+```javascript
+graph.getOutVertex(edgeId)
+```
+Returns the outgoing vertex of an edge
+
+- - -
+
+## Fluent query options
+
+!SUBSECTION ToArray
+
+@startDocuBlock JSF_general_graph_fluent_aql_toArray
+
+!SUBSECTION HasNext
+
+@startDocuBlock JSF_general_graph_fluent_aql_hasNext
+
+!SUBSECTION Next
+
+@startDocuBlock JSF_general_graph_fluent_aql_next
+
+!SUBSECTION Count
+
+@startDocuBlock JSF_general_graph_fluent_aql_count
+
+!SUBSECTION Edges
+
+@startDocuBlock JSF_general_graph_fluent_aql_edges
+
+!SUBSECTION OutEdges
+
+@startDocuBlock JSF_general_graph_fluent_aql_outEdges
+
+!SUBSECTION InEdges
+
+@startDocuBlock JSF_general_graph_fluent_aql_inEdges
+
+!SUBSECTION Vertices
+
+@startDocuBlock JSF_general_graph_fluent_aql_vertices
+
+!SUBSECTION FromVertices
+
+@startDocuBlock JSF_general_graph_fluent_aql_fromVertices
+
+!SUBSECTION ToVertices
+
+@startDocuBlock JSF_general_graph_fluent_aql_toVertices
+
+!SUBSECTION Neighbors
+
+@startDocuBlock JSF_general_graph_fluent_aql_neighbors
+
+!SUBSECTION Restrict
+
+@startDocuBlock JSF_general_graph_fluent_aql_restrict
+
+!SUBSECTION Filter
+
+@startDocuBlock JSF_general_graph_fluent_aql_filter
+
+!SUBSECTION Path
+
+@startDocuBlock JSF_general_graph_fluent_aql_path

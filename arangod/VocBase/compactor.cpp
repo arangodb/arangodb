@@ -440,8 +440,7 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
 
 static bool Compactifier (TRI_df_marker_t const* marker, 
                           void* data, 
-                          TRI_datafile_t* datafile, 
-                          bool journal) {
+                          TRI_datafile_t* datafile) { 
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* found;
   compaction_context_t* context;
@@ -686,8 +685,7 @@ static int RemoveDatafile (TRI_document_collection_t* document,
 
 static bool CalculateSize (TRI_df_marker_t const* marker, 
                            void* data, 
-                           TRI_datafile_t* datafile, 
-                           bool journal) {
+                           TRI_datafile_t* datafile) { 
   compaction_initial_context_t* context  = static_cast<compaction_initial_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
     
@@ -774,7 +772,7 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
 
     context._keepDeletions = compaction->_keepDeletions;
     
-    bool ok = TRI_IterateDatafile(df, CalculateSize, &context, false, false);
+    bool ok = TRI_IterateDatafile(df, CalculateSize, &context);
 
     if (! ok) {
       context._failed = true;
@@ -847,7 +845,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     context._keepDeletions = compaction->_keepDeletions;
 
     // run the actual compaction of a single datafile
-    bool ok = TRI_IterateDatafile(df, Compactifier, &context, false, false);
+    bool ok = TRI_IterateDatafile(df, Compactifier, &context);
   
     if (! ok) {
       LOG_WARNING("failed to compact datafile '%s'", df->getName(df));

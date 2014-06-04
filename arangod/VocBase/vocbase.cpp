@@ -782,8 +782,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
 static bool StartupTickIterator (TRI_df_marker_t const* marker,
                                  void* data,
-                                 TRI_datafile_t* datafile,
-                                 bool journal) {
+                                 TRI_datafile_t* datafile) {
   TRI_FastUpdateTickServer(marker->_tick);
 
   return true;
