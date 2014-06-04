@@ -107,14 +107,14 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
   }
 
   char const* p = _shaper->lookupAttributeId(_shaper, aid);
-  if (0 == p) {
+  if (nullptr == p) {
     return TRI_ERROR_AID_NOT_FOUND;
   }
 
-  _have_attribute.insert(aid);
+  _have_attribute.insert(it, aid);
   size_t len = strlen(p);
   _attribs.emplace_back(aid, _att_data.length());
-  _att_data.appendText(p, len+1);   // including the zero byte
+  _att_data.appendText(p, len + 1);   // including the zero byte
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -133,7 +133,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
 
   int res = TRI_ERROR_NO_ERROR;
 
-  TRI_shape_t const* shape = 0;
+  TRI_shape_t const* shape = nullptr;
 
   // First the trivial cases:
   if (sid < TRI_FirstCustomShapeIdShaper()) {
@@ -141,13 +141,13 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
   }
   else {
     shape = _shaper->lookupShapeId(_shaper, sid);
-    if (0 == shape) {
+    if (nullptr == shape) {
       return TRI_ERROR_LEGEND_INCOMPLETE;
     }
 
     unordered_set<TRI_shape_sid_t>::const_iterator it = _have_shape.find(sid);
     if (it == _have_shape.end()) {
-      _have_shape.insert(sid);
+      _have_shape.insert(it, sid);
       Shape sh(sid, _shape_data.length(), shape->_size);
       _shapes.push_back(sh);
       _shape_data.appendText( reinterpret_cast<char const*>(shape),
@@ -303,13 +303,15 @@ void JsonLegend::dump (void* buf) {
   }
 
   // Add the length of the string data to socle for second table:
-  socle += roundup8(_att_data.length());
+  size_t const attDataLength = _att_data.length();
+  socle += roundup8(attDataLength);
 
   // shape table:
+  size_t const n = _shapes.size();
   p = reinterpret_cast<TRI_shape_size_t*>(a);
-  *p++ = _shapes.size();
+  *p++ = n;
   Shape* s = reinterpret_cast<Shape*>(p);
-  for (i = 0; i < _shapes.size(); i++) {
+  for (i = 0; i < n; i++) {
     _shapes[i].offset += socle;
     *s++ = _shapes[i];
     _shapes[i].offset -= socle;
@@ -317,17 +319,18 @@ void JsonLegend::dump (void* buf) {
 
   // Attribute ID string data:
   char* c = reinterpret_cast<char*>(s);
-  memcpy(c, _att_data.c_str(), _att_data.length());
-  i = roundup8(_att_data.length());
-  if (i > _att_data.length()) {
-    memset( c + _att_data.length(), 0, i-_att_data.length());
+  memcpy(c, _att_data.c_str(), attDataLength);
+  i = roundup8(attDataLength);
+  if (i > attDataLength) {
+    memset(c + attDataLength, 0, i - attDataLength);
   }
   c += i;
 
   // Shape data:
-  memcpy(c, _shape_data.c_str(), _shape_data.length());
-  i = roundup8(_shape_data.length());
-  if (i > _shape_data.length()) {
-    memset( c + _shape_data.length(), 0, i-_shape_data.length());
+  size_t const shapeDataLength = _shape_data.length();
+  memcpy(c, _shape_data.c_str(), shapeDataLength);
+  i = roundup8(shapeDataLength);
+  if (i > shapeDataLength) {
+    memset(c + shapeDataLength, 0, i - shapeDataLength);
   }
 }
