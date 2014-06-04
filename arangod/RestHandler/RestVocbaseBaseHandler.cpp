@@ -283,10 +283,17 @@ void RestVocbaseBaseHandler::generateNotModified (const TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
+void RestVocbaseBaseHandler::generateDocument (TransactionBase const*,
+                                               const TRI_voc_cid_t cid,
                                                TRI_doc_mptr_t const* document,
                                                TRI_shaper_t* shaper,
                                                const bool generateBody) {
+
+  // The first argument is not actually used here, however, the caller
+  // has to present it such that the compiler verifies for us that a
+  // transaction is ongoing when we get here. This is to protect access
+  // to the master pointer `document` and its data pointer
+  
   if (document == nullptr) {
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
@@ -320,10 +327,10 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
     TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_KEY, _key);
   }
 
-  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_dataptr)->_type;
+  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->_dataptr)->_type;  // PROTECTED by trx passed from above
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_dataptr;
+    TRI_doc_edge_key_marker_t* marker = (TRI_doc_edge_key_marker_t*) document->_dataptr;  // PROTECTED by trx passed from above
     const string from = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
     const string to = DocumentHelper::assembleDocumentId(_resolver.getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
@@ -338,7 +345,7 @@ void RestVocbaseBaseHandler::generateDocument (const TRI_voc_cid_t cid,
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);  // PROTECTED by trx passed from above
   TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);

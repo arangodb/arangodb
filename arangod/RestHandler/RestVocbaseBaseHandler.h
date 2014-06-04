@@ -276,7 +276,8 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (const TRI_voc_cid_t,
+        void generateDocument (TransactionBase const*,
+                               const TRI_voc_cid_t,
                                TRI_doc_mptr_t const*,
                                TRI_shaper_t*,
                                const bool);

@@ -526,12 +526,12 @@ size_t TRI_DocumentIteratorPrimaryCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*) mptr->_dataptr) + ((TRI_doc_document_key_marker_t const*) mptr->_dataptr)->_offsetKey;
+    return ((char const*) mptr->_dataptr) + ((TRI_doc_document_key_marker_t const*) mptr->_dataptr)->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
   else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*) mptr->_dataptr) + ((triagens::wal::document_marker_t const*) mptr->_dataptr)->_offsetKey;
+    return ((char const*) mptr->_dataptr) + ((triagens::wal::document_marker_t const*) mptr->_dataptr)->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
   return nullptr;
 }
