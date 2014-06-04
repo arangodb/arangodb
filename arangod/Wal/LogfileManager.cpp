@@ -642,7 +642,6 @@ void LogfileManager::setLogfileSealed (Logfile::IdType id) {
     return;
   }
 
-std::cout << "SEALING LOGFILE\n";
   (*it).second->setStatus(Logfile::StatusType::SEALED);
   _lastSealedId = id;
 }
