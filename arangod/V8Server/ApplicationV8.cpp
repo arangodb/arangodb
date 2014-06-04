@@ -246,7 +246,9 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _stopping(0),
     _gcThread(0),
     _scheduler(scheduler),
-    _dispatcher(dispatcher) {
+    _dispatcher(dispatcher),
+    _definedBooleans(),
+    _startupFile("server/server.js") {
 
   assert(_server != 0);
 }
@@ -779,6 +781,14 @@ void ApplicationV8::prepareActions () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets an alternate init file
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::setStartupFile (const string& file) {
+  _startupFile = file;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -922,7 +932,7 @@ void ApplicationV8::close () {
   _contextCondition.broadcast();
 
   // unregister all tasks
-  if (_scheduler != nullptr) {
+  if (_scheduler != nullptr && _scheduler->scheduler() != nullptr) {
     _scheduler->scheduler()->unregisterUserTasks();
   }
 
@@ -1001,7 +1011,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   files.push_back("common/bootstrap/monkeypatches.js");
 
   files.push_back("server/bootstrap/module-internal.js");
-  files.push_back("server/server.js"); // needs internal
+
+  if (! _startupFile.empty()) {
+    files.push_back(_startupFile); // needs internal
+  }
 
   LOG_TRACE("initialising V8 context #%d", (int) i);
 

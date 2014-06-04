@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationEndpointServer.h"
@@ -69,11 +69,6 @@ namespace {
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -137,18 +132,9 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Scheduler
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the endpoint servers
@@ -189,22 +175,13 @@ bool ApplicationEndpointServer::buildServers () {
     server->setEndpointList(&_endpointList);
     _servers.push_back(server);
   }
-  
+
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -249,7 +226,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
   if (! ok) {
     return false;
   }
-  
+
   if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
     LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
   }
@@ -337,7 +314,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
         if (save) {
           saveEndpoints();
         }
-        
+
         LOG_DEBUG("reconfigured endpoint '%s'", newEndpoint.c_str());
         // in this case, we updated an existing endpoint and are done
         return true;
@@ -353,7 +330,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
         LOG_DEBUG("bound to endpoint '%s'", newEndpoint.c_str());
         return true;
       }
-      
+
       LOG_WARNING("failed to bind to endpoint '%s'", newEndpoint.c_str());
       return false;
     }
@@ -374,7 +351,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
     // invalid endpoint
     return false;
   }
-  
+
   Endpoint::EncryptionType encryption;
   if (unified.substr(0, 6) == "ssl://") {
     encryption = Endpoint::ENCRYPTION_SSL;
@@ -390,7 +367,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
       WRITE_LOCKER(_endpointsLock);
 
       Endpoint* endpoint;
-      bool ok = _endpointList.remove(unified, &endpoint); 
+      bool ok = _endpointList.remove(unified, &endpoint);
 
       if (! ok) {
         LOG_WARNING("could not remove endpoint '%s'", oldEndpoint.c_str());
@@ -415,7 +392,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
 
   return false;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,7 +411,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
   if (json == 0) {
     return false;
   }
-  
+
   std::map<std::string, std::vector<std::string> > endpoints;
 
   if (! TRI_IsArrayJson(json)) {
@@ -451,7 +428,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       return false;
     }
-    
+
     const string endpoint = string(e->_value._string.data, e->_value._string.length - 1);
 
     vector<string> dbNames;
@@ -475,7 +452,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   std::map<std::string, std::vector<std::string> >::const_iterator it;
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
-      
+
     bool ok = _endpointList.add((*it).first, (*it).second, _backlogSize, _reuseAddress);
 
     if (! ok) {
@@ -493,7 +470,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
 bool ApplicationEndpointServer::saveEndpoints () {
   const std::map<std::string, std::vector<std::string> > endpoints = _endpointList.getAll();
-  
+
   TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == 0) {
@@ -501,7 +478,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
   }
 
   std::map<std::string, std::vector<std::string> >::const_iterator it;
-  
+
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
     TRI_json_t* list = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
@@ -518,10 +495,10 @@ bool ApplicationEndpointServer::saveEndpoints () {
 
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
   }
- 
+
   const string filename = getEndpointsFilename();
   LOG_TRACE("saving endpoint list in file '%s'", filename.c_str());
-  bool ok = TRI_SaveJson(filename.c_str(), json, true);  
+  bool ok = TRI_SaveJson(filename.c_str(), json, true);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -537,15 +514,19 @@ const std::vector<std::string> ApplicationEndpointServer::getEndpointMapping (st
 
   return _endpointList.getMapping(endpoint);
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare () {
+  if (_disabled) {
+    return true;
+  }
+
   loadEndpoints();
-  
-  if (_endpointList.empty()) { 
+
+  if (_endpointList.empty()) {
     LOG_INFO("please use the '--server.endpoint' option");
     LOG_FATAL_AND_EXIT("no endpoints have been specified, giving up");
   }
@@ -558,7 +539,7 @@ bool ApplicationEndpointServer::prepare () {
                                            _allowMethodOverride,
                                            _setContext,
                                            _contextData);
-  
+
   LOG_INFO("using default API compatibility: %ld", (long int) _defaultApiCompatibility);
 
   return true;
@@ -569,6 +550,10 @@ bool ApplicationEndpointServer::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::prepare2 () {
+  if (_disabled) {
+    return true;
+  }
+
   // scheduler might be created after prepare(), so we need to use prepare2()!!
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
@@ -586,6 +571,10 @@ bool ApplicationEndpointServer::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::open () {
+  if (_disabled) {
+    return true;
+  }
+
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;
 
@@ -600,6 +589,10 @@ bool ApplicationEndpointServer::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::close () {
+  if (_disabled) {
+    return;
+  }
+
   // close all open connections
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;
@@ -620,6 +613,10 @@ void ApplicationEndpointServer::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::stop () {
+  if (_disabled) {
+    return;
+  }
+
   for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
     EndpointServer* server = *i;
 
@@ -627,18 +624,9 @@ void ApplicationEndpointServer::stop () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an ssl context
@@ -656,7 +644,7 @@ bool ApplicationEndpointServer::createSslContext () {
     return false;
   }
 
-  LOG_DEBUG("using SSL protocol version '%s'", 
+  LOG_DEBUG("using SSL protocol version '%s'",
             HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol).c_str());
 
   if (! FileUtils::exists(_httpsKeyfile)) {
@@ -747,10 +735,6 @@ bool ApplicationEndpointServer::createSslContext () {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
