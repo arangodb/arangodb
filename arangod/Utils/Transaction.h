@@ -471,6 +471,8 @@ namespace triagens {
             return res;
           }
 
+          TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
+
           if (document->_primaryIndex._nrUsed == 0) {
             TRI_FreeBarrier(*barrier);
             *barrier = 0;
@@ -489,6 +491,8 @@ namespace triagens {
 
             *mptr = *((TRI_doc_mptr_t*) beg[pos]);
           }
+
+          TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
