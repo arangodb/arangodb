@@ -35,6 +35,12 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
+#include "Utils/StandaloneTransaction.h"
+#include "Utils/RestTransactionContext.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/CollectionNameResolver.h"
+
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -443,24 +449,19 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  TRI_UseCollectionVocBase(vocbase, collection);
 
-  TRI_document_collection_t* document = collection->_collection;
+  CollectionNameResolver resolver(vocbase);
+  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext>> trx(vocbase, resolver, collection->_cid);
 
-  if (document == nullptr) {
-    LOG_FATAL_AND_EXIT("collection '_users' cannot be loaded");
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
   }
 
-  assert(document != nullptr);
+  TRI_document_collection_t* document = trx.primaryCollection();
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
-
-  // .............................................................................
-  // inside a write transaction
-  // .............................................................................
-
-  document->beginRead(document);
 
   beg = document->_primaryIndex._table;
   end = beg + document->_primaryIndex._nrAlloc;
@@ -474,7 +475,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
       d = (TRI_doc_mptr_t const*) *ptr;
 
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_dataptr);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_dataptr);  // PROTECTED by trx here
 
       auth = ConvertAuthInfo(vocbase, document, &shapedJson);
 
@@ -488,15 +489,9 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     }
   }
 
-  document->endRead(document);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
-  TRI_ReleaseCollectionVocBase(vocbase, collection);
+  trx.finish(TRI_ERROR_NO_ERROR);
 
   return true;
 }

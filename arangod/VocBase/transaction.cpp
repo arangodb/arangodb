@@ -874,7 +874,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
-    operation.header->_dataptr = slotInfo.mem;
+    operation.header->_dataptr = slotInfo.mem;  // PROTECTED by ongoing trx from operation
   } 
   
   if (isSingleOperationTransaction) {

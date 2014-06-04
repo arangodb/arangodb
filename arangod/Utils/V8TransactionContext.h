@@ -34,10 +34,12 @@
 
 #include "V8/v8-globals.h"
 
+#include "Utils/Transaction.h"
+
 namespace triagens {
   namespace arango {
 
-    class V8TransactionContext {
+    class V8TransactionContext : public TransactionBase {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class V8TransactionContext
