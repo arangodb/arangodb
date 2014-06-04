@@ -68,9 +68,7 @@
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 13.5 -->
 * [General-Graphs](General-Graphs/README.md)
-	* [Graph Constructor](General-Graphs/GraphConstructor.md)
-	* [Vertex Methods](General-Graphs/VertexMethods.md)
-	* [Edge Methods](General-Graphs/EdgeMethods.md)
+	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
 * [Traversals](Traversals/README.md)
 	* [Starting from Scratch](Traversals/StartingFromScratch.md)	
