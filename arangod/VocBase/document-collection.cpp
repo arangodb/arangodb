@@ -1018,6 +1018,8 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     keyString = key;
   }
 
+  uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
+
   // construct a legend for the shaped json
   triagens::basics::JsonLegend legend(document->_shaper);
   int res = legend.addShape(shaped->_sid, &shaped->_data);
@@ -1079,7 +1081,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     void* mem = operation.marker->mem();
     header->_rid     = rid;
     header->_dataptr = mem;  // PROTECTED by trx in trxCollection
-    header->_hash    = TRI_FnvHashString(keyString.c_str());
+    header->_hash    = hash;
 
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
