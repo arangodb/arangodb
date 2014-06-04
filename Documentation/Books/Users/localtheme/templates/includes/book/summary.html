@@ -1,0 +1,47 @@
+{% macro articles(_articles) %}
+    {% for item in _articles %}
+        <li class="chapter {% if item._path == _input %}active{% endif %}" data-level="{{ item.level }}" {% if item.path %}data-path="{{ item.path|mdLink }}"{% endif %}>
+            {% if item.path %}
+            <a href="{{ basePath }}/{{ item.path|mdLink }}">
+                <i class="fa fa-check"></i> <b>{{ item.level }}.</b> {{ item.title }}
+            </a>
+            {% else %}
+            <span><b>{{ item.level }}.</b> {{ item.title }}</span>
+            {% endif %}
+            {% if item.articles.length > 0 %}
+            <ul class="articles">
+                {{ articles(item.articles) }}
+            </ul>
+            {% endif %}
+        </li>
+    {% endfor %}
+{% endmacro %}
+
+<div class="book-summary">
+    <div class="book-search">
+        <input type="text" placeholder="Search" class="form-control" />
+    </div>
+    <ul class="summary">
+        {% if options.links.issues !== false && (options.links.issues || githubId) %}
+        {% set _divider = true %}
+        <li>
+            <a href="{{ options.links.issues|default(githubHost+githubId+"/issues") }}" target="blank"class="issues-link">Need more help?</a>
+        </li>
+        {% endif %}
+        {% if _divider %}
+        <li class="divider"></li>
+        {% endif %}
+
+        <li data-level="0" data-path="index.html">
+            <a href="{{ basePath }}/"><i class="fa fa-check"></i> Introduction</a>
+        </li>
+        {{ articles(summary.chapters) }}
+
+        {% if options.links.gitbook !== false %}
+        <li class="divider"></li>
+        <li>
+            <a href="http://www.gitbook.io/" target="blank" class="gitbook-link">Generated using GitBook</a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
