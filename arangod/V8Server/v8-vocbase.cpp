@@ -2523,7 +2523,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   assert(mptr._dataptr != nullptr);  // PROTECTED by trx here
 
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
   v8::Handle<v8::Object> result = v8::Object::New();
   result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
@@ -10087,7 +10087,7 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 
   // store the document reference
   TRI_voc_rid_t rid = document->_rid;
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(document);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(document);  // PROTECTED by trx from above
 
   result->Set(v8g->_IdKey, V8DocumentId(trx.resolver().getCollectionName(cid), docKey), v8::ReadOnly);
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);

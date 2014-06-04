@@ -363,10 +363,10 @@ bool RestDocumentHandler::createDocument () {
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
+    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
   }
   else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
   }
 
   return true;
@@ -605,7 +605,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&trx, cid, &mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
     }
   }
   else if (ifNoneRid == rid) {
@@ -613,7 +613,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
     }
   }
   else {
@@ -621,7 +621,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateDocument(&trx, cid, &mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
+      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
     }
   }
 
