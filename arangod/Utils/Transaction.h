@@ -552,7 +552,7 @@ namespace triagens {
             for (;  ptr < end;  ++ptr) {
               if (*ptr) {
                 TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-                ids.push_back(TRI_EXTRACT_MARKER_KEY(d));
+                ids.push_back(TRI_EXTRACT_MARKER_KEY(d));  // PROTECTED by trx in trxCollection
               }
             }
           }

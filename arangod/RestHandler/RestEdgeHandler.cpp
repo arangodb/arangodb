@@ -325,10 +325,10 @@ bool RestEdgeHandler::createDocument () {
 
   // generate result
   if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
+    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
   }
   else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
+    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
   }
 
   return true;

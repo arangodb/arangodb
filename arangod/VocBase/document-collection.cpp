@@ -597,7 +597,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   // we found a previous revision in the index
   // the found revision is still alive
   LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-            TRI_EXTRACT_MARKER_KEY(header),
+            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX
             (unsigned long long) found->_rid,
             (unsigned long long) header->_rid);
 
@@ -645,7 +645,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   // remove from main index
   // .............................................................................
 
-  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header)));
+  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header)));  // ONLY IN INDEX
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -703,7 +703,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->_dataptr = marker;  // ONLY IN OPENITERATOR
-  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));
+  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -956,7 +956,7 @@ static void DebugHeadersDocumentCollection (TRI_document_collection_t* document)
     if (p) {
       printf("fid %llu, key %s, rid %llu\n",
              (unsigned long long) p->_fid,
-             (char*) TRI_EXTRACT_MARKER_KEY(p),
+             (char*) TRI_EXTRACT_MARKER_KEY(p),  // ONLY IN OPENITERATOR
              (unsigned long long) p->_rid);
     }
   }
@@ -3526,7 +3526,7 @@ static int FillIndex (TRI_document_collection_t* document,
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
                     (unsigned long long) document->base._info._cid,
-                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),
+                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),  // ONLY IN INDEX
                     (unsigned long long) idx->_iid);
 
         return res;
@@ -5681,7 +5681,7 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);
+  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
