@@ -484,7 +484,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         // set attribute id
         TRI_df_attribute_marker_t* m = reinterpret_cast<TRI_df_attribute_marker_t*>(dst);
         m->_aid = reinterpret_cast<attribute_marker_t const*>(source)->_attributeId;
- 
+
         // copy attribute name into marker
         memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
 
@@ -551,7 +551,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         m->_shape      = orig->_shape;
         m->_offsetKey  = sizeof(TRI_doc_document_key_marker_t);
         m->_offsetJson = m->_offsetKey + TRI_DF_ALIGN_BLOCK(n);
-
+  
         // copy key into marker
         memcpy(dst + m->_offsetKey, key, n);
  
@@ -654,7 +654,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
 
         TRI_doc_deletion_key_marker_t* m = reinterpret_cast<TRI_doc_deletion_key_marker_t*>(dst);
         m->_rid       = orig->_revisionId;
-        m->_tid       = orig->_transactionId;
+        m->_tid       = 0; // convert into standalone transaction 
         m->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
 
         // copy key into marker

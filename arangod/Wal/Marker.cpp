@@ -764,6 +764,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_revisionId    = revisionId;
   m->_transactionId = transactionId;
   m->_shape         = shapedJson->_sid;
+
   m->_offsetKey     = sizeof(document_marker_t); // start position of key
   m->_offsetLegend  = m->_offsetKey + alignedSize(key.size() + 1);
   m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());

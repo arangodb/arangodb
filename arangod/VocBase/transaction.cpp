@@ -865,8 +865,6 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
- //   operation.revert();
-
     return slotInfo.errorCode;
   }
 

@@ -9796,7 +9796,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   TRI_shape_t const* shape = shaper->lookupShapeId(shaper, sid);
 
-  if (shape == 0 || shape->_type != TRI_SHAPE_ARRAY) {
+  if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     return scope.Close(v8::Array::New());
   }
 
@@ -9822,7 +9822,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
 
-    if (att != 0) {
+    if (att != nullptr) {
       result->Set(count++, v8::String::New(att));
     }
   }

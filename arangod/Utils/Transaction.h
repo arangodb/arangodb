@@ -546,6 +546,8 @@ namespace triagens {
               return res;
             }
           }
+    
+          TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
           
           if (document->_primaryIndex._nrUsed > 0) {
             ids.reserve(document->_primaryIndex._nrUsed);
@@ -560,6 +562,8 @@ namespace triagens {
               }
             }
           }
+          
+          TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
           if (lock) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -653,9 +657,12 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
+          
+          TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
 
           if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
+            TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
@@ -665,7 +672,9 @@ namespace triagens {
           *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (*barrier == 0) {
+            TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -714,6 +723,8 @@ namespace triagens {
             }
           }
 
+          TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
+
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
@@ -748,11 +759,14 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
+            
+          TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
 
           if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
-
+            TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
             // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
           }
@@ -760,6 +774,7 @@ namespace triagens {
           *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
           if (*barrier == 0) {
+            TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -790,6 +805,8 @@ namespace triagens {
               }
             }
           }
+            
+          TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
