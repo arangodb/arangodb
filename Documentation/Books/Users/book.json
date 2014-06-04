@@ -1,3 +1,4 @@
 {
-  "theme": "./localtheme"
+    "plugins": ["reveal"],
+	"theme": "./localtheme"
 }

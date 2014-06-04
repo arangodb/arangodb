@@ -1,7 +1,11 @@
-!CHAPTER Working with Edges using REST 
+<a name="working_with_edges_using_rest"></a>
+# Working with Edges using REST
 
 @anchor RestEdgeRead
-@RESTHEADER{GET /_api/edge,reads an edge}
+***
+#### GET /_api/edge
+***
+
 
 @REST{GET /_api/edge/@FA{document-handle}}
 
@@ -11,28 +15,40 @@ See @ref RestDocument for details.
 @copydetails triagens::arango::RestEdgeHandler::createDocument
 
 @anchor RestEdgeUpdate
-@RESTHEADER{PUT /_api/edge,updates an edge}
+***
+#### PUT /_api/edge
+***
+
 
 @REST{PUT /_api/edge/@FA{document-handle}}
 
 See @ref RestDocument for details.
 
 @anchor RestEdgePatch
-@RESTHEADER{PATCH /_api/edge,partially updates an edge}
+***
+#### PATCH /_api/edge
+***
+
 
 @REST{PATCH /_api/edge/@FA{document-handle}}
 
 See @ref RestDocument for details.
 
 @anchor RestEdgeDelete
-@RESTHEADER{DELETE /_api/edge,deletes an edge}
+***
+#### DELETE /_api/edge
+***
+
 
 @REST{DELETE /_api/edge/@FA{document-handle}}
 
 See @ref RestDocument for details.
 
 @anchor RestEdgeHead
-@RESTHEADER{HEAD /_api/edge,reads an edge header}
+***
+#### HEAD /_api/edge
+***
+
 
 @REST{HEAD /_api/edge/@FA{document-handle}}
 

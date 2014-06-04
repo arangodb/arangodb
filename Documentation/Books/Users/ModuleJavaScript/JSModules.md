@@ -1,5 +1,7 @@
-!CHAPTER Modules
-!SUBSECTION CommonJS Modules
+<a name="modules"></a>
+# Modules
+<a name="commonjs_modules"></a>
+### CommonJS Modules
 
 Unfortunately, the JavaScript libraries are just in the process of being
 standardized. CommonJS has defined some important modules. ArangoDB implements
@@ -21,12 +23,14 @@ the following
 - Packages are implemented according to
   <a href="http://wiki.commonjs.org/wiki/Packages">Packages/1.0</a>
 
-!SUBSECTION ArangoDB Specific Modules
+<a name="arangodb_specific_modules"></a>
+### ArangoDB Specific Modules
 
 A lot of the modules, however, are ArangoDB specific. These modules
 are described in the following chapters.
 
-!SUBSECTION Node Modules
+<a name="node_modules"></a>
+### Node Modules
 
 ArangoDB also support some <a href="http://www.nodejs.org/">node</a> modules.
 
@@ -52,7 +56,8 @@ ArangoDB also support some <a href="http://www.nodejs.org/">node</a> modules.
 - <a href="http://nodejs.org/api/url.html">"url"</a>
   has utilities for URL resolution and parsing.
 
-!SUBSECTION Node Packages
+<a name="node_packages"></a>
+### Node Packages
 
 The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
 
@@ -73,7 +78,8 @@ The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
   you would expect in Prototype.js (or Ruby), but without extending any of the
   built-in JavaScript objects.
 
-!SUBSECTION require
+<a name="require"></a>
+### require
 
 ´require(path)´
 

@@ -1,19 +1,22 @@
-!CHAPTER Using jsUnity and node-jscoverage
+<a name="using_jsunity_and_node-jscoverage"></a>
+# Using jsUnity and node-jscoverage
 
 
-!SUBSECTION jsUnity
+<a name="jsunity"></a>
+### jsUnity
 
 The ArangoDB contains a wrapper for [jsUnity](http://jsunity.com/), a
 lightyweight universal JavaScript unit testing framework.
 
-!SUBSECTION Running jsUnity Tests
+<a name="running_jsunity_tests"></a>
+### Running jsUnity Tests
 
 Assume that you have a test file containing
 
     function aqlTestSuite () {
       return {
-  testSizeOfTestCollection : function () {
-    assertEqual(5, 5);
+	testSizeOfTestCollection : function () {
+	  assertEqual(5, 5);
       };
     }
 
@@ -31,7 +34,8 @@ Then you can run the test suite using *jsunity.runTest*
     2012-01-28T19:10:23Z [10671] INFO 0 tests failed
     2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
 
-!SUBSECTION Running jsUnity Tests with Coverage
+<a name="running_jsunity_tests_with_coverage"></a>
+### Running jsUnity Tests with Coverage
 
 You can use the coverage tool
 [node-jscoverage](https://github.com/visionmedia/node-jscoverage)

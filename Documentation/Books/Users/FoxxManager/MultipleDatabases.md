@@ -1,4 +1,5 @@
-!CHAPTER Using Multiple Databases
+<a name="using_multiple_databases"></a>
+# Using Multiple Databases
 
 Regular Foxx applications are database-specific. When using multiple databases
 inside the same ArangoDB instance, there can be different Foxx applications in each

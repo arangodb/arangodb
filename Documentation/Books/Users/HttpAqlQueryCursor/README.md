@@ -1,6 +1,8 @@
-!CHAPTER HTTP Interface for AQL Query Cursors
+<a name="http_interface_for_aql_query_cursors"></a>
+# HTTP Interface for AQL Query Cursors
 
-!SUBSECTION Database Cursors 
+<a name="database_cursors"></a>
+### Database Cursors
 
 This is an introduction to ArangoDB's HTTP Interface for Queries. Results of AQL
 and simple queries are returned as cursors in order to batch the communication

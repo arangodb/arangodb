@@ -1,4 +1,5 @@
-!CHAPTER Locking and Isolation 
+<a name="locking_and_isolation"></a>
+# Locking and Isolation
 
 All collections specified in the `collections` attribute are locked in the
 requested mode (read or write) at transaction start. Locking of multiple collections

@@ -10,29 +10,29 @@ and may contain lists. Each document is uniquely identified by its document hand
 
 For example:
 
-  {
-    "firstName" : "Hugo",
-    "lastName" : "Schlonz",
-    "address" : {
-      "city" : "Hier",
-      "street" : "Strasse 1"
-    },
-    "hobbies" : [
-      "swimming",
-      "biking",
-      "programming"
-    ],
-    "_id" : "demo/schlonz",
-    "_rev" : "13728680",
-    "_key" : "schlonz"
-  }
+	{ 
+	  "firstName" : "Hugo", 
+	  "lastName" : "Schlonz", 
+	  "address" : { 
+	    "city" : "Hier", 
+	    "street" : "Strasse 1" 
+	  }, 
+	  "hobbies" : [ 
+	    "swimming", 
+	    "biking", 
+	    "programming" 
+	  ], 
+	  "_id" : "demo/schlonz", 
+	  "_rev" : "13728680", 
+	  "_key" : "schlonz" 
+	}
 
 <!--
 @EXAMPLE_ARANGOSH_OUTPUT{HandlingDocumentsExample1}
     db.demo.document("demo/schlonz")
 @END_EXAMPLE_ARANGOSH_OUTPUT
 -->
-
+	
 All documents contain special attributes: the document handle in `_id`, the
 document's unique key in `_key` and and the ETag aka document revision in
 `_rev`. The value of the `_key` attribute can be specified by the user when

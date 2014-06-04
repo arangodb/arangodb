@@ -1,4 +1,5 @@
-!CHAPTER Behind the Foxx Manager scenes
+<a name="behind_the_foxx_manager_scenes"></a>
+# Behind the Foxx Manager scenes
 
 In the previous chapter we have seen how to install and uninstall applications. 
 We now go into more details.
@@ -15,7 +16,8 @@ When installing an application, the steps "fetch", "mount", and "setup" are
 executed automatically. When uninstalling an application, the steps "teardown" 
 and "unmount" are executed automatically.
 
-!SUBSECTION Installing an application manually
+<a name="installing_an_application_manually"></a>
+### Installing an application manually
 
 We are now going to install the hello world application manually. You can use `search` 
 to find application in your local copy of the central repository.
@@ -119,7 +121,8 @@ As you can see, there are two instances of the application under two mount
 paths in two different versions. As the collections are not shared between 
 applications, they are completely independent from each other.
 
-!SUBSECTION Uninstalling an application manually
+<a name="uninstalling_an_application_manually"></a>
+### Uninstalling an application manually
 
 Now let us uninstall the application again. First we have to call the 
 teardown script, which will remove the collection `hello_texts`.
@@ -131,7 +134,8 @@ however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
 
-!SUBSECTION Removing all mounts of an application
+<a name="removing_all_mounts_of_an_application"></a>
+### Removing all mounts of an application
 
 The same application might be mounted multiple times under different mount
 paths. To get rid of all mounted instances of an application, there is the
@@ -141,7 +145,8 @@ of the application, and finally will remove the application directory, too.
 This will remove all data of all instances of the application and also the
 application directory, code and configured. Use with care!
 
-!SUBSECTION Making changes to an existing application
+<a name="making_changes_to_an_existing_application"></a>
+### Making changes to an existing application
 
 There are two options for deploying local changes to an existing application:
 
@@ -162,7 +167,8 @@ There are two options for deploying local changes to an existing application:
   to be already installed under the `/hello` mount point. The application's
   setup function will be called when invoking `replace` but not `teardown`.
 
-!SUBSECTION Installing an application from your own Github repository
+<a name="installing_an_application_from_your_own_github_repository"></a>
+### Installing an application from your own Github repository
 
 So far we have installed Foxx applications from the central Github repository 
 "arangodb/foxx-apps". It is also possible to install an application from another
@@ -177,7 +183,8 @@ Example:
     unix> foxx-manager fetch github arangodb/fugu
     unix> foxx-manager mount fugu /fugu
 
-!SUBSECTION Installing an application from a local directory
+<a name="installing_an_application_from_a_local_directory"></a>
+### Installing an application from a local directory
 
 You may also install Foxx applications which are already located in the 
 filesystem. Again, you can use the `fetch` command, but with the `directory`
@@ -189,7 +196,8 @@ Example:
     unix> foxx-manager fetch directory /home/developer/apps/myapp
     unix> foxx-manager mount myapp /myapp
 
-!SUBSECTION Installing an application from a zip file
+<a name="installing_an_application_from_a_zip_file"></a>
+### Installing an application from a zip file
 
 It is also possible to install an application contained in a zip file.
 You can use the `fetch` command again, with the `zip` type. Note that 

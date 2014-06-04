@@ -14,7 +14,7 @@ will be undefined which of the matching documents will get removed/modified.
 
 !SUBSUBSECTION Examples
 
-  arangod> db.content.removeByExample({ "domain": "de.celler" })
+	arangod> db.content.removeByExample({ "domain": "de.celler" })
 
 `collection.replaceByExample( example, newValue)`
 
@@ -30,7 +30,7 @@ The optional limit parameter can be used to restrict the number of replacements 
 
 !SUBSUBSECTION Examples
 
-  arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
+	arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
 
 `collection.updateByExample( example, newValue)`
 
@@ -48,7 +48,7 @@ The optional limit parameter can be used to restrict the number of updates to th
 
 !SUBSUBSECTION Examples
 
-  arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
+	arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
 
 
 <!--

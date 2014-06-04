@@ -1,4 +1,5 @@
-!CHAPTER Details about the ArangoDB Server
+<a name="details_about_the_arangodb_server"></a>
+# Details about the ArangoDB Server
 
 
 The ArangoDB database server has two modes of operation: As a server, where it
@@ -31,7 +32,8 @@ After starting the server, point your favorite browser to:
 
 to access the administration front-end.
 
-!SECTION Linux
+<a name="linux"></a>
+## Linux
 
 To start the server at system boot time you should use one of the 
 pre-rolled packages that will install the necessary start / stop
@@ -55,7 +57,8 @@ On many systems this can be achieved with the following command:
 
     unix> kill -2 `pidof arangod`
 
-!SECTION Frequently Used Options
+<a name="frequently_used_options"></a>
+## Frequently Used Options
 
 The following command-line options are frequently used. For a full
 list of options see [here](../CommandLineOptions/README.md).
@@ -90,17 +93,18 @@ Specifies an endpoint for HTTP requests by clients. Endpoints have the following
 
 If a TCP/IP endpoint is specified without a port number, then the default port (8529) will be used. If multiple endpoints need to be used, the option can be repeated multiple times.
 
-!SUBSUBSECTION Examples
+<a name="examples"></a>
+#### Examples
 
-  unix> ./arangod --server.endpoint tcp://127.0.0.1:8529
-  --server.endpoint ssl://127.0.0.1:8530
-  --server.keyfile server.pem /tmp/vocbase
-  2012-07-26T07:07:47Z [8161] INFO using SSL protocol version 'TLSv1'
-  2012-07-26T07:07:48Z [8161] INFO using endpoint 'ssl://127.0.0.1:8530' for http ssl requests
-  2012-07-26T07:07:48Z [8161] INFO using endpoint 'tcp://127.0.0.1:8529' for http tcp requests
-  2012-07-26T07:07:49Z [8161] INFO ArangoDB (version 1.1.alpha) is ready for business
-  2012-07-26T07:07:49Z [8161] INFO Have Fun!
-  Note that if you are using SSL-encrypted endpoints, you must also supply the path to a server certificate using the --server.keyfile option.
+	unix> ./arangod --server.endpoint tcp://127.0.0.1:8529
+	--server.endpoint ssl://127.0.0.1:8530
+	--server.keyfile server.pem /tmp/vocbase
+	2012-07-26T07:07:47Z [8161] INFO using SSL protocol version 'TLSv1'
+	2012-07-26T07:07:48Z [8161] INFO using endpoint 'ssl://127.0.0.1:8530' for http ssl requests
+	2012-07-26T07:07:48Z [8161] INFO using endpoint 'tcp://127.0.0.1:8529' for http tcp requests
+	2012-07-26T07:07:49Z [8161] INFO ArangoDB (version 1.1.alpha) is ready for business
+	2012-07-26T07:07:49Z [8161] INFO Have Fun!
+	Note that if you are using SSL-encrypted endpoints, you must also supply the path to a server certificate using the --server.keyfile option.
 
 Endpoints can also be changed at runtime. Please refer to HTTP Interface for Endpoints for more details.
 

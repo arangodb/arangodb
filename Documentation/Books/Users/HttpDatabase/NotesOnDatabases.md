@@ -1,4 +1,5 @@
-!CHAPTER Notes on Databases
+<a name="notes_on_databases"></a>
+# Notes on Databases
 
 Please keep in mind that each database contains its own system collections,
 which need to set up when a database is created. This will make the creation

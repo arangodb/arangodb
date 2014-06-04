@@ -1,6 +1,8 @@
-!CHAPTER Advanced features
+<a name="advanced_features"></a>
+# Advanced features
 
-!SUBSECTION Subqueries 
+<a name="subqueries"></a>
+### Subqueries
 
 Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting
@@ -11,11 +13,11 @@ explicitly mark their start and end points:
 
     FOR u IN users
       LET recommendations = ( 
-  FOR r IN recommendations
-    FILTER u.id == r.userId
-    SORT u.rank DESC
-    LIMIT 10
-    RETURN r
+	FOR r IN recommendations
+	  FILTER u.id == r.userId
+	  SORT u.rank DESC
+	  LIMIT 10
+	  RETURN r
       )
       RETURN { "user" : u, "recommendations" : recommendations }
 
@@ -23,13 +25,14 @@ explicitly mark their start and end points:
     FOR u IN users
       COLLECT city = u.city INTO g
       RETURN { "city" : city, "numUsers" : LENGTH(g), "maxRating": MAX(
-  FOR r IN g
-    RETURN r.user.rating
+	FOR r IN g 
+	  RETURN r.user.rating
       ) }
 
 Subqueries might also include other subqueries themselves.
 
-!SUBSECTION Variable expansion
+<a name="variable_expansion"></a>
+### Variable expansion
 
 In order to access a named attribute from all elements in a list easily, AQL
 offers the shortcut operator `[*]` for variable expansion.

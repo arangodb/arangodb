@@ -1,4 +1,5 @@
-!CHAPTER Accessing Cursors via HTTP 
+<a name="accessing_cursors_via_http"></a>
+# Accessing Cursors via HTTP
 
 @anchor HttpCursorPost
 @copydetails JSF_post_api_cursor

@@ -1,6 +1,8 @@
-!CHAPTER ArangoDB's Actions
+<a name="arangodb's_actions"></a>
+# ArangoDB's Actions
 
-!SUBSECTION Introduction to User Actions
+<a name="introduction_to_user_actions"></a>
+### Introduction to User Actions
 
 In some ways the communication layer of the ArangoDB server behaves like a Web
 server. Unlike a Web server, it normally responds to HTTP requests by delivering
@@ -53,7 +55,8 @@ Note that unlike node.js, ArangoDB is multi-threaded and there is no easy way to
 share state between queries inside the JavaScript engine. If such state
 information is required, you need to use the database itself.
 
-!SECTION A Hello World Example
+<a name="a_hello_world_example"></a>
+## A Hello World Example
 
 The client API or browser sends a HTTP request to the ArangoDB server and the
 server returns a HTTP response to the client. A HTTP request consists of a
@@ -102,7 +105,8 @@ Now use the browser and access
 
 You should see the `Hello World` in our browser.
 
-!SECTION Matching a URL
+<a name="matching_a_url"></a>
+## Matching a URL
 
 There are a lot of options for the `url` attribute. If you define different
 routing for the same path, then the following simple rule is applied in order to
@@ -110,7 +114,8 @@ determine which match wins: If there are two matches, then the more specific
 wins. I. e, if there is a wildcard match and an exact match, the exact match is
 preferred. If there is a short and a long match, the longer match wins.
 
-!SUBSECTION Exact Match
+<a name="exact_match"></a>
+### Exact Match
 
 If the definition is
 
@@ -141,7 +146,8 @@ HTTP `HEAD` only, with all other HTTP methods being disabled. Calling a URL
 with an unsupported or disabled HTTP method will result in an HTTP 501 
 (not implemented) error.
 
-!SUBSECTION Prefix Match
+<a name="prefix_match"></a>
+### Prefix Match
 
 If the definition is
 
@@ -169,7 +175,8 @@ If you define two routes
 then the second route will be used for `/hello/world/emil` because it is more
 specific.
 
-!SUBSECTION Parameterized Match
+<a name="parameterized_match"></a>
+### Parameterized Match
 
 A parameterized match is similar to a prefix match, but the parameters are also
 allowed inside the URL path.
@@ -186,7 +193,8 @@ then the URL must have three parts, the first part being `hello` and the third
 part `world`. For example, `/hello/emil/world` will match, while
 `/hello/emil/meyer/world` will not.
 
-!SUBSECTION Constraint Match
+<a name="constraint_match"></a>
+### Constraint Match
 
 A constraint match is similar to a parameterized match, but the parameters can
 carry constraints.
@@ -210,13 +218,14 @@ It is possible to use more then one constraint for the same URL part.
     { 
       url: { 
         match: "/hello/:name|:id/world",
-  constraint: {
+	constraint: { 
           name: "/[a-z]+/", id: "/[0-9]+/" 
         } 
       }
     }
 
-!SUBSECTION Optional Match
+<a name="optional_match"></a>
+### Optional Match
 
 An optional match is similar to a parameterized match, but the last parameter is
 optional.
@@ -244,7 +253,8 @@ then the URL `/hello/world` will be matched by the first route, because it is
 the most specific. The URL `/hello/you` will be matched by the second route,
 because it is more specific than the prefix match.
 
-!SUBSECTION Method Restriction
+<a name="method_restriction"></a>
+### Method Restriction
 
 You can restrict the match to specific HTTP methods.
 
@@ -268,7 +278,8 @@ disabled:
       url: "/hello/world" 
     }
 
-!SUBSECTION More on Matching
+<a name="more_on_matching"></a>
+### More on Matching
 
 Remember that the more specific match wins. 
 
@@ -297,14 +308,15 @@ to test the above examples.
 
     {
       routes: [
-  { url: { match: "/hello/world" }, content: "route 1" },
-  { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
-  { url: { match: "/:something/world" }, content: "route 3" },
-  { url: { match: "/hello/*" }, content: "route 4" },
+	{ url: { match: "/hello/world" }, content: "route 1" },
+	{ url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
+	{ url: { match: "/:something/world" }, content: "route 3" },
+	{ url: { match: "/hello/*" }, content: "route 4" },
       ]
     }
 
-!SECTION A Hello World Example for JSON
+<a name="a_hello_world_example_for_json"></a>
+## A Hello World Example for JSON
 
 If you change the example slightly, then a JSON object will be delivered.
 
@@ -330,20 +342,22 @@ a browser. Or use `curl` to access the server.
     bash> curl "http://127.0.0.1:8529/hello/json" && echo
     { "hello" : "world" }
 
-!SECTION Delivering Content
+<a name="delivering_content"></a>
+## Delivering Content
 
 There are a lot of different ways on how to deliver content. We have already
 seen the simplest one, where static content is delivered. The fun, however,
 starts when delivering dynamic content.
 
-!SUBSECTION Static Content
+<a name="static_content"></a>
+### Static Content
 
 You can specify a body and a content-type.
 
     { 
       content: {
-  contentType: "text/html",
-  body: "<html><body>Hello World</body></html>"
+	contentType: "text/html",
+	body: "<html><body>Hello World</body></html>"
       }
     }
 
@@ -353,7 +367,8 @@ If the content type is `text/plain` then you can use the short-cut
       content: "Hello World" 
     }
 
-!SUBSECTION A Simple Action
+<a name="a_simple_action"></a>
+### A Simple Action
 
 The simplest dynamic action is:
 
@@ -431,7 +446,8 @@ will contain the following attribute
       action: "jump" 
     } 
 
-!SUBSECTION Action Controller
+<a name="action_controller"></a>
+### Action Controller
 
 As an alternative to the simple action, you can use controllers. A controller is
 a module, defines the function `get`, `put`, `post`, `delete`, `head`,
@@ -447,7 +463,8 @@ For example
       } 
     });
 
-!SUBSECTION Prefix Action Controller
+<a name="prefix_action_controller"></a>
+### Prefix Action Controller
 
 The controller is selected when the definition is read. There is a more
 flexible, but slower and maybe insecure variant, the prefix controller.
@@ -482,7 +499,8 @@ The definition
 
 is a short-cut for a prefix controller definition.
 
-!SUBSECTION Function Action
+<a name="function_action"></a>
+### Function Action
 
 You can also store a function directly in the routing table.
 
@@ -495,7 +513,8 @@ For example
       } 
     });
 
-!SUBSECTION Requests and Responses
+<a name="requests_and_responses"></a>
+### Requests and Responses
 
 The controller must define handler functions which take a request object and
 fill the response object.
@@ -573,7 +592,8 @@ You should now see the options in the result.
       }
     }
 
-!SECTION Modifying Request and Response
+<a name="modifying_request_and_response"></a>
+## Modifying Request and Response
 
 As we've seen in the previous examples, actions get called with the request and
 response objects (named `req` and `res` in the examples) passed as parameters to
@@ -631,7 +651,8 @@ and set the HTTP header `Content-Encoding: binary`. The opposite can be achieved
 with the `base64encode` transformation: ArangoDB will then automatically
 base64-encode the body and set a `Content-Encoding: base64` HTTP header.
 
-!SECTION Writing dynamic action handlers
+<a name="writing_dynamic_action_handlers"></a>
+## Writing dynamic action handlers
 
 To write your own dynamic action handlers, you must put them into modules.
 
@@ -667,13 +688,15 @@ Now use the browser and access
 
 You will see that the module's do function has been executed.
 
-!SECTION A Word about Caching
+<a name="a_word_about_caching"></a>
+## A Word about Caching
 
 Sometimes it might seem that your change do not take effect. In this case the
 culprit could be one of the caches. With dynamic actions there are two caches
 involved:
 
-!SUBSECTION The Routing Cache
+<a name="the_routing_cache"></a>
+### The Routing Cache
 
 
 The routing cache stores the routing information computed from the `_routing`
@@ -683,7 +706,8 @@ collection. Whenever you change this collection manually, you need to call
 
 in order to rebuild the cache.
 
-!SUBSECTION The Modules Cache
+<a name="the_modules_cache"></a>
+### The Modules Cache
 
 
 If you use a dynamic action and this action is stored in module, then the
@@ -696,7 +720,8 @@ Whenever you change the `modules` collections manually, you need to call
 
 in order to rebuild the cache.
 
-!SUBSECTION Flush Order
+<a name="flush_order"></a>
+### Flush Order
 
 
 If you define a dynamic routing and the controller, then you need to flush the
@@ -707,11 +732,13 @@ first.
     arangosh> require("internal").flushServerModules();
     arangosh> require("internal").reloadRouting();
 
-!SECTION Advanced Usages
+<a name="advanced_usages"></a>
+## Advanced Usages
 
 For detailed information see the reference manual.
 
-!SUBSECTION Redirects
+<a name="redirects"></a>
+### Redirects
 
 Use the following for a permanent redirect:
 
@@ -726,7 +753,8 @@ Use the following for a permanent redirect:
       } 
     });
 
-!SUBSECTION Routing Bundles
+<a name="routing_bundles"></a>
+### Routing Bundles
 
 Instead of adding all routes for package separately, you can
 specify a bundle.
@@ -755,7 +783,8 @@ and use a common prefix.
 
 will define the URL `/test/url1`, `/test/url2`, and `/test/url3`.
 
-!SUBSECTION Writing Middleware
+<a name="writing_middleware"></a>
+### Writing Middleware
 
 Assume, you want to log every request. In this case you can easily define an
 action for the whole url-space `/`. This action simply logs the requests, calls
@@ -793,7 +822,8 @@ started with the new URL. You must ensure that `next(true)` is never
 called without modifying the URL in the request object
 `req`. Otherwise an endless loop will occur.
 
-!SECTION Application Deployment
+<a name="application_deployment"></a>
+## Application Deployment
 
 Using single routes or [bundles](#routing_bundles) can be
 become a bit messy in large applications. Kaerus has written a [deployment tool](https://github.com/kaerus/arangodep) in node.js.
@@ -801,9 +831,11 @@ become a bit messy in large applications. Kaerus has written a [deployment tool]
 Note that there is also [Foxx](../Foxx/README.md) for building applications
 with ArangoDB.
 
-!SECTION Common Pitfalls when using Actions
+<a name="common_pitfalls_when_using_actions"></a>
+## Common Pitfalls when using Actions
    
-!SUBSECTION Caching
+<a name="caching"></a>
+### Caching
 
 
 If you made any changes to the routing but the changes do not have any effect
@@ -820,7 +852,8 @@ You might also be affected by client-side caching.
 Browsers tend to cache content and also redirection URLs. You might need to
 clear or disable the browser cache in some cases to see your changes in effect.
 
-!SUBSECTION Data types
+<a name="data_types"></a>
+### Data types
 
 When processing the request data in an action, please be aware that the data
 type of all URL parameters is `string`. This is because the whole URL is a
@@ -841,7 +874,8 @@ header from a client to ArangoDB
 
 then the header `X-My-Value` will have a value of (string) `5` and not (number) `5`.
 
-!SUBSECTION 501 Not Implemented
+<a name="501_not_implemented"></a>
+### 501 Not Implemented
 
 If you defined a URL in the routing and the URL is accessible fine via 
 HTTP `GET` but returns an HTTP 501 (not implemented) for other HTTP methods 

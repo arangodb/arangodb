@@ -351,7 +351,8 @@ attribute naming conventions.
 
     FOR u IN users
       FOR f IN friends
-  FILTER u.active == true && f.active == true && u.id == f.userId  	RETURN u.name
+	FILTER u.active == true && f.active == true && u.id == f.userId
+	RETURN u.name
 
 In the above example, the attribute names `active`, `name`, `id`, and `userId`
 are qualified using the collection names they belong to (`u` and `f`
@@ -542,7 +543,7 @@ type of bind parameter has a name prefixed with an additional `@` symbol (thus
 when using the bind parameter in a query, two `@` symbols must be used).
 
     FOR u IN @@collection
-      FILTER u.active == tru
+      FILTER u.active == true
 	RETURN u
 
 Type and value order {#AqlTypeOrder}
@@ -1381,7 +1382,8 @@ AQL supports the following functions to operate on document values:
       )
 
       [ 
-        { "user1" : { "name" : "J" },     	"user2" : { "name" : "T" } }
+        { "user1" : { "name" : "J" }, 
+  	"user2" : { "name" : "T" } } 
       ]
 
   When merging documents with identical attribute names, the attribute values of the
@@ -1979,7 +1981,7 @@ nested, a cross product of the list elements returned by the individual `FOR`
 statements will be created.
 
     FOR u IN users
-      FOR l IN locati  ns
+      FOR l IN locations
 	RETURN { "user" : u, "location" : l }
 
 In this example, there are two list iterations: an outer iteration over the list
@@ -2115,14 +2117,14 @@ Another use case for `LET` is to declare a complex computation in a subquery,
 making the whole query more readable.
 
     FOR u IN users
-      LET friends  = (
-	FOR f IN fri  nds
-	  FILTER u.id == f.  serId
+      LET friends = (
+	FOR f IN friends 
+	  FILTER u.id == f.userId
 	  RETURN f
       )
-      LET membersh  ps = (
-	FOR m IN mem  erships
-	  FILTER u.id ==  m.userId
+      LET memberships = (
+	FOR m IN memberships
+	  FILTER u.id == m.userId
 	  RETURN m
       )
       RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }
@@ -2183,10 +2185,10 @@ It is required that subqueries be put inside parentheses `(` and `)` to
 explicitly mark their start and end points:
 
     FOR u IN users
-      LET recommenda  ions = (
-	FOR r IN reco  mendations
-	  FILTER u.id  == r.userId
-	  SOR   u.rank DE  C
+      LET recommendations = ( 
+	FOR r IN recommendations
+	  FILTER u.id == r.userId
+	  SORT u.rank DESC
 	  LIMIT 10
 	  RETURN r
       )
@@ -2195,7 +2197,7 @@ explicitly mark their start and end points:
 
     FOR u IN users
       COLLECT city = u.city INTO g
-      RETURN { "city" : city, "numUsers" : LENGTH(g), "m  xRating": M  X(
+      RETURN { "city" : city, "numUsers" : LENGTH(g), "maxRating": MAX(
 	FOR r IN g 
 	  RETURN r.user.rating
       ) }

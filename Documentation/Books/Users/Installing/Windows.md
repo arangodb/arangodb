@@ -1,6 +1,8 @@
-!CHAPTER Windows
+<a name="windows"></a>
+# Windows
 
-!SECTION Choices 
+<a name="choices"></a>
+## Choices
 
 The default installation directory is `c:\Program Files\ArangoDB-1.x.y`. During the
 installation process you may change this. In the following description we will assume
@@ -42,7 +44,8 @@ administrator`).
        file = @ROOTDIR@/var/log/arangodb/arangod.log
 
 
-!SUBSECTION Client, Server and Lock-Files
+<a name="client,_server_and_lock-files"></a>
+### Client, Server and Lock-Files
 
 Please note that ArangoDB consists of a database server and client tools. If you
 start the server, it will place a (read-only) lock file to prevent accidental
@@ -50,7 +53,8 @@ access to the data. The server will attempt to remove this lock file when it is
 started to see if the lock is still valid - this is in case the installation did
 not proceed correctly or if the server terminated unexpectedly.
 
-!SUBSECTION Starting
+<a name="starting"></a>
+### Starting
 
 To start an ArangoDB server instance with networking enabled, use the executable
 `arangod.exe` located in `<ROOTDIR>/bin`. This will use the configuration
@@ -78,13 +82,15 @@ Try to add a new collection and then add some documents to this new collection.
 If you have succeeded in creating a new collection and inserting one or more
 documents, then your installation is working correctly.
 
-!SUBSECTION Advanced Starting
+<a name="advanced_starting"></a>
+### Advanced Starting
 
 If you want to provide our own start scripts, you can set the environment
 variable `ARANGODB_CONFIG_PATH`. This variable should point to a directory
 containing the configuration files.
 
-!SUBSECTION Using the Client
+<a name="using_the_client"></a>
+### Using the Client
 
 To connect to an already running ArangoDB server instance, there is a shell
 `arangosh.exe` located in `<ROOTDIR>/bin`. This starts a shell which can be
@@ -99,7 +105,8 @@ the `arangod.exe` executable.
 `<ROOTDIR>/etc/arangodb/`. Please adjust this to your needs if you want to
 use different connection settings etc.
 
-!SUBSECTION 32bit
+<a name="32bit"></a>
+### 32bit
 
 If you have an EXISTING database, then please note that currently a 32 bit
 version of ArangoDB is NOT compatible with a 64 bit version. This means that
@@ -107,7 +114,8 @@ if you have a database created with a 32 bit version of ArangoDB it may
 become corrupted if you execute a 64 bit version of ArangoDB against the same
 database, and vice versa.
 
-!SUBSECTION Upgrading
+<a name="upgrading"></a>
+### Upgrading
 
 To upgrade an EXISTING database created with a previous version of ArangoDB,
 please execute the server `arangod.exe` with the option
@@ -119,7 +127,8 @@ batch file if you are unsure of the database version you are using.
 You should always check the output for errors to see if the upgrade was
 completed successfully.
 
-!SUBSECTION Uninstalling
+<a name="uninstalling"></a>
+### Uninstalling
 
 To uninstall the Arango server application you can use the windows control panel
 (as you would normally uninstall an application). Note however, that any data
@@ -127,7 +136,8 @@ files created by the Arango server will remain as well as the `<ROOTDIR>`
 directory.  To complete the uninstallation process, remove the data files and
 the `<ROOTDIR>` directory manually.
 
-!SUBSECTION Limitations for Cygwin
+<a name="limitations_for_cygwin"></a>
+### Limitations for Cygwin
 
 Please note some important limitations when running ArangoDB under Cygwin:
 Starting ArangoDB can be started from out of a Cygwin terminal, but pressing

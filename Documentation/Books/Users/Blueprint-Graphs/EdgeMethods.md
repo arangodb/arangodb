@@ -1,4 +1,5 @@
-!CHAPTER Edge Methods
+<a name="edge_methods"></a>
+# Edge Methods
 
 `edge.getId()`
 
@@ -6,14 +7,14 @@ Returns the identifier of the edge.
 
 *Examples*
 
-  arango> v = g.addVertex("v");
-  Vertex("v")
-
-  arango> e = g.addEdge(v, v, 1, "self");
-  Edge(1)
-
-  arango> e.getId();
-  1
+	arango> v = g.addVertex("v");
+	Vertex("v")
+	
+	arango> e = g.addEdge(v, v, 1, "self");
+	Edge(1)
+	
+	arango> e.getId();
+	1
 
 `edge.getInVertex()`
 
@@ -21,14 +22,14 @@ Returns the vertex at the head of the edge.
 
 *Examples*
 
-  arango> v1 = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "self");
-  Edge(2)
-
-  arango> e.getInVertex();
-  Vertex(1)
+	arango> v1 = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "self");
+	Edge(2)
+	
+	arango> e.getInVertex();
+	Vertex(1)
 
 `edge.getLabel()`
 
@@ -36,14 +37,14 @@ Returns the label of the edge.
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "knows");
-  Edge(2)
-
-  arango> e.getLabel();
-  knows
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "knows");
+	Edge(2)
+	
+	arango> e.getLabel();
+	knows
 
 `edge.getOutVertex()`
 
@@ -51,14 +52,14 @@ Returns the vertex at the tail of the edge.
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "self");
-  Edge(2)
-
-  arango> e.getOutVertex();
-  Vertex(1)
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "self");
+	Edge(2)
+	
+	arango> e.getOutVertex();
+	Vertex(1)
 
 `edge.getPeerVertex( vertex)`
 
@@ -66,14 +67,14 @@ Returns the peer vertex of the edge and the vertex.
 
 *Examples*
 
-  arango> v1 = g.addVertex("1");
-  Vertex("1")
-  arango> v2 = g.addVertex("2");
-  Vertex("2")
-  arango> e = g.addEdge(v1, v2, "1->2", "knows");
-  Edge("1->2")
-  arango> e.getPeerVertex(v1);
-  Vertex(2)
+	arango> v1 = g.addVertex("1");
+	Vertex("1")
+	arango> v2 = g.addVertex("2");
+	Vertex("2")
+	arango> e = g.addEdge(v1, v2, "1->2", "knows");
+	Edge("1->2")
+	arango> e.getPeerVertex(v1);
+	Vertex(2)
 
 `edge.getProperty( name)`
 
@@ -81,14 +82,14 @@ Returns the property name an edge.
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "self", { "weight" : 10 });
-  Edge(2)
-
-  arango> e.getProperty("weight");
-  10
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "self", { "weight" : 10 });
+	Edge(2)
+	
+	arango> e.getProperty("weight");
+	10
 
 `edge.getPropertyKeys()`
 
@@ -96,20 +97,20 @@ Returns all propety names an edge.
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "self", { weight: 10 })
-  Edge(2)
-
-  arango> e.getPropertyKeys()
-  [ "weight" ]
-
-  arango> e.setProperty("name", "Hugo");
-  Hugo
-
-  arango> e.getPropertyKeys()
-  [ "weight", "name" ]
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "self", { weight: 10 })
+	Edge(2)
+	
+	arango> e.getPropertyKeys()
+	[ "weight" ]
+	
+	arango> e.setProperty("name", "Hugo");
+	Hugo
+	
+	arango> e.getPropertyKeys()
+	[ "weight", "name" ]
 
 `edge.properties()`
 
@@ -117,14 +118,14 @@ Returns all properties and their values of an edge
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "knows");
-  Edge(2)
-
-  arango> e.properties();
-  { "weight" : 10 }
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "knows");
+	Edge(2)
+	
+	arango> e.properties();
+	{ "weight" : 10 }
 
 `edge.setProperty( name, value)`
 
@@ -132,20 +133,20 @@ Changes or sets the property name an edges to value.
 
 *Examples*
 
-  arango> v = g.addVertex(1);
-  Vertex(1)
-
-  arango> e = g.addEdge(v, v, 2, "self", { weight: 10 })
-  Edge(2)
-
-  arango> e.getPropert("weight")
-  10
-
-  arango> e.setProperty("weight", 20);
-  20
-
-  arango> e.getPropert("weight")
-  20
+	arango> v = g.addVertex(1);
+	Vertex(1)
+	
+	arango> e = g.addEdge(v, v, 2, "self", { weight: 10 })
+	Edge(2)
+	
+	arango> e.getPropert("weight")
+	10
+	
+	arango> e.setProperty("weight", 20);
+	20
+	
+	arango> e.getPropert("weight")
+	20
 
 
 <!--

@@ -1,6 +1,8 @@
-!CHAPTER HTTP Interface for Simple Queries
+<a name="http_interface_for_simple_queries"></a>
+# HTTP Interface for Simple Queries
 
-!SUBSECTION Simple Queries
+<a name="simple_queries"></a>
+### Simple Queries
 
 This is an introduction to ArangoDB's Http interface for simple queries.
 
@@ -9,7 +11,8 @@ i.e., a document reference, all documents, a query-by-example, or a simple geo
 query. In a simple query you can specify exactly one collection and one
 condition. The result can then be sorted and can be split into pages.
 
-!SECTION Working with Simples Queries using HTTP
+<a name="working_with_simples_queries_using_http"></a>
+## Working with Simples Queries using HTTP
 
 To limit the amount of results to be transferred in one batch, simple queries
 support a `batchSize` parameter that can optionally be used to tell the server

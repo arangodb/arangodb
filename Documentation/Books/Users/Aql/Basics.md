@@ -1,6 +1,8 @@
-!CHAPTER Language basics
+<a name="language_basics"></a>
+# Language basics
 
-!SUBSECTION Whitespace 
+<a name="whitespace"></a>
+### Whitespace
 
 Whitespace can be used in the query text to increase its readability.  However,
 for the parser any whitespace (spaces, carriage returns, line feeds, and tab
@@ -8,7 +10,8 @@ stops) does not have any special meaning except that it separates individual
 tokens in the query. Whitespace within strings or names must be enclosed in
 quotes in order to be preserved.
 
-!SUBSECTION Comments 
+<a name="comments"></a>
+### Comments
 
 Comments can be embedded at any position in a query. The text contained in the
 comment is ignored by the AQL parser. Comments cannot be nested, meaning
@@ -22,14 +25,15 @@ AQL supports two types of comments:
   lines as necessary.
 
 
-  /* this is a comment */ RETURN 1
-  /* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1
-  /* this is
-     a multi line
-     comment */
-  // a single line comment
+	/* this is a comment */ RETURN 1
+	/* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1	
+	/* this is
+	   a multi line
+	   comment */
+	// a single line comment
 
-!SUBSECTION Keywords
+<a name="keywords"></a>
+### Keywords
 
 On the top level, AQL offers the following operations:
 - FOR: list iteration
@@ -87,7 +91,8 @@ The current list of keywords is:
 
 Additional keywords might be added in future versions of ArangoDB. 
 
-!SUBSECTION Names
+<a name="names"></a>
+### Names
 
 In general, names are used to identify objects (collections, attributes,
 variables, and functions) in AQL queries.
@@ -105,7 +110,8 @@ allows using otherwise-reserved keywords as names. An example for this is:
 Due to the backticks, `filter` and `sort` are interpreted as names and not as
 keywords here.
 
-!SUBSUBSECTION Collection names
+<a name="collection_names"></a>
+#### Collection names
 
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
@@ -113,7 +119,8 @@ have the same name as a keyword, the name must be enclosed in backticks.
 Please refer to the [Naming Conventions in ArangoDB](../NamingConventions/CollectionNames.md) about collection naming
 conventions.
 
-!SUBSUBSECTION Attribute names
+<a name="attribute_names"></a>
+#### Attribute names
 
 When referring to attributes of documents from a collection, the fully qualified
 attribute name must be used. This is because multiple collections with ambiguous
@@ -125,14 +132,15 @@ attribute naming conventions.
 
     FOR u IN users
       FOR f IN friends
-  FILTER u.active == true && f.active == true && u.id == f.userId
-  RETURN u.name
+	FILTER u.active == true && f.active == true && u.id == f.userId
+	RETURN u.name
 
 In the above example, the attribute names `active`, `name`, `id`, and `userId`
 are qualified using the collection names they belong to (`u` and `f`
 respectively).
 
-!SUBSUBSECTION Variable names
+<a name="variable_names"></a>
+#### Variable names
 
 AQL offers the user to assign values to additional variables in a query.  All
 variables that are assigned a value must have a name that is unique within the
@@ -152,7 +160,8 @@ and upper case), the numbers `0` to `9` and the underscore (`_`) symbol. A
 variable name must not start with a number.  If a variable name starts with the
 underscore character, it must also contain at least one letter (a-z or A-Z).
 
-!SUBSECTION Data types
+<a name="data_types"></a>
+### Data types
 
 AQL supports both primitive and compound data types. The following types are
 available:
@@ -166,7 +175,8 @@ available:
   - list: Sequence of values, referred to by their positions
   - document: Sequence of values, referred to by their names
 
-!SUBSUBSECTION Numeric literals
+<a name="numeric_literals"></a>
+#### Numeric literals
 
 Numeric literals can be integers or real values. They can optionally be signed
 using the `+` or `-` symbols. The scientific notation is also supported.
@@ -183,7 +193,8 @@ using the `+` or `-` symbols. The scientific notation is also supported.
 All numeric values are treated as 64-bit double-precision values internally.
 The internal format used is IEEE 754.
 
-!SUBSUBSECTION String literals
+<a name="string_literals"></a>
+#### String literals
 
 String literals must be enclosed in single or double quotes. If the used quote
 character is to be used itself within the string literal, it must be escaped
@@ -206,7 +217,8 @@ arbitrary binary data if it is not UTF-8 encoded. A workaround to use binary
 data is to encode the data using base64 or other algorithms on the application
 side before storing, and decoding it on application side after retrieval.
 
-!SUBSUBSECTION Lists
+<a name="lists"></a>
+#### Lists
 
 AQL supports two compound types:
 
@@ -251,7 +263,8 @@ is required.
     // access second last list element 
     u.friends[-2]
 
-!SUBSUBSECTION Documents
+<a name="documents"></a>
+#### Documents
 
 The other supported compound type is the document type. Documents are a
 composition of zero to many attributes. Each attribute is a name/value pair.
@@ -284,7 +297,8 @@ Individual document attributes can later be accesses by their names using the
     u.address.city.name
     u.friends[0].name.first
 
-!SUBSECTION Bind parameters
+<a name="bind_parameters"></a>
+### Bind parameters
 
 AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the
@@ -316,9 +330,10 @@ when using the bind parameter in a query, two `@` symbols must be used).
 
     FOR u IN @@collection
       FILTER u.active == true
-  RETURN u
+	RETURN u
 
-!SUBSECTION Type and value order
+<a name="type_and_value_order"></a>
+### Type and value order
 
 When checking for equality or inequality or when determining the sort order of
 values, AQL uses a deterministic algorithm that takes both the data types and
@@ -441,7 +456,8 @@ compared documents are considered equal.
 
     { "a" : 1, "b" : 2 } == { "b" : 2, "a" : 1 }
 
-!SUBSECTION Accessing data from collections
+<a name="accessing_data_from_collections"></a>
+### Accessing data from collections
 
 Collection data can be accessed by specifying a collection name in a query.  A
 collection can be understood as a list of documents, and that is how they are

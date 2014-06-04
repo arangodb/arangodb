@@ -1,4 +1,5 @@
-!CHAPTER JavaScript Interface for managing Endpoints
+<a name="javascript_interface_for_managing_endpoints"></a>
+# JavaScript Interface for managing Endpoints
 
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
@@ -24,7 +25,8 @@ the default database (`_system`) and none of the other databases.
 When not in the default database, you must first switch to it using the 
 @ref JS_UseDatabase "db._useDatabase" method.
 
-!SECTION Configuring and Removing Endpoints
+<a name="configuring_and_removing_endpoints"></a>
+## Configuring and Removing Endpoints
 
 @anchor HandlingEndpointsList
 @copydetails JSF_ArangoDatabase_prototype__listEndpoints

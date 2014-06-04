@@ -1,6 +1,8 @@
-!CHAPTER HTTP Interface for Traversals 
+<a name="http_interface_for_traversals"></a>
+# HTTP Interface for Traversals
 
-!SUBSECTION Traversals
+<a name="traversals"></a>
+### Traversals
 
 ArangoDB's graph traversals are executed on the server. Traversals can be 
 initiated by clients by sending the traversal description for execution to
@@ -14,7 +16,8 @@ Furthermore the ordering of visiting the nodes can be
 specified, for instance depth-first or breadth-first search
 are offered.
 
-!SECTION Executing Traversals via HTTP
+<a name="executing_traversals_via_http"></a>
+## Executing Traversals via HTTP
 
 @anchor HttpTraversalsPost
 @copydetails JSF_post_api_traversal

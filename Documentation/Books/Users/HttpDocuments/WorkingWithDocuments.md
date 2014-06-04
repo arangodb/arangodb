@@ -1,4 +1,5 @@
-!CHAPTER Working with Documents using REST
+<a name="working_with_documents_using_rest"></a>
+# Working with Documents using REST
 
 @CLEARPAGE
 @anchor RestDocumentRead

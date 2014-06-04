@@ -1,4 +1,5 @@
-!CHAPTER Conventions
+<a name="conventions"></a>
+# Conventions
 
 The `::` symbol is used inside AQL as the namespace separator. Using 
 the namespace separator, users can create a multi-level hierarchy of 

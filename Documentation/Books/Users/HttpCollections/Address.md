@@ -1,4 +1,5 @@
-!CHAPTER Address of a Collection
+<a name="address_of_a_collection"></a>
+# Address of a Collection
 
 All collections in ArangoDB have an unique identifier and a unique
 name. ArangoDB internally uses the collection's unique identifier to

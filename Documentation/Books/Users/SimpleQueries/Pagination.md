@@ -1,4 +1,5 @@
-!CHAPTER Pagination 
+<a name="pagination"></a>
+# Pagination
 
 If, for example, you display the result of a user search, then you are in
 general not interested in the completed result set, but only the first 10 or so
@@ -21,20 +22,20 @@ In general the input to limit should be sorted. Otherwise it will be unclear whi
 
 *Examples*
 
-  arango> db.five.all().toArray();
-  [
-    { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
-    { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 },
-    { "_id" : "five/1863832", "_key" : "1863832", "_rev" : "1863832", "doc" : 4 },
-    { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
-    { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 }
-  ]
-
-  arango> db.five.all().limit(2).toArray();
-  [
-    { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
-    { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 }
-  ]
+	arango> db.five.all().toArray();
+	[ 
+	  { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
+	  { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 },
+	  { "_id" : "five/1863832", "_key" : "1863832", "_rev" : "1863832", "doc" : 4 },
+	  { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
+	  { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 } 
+	]
+	
+	arango> db.five.all().limit(2).toArray();
+	[ 
+	  { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
+	  { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 } 
+	]
 
 *query.skip( number)*
 
@@ -44,20 +45,20 @@ In general the input to limit should be sorted. Otherwise it will be unclear whi
 
 *Examples*
 
-  arango> db.five.all().toArray();
-  [
-    { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
-    { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 },
-    { "_id" : "five/1863832", "_key" : "1863832", "_rev" : "1863832", "doc" : 4 },
-    { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
-    { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 }
-  ]
-
-  arango> db.five.all().skip(3).toArray();
-  [
-    { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
-    { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 }
-  ]
+	arango> db.five.all().toArray();
+	[ 
+	  { "_id" : "five/1798296", "_key" : "1798296", "_rev" : "1798296", "doc" : 3 },
+	  { "_id" : "five/1732760", "_key" : "1732760", "_rev" : "1732760", "doc" : 2 },
+	  { "_id" : "five/1863832", "_key" : "1863832", "_rev" : "1863832", "doc" : 4 },
+	  { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
+	  { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 } 
+	]
+	
+	arango> db.five.all().skip(3).toArray();
+	[
+	  { "_id" : "five/1667224", "_key" : "1667224", "_rev" : "1667224", "doc" : 1 },
+	  { "_id" : "five/1929368", "_key" : "1929368", "_rev" : "1929368", "doc" : 5 } 
+	]
 
 
 <!--

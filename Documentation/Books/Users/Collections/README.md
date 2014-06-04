@@ -1,4 +1,5 @@
-!CHAPTER JavaScript Interface to Collections
+<a name="javascript_interface_to_collections"></a>
+# JavaScript Interface to Collections
 
 This is an introduction to ArangoDB's interface for collections and how to handle
 collections from the JavaScript shell _arangosh_. For other languages see the

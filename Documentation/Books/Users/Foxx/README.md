@@ -1,5 +1,7 @@
-!CHAPTER Foxx
-!SUBSECTION Build APIs and simple web applications in ArangoDB
+<a name="foxx"></a>
+# Foxx
+<a name="build_apis_and_simple_web_applications_in_arangodb"></a>
+### Build APIs and simple web applications in ArangoDB
 
 Foxx is an easy way to create APIs and simple web applications from within 
 ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If 
@@ -10,7 +12,8 @@ If you just want to install an existing application, please use the
 [Foxx Manager](../FoxxManager/README.md). If you want to create your own application, 
 please continue reading.
 
-!SUBSECTION Overview
+<a name="overview"></a>
+### Overview
 
 An application built with Foxx is written in JavaScript and deployed to 
 ArangoDB directly. ArangoDB serves this application, you do not need a 
@@ -47,7 +50,8 @@ To represent an entry in this collection it will use a **Model**, which is a wra
 the raw data from the database. Here you can implement helper functions or simple access
 methods.
 
-!SUBSECTION Your first Foxx app in 5 minutes
+<a name="your_first_foxx_app_in_5_minutes"></a>
+### Your first Foxx app in 5 minutes
 
 Let's build an application that sends a plain-text response 
 "Hello YourName!" for all requests to `/dev/my_app/hello/YourName`. 
@@ -120,7 +124,8 @@ application (starting at `/home/user` in our example):
 
 This is your application, and you're ready to use it.
 
-!SUBSECTION Testing the application
+<a name="testing_the_application"></a>
+### Testing the application
 
 Start ArangoDB as follows:
 

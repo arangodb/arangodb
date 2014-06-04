@@ -1,11 +1,14 @@
-!CHAPTER BitArray Indexes
+<a name="bitarray_indexes"></a>
+# BitArray Indexes
 
-!SUBSECTION Introduction to Bit-Array Indexes
+<a name="introduction_to_bit-array_indexes"></a>
+### Introduction to Bit-Array Indexes
 
 It is possible to define a bit-array index on one or more attributes (or paths)
 of a documents.
 
-!SUBSECTION Accessing BitArray Indexes from the Shell
+<a name="accessing_bitarray_indexes_from_the_shell"></a>
+### Accessing BitArray Indexes from the Shell
 
 `collection.ensureBitarray( field1, value1, ..., fieldn, valuen)`
 
@@ -17,51 +20,51 @@ In case that the index was successfully created, the index identifier is returne
 
 In the example below we create a bitarray index with one field and that field can have the values of either 0 or 1. Any document which has the attribute x defined and does not have a value of 0 or 1 will be rejected and therefore not inserted within the collection. Documents without the attribute x defined will not take part in the index.
 
-  arango> arangod> db.example.ensureBitarray("x", [0,1]);
-  {
-  "id" : "2755894/3607862",
-  "unique" : false,
-  "type" : "bitarray",
-  "fields" : [["x", [0, 1]]],
-  "undefined" : false,
-  "isNewlyCreated" : true
-  }
+	arango> arangod> db.example.ensureBitarray("x", [0,1]);
+	{
+	"id" : "2755894/3607862",
+	"unique" : false,
+	"type" : "bitarray",
+	"fields" : [["x", [0, 1]]],
+	"undefined" : false,
+	"isNewlyCreated" : true
+	}
 
 In the example below we create a bitarray index with one field and that field can have the values of either 0, 1 or other (indicated by []). Any document which has the attribute x defined will take part in the index. Documents without the attribute x defined will not take part in the index.
 
-  arangod> db.example.ensureBitarray("x", [0,1,[]]);
-  {
-  "id" : "2755894/4263222",
-  "unique" : false,
-  "type" : "bitarray",
-  "fields" : [["x", [0, 1, [ ]]]],
-  "undefined" : false,
-  "isNewlyCreated" : true
-  }
+	arangod> db.example.ensureBitarray("x", [0,1,[]]);
+	{
+	"id" : "2755894/4263222",
+	"unique" : false,
+	"type" : "bitarray",
+	"fields" : [["x", [0, 1, [ ]]]],
+	"undefined" : false,
+	"isNewlyCreated" : true
+	}
 
 In the example below we create a bitarray index with two fields. Field x can have the values of either 0 or 1; while field y can have the values of 2 or "a". A document which does not have both attributes x and y will not take part within the index. A document which does have both attributes x and y defined must have the values 0 or 1 for attribute x and 2 or a for attribute y, otherwise the document will not be inserted within the collection.
 
-  arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
-  {
-  "id" : "2755894/5246262",
-  "unique" : false,
-  "type" : "bitarray",
-  "fields" : [["x", [0, 1]], ["y", [0, 1]]],
-  "undefined" : false,
-  "isNewlyCreated" : false
-  }
+	arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
+	{
+	"id" : "2755894/5246262",
+	"unique" : false,
+	"type" : "bitarray",
+	"fields" : [["x", [0, 1]], ["y", [0, 1]]],
+	"undefined" : false,
+	"isNewlyCreated" : false
+	}
 
 In the example below we create a bitarray index with two fields. Field x can have the values of either 0 or 1; while field y can have the values of 2, "a" or other . A document which does not have both attributes x and y will not take part within the index. A document which does have both attributes x and y defined must have the values 0 or 1 for attribute x and any value for attribute y will be acceptable, otherwise the document will not be inserted within the collection.
 
-  arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
-  {
-  "id" : "2755894/5770550",
-  "unique" : false,
-  "type" : "bitarray",
-  "fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]],
-  "undefined" : false,
-  "isNewlyCreated" : true
-  }
+	arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
+	{
+	"id" : "2755894/5770550",
+	"unique" : false,
+	"type" : "bitarray",
+	"fields" : [["x", [0, 1]], ["y", [2, "a", [ ]]]],
+	"undefined" : false,
+	"isNewlyCreated" : true
+	}
 
 <!--
 @anchor IndexBitArrayShellEnsureBitarray

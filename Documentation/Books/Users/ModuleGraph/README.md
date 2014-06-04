@@ -1,6 +1,8 @@
-!CHAPTER Module "graph"
+<a name="module_"graph""></a>
+# Module "graph"
 
-!SUBSECTION First Steps with Graphs
+<a name="first_steps_with_graphs"></a>
+### First Steps with Graphs
 
 A Graph consists of vertices and edges. The vertex collection contains the
 documents forming the vertices. The edge collection contains the documents
@@ -8,20 +10,20 @@ forming the edges. Together both collections form a graph. Assume that the
 vertex collection is called `vertices` and the edges collection `edges`, then
 you can build a graph using the *Graph* constructor.
 
-  arango> var Graph = require("org/arangodb/graph").Graph;
-
-  arango> g1 = new Graph("graph", "vertices", "edges");
-  Graph("vertices", "edges")
+	arango> var Graph = require("org/arangodb/graph").Graph;
+	
+	arango> g1 = new Graph("graph", "vertices", "edges");
+	Graph("vertices", "edges")
 
 <!--@verbinclude graph25-->
 
 It is possible to use different edges with the same vertices. For instance, to
 build a new graph with a different edge collection use
 
-  arango> var Graph = require("org/arangodb/graph").Graph;
-
-  arango> g2 = new Graph("graph", "vertices", "alternativeEdges");
-  Graph("vertices", "alternativeEdges")
+	arango> var Graph = require("org/arangodb/graph").Graph;
+	
+	arango> g2 = new Graph("graph", "vertices", "alternativeEdges");
+	Graph("vertices", "alternativeEdges")
 
 <!--@verbinclude graph26 -->
 

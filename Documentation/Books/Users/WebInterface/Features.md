@@ -1,9 +1,11 @@
-!CHAPTER Select Functionality provided by the Web Interface
+<a name="select_functionality_provided_by_the_web_interface"></a>
+# Select Functionality provided by the Web Interface
 
 The following sections provide a very brief overview of some features offered
 in the web interface. Please note that this is not a complete list of features.
 
-!SECTION Dashboard Tab
+<a name="dashboard_tab"></a>
+## Dashboard Tab
 
 The *Dashboard* tab provides statistics which are polled regularly, in a 
 configurable interval, from the ArangoDB server. To adjust which figures should
@@ -19,7 +21,8 @@ status, including:
 - The progress of the replication
 - If there has been a replication error
 
-!SECTION Collections Tab 
+<a name="collections_tab"></a>
+## Collections Tab
 
 The *Collections* tab shows an overview of the loaded and unloaded
 collections present in ArangoDB. System collections (i.e. collections
@@ -40,7 +43,8 @@ line to add a new document to the collection. The document will be created
 instantly, with a system-defined key. The key and all other attributes of the
 document can be adjusted in the following view.
 
-!SECTION Applications Tab
+<a name="applications_tab"></a>
+## Applications Tab
 
 The *Applications* tab provides a list of installed Foxx applications. The view
 is divided into lists of installed and applications that are available for
@@ -51,7 +55,8 @@ itself. Please also note that installed applications will be listed in both
 the *installed* and the *available* section. This is intentional because each
 application can be installed multiple times using different mount points.
 
-!SECTION Graphs Tab 
+<a name="graphs_tab"></a>
+## Graphs Tab
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
 allows browsing ArangoDB graphs stored in the `_graphs` system collection or a
@@ -61,7 +66,8 @@ Please note that the graph viewer requires client-side SVG and that you need a
 browser capable of rendering that. Especially Internet Explorer browsers older
 than version 9 are likely to not support this. 
 
-!SECTION AQL Editor Tab 
+<a name="aql_editor_tab"></a>
+## AQL Editor Tab
 
 The *AQL Editor* tab allows to execute ad-hoc AQL queries.
 
@@ -73,7 +79,8 @@ There is also the option to add own frequently used queries here. Note that own
 queries will be stored in the browser's local storage and the web interface has
 no control over when the browser's local storage is cleared.
 
-!SECTION JS Shell Tab
+<a name="js_shell_tab"></a>
+## JS Shell Tab
 
 The *JS Shell* tab provides access to a JavaScript shell connection to the
 database server.
@@ -86,7 +93,8 @@ executed inside your browser. To contact the ArangoDB server you can use the
     JSH> db.mycollection.save({ _key: "test", value: "something" });
 
 
-!SECTION Logs Tab
+<a name="logs_tab"></a>
+## Logs Tab
 
 You can use the *Logs* tab to browse the most recent log entries provided by the
 ArangoDB database server.
@@ -98,7 +106,8 @@ mechanism. ArangoDB provides several startup options for this.
 The *Logs* tab will only be shown for the `_system` database, and is disabled for
 any other databases.
 
-!SECTION API Tab
+<a name="api_tab"></a>
+## API Tab
 
 The *API* tab provides an overview of ArangoDB's built-in HTTP REST API, with
 documentation and examples. It should be consulted when there is doubt about API

@@ -1,4 +1,5 @@
-!CHAPTER Compiling ArangoDB from scratch
+<a name="compiling_arangodb_from_scratch"></a>
+# Compiling ArangoDB from scratch
 
 The following sections describe how to compile and build the ArangoDB from
 scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
@@ -23,7 +24,8 @@ all-in-one version allows you to compile the ArangoDB without installing all the
 prerequisites. The disadvantage is that it takes longer to compile and you
 cannot make changes to the flex or bison files.
 
-!SUBSECTION Amazon Micro Instance
+<a name="amazon_micro_instance"></a>
+### Amazon Micro Instance
 
 @sohgoh has reported that it is very easy to install ArangoDB on an Amazon
 Micro Instance:
@@ -35,11 +37,13 @@ Micro Instance:
 
 For detailed instructions the following section.
 
-!SECTION All-In-One Version
+<a name="all-in-one_version"></a>
+## All-In-One Version
 
 Note: there are separate instructions for the **devel** version in the next section.
 
-!SUBSECTION Basic System Requirements
+<a name="basic_system_requirements"></a>
+### Basic System Requirements
 
 Verify that your system contains:
 
@@ -60,7 +64,8 @@ Under Mac OS X you also need to install:
 - Xcode
 - scons
 
-!SUBSECTION Download the Source
+<a name="download_the_source"></a>
+### Download the Source
 
 Download the latest source using GIT:
     
@@ -72,7 +77,8 @@ any changes, you can speed up cloning substantially by using the `--single-branc
     
     git clone --single-branch --depth 1 git://github.com/triAGENS/ArangoDB.git
 
-!SUBSECTION Configure
+<a name="configure"></a>
+### Configure
 
 Switch into the ArangoDB directory
 
@@ -85,7 +91,8 @@ In order to configure the build environment execute
 to setup the makefiles. This will check the various system characteristics and
 installed libraries.
 
-!SUBSECTION Compile
+<a name="compile"></a>
+### Compile
 
 Compile the program by executing
 
@@ -95,7 +102,8 @@ This will compile the ArangoDB and create a binary of the server in
 
     ./bin/arangod
 
-!SUBSECTION Test
+<a name="test"></a>
+### Test
 
 Create an empty directory
 
@@ -126,7 +134,8 @@ This should produce a JSON object like
 
 as result.
 
-!SUBSECTION Install
+<a name="install"></a>
+### Install
 
 Install everything by executing
 
@@ -155,9 +164,11 @@ When upgrading from a previous version of ArangoDB, please make sure you inspect
 log file after an upgrade. It may also be necessary to start ArangoDB with the `--upgrade`
 parameter once to perform required upgrade or initialisation tasks.
 
-!SECTION Devel Version
+<a name="devel_version"></a>
+## Devel Version
 
-!SUBSECTION Basic System Requirements
+<a name="basic_system_requirements"></a>
+### Basic System Requirements
 
 Verify that your system contains
 
@@ -199,13 +210,15 @@ If necessary, install or download the prerequisites:
 Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
 
-!SUBSECTION Download the Source
+<a name="download_the_source"></a>
+### Download the Source
 
 Download the latest source using GIT:
 
     git clone git://github.com/triAGENS/ArangoDB.git
 
-!SUBSECTION Setup
+<a name="setup"></a>
+### Setup
 
 Switch into the ArangoDB directory
 
@@ -218,7 +231,8 @@ regenerate this script by using the GNU auto tools. In order to do so, execute
 
 This will call aclocal, autoheader, automake, and autoconf in the correct order.
 
-!SUBSECTION Configure
+<a name="configure"></a>
+### Configure
 
 In order to configure the build environment please execute
 
@@ -295,7 +309,8 @@ Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a `make unittests` run. You also need to
 install the Boost test framework for this.
 
-!SUBSECTION Compiling Go
+<a name="compiling_go"></a>
+### Compiling Go
 
 Users F21 and duralog told us that some systems don't provide an 
 update-to-date version of go. This seems to be the case for at least Ubuntu 
