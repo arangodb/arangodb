@@ -1,5 +1,4 @@
-<a name="first_steps_with_the_foxx_manager"></a>
-# First Steps with the Foxx Manager
+!CHAPTER First Steps with the Foxx Manager
 
 The Foxx manager is a shell program. It should have been installed under `/usr/bin` or `/usr/local/bin`
 when installing the ArangoDB package. An instance of the ArangoDB server must be 

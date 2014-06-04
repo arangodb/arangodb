@@ -1,5 +1,4 @@
-<a name="error_codes_and_meanings"></a>
-# Error codes and meanings
+!CHAPTER Error codes and meanings
 
 @NAVIGATE_ImplementorManualArangoErrors
 @EMBEDTOC{ImplementorManualArangoErrorsTOC}

@@ -1,5 +1,4 @@
-<a name="arangodb_shell_output"></a>
-# ArangoDB Shell Output
+!CHAPTER ArangoDB Shell Output
 
 In general the ArangoDB shell prints its output to the standard output channel
 using the JSON stringifier.

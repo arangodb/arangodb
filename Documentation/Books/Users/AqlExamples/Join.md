@@ -1,5 +1,4 @@
-<a name="joins"></a>
-# Joins
+!CHAPTER Joins
 
 So far we have only dealt with one collection (`users`) at a time. We also have a 
 collection `relations` that stores relationships between users. We will now use
@@ -10,8 +9,7 @@ we'll use all `relations` that have a value of `friend` in their `type` attribut
 Relationships are established by using the `from` and `to` attributes in the 
 `relations` collection, which point to the `id` values in the `users` collection.
 
-<a name="join_tuples"></a>
-### Join tuples
+!SUBSECTION Join tuples
 
 We'll start with a SQL-ish result set and return each tuple (user name, friend id) 
 separately. The AQL query to generate such result is:
@@ -61,8 +59,7 @@ separately. The AQL query to generate such result is:
       } 
     ]
 
-<a name="horizontal_lists"></a>
-### Horizontal lists
+!SUBSECTION Horizontal lists
 
 
 Note that in the above result, a user might be returned multiple times. This is the
@@ -117,8 +114,7 @@ In this query we are still iterating over the users in the `users` collection
 and for each matching user we are executing a sub-query to create the matching
 list of related users.
 
-<a name="self_joins"></a>
-### Self joins
+!SUBSECTION Self joins
 
 
 To not only return friend ids but also the names of friends, we could "join" the

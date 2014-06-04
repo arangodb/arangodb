@@ -12,15 +12,15 @@ fashion. The collection `_users` contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-	{ 
-	  "_id" : "_users/1172449", 
-	  "_rev" : "1172449", 
-	  "_key" : "1172449", 
-	  "active" : true, 
-	  "changePassword" : false, 
-	  "user" : "root", 
-	  "password" : "$1$bd5458a8$8b23e2e1a762f75001ab182235b8ab1b8665bc572b0734a042a501b3c34e567a" 
-	}
+  {
+    "_id" : "_users/1172449",
+    "_rev" : "1172449",
+    "_key" : "1172449",
+    "active" : true,
+    "changePassword" : false,
+    "user" : "root",
+    "password" : "$1$bd5458a8$8b23e2e1a762f75001ab182235b8ab1b8665bc572b0734a042a501b3c34e567a"
+  }
 
 <!--
 

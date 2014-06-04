@@ -1,5 +1,4 @@
-<a name="what_is_arangodb?"></a>
-# What is ArangoDB?
+!CHAPTER What is ArangoDB?
 
 For installation instructions, please refer to the 
 [Installation Manual](../Installing/README.md).
@@ -39,8 +38,7 @@ For more in-depth information:
 - Or give it a [try](http://www.arangodb.org/try)
 
 
-<a name="arangodb_programs"></a>
-## ArangoDB programs
+!SECTION ArangoDB programs 
 
 The ArangoDB package comes with the following programs:
 

@@ -1,5 +1,4 @@
-<a name="frequently_used_options"></a>
-# Frequently Used Options
+!CHAPTER Frequently Used Options
 
 Internally, `foxx-manager` is a wrapper around `arangosh`. That means you can
 use the options of `arangosh`. To retrieve a list of the options for `arangosh`, try

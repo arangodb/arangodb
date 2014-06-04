@@ -1,5 +1,4 @@
-<a name="aql_examples"></a>
-# AQL Examples
+!CHAPTER AQL Examples
 
 
 This page contains some examples how to write queries in AQL. For better

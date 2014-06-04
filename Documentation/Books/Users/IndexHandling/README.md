@@ -1,8 +1,6 @@
-<a name="handling_indexes"></a>
-# Handling Indexes
+!CHAPTER Handling Indexes
 
-<a name="indexes,_identifiers,_handles"></a>
-### Indexes, Identifiers, Handles
+!SUBSECTION Indexes, Identifiers, Handles 
 
 This is an introduction to ArangoDB's interface for indexes in general.  
 There are special sections for 
@@ -12,8 +10,7 @@ There are special sections for
 - [hash indexes](../IndexHash/README.md)
 - [skip-lists](../IndexSkiplist/README.md)
 
-<a name="index"></a>
-#### Index
+!SUBSUBSECTION Index
 
 Indexes are used to allow fast access to documents. For each collection there is always the primary index which is a hash index for the document key (_key attribute). This index cannot be dropped or changed.
 Edge collections will also have an automatically created edges index, which cannot be modified. This index provides quick access to documents via the _from and _to attributes.
@@ -22,40 +19,33 @@ Most user-land indexes can be created by defining the names of the attributes wh
 
 Indexing system attributes such as _id, _key, _from, and _to in user-defined indexes is not supported by any index type. Manually creating an index that relies on any of these attributes is unsupported.
 
-<a name="index_handle"></a>
-#### Index Handle
+!SUBSUBSECTION Index Handle
 An index handle uniquely identifies an index in the database. It is a string and consists of a collection name and an index identifier separated by /.
 
-<a name="geo_index"></a>
-#### Geo Index
+!SUBSUBSECTION Geo Index
 
 A geo index is used to find places on the surface of the earth fast.
 
-<a name="hash_index"></a>
-#### Hash Index
+!SUBSUBSECTION Hash Index
 
 A hash index is used to find documents based on examples. A hash index can be created for one or multiple document attributes.
 A hash index will only be used by queries if all indexed attributes are present in the example or search query, and if all attributes are compared using the equality (== operator). That means the hash index does not support range queries.
 
 If the index is declared unique, then access to the indexed attributes should be fast. The performance degrades if the indexed attribute(s) contain(s) only very few distinct values.
 
-<a name="edges_index"></a>
-#### Edges Index
+!SUBSUBSECTION Edges Index
 
 An edges index is automatically created for edge collections. It contains connections between vertex documents and is invoked when the connecting edges of a vertex are queried. There is no way to explicitly create or delete edge indexes.
 
-<a name="skiplist_index"></a>
-#### Skiplist Index
+!SUBSUBSECTION Skiplist Index
 
 A skiplist is used to find ranges of documents.
 
-<a name="fulltext_index"></a>
-#### Fulltext Index
+!SUBSUBSECTION Fulltext Index
 
 A fulltext index can be used to find words, or prefixes of words inside documents. A fulltext index can be set on one attribute only, and will index all words contained in documents that have a textual value in this attribute. Only words with a (specifyable) minimum length are indexed. Word tokenisation is done using the word boundary analysis provided by libicu, which is taking into account the selected language provided at server start. Words are indexed in their lower-cased form. The index supports complete match queries (full words) and prefix queries.
 
-<a name="address_and_etag_of_an_index"></a>
-## Address and ETag of an Index
+!SECTION Address and ETag of an Index
 
 All indexes in ArangoDB have an index handle. This handle uniquely defines an
 index and is managed by ArangoDB. The interface allows you to access the indexes
@@ -74,8 +64,7 @@ Because the index handle is unique within the database, you can leave out the
 
     db._index("demo/362549736")
 
-<a name="which_index_type_to_use_when"></a>
-## Which Index type to use when
+!SECTION Which Index type to use when
 
 ArangoDB automatically indexes the `_key` attribute in each collection. There
 is no need to index this attribute separately. Please note that a document's
@@ -138,11 +127,9 @@ different usage scenarios:
 
 Currently it is not possible to index system attributes in user-defined indexes.
 
-<a name="working_with_indexes"></a>
-## Working with Indexes
+!SECTION Working with Indexes
 
-<a name="collection_methods"></a>
-### Collection Methods
+!SUBSECTION Collection Methods
 
 `collection.index( index-handle)`
 
@@ -150,10 +137,10 @@ Returns the index with index-handle or null if no such index exists.
 
 *Examples*
 
-	arango> db.example.getIndexes().map(function(x) { return x.id; });
-	["example/0"]
-	arango> db.example.index("93013/0");
-	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+  arango> db.example.getIndexes().map(function(x) { return x.id; });
+  ["example/0"]
+  arango> db.example.index("93013/0");
+  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
 
 returns information about the indexes
 
@@ -163,32 +150,32 @@ Returns a list of all indexes defined for the collection.
 
 *Examples*
 
-	arango> db.demo.getIndexes()
-	[
-	  { 
-	    "id" : "demo/0", 
-	    "type" : "primary",
-	    "fields" : [ "_id" ]
-	  }, 
-	  { 
-	    "id" : "demo/2290971", 
-	    "unique" : true, 
-	    "type" : "hash", 
-	    "fields" : [ "a" ] 
-	  }, 
-	  { 
-	    "id" : "demo/2946331",
-	    "unique" : false, 
-	    "type" : "hash", 
-	    "fields" : [ "b" ] 
-	  },
-	  { 
-	    "id" : "demo/3077403", 
-	    "unique" : false, 
-	    "type" : "skiplist", 
-	    "fields" : [ "c" ]
-	  }
-	]
+  arango> db.demo.getIndexes()
+  [
+    {
+      "id" : "demo/0",
+      "type" : "primary",
+      "fields" : [ "_id" ]
+    },
+    {
+      "id" : "demo/2290971",
+      "unique" : true,
+      "type" : "hash",
+      "fields" : [ "a" ]
+    },
+    {
+      "id" : "demo/2946331",
+      "unique" : false,
+      "type" : "hash",
+      "fields" : [ "b" ]
+    },
+    {
+      "id" : "demo/3077403",
+      "unique" : false,
+      "type" : "skiplist",
+      "fields" : [ "c" ]
+    }
+  ]
 
 drops an index
 
@@ -202,23 +189,23 @@ Same as above. Instead of an index an index handle can be given.
 
 *Examples*
 
-	arango> db.example.ensureSkiplist("a", "b");
-	{ "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-	
-	arango> i = db.example.getIndexes();
-	[
-	  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-	  { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
-	  ]
-	
-	arango> db.example.dropIndex(i[0])
-	false
-	
-	arango> db.example.dropIndex(i[1].id)
-	true
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+  arango> db.example.ensureSkiplist("a", "b");
+  { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+
+  arango> i = db.example.getIndexes();
+  [
+    { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+    { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
+    ]
+
+  arango> db.example.dropIndex(i[0])
+  false
+
+  arango> db.example.dropIndex(i[1].id)
+  true
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
 
 `collection.ensureIndex( index-description)`
 
@@ -240,16 +227,16 @@ Calling this method returns an index object. Whether or not the index object exi
 
 *Examples*
 
-	arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-	{
-	"id" : "example/30242599562",
-	"type" : "hash",
-	"unique" : true,
-	"fields" : [
-	"name"
-	],
-	"isNewlyCreated" : true
-	}
+  arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+  {
+  "id" : "example/30242599562",
+  "type" : "hash",
+  "unique" : true,
+  "fields" : [
+  "name"
+  ],
+  "isNewlyCreated" : true
+  }
 
 
 <!--
@@ -269,8 +256,7 @@ Calling this method returns an index object. Whether or not the index object exi
 @copydetails JS_EnsureIndexVocbaseCol
 -->
 
-<a name="database_methods"></a>
-### Database Methods
+!SUBSECTION Database Methods
 
 `db._index(index-handle)`
 
@@ -278,10 +264,10 @@ Returns the index with index-handle or null if no such index exists.
 
 *Examples*
 
-	arango> db.example.getIndexes().map(function(x) { return x.id; });
-	["example/0"]
-	arango> db._index("example/0");
-	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+  arango> db.example.getIndexes().map(function(x) { return x.id; });
+  ["example/0"]
+  arango> db._index("example/0");
+  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
 
 `db._dropIndex(index)`
 
@@ -293,21 +279,21 @@ Drops the index with index-handle.
 
 *Examples*
 
-	arango> db.example.ensureSkiplist("a", "b");
-	{ "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-	 { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
-	 
-	 arango> db._dropIndex(i[0]);
-	 false
-	 
-	 arango> db._dropIndex(i[1].id);
-	true
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+  arango> db.example.ensureSkiplist("a", "b");
+  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+   { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
+
+   arango> db._dropIndex(i[0]);
+   false
+
+   arango> db._dropIndex(i[1].id);
+  true
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
 
 <!--
 @anchor HandlingIndexesDbRead

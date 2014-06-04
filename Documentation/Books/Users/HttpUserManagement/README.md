@@ -1,11 +1,9 @@
-<a name="http_interface_for_user_management"></a>
-# HTTP Interface for User Management
+!CHAPTER HTTP Interface for User Management
 
 @NAVIGATE_HttpUser
 @EMBEDTOC{HttpUserTOC}
 
-<a name="user_management"></a>
-### User Management
+!SUBSECTION User Management
 
 This is an introduction to ArangoDB's Http interface for managing users.
 
@@ -24,16 +22,11 @@ Please note that user operations are not included in ArangoDB's replication.
 
 @COMMENT{######################################################################}
 @anchor HttpUserSave
-***
-#### POST /_api/user
-***
+@RESTHEADER{POST /_api/user,creates user}
 
+@RESTBODYPARAM{body,json,required}
 
-UNKNOWN RESTBODYPARAM
-
-
-__Description__
-
+@RESTDESCRIPTION
 
 The following data need to be passed in a JSON representation in the body of the
 POST request:
@@ -77,38 +70,30 @@ details. The object has the following attributes:
 
 - `errorMessage`: a descriptive error message
 
-__HTTP Return Codes__
+@RESTRETURNCODES
 
-
-__HTTP Code 201__
-
+@RESTRETURNCODE{201}
 returned if the user can be added by the server.
 
-__HTTP Code 400__
-
+@RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing from the
 request.
 
-UNKNOWN RESTDONE
-
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserReplace
 @RESTHEADER{PUT /_api/user/{user},replaces user}
 
-UNKNOWN RESTURLPARAMETERS
+@RESTURLPARAMETERS
 
-
-UNKNOWN RESTURLPARAM
-
+@RESTURLPARAM{user,string,required}
 The name of the user.
 
-UNKNOWN RESTBODYPARAM
+@RESTBODYPARAM{body,json,required}
 
-
-__Description__
-
+@RESTDESCRIPTION
 
 Replaces the data of an existing user. The name of an existing user must be
 specified in `user`.
@@ -152,42 +137,33 @@ details. The object has the following attributes:
 
 - `errorMessage`: a descriptive error message
 
-__HTTP Return Codes__
+@RESTRETURNCODES
 
-
-__HTTP Code 200__
-
+@RESTRETURNCODE{200}
 Is returned if the user data can be replaced by the server.
 
-__HTTP Code 400__
-
+@RESTRETURNCODE{400}
 The JSON representation is malformed or mandatory data is missing from the
 request.
 
-__HTTP Code 404__
-
+@RESTRETURNCODE{404}
 The specified user does not exist.
 
-UNKNOWN RESTDONE
-
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserUpdate
 @RESTHEADER{PATCH /_api/user/{user},updates user}
 
-UNKNOWN RESTURLPARAMETERS
+@RESTURLPARAMETERS
 
-
-UNKNOWN RESTURLPARAM
-
+@RESTURLPARAM{user,string,required}
 The name of the user.
 
-UNKNOWN RESTBODYPARAM
+@RESTBODYPARAM{body,json,required}
 
-
-__Description__
-
+@RESTDESCRIPTION
 
 Partially updates the data of an existing user. The name of an existing user
 must be specified in `user`.
@@ -233,39 +209,31 @@ details. The object has the following attributes:
 
 - `errorMessage`: a descriptive error message
 
-__HTTP Return Codes__
+@RESTRETURNCODES
 
-
-__HTTP Code 200__
-
+@RESTRETURNCODE{200}
 Is returned if the user data can be replaced by the server.
 
-__HTTP Code 400__
-
+@RESTRETURNCODE{400}
 The JSON representation is malformed or mandatory data is missing from the
 request.
 
-__HTTP Code 404__
-
+@RESTRETURNCODE{404}
 The specified user does not exist.
 
-UNKNOWN RESTDONE
-
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserRemove
 @RESTHEADER{DELETE /_api/user/{user},removes a user}
 
-UNKNOWN RESTURLPARAMETERS
+@RESTURLPARAMETERS
 
-
-UNKNOWN RESTURLPARAM
-
+@RESTURLPARAM{user,string,required}
 The name of the user.
 
-__Description__
-
+@RESTDESCRIPTION
 
 Removes an existing user, identified by `user`.
 
@@ -291,34 +259,27 @@ details. The object has the following attributes:
 
 - `errorMessage`: a descriptive error message
 
-__HTTP Return Codes__
+@RESTRETURNCODES
 
-
-__HTTP Code 202__
-
+@RESTRETURNCODE{202}
 Is returned if the user was removed by the server.
 
-__HTTP Code 404__
-
+@RESTRETURNCODE{404}
 The specified user does not exist.
 
-UNKNOWN RESTDONE
-
+@RESTDONE
 
 @COMMENT{######################################################################}
 @CLEARPAGE
 @anchor HttpUserDocument
 @RESTHEADER{GET /_api/user/{user},fetches a user}
 
-UNKNOWN RESTURLPARAMETERS
+@RESTURLPARAMETERS
 
-
-UNKNOWN RESTURLPARAM
-
+@RESTURLPARAM{user,string,required}
 The name of the user.
 
-__Description__
-
+@RESTDESCRIPTION
 
 Fetches data about the specified user.
 
@@ -334,19 +295,15 @@ success:
 - `changePassword`: an optional flag that specifies whether the user must change
   the password or not.
 
-__HTTP Return Codes__
+@RESTRETURNCODES
 
-
-__HTTP Code 200__
-
+@RESTRETURNCODE{200}
 The user was found.
 
-__HTTP Code 404__
-
+@RESTRETURNCODE{404}
 The user with `user` does not exist.
 
-UNKNOWN RESTDONE
-
+@RESTDONE
 
 @COMMENT{######################################################################}
 @BNAVIGATE_HttpUser

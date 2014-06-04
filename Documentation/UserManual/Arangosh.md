@@ -62,7 +62,7 @@ For a list of available methods for the `db` object, type
 Note that it also possible to execute scripts in arangosh and pass parameters 
 to the file, e.g.:
 
-	> arangosh --javascript.execute myscript.js parameter1 parameter2
+  > arangosh --javascript.execute myscript.js parameter1 parameter2
 
 Inside the script you can use the "ARGUMENTS" array to access the parameters. 
 

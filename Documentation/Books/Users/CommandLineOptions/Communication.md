@@ -1,5 +1,4 @@
-<a name="command-line_options_for_communication"></a>
-# Command-Line Options for Communication
+!CHAPTER Command-Line Options for Communication 
 
 `--scheduler.threads arg`
 An integer argument which sets the number of threads to use in the IO scheduler. The default is 1.

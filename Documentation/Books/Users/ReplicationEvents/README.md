@@ -1,5 +1,4 @@
-<a name="replication_events"></a>
-# Replication Events
+!CHAPTER Replication Events
 
 A database's replication logger in ArangoDB will log all its events into the 
 `_replication` system collection in the same database. The `_replication` 
@@ -10,8 +9,7 @@ is enabled.
 The following sections describe in detail the structure of the log events
 returned by the replication APIs.
 
-<a name="replication_event_types"></a>
-### Replication Event Types
+!SUBSECTION Replication Event Types
 
 The following replication event types will be logged by ArangoDB 1.4:
 
@@ -45,8 +43,7 @@ the `tick` attribute will also be returned for each replication event. The `tick
 value is a sequence number and is used by the replication applier to determine 
 whether a replication event was already processed.
 
-<a name="examples"></a>
-### Examples
+!SUBSECTION Examples
 
 - 1000: the replication logger was stopped:
 
@@ -414,8 +411,7 @@ whether a replication event was already processed.
         "oldRev":"247908302865807"
       }
 
-<a name="transactions"></a>
-### Transactions
+!SUBSECTION Transactions
 
 Transactions are logged as an uninterrupted sequence, starting with a `transaction start` 
 event, and finishing with a `transaction commit` event. Between these two events, all

@@ -7,11 +7,11 @@ Drops a collection and all its indexes.
 
 Drops a collection:
 
-	arango> col = db.examples;
-	[ArangoCollection 109757, "examples" (status unloaded)]
-	arango> col.drop()
-	arango> col;
-	[ArangoCollection 109757, "examples" (status deleted)]
+  arango> col = db.examples;
+  [ArangoCollection 109757, "examples" (status unloaded)]
+  arango> col.drop()
+  arango> col;
+  [ArangoCollection 109757, "examples" (status deleted)]
 
 `collection.truncate()`
 
@@ -58,13 +58,13 @@ Note: some other collection properties, such as type, isVolatile, or keyOptions 
 
 Read all properties
 
-	arango> db.examples.properties()
-	{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
+  arango> db.examples.properties()
+  { "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
 
 Change a property
 
-	arango> db.examples.properties({ waitForSync : false })
-	{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
+  arango> db.examples.properties({ waitForSync : false })
+  { "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
 
 `collection.figures()`
 
@@ -89,8 +89,8 @@ Returns an object containing all collection figures.
 
 *Examples*
 
-	arango> db.demo.figures()
-	{ "alive" : { "count" : 1000, "size" : 45000 }, "dead" : { "count" : 0, "size" : 0, "deletion" : 0 }, "datafiles" : { "count" : 0, "fileSize" : 0 }, "journals" : { "count" : 1, "fileSize" : 33554432 }, "shapes" : { "count" : 7 } }
+  arango> db.demo.figures()
+  { "alive" : { "count" : 1000, "size" : 45000 }, "dead" : { "count" : 0, "size" : 0, "deletion" : 0 }, "datafiles" : { "count" : 0, "fileSize" : 0 }, "journals" : { "count" : 1, "fileSize" : 33554432 }, "shapes" : { "count" : 7 } }
 
 `collection.load()`
 
@@ -98,11 +98,11 @@ Loads a collection into memory.
 
 *Examples*
 
-	arango> col = db.example;
-	[ArangoCollection 164208316, "example" (status unloading)]
-	arango> col.load();
-	arango> col;
-	[ArangoCollection 164208316, "example" (status loaded)]
+  arango> col = db.example;
+  [ArangoCollection 164208316, "example" (status unloading)]
+  arango> col.load();
+  arango> col;
+  [ArangoCollection 164208316, "example" (status loaded)]
 
 `collection.reserve( number)`
 
@@ -136,11 +136,11 @@ Starts unloading a collection from memory. Note that unloading is deferred until
 
 *Examples*
 
-	arango> col = db.example;
-	[ArangoCollection 164208316, "example" (status loaded)]
-	arango> col.unload();
-	arango> col;
-	[ArangoCollection 164208316, "example" (status unloaded)]
+  arango> col = db.example;
+  [ArangoCollection 164208316, "example" (status loaded)]
+  arango> col.unload();
+  arango> col;
+  [ArangoCollection 164208316, "example" (status unloaded)]
 
 `collection.rename( new-name)`
 
@@ -150,11 +150,11 @@ If renaming fails for any reason, an error is thrown.
 
 *Examples*
 
-	arango> c = db.example;
-	[ArangoCollection 68519, "example" (status new born)]
-	arango> c.rename("better-example");
-	arango> c;
-	[ArangoCollection 68519, "better-example" (status new born)]
+  arango> c = db.example;
+  [ArangoCollection 68519, "example" (status new born)]
+  arango> c.rename("better-example");
+  arango> c;
+  [ArangoCollection 68519, "better-example" (status new born)]
 
 `collection.rotate()`
 

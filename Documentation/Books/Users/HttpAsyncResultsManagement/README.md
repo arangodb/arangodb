@@ -1,12 +1,9 @@
-<a name="http_interface_for_async_results_management"></a>
-# HTTP Interface for Async Results Management
-<a name="request_execution"></a>
-### Request Execution
+!CHAPTER HTTP Interface for Async Results Management
+!SUBSECTION Request Execution
 
 ArangoDB provides various methods of executing client requests. Clients can choose the appropriate method on a per-request level based on their throughput, control flow, and durability requirements.
 
-<a name="blocking_execution"></a>
-#### Blocking execution
+!SUBSUBSECTION Blocking execution 
 
 ArangoDB is a multi-threaded server, allowing the processing of multiple client 
 requests at the same time. Communication handling and the actual work can be performed
@@ -26,8 +23,7 @@ it is complete and only then notice that the client no longer listens.
 Thus closing the connection does not help to abort a long running query!
 See below under [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) and [HttpJobPutCancel](../HttpAsyncResultsManagement/ManagingAsyncResults.md) for details.
 
-<a name="fire_and_forget"></a>
-#### Fire and Forget
+!SUBSUBSECTION Fire and Forget
 
 To mitigate client blocking issues, ArangoDB since version 1.4. offers a generic mechanism 
 for non-blocking requests: if clients add the HTTP header `x-arango-async: true` to their
@@ -56,8 +52,7 @@ Finally, please note that it is not possible to cancel such a
 non-blocking request after the fact. If you need to cancel requests,
 use [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) and [HttpJobPutCancel](../HttpAsyncResultsManagement/ManagingAsyncResults.md) below.
 
-<a name="async_execution_and_later_result_retrieval"></a>
-#### Async Execution and later Result Retrieval
+!SUBSUBSECTION Async Execution and later Result Retrieval 
 
 By adding the HTTP header `x-arango-async: store` to a request, clients can instruct
 the ArangoDB server to execute the operation asynchronously as [above](#fire_and_forget)
@@ -88,8 +83,7 @@ from time to time.
 The job queue and the results are kept in memory only on the server, so they might be
 lost in case of a crash.
 
-<a name="canceling_asynchronous_jobs"></a>
-#### Canceling asynchronous jobs
+!SUBSUBSECTION Canceling asynchronous jobs
 
 As mentioned above it is possible to cancel an asynchronously running
 job using its job ID. This is done with a PUT request as described in
@@ -112,8 +106,7 @@ remain tasks within the cluster which have already been distributed to
 the DBservers and it is currently not possible to cancel them as well.
 
 
-<a name="async_execution_and_authentication"></a>
-#### Async Execution and Authentication
+!SUBSUBSECTION Async Execution and Authentication
 
 If a request requires authentication, the authentication procedure is run before 
 queueing. The request will only be queued if it valid credentials and the authentication 

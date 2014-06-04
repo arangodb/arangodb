@@ -100,9 +100,8 @@ for line in f:
     m = r2.match(line)
 
     if m:
-	if fn:
-            func = "void " + fn + " ("
-	    fn = None
+  if fn:
+            func = "void " + fn + " ("  	    fn = Non
 	else:
             name = m.group(1)
             func = "void JSF_" + name + " ("
@@ -127,10 +126,10 @@ for line in f:
     # check for function assigment
     m = r4.match(line)
 
-    if m:
+    if   :
 	if fn:
-            func = "void " + fn + " ("
-	    fn = None
+            func = "void " + fn + "  ("
+	    fn =   one
 	else:
             name = m.group(1)
             func = "void JSF_" + string.replace(name, '.', '_') + " ("

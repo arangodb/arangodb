@@ -1,5 +1,4 @@
-<a name="http_interface_for_bulk_imports"></a>
-# HTTP Interface for Bulk Imports
+!CHAPTER HTTP Interface for Bulk Imports
 
 ArangoDB provides an HTTP interface to import multiple documents at once into a
 collection. This is known as a bulk import.

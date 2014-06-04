@@ -1,5 +1,4 @@
-<a name="getting_information_about_a_collection"></a>
-# Getting Information about a Collection
+!CHAPTER Getting Information about a Collection
 
 @anchor HttpCollectionRead
 @copydetails JSA_get_api_collection_name

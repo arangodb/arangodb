@@ -1,8 +1,6 @@
-<a name="http_interface_for_transactions"></a>
-# HTTP Interface for Transactions
+!CHAPTER HTTP Interface for Transactions
 
-<a name="transactions"></a>
-### Transactions
+!SUBSECTION Transactions
 
 ArangoDB's transactions are executed on the server. Transactions can be 
 initiated by clients by sending the transaction description for execution to
@@ -20,8 +18,7 @@ rolled back.
 For a more detailed description of how transactions work in ArangoDB please
 refer to @ref Transactions. 
 
-<a name="executing_transactions_via_http"></a>
-## Executing Transactions via HTTP
+!SECTION Executing Transactions via HTTP
 
 @anchor HttpTransactionsPost
 @copydetails JSF_post_api_transaction

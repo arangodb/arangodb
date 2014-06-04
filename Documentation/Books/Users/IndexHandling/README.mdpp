@@ -137,10 +137,10 @@ Returns the index with index-handle or null if no such index exists.
 
 *Examples*
 
-	arango> db.example.getIndexes().map(function(x) { return x.id; });
-	["example/0"]
-	arango> db.example.index("93013/0");
-	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+  arango> db.example.getIndexes().map(function(x) { return x.id; });
+  ["example/0"]
+  arango> db.example.index("93013/0");
+  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
 
 returns information about the indexes
 
@@ -150,32 +150,32 @@ Returns a list of all indexes defined for the collection.
 
 *Examples*
 
-	arango> db.demo.getIndexes()
-	[
-	  { 
-	    "id" : "demo/0", 
-	    "type" : "primary",
-	    "fields" : [ "_id" ]
-	  }, 
-	  { 
-	    "id" : "demo/2290971", 
-	    "unique" : true, 
-	    "type" : "hash", 
-	    "fields" : [ "a" ] 
-	  }, 
-	  { 
-	    "id" : "demo/2946331",
-	    "unique" : false, 
-	    "type" : "hash", 
-	    "fields" : [ "b" ] 
-	  },
-	  { 
-	    "id" : "demo/3077403", 
-	    "unique" : false, 
-	    "type" : "skiplist", 
-	    "fields" : [ "c" ]
-	  }
-	]
+  arango> db.demo.getIndexes()
+  [
+    {
+      "id" : "demo/0",
+      "type" : "primary",
+      "fields" : [ "_id" ]
+    },
+    {
+      "id" : "demo/2290971",
+      "unique" : true,
+      "type" : "hash",
+      "fields" : [ "a" ]
+    },
+    {
+      "id" : "demo/2946331",
+      "unique" : false,
+      "type" : "hash",
+      "fields" : [ "b" ]
+    },
+    {
+      "id" : "demo/3077403",
+      "unique" : false,
+      "type" : "skiplist",
+      "fields" : [ "c" ]
+    }
+  ]
 
 drops an index
 
@@ -189,23 +189,23 @@ Same as above. Instead of an index an index handle can be given.
 
 *Examples*
 
-	arango> db.example.ensureSkiplist("a", "b");
-	{ "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-	
-	arango> i = db.example.getIndexes();
-	[
-	  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-	  { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
-	  ]
-	
-	arango> db.example.dropIndex(i[0])
-	false
-	
-	arango> db.example.dropIndex(i[1].id)
-	true
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+  arango> db.example.ensureSkiplist("a", "b");
+  { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+
+  arango> i = db.example.getIndexes();
+  [
+    { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+    { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
+    ]
+
+  arango> db.example.dropIndex(i[0])
+  false
+
+  arango> db.example.dropIndex(i[1].id)
+  true
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
 
 `collection.ensureIndex( index-description)`
 
@@ -227,16 +227,16 @@ Calling this method returns an index object. Whether or not the index object exi
 
 *Examples*
 
-	arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-	{
-	"id" : "example/30242599562",
-	"type" : "hash",
-	"unique" : true,
-	"fields" : [
-	"name"
-	],
-	"isNewlyCreated" : true
-	}
+  arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+  {
+  "id" : "example/30242599562",
+  "type" : "hash",
+  "unique" : true,
+  "fields" : [
+  "name"
+  ],
+  "isNewlyCreated" : true
+  }
 
 
 <!--
@@ -264,10 +264,10 @@ Returns the index with index-handle or null if no such index exists.
 
 *Examples*
 
-	arango> db.example.getIndexes().map(function(x) { return x.id; });
-	["example/0"]
-	arango> db._index("example/0");
-	{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+  arango> db.example.getIndexes().map(function(x) { return x.id; });
+  ["example/0"]
+  arango> db._index("example/0");
+  { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
 
 `db._dropIndex(index)`
 
@@ -279,21 +279,21 @@ Drops the index with index-handle.
 
 *Examples*
 
-	arango> db.example.ensureSkiplist("a", "b");
-	{ "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-	 { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
-	 
-	 arango> db._dropIndex(i[0]);
-	 false
-	 
-	 arango> db._dropIndex(i[1].id);
-	true
-	
-	arango> i = db.example.getIndexes();
-	[{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+  arango> db.example.ensureSkiplist("a", "b");
+  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+   { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
+
+   arango> db._dropIndex(i[0]);
+   false
+
+   arango> db._dropIndex(i[1].id);
+  true
+
+  arango> i = db.example.getIndexes();
+  [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
 
 <!--
 @anchor HandlingIndexesDbRead

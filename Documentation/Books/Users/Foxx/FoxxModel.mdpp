@@ -61,9 +61,9 @@ If you initialize a model, you can give it initial data as an object.
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
+  instance = new Model({
+    a: 1
+  });
 
 !SUBSUBSECTION Get
 
@@ -73,10 +73,10 @@ Get the value of an attribute
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
-	instance.get("a");
+  instance = new Model({
+    a: 1
+  });
+  instance.get("a");
 
 !SUBSUBSECTION Set
 
@@ -86,13 +86,13 @@ Set the value of an attribute or multiple attributes at once
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
-	instance.set("a", 2);
-	instance.set({
-		b: 2
-	});
+  instance = new Model({
+    a: 1
+  });
+  instance.set("a", 2);
+  instance.set({
+    b: 2
+  });
 
 !SUBSUBSECTION Has
 
@@ -102,11 +102,11 @@ Returns true if the attribute is set to a non-null or non-undefined value.
 
 *Examples*
 
-	instance = new Model({
-	a: 1
-	});
-	instance.has("a"); //=> true
-	instance.has("b"); //=> false
+  instance = new Model({
+  a: 1
+  });
+  instance.has("a"); //=> true
+  instance.has("b"); //=> false
 
 !SUBSUBSECTION Attributes
 

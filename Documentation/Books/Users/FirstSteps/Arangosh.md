@@ -1,5 +1,4 @@
-<a name="details_about_the_arangodb_shell"></a>
-# Details about the ArangoDB Shell
+!CHAPTER Details about the ArangoDB Shell
 
 After the server has been [started](../FirstSteps/Arangod.html#details_about_the_arangodb_server),
 you can use the ArangoDB shell (_arangosh_) to administrate the
@@ -13,8 +12,7 @@ the server on port 8529 on the localhost. For more information see the
 The shell will print its own version number and – if successfully connected
 to a server – the version number of the ArangoDB server.
 
-<a name="command-line_options"></a>
-## Command-Line Options
+!SECTION Command-Line Options
 
 Use `--help` to get a list of command-line options:
 
