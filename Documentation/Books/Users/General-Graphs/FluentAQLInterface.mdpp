@@ -1,25 +1,32 @@
 !CHAPTER Fluent AQL Interface
 
+TODO: write intro
+
 !SECTION Starting Points
+
+TODO: write intro
 
 !SUBSECTION  Edges
 
 <!-- @startDocuBlock JSF_general_graph_edges -->
-@brief Select some edges from the graph.
+
+Select some edges from the graph.
 <br />
 Creates an AQL statement to select a subset of the edges stored in the graph.
 This is one of the entry points for the fluent AQL interface.
 It will return a mutable AQL statement which can be further refined, using the
 functions described below.
-The resulting set of edges can be filtered by defining one or more @FA{examples}.
+The resulting set of edges can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
-
+`examples` can have the following values:
+<br />
 * Empty, there is no matching executed all edges are valid.
 * A string, only the edge having this value as it's id is returned.
-* An example object, defining a set of attributes.  Only edges having these attributes are matched.
-* A list containing example objects andor strings.  All edges matching at least one of the elements in the list are returned.
-
+* An example object, defining a set of attributes.
+Only edges having these attributes are matched.
+* A list containing example objects andor strings.
+All edges matching at least one of the elements in the list are returned.
+<br />
 @EXAMPLES
 <br />
 In the examples the `toArray` function is used to print the result.
@@ -45,15 +52,16 @@ g._edges({type: "married"}).toArray();
 !SUBSECTION Vertices
 
 <!-- @startDocuBlock JSF_general_graph_vertices -->
-@brief Select some vertices from the graph.
+
+Select some vertices from the graph.
 <br />
 Creates an AQL statement to select a subset of the vertices stored in the graph.
 This is one of the entry points for the fluent AQL interface.
 It will return a mutable AQL statement which can be further refined, using the
 functions described below.
-The resulting set of edges can be filtered by defining one or more @FA{examples}.
+The resulting set of edges can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all vertices are valid.
 * A string, only the vertex having this value as it's id is returned.
@@ -89,7 +97,8 @@ g._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
 !SUBSECTION ToArray
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_toArray -->
-@brief Returns an array containing the complete result.
+
+Returns an array containing the complete result.
 <br />
 This function executes the generated query and returns the
 entire result as one array.
@@ -113,7 +122,8 @@ query.toArray();
 !SUBSECTION HasNext
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_hasNext -->
-@brief Checks if the query has further results.
+
+Checks if the query has further results.
 <br />
 The generated statement maintains a cursor for you.
 If this cursor is already present `hasNext()` will
@@ -148,7 +158,8 @@ query.next();
 !SUBSECTION Next
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_next -->
-@brief Request the next element in the result
+
+Request the next element in the result
 <br />
 The generated statement maintains a cursor for you.
 If this cursor is already present `next()` will
@@ -187,7 +198,8 @@ query.next();
 !SUBSECTION Count
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_count -->
-@brief Returns the number of returned elements if the query is executed.
+
+Returns the number of returned elements if the query is executed.
 <br />
 This function determines the amount of elements to be expected within the result of the query.
 It can be used at the beginning of execution of the query
@@ -210,14 +222,15 @@ query.count();
 !SUBSECTION Edges
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_edges -->
-@brief select all edges for the vertices selected before
+
+Select all edges for the vertices selected before
 <br />
 Creates an AQL statement to select all edges for each of the vertices selected
 in the step before.
 This will include `inbound` as well as `outbound` edges.
-The resulting set of edges can be filtered by defining one or more @FA{examples}.
+The resulting set of edges can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all edges are valid.
 * A string, only the edge having this value as it's id is returned.
@@ -259,15 +272,16 @@ query.edges([{type: "married"}, {type: "friend"}]).toArray();
 !SUBSECTION OutEdges
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_outEdges -->
-@brief select all outbound edges for the vertices selected before
+
+Select all outbound edges for the vertices selected before
 <br />
-@FUN{graph-query.outEdges(@FA{examples})}
+`graph-query.outEdges(examples)`
 <br />
 Creates an AQL statement to select all `outbound` edges for each of the vertices selected
 in the step before.
-The resulting set of edges can be filtered by defining one or more @FA{examples}.
+The resulting set of edges can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all edges are valid.
 * A string, only the edge having this value as it's id is returned.
@@ -309,15 +323,16 @@ query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
 !SUBSECTION InEdges
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_inEdges -->
-@brief select all inbound edges for the vertices selected before
+
+Select all inbound edges for the vertices selected before
 <br />
-@FUN{graph-query.inEdges(@FA{examples})}
+`graph-query.inEdges(examples)`
 <br />
 Creates an AQL statement to select all `inbound` edges for each of the vertices selected
 in the step before.
-The resulting set of edges can be filtered by defining one or more @FA{examples}.
+The resulting set of edges can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all edges are valid.
 * A string, only the edge having this value as it's id is returned.
@@ -359,16 +374,17 @@ query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
 !SUBSECTION Vertices
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_vertices -->
-@brief select all vertices connected to the edges selected before
+
+Select all vertices connected to the edges selected before
 <br />
-@FUN{graph-query.vertices(@FA{examples})}
+`graph-query.vertices(examples)`
 <br />
 Creates an AQL statement to select all vertices for each of the edges selected
 in the step before.
 This includes all vertices contained in `_from` as well as `_to` attribute of the edges.
-The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+The resulting set of vertices can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all vertices are valid.
 * A string, only the vertex having this value as it's id is returned.
@@ -410,16 +426,17 @@ query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 !SUBSECTION FromVertices
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_fromVertices -->
-@brief select all vertices where the edges selected before start
+
+Select all vertices where the edges selected before start
 <br />
-@FUN{graph-query.vertices(@FA{examples})}
+`graph-query.vertices(examples)`}
 <br />
 Creates an AQL statement to select the set of vertices where the edges selected
 in the step before start at.
 This includes all vertices contained in `_from` attribute of the edges.
-The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+The resulting set of vertices can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all vertices are valid.
 * A string, only the vertex having this value as it's id is returned.
@@ -461,16 +478,17 @@ query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 !SUBSECTION ToVertices
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_toVertices -->
-@brief select all vertices targeted by the edges selected before
+
+Select all vertices targeted by the edges selected before
 <br />
-@FUN{graph-query.vertices(@FA{examples})}
+`graph-query.vertices(examples)`
 <br />
 Creates an AQL statement to select the set of vertices where the edges selected
 in the step before end in.
 This includes all vertices contained in `_to` attribute of the edges.
-The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+The resulting set of vertices can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all vertices are valid.
 * A string, only the vertex having this value as it's id is returned.
@@ -512,15 +530,16 @@ query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 !SUBSECTION Neighbors
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_neighbors -->
-@brief select all neighbors of the vertices selected in the step before.
+
+Select all neighbors of the vertices selected in the step before.
 <br />
-@FUN{graph-query.neighbors(@FA{examples})}
+`graph-query.neighbors(examples)`
 <br />
 Creates an AQL statement to select all neighbors for each of the vertices selected
 in the step before.
-The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+The resulting set of vertices can be filtered by defining one or more `examples`.
 <br />
-@FA{examples} can have the following values:
+`examples` can have the following values:
 <br />
 * Empty, there is no matching executed all vertices are valid.
 * A string, only the vertex having this value as it's id is returned.
@@ -562,7 +581,8 @@ query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
 !SUBSECTION Restrict
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_restrict -->
-@brief Restricts the last statement in the chain to return
+
+Restricts the last statement in the chain to return
 only elements of a specified set of collections
 <br />
 By default all collections in the graph are searched for matching elements
@@ -572,7 +592,7 @@ to a specific set of collections within the graph.
 Restriction is only applied to this one part of the query.
 It does not effect earlier or later statements.
 <br />
-@FA{restrictions} can have the following values:
+`restrictions` can have the following values:
 <br />
 * A string defining the name of one specific collection in the graph.
 Only elements from this collection are used for matching
@@ -612,12 +632,13 @@ query.edges().vertices().restrict(["female", "male", "products"]).toArray();
 !SUBSECTION Filter
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_filter -->
-@brief Filter the result of the query
+
+Filter the result of the query
 <br />
 This can be used to further specfiy the expected result of the query.
-The result set is reduced to the set of elements that matches the given @FA{example}.
+The result set is reduced to the set of elements that matches the given `examples`.
 <br />
-@FA{example} can have the following values:
+`examples` can have the following values:
 <br />
 * A string, only the elements having this value as it's id is returned.
 * An example object, defining a set of attributes.
@@ -667,7 +688,8 @@ query.toVertices().outEdges().filter({type: "married"}).toArray();
 !SUBSECTION Path
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_path -->
-@brief The result of the query is the path to all elements.
+
+The result of the query is the path to all elements.
 <br />
 By defaut the result of the generated AQL query is the set of elements passing the last matches.
 So having a `vertices()` query as the last step the result will be set of vertices.

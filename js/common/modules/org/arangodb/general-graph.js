@@ -368,14 +368,14 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// @brief select all edges for the vertices selected before
+/// Select all edges for the vertices selected before
 /// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include `inbound` as well as `outbound` edges.
-/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+/// The resulting set of edges can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all edges are valid.
 ///   * A string, only the edge having this value as it's id is returned.
@@ -423,15 +423,15 @@ AQLGenerator.prototype.edges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// @brief select all outbound edges for the vertices selected before
+/// Select all outbound edges for the vertices selected before
 /// 
-/// @FUN{graph-query.outEdges(@FA{examples})}
+/// `graph-query.outEdges(examples)`
 ///
 /// Creates an AQL statement to select all `outbound` edges for each of the vertices selected
 /// in the step before.
-/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+/// The resulting set of edges can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all edges are valid.
 ///   * A string, only the edge having this value as it's id is returned.
@@ -479,15 +479,15 @@ AQLGenerator.prototype.outEdges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
-/// @brief select all inbound edges for the vertices selected before
+/// Select all inbound edges for the vertices selected before
 /// 
-/// @FUN{graph-query.inEdges(@FA{examples})}
+/// `graph-query.inEdges(examples)`
 ///
 /// Creates an AQL statement to select all `inbound` edges for each of the vertices selected
 /// in the step before.
-/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+/// The resulting set of edges can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all edges are valid.
 ///   * A string, only the edge having this value as it's id is returned.
@@ -564,16 +564,16 @@ AQLGenerator.prototype._vertices = function(example, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_vertices
-/// @brief select all vertices connected to the edges selected before
+/// Select all vertices connected to the edges selected before
 /// 
-/// @FUN{graph-query.vertices(@FA{examples})}
+/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select all vertices for each of the edges selected
 /// in the step before.
 /// This includes all vertices contained in `_from` as well as `_to` attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+/// The resulting set of vertices can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all vertices are valid.
 ///   * A string, only the vertex having this value as it's id is returned.
@@ -634,16 +634,16 @@ AQLGenerator.prototype.vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// @brief select all vertices where the edges selected before start
+/// Select all vertices where the edges selected before start
 /// 
-/// @FUN{graph-query.vertices(@FA{examples})}
+/// `graph-query.vertices(examples)`}
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before start at.
 /// This includes all vertices contained in `_from` attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+/// The resulting set of vertices can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all vertices are valid.
 ///   * A string, only the vertex having this value as it's id is returned.
@@ -702,16 +702,16 @@ AQLGenerator.prototype.fromVertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// @brief select all vertices targeted by the edges selected before
+/// Select all vertices targeted by the edges selected before
 /// 
-/// @FUN{graph-query.vertices(@FA{examples})}
+/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before end in.
 /// This includes all vertices contained in `_to` attribute of the edges.
-/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+/// The resulting set of vertices can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all vertices are valid.
 ///   * A string, only the vertex having this value as it's id is returned.
@@ -787,7 +787,7 @@ AQLGenerator.prototype.getLastVar = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_path
-/// @brief The result of the query is the path to all elements.
+/// The result of the query is the path to all elements.
 ///
 /// By defaut the result of the generated AQL query is the set of elements passing the last matches.
 /// So having a `vertices()` query as the last step the result will be set of vertices.
@@ -826,15 +826,15 @@ AQLGenerator.prototype.path = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
-/// @brief select all neighbors of the vertices selected in the step before.
+/// Select all neighbors of the vertices selected in the step before.
 /// 
-/// @FUN{graph-query.neighbors(@FA{examples})}
+/// `graph-query.neighbors(examples)`
 ///
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
 /// in the step before.
-/// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+/// The resulting set of vertices can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all vertices are valid.
 ///   * A string, only the vertex having this value as it's id is returned.
@@ -922,7 +922,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_restrict
-/// @brief Restricts the last statement in the chain to return
+/// Restricts the last statement in the chain to return
 ///   only elements of a specified set of collections
 ///
 /// By default all collections in the graph are searched for matching elements
@@ -932,7 +932,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
 /// 
-/// @FA{restrictions} can have the following values:
+/// `restrictions` can have the following values:
 ///
 /// * A string defining the name of one specific collection in the graph.
 ///   Only elements from this collection are used for matching
@@ -1001,12 +1001,12 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_filter
-/// @brief Filter the result of the query
+/// Filter the result of the query
 ///
 /// This can be used to further specfiy the expected result of the query.
-/// The result set is reduced to the set of elements that matches the given @FA{example}.
+/// The result set is reduced to the set of elements that matches the given `examples`.
 /// 
-/// @FA{example} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * A string, only the elements having this value as it's id is returned.
 ///   * An example object, defining a set of attributes.
@@ -1092,7 +1092,7 @@ AQLGenerator.prototype.execute = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// @brief Returns an array containing the complete result.
+/// Returns an array containing the complete result.
 ///
 /// This function executes the generated query and returns the
 /// entire result as one array.
@@ -1122,7 +1122,7 @@ AQLGenerator.prototype.toArray = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_count
-/// @brief Returns the number of returned elements if the query is executed.
+/// Returns the number of returned elements if the query is executed.
 ///
 /// This function determines the amount of elements to be expected within the result of the query.
 /// It can be used at the beginning of execution of the query
@@ -1151,7 +1151,7 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// @brief Checks if the query has further results.
+/// Checks if the query has further results.
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present `hasNext()` will
@@ -1192,7 +1192,7 @@ AQLGenerator.prototype.hasNext = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_next
-/// @brief Request the next element in the result
+/// Request the next element in the result
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present `next()` will
@@ -1240,14 +1240,14 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelationDefinition
-/// @brief define an undirected relation.
+/// Define an undirected relation.
 /// 
-/// @FUN{general-graph._undirectedRelationDefinition(@FA{relationName}, @FA{vertexCollections})}
+/// `general-graph._undirectedRelationDefinition(relationName, vertexCollections)`
 ///
-/// Defines an undirected relation with the name @FA{relationName} using the
-/// list of @FA{vertexCollections}. This relation allows the user to store
+/// Defines an undirected relation with the name `relationName` using the
+/// list of `vertexCollections`. This relation allows the user to store
 /// edges in any direction between any pair of vertices within the
-/// @FA{vertexCollections}.
+/// `vertexCollections`.
 ///
 /// @EXAMPLES
 ///
@@ -1292,7 +1292,7 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief define an directed relation.
+/// Define an directed relation.
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1848,15 +1848,15 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edges
-/// @brief Select some edges from the graph.
+/// Select some edges from the graph.
 ///
 /// Creates an AQL statement to select a subset of the edges stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
 /// It will return a mutable AQL statement which can be further refined, using the
 /// functions described below.
-/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+/// The resulting set of edges can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all edges are valid.
 ///   * A string, only the edge having this value as it's id is returned.
@@ -1898,15 +1898,15 @@ Graph.prototype._edges = function(edgeExample) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertices
-/// @brief Select some vertices from the graph.
+/// Select some vertices from the graph.
 ///
 /// Creates an AQL statement to select a subset of the vertices stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
 /// It will return a mutable AQL statement which can be further refined, using the
 /// functions described below.
-/// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+/// The resulting set of edges can be filtered by defining one or more `examples`.
 ///
-/// @FA{examples} can have the following values:
+/// `examples` can have the following values:
 /// 
 ///   * Empty, there is no matching executed all vertices are valid.
 ///   * A string, only the vertex having this value as it's id is returned.
