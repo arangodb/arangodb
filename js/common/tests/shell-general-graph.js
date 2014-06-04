@@ -1932,11 +1932,6 @@ function EdgesAndVerticesSuite() {
       assertEqual(result._id, ids.vId12);
       result = g._getOutVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
-    },
-
-    test_neighbors : function() {
-      var ids = fillCollections();
-      var result = g._neighbors(ids.vId11);
     }
 
   };
