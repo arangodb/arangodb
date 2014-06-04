@@ -460,6 +460,10 @@ bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& option
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::prepare () {
+  if (_disabled) {
+    return true;
+  }
+
   buildScheduler();
 
   return true;
@@ -470,6 +474,10 @@ bool ApplicationScheduler::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::start () {
+  if (_disabled) {
+    return true;
+  }
+
   buildSchedulerReporter();
   buildControlCHandler();
 
@@ -497,6 +505,10 @@ bool ApplicationScheduler::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::open () {
+  if (_disabled) {
+    return true;
+  }
+
   if (_scheduler != 0) {
     return _scheduler->open();
   }
@@ -509,6 +521,10 @@ bool ApplicationScheduler::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::stop () {
+  if (_disabled) {
+    return;
+  }
+
   if (_scheduler != 0) {
     static size_t const MAX_TRIES = 10;
 

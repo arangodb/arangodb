@@ -490,6 +490,7 @@ void ArangoServer::buildApplicationServer () {
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
     ("start-service", "used to start as windows service")
+    ("no-server", "do not start the server, if console is requested")
   ;
 
   // .............................................................................
@@ -762,6 +763,11 @@ void ArangoServer::buildApplicationServer () {
 
 int ArangoServer::startupServer () {
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+  bool startServer = true;
+
+  if (_applicationServer->programOptions().has("no-server")) {
+    startServer = false;
+  }
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -788,7 +794,9 @@ int ArangoServer::startupServer () {
 
   if (mode == OperationMode::MODE_CONSOLE) {
     // one V8 instance is taken by the console
-    ++concurrency;
+    if (startServer) {
+      ++concurrency;
+    }
   }
   else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
     if (concurrency == 1) {
@@ -822,11 +830,21 @@ int ArangoServer::startupServer () {
   // prepare everything
   // .............................................................................
 
+  if (! startServer) {
+    _applicationScheduler->disable();
+    _applicationDispatcher->disable();
+    _applicationEndpointServer->disable();
+    _applicationV8->disableActions();
+    _applicationV8->setStartupFile("");
+  }
+
   // prepare scheduler and dispatcher
   _applicationServer->prepare();
 
   // now we can create the queues
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
+  if (startServer) {
+    _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
+  }
 
   // and finish prepare
   _applicationServer->prepare2();
@@ -839,7 +857,9 @@ int ArangoServer::startupServer () {
   _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
 
   // setup the V8 actions
-  _applicationV8->prepareActions();
+  if (startServer) {
+    _applicationV8->prepareActions();
+  }
 
   // .............................................................................
   // create endpoints and handlers
@@ -850,24 +870,27 @@ int ArangoServer::startupServer () {
   httpOptions._vocbase = vocbase;
   httpOptions._queue = "STANDARD";
 
-  // create the handlers
-  httpOptions._contexts.insert("user");
-  httpOptions._contexts.insert("api");
-  httpOptions._contexts.insert("admin");
+  if (startServer) {
 
-  // create the server
-  _applicationEndpointServer->buildServers();
+    // create the handlers
+    httpOptions._contexts.insert("user");
+    httpOptions._contexts.insert("api");
+    httpOptions._contexts.insert("admin");
 
-  HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
+    // create the server
+    _applicationEndpointServer->buildServers();
 
-  DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
-  DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
+    HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-  // add action handler
-  handlerFactory->addPrefixHandler(
-    "/",
-    RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
-    (void*) &httpOptions);
+    DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
+    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
+
+    // add action handler
+    handlerFactory->addPrefixHandler(
+      "/",
+      RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
+      (void*) &httpOptions);
+  }
 
   // .............................................................................
   // start the main event loop
