@@ -192,7 +192,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     }
 
     // write marker into wal
-    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, false);
+    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("could not save attribute marker in log");
@@ -343,7 +343,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     }
     
     // write marker into wal
-    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, false);
+    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
     
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("could not save shape marker in log");
