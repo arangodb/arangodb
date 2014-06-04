@@ -54,7 +54,7 @@
 
             expect(div.childElementCount).toEqual(2);
             childs = $(dbList).children();
-            expect(childs.length).toEqual(4);
+            expect(childs.length).toEqual(3);
 
             expect($("a", $(childs[1])).attr("id")).toEqual(list[0]);
             expect($("a", $(childs[2])).attr("id")).toEqual(list[1]);
@@ -70,16 +70,6 @@
             expect(dbCollection.fetch).toHaveBeenCalled();
         });
 
-        /*
-         it("should trigger a database switch on click", function() {
-         view.render($(div));
-         spyOn(dbCollection, "createDatabaseURL").andReturn("switchURL");
-         spyOn(window.location, "replace");
-         $("#dbSelectionList").val("second").trigger("change");
-         expect(dbCollection.createDatabaseURL).toHaveBeenCalledWith("second");
-         expect(window.location.replace).toHaveBeenCalledWith("switchURL");
-         });
-         */
         it("should not render the selection if the list has only one element", function () {
             //var oneCollection = new window.ArangoDatabase();
             var oneCollection = new window.ArangoDatabase(
