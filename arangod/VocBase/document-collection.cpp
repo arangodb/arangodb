@@ -2243,8 +2243,7 @@ static int OpenIteratorHandleAbortMarker (TRI_df_marker_t const* marker,
 
 static bool OpenIterator (TRI_df_marker_t const* marker, 
                           void* data, 
-                          TRI_datafile_t* datafile, 
-                          bool journal) {
+                          TRI_datafile_t* datafile) { 
   int res;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
@@ -2276,6 +2275,35 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
     LOG_TRACE("skipping marker type %lu", (unsigned long) marker->_type);
     res = TRI_ERROR_NO_ERROR;
   }
+      
+  TRI_voc_tick_t tick = marker->_tick;
+
+  if (datafile->_tickMin == 0) {
+    datafile->_tickMin = tick;
+  }
+
+  if (tick > datafile->_tickMax) {
+    datafile->_tickMax = tick;
+  }
+
+  // set tick values for data markers (document/edge), too
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+
+    if (datafile->_dataMin == 0) {
+      datafile->_dataMin = tick;
+    }
+
+    if (tick > datafile->_dataMax) {
+      datafile->_dataMax = tick;
+    }
+  }
+
+  TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
+  if (document->base._tickMax < tick) {
+    document->base._tickMax = tick;
+  }
+
 
   return (res == TRI_ERROR_NO_ERROR);
 }
@@ -2534,7 +2562,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->cleanupIndexes    = CleanupIndexes;
 
   // we do not require an initial journal
-  document->_requestedJournalSize  = 0;
   document->_rotateRequested       = false;
 
   return true;
