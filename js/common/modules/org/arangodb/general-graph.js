@@ -367,7 +367,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_edges
+/// @startDocuBlock JSF_general_graph_fluent_aql_edges
 /// @brief select all edges for the vertices selected before
 /// 
 /// @FUN{graph-query.edges(@FA{examples})}
@@ -376,6 +376,15 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// in the step before.
 /// This will include `inbound` as well as `outbound` edges.
 /// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all edges are valid.
+///   * A string, only the edge having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only edges having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All edges matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -386,7 +395,6 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by a single example:
@@ -396,7 +404,6 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges({type: "married"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered edges by multiple examples:
@@ -406,8 +413,8 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -417,7 +424,7 @@ AQLGenerator.prototype.edges = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_outEdges
+/// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
 /// @brief select all outbound edges for the vertices selected before
 /// 
 /// @FUN{graph-query.outEdges(@FA{examples})}
@@ -425,6 +432,15 @@ AQLGenerator.prototype.edges = function(example) {
 /// Creates an AQL statement to select all `outbound` edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all edges are valid.
+///   * A string, only the edge having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only edges having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All edges matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -435,7 +451,6 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered outbound edges by a single example:
@@ -445,7 +460,6 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges({type: "married"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered outbound edges by multiple examples:
@@ -455,8 +469,8 @@ AQLGenerator.prototype.edges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -466,7 +480,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_inEdges
+/// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
 /// @brief select all inbound edges for the vertices selected before
 /// 
 /// @FUN{graph-query.inEdges(@FA{examples})}
@@ -474,6 +488,15 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// Creates an AQL statement to select all `inbound` edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all edges are valid.
+///   * A string, only the edge having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only edges having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All edges matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -484,7 +507,6 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered inbound edges by a single example:
@@ -494,7 +516,6 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges({type: "married"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered inbound edges by multiple examples:
@@ -504,8 +525,8 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -544,7 +565,7 @@ AQLGenerator.prototype._vertices = function(example, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_vertices
+/// @startDocuBlock JSF_general_graph_fluent_aql_vertices
 /// @brief select all vertices connected to the edges selected before
 /// 
 /// @FUN{graph-query.vertices(@FA{examples})}
@@ -553,6 +574,15 @@ AQLGenerator.prototype._vertices = function(example, options) {
 /// in the step before.
 /// This includes all vertices contained in `_from` as well as `_to` attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all vertices are valid.
+///   * A string, only the vertex having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only vertices having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All vertices matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -563,7 +593,6 @@ AQLGenerator.prototype._vertices = function(example, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.vertices().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered vertices by a single example:
@@ -573,7 +602,6 @@ AQLGenerator.prototype._vertices = function(example, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.vertices({name: "Alice"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered vertices by multiple examples:
@@ -583,8 +611,8 @@ AQLGenerator.prototype._vertices = function(example, options) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -607,7 +635,7 @@ AQLGenerator.prototype.vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_fromVertices
+/// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
 /// @brief select all vertices where the edges selected before start
 /// 
 /// @FUN{graph-query.vertices(@FA{examples})}
@@ -616,6 +644,15 @@ AQLGenerator.prototype.vertices = function(example) {
 /// in the step before start at.
 /// This includes all vertices contained in `_from` attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all vertices are valid.
+///   * A string, only the vertex having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only vertices having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All vertices matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -626,7 +663,6 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.fromVertices().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered starting vertices by a single example:
@@ -636,7 +672,6 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.fromVertices({name: "Alice"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered starting vertices by multiple examples:
@@ -646,8 +681,8 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -668,7 +703,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_toVertices
+/// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
 /// @brief select all vertices targeted by the edges selected before
 /// 
 /// @FUN{graph-query.vertices(@FA{examples})}
@@ -677,6 +712,15 @@ AQLGenerator.prototype.fromVertices = function(example) {
 /// in the step before end in.
 /// This includes all vertices contained in `_to` attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all vertices are valid.
+///   * A string, only the vertex having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only vertices having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All vertices matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -687,7 +731,6 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.toVertices().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered starting vertices by a single example:
@@ -697,7 +740,6 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.toVertices({name: "Alice"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered starting vertices by multiple examples:
@@ -707,8 +749,8 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -728,6 +770,15 @@ AQLGenerator.prototype.toVertices = function(example) {
   return this;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the variable holding the last result
+///
+/// Only for internal use.
+/// The return statement of the AQL query has to return
+/// this value.
+/// Also chaining has to use this variable to restrict
+/// queries in the next step to only values from this set.
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.getLastVar = function() {
   if (this.lastVar === "") {
@@ -736,15 +787,47 @@ AQLGenerator.prototype.getLastVar = function() {
   return this.lastVar;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_path
+/// @brief The result of the query is the path to all elements.
+///
+/// By defaut the result of the generated AQL query is the set of elements passing the last matches.
+/// So having a `vertices()` query as the last step the result will be set of vertices.
+/// Using `path()` as the last action before requesting the result
+/// will modify the result such that the path required to find the set vertices is returned.
+///
+/// @EXAMPLES
+///
+/// Request the iteratively explored path using vertices and edges:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathSimple}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.outEdges().toVertices().path().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// When requesting neighbors the path to these neighbors is expanded:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathNeighbors}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.neighbors().path().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.path = function() {
   this._clearCursor();
   var statement = new AQLStatement("", "path");
   this.stack.push(statement);
-//  this._getPath = true
+  return this;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_fluent_aql_neighbors
+/// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
 /// @brief select all neighbors of the vertices selected in the step before.
 /// 
 /// @FUN{graph-query.neighbors(@FA{examples})}
@@ -752,6 +835,15 @@ AQLGenerator.prototype.path = function() {
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
 /// in the step before.
 /// The resulting set of vertices can be filtered by defining one or more @FA{examples}.
+///
+/// @FA{examples} can have the following values:
+/// 
+///   * Empty, there is no matching executed all vertices are valid.
+///   * A string, only the vertex having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only vertices having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All vertices matching at least one of the elements in the list are returned.
 ///
 /// @EXAMPLES
 ///
@@ -762,7 +854,6 @@ AQLGenerator.prototype.path = function() {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices({name: "Alice"});
 ///   query.neighbors().toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered neighbors by a single example:
@@ -772,7 +863,6 @@ AQLGenerator.prototype.path = function() {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices({name: "Alice"});
 ///   query.neighbors({name: "Bob"}).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To request filtered neighbors by multiple examples:
@@ -782,8 +872,8 @@ AQLGenerator.prototype.path = function() {
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
 ///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
-///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -802,7 +892,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   } else {
     opts = {};
   }
-  opts.vertexExamples = ex;
+  opts.neighborExamples = ex;
   this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
@@ -810,6 +900,15 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   this._path.push(resultName + ".path");
   return this;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the last statement that can be restricted to collections
+///
+/// Only for internal use.
+/// This returnes the last statement that can be restricted to
+/// specific collections.
+/// Required to allow a chaining of `restrict` after `filter` for instance.
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
   var i = this.stack.length - 1;
@@ -821,6 +920,58 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
     options: this.bindVars["options_" + i]
   };
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_restrict
+/// @brief Restricts the last statement in the chain to return
+///   only elements of a specified set of collections
+///
+/// By default all collections in the graph are searched for matching elements
+/// whenever vertices and edges are requested.
+/// Using `restrict` after such a statement allows to restrict the search
+/// to a specific set of collections within the graph.
+/// Restriction is only applied to this one part of the query.
+/// It does not effect earlier or later statements.
+/// 
+/// @FA{restrictions} can have the following values:
+///
+/// * A string defining the name of one specific collection in the graph.
+///   Only elements from this collection are used for matching
+/// * A list of strings defining a set of collection names.
+///   Elements from all collections in this set are used for matching
+///
+/// @EXAMPLES
+///
+/// Request all directly connected vertices unrestricted:
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnrestricted}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.edges().vertices().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Apply a restriction to the directly connected vertices:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.edges().vertices().restrict("female").toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Restriction of a query is only valid for collections known to the graph:
+//
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices({name: "Alice"});
+///   query.edges().vertices().restrict(["female", "male", "products"]).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.restrict = function(restrictions) {
   this._addToPrint("restrict", restrictions);
@@ -849,6 +1000,62 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   }
   return this;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_filter
+/// @brief Filter the result of the query
+///
+/// This can be used to further specfiy the expected result of the query.
+/// The result set is reduced to the set of elements that matches the given @FA{example}.
+/// 
+/// @FA{example} can have the following values:
+/// 
+///   * A string, only the elements having this value as it's id is returned.
+///   * An example object, defining a set of attributes.
+///       Only elements having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All elements matching at least one of the elements in the list are returned.
+///
+/// @EXAMPLES
+///
+/// Request vertices unfiltered:
+///  
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredVertices}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Request vertices filtered:
+///  
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredVertices}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices().filter({name: "Alice"}).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Request edges unfiltered:
+///  
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredEdges}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices().outEdges().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Request edges filtered:
+///  
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredEdges}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._edges({type: "married"});
+///   query.toVertices().outEdges().filter({type: "married"}).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.filter = function(example) {
   this._addToPrint("filter", example);
@@ -885,20 +1092,144 @@ AQLGenerator.prototype.execute = function() {
   return db._query(query, bindVars, {count: true});
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_toArray
+/// @brief Returns an array containing the complete result.
+///
+/// This function executes the generated query and returns the
+/// entire result as one array.
+/// ToArray does not return the generated query anymore and
+/// hence can only be the endpoint of a query.
+/// However keeping a reference to the query before
+/// executing allows to chain further statements to it.
+///
+/// @EXAMPLES
+///
+/// To collect the entire result of a query toArray can be used:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.toArray = function() {
   this._createCursor();
   return this.cursor.toArray();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_count
+/// @brief Returns the number of returned elements if the query is executed.
+///
+/// This function determines the amount of elements to be expected within the result of the query.
+/// It can be used at the beginning of execution of the query
+/// before using `next()` or in between `next()` calls.
+/// The query object maintains a cursor of the query for you.
+/// `count()` does not change the cursor position.
+///
+/// @EXAMPLES
+///
+/// To count the number of matched elements: 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.count();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+//
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.count = function() {
   this._createCursor();
   return this.cursor.count();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
+/// @brief Checks if the query has further results.
+///
+/// The generated statement maintains a cursor for you.
+/// If this cursor is already present `hasNext()` will
+/// use this cursors position to determine if there are
+/// further results available.
+/// If the query has not yet been executed `hasNext()`
+/// will execute it and create the cursor for you.
+///
+/// @EXAMPLES
+///
+/// Start query execution with hasNext: 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.hasNext();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Iterate over the result as long as it has more elements:
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   while(query.hasNext()) {
+///     query.next();
+///   }
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+/// 
+////////////////////////////////////////////////////////////////////////////////
+
 AQLGenerator.prototype.hasNext = function() {
   this._createCursor();
   return this.cursor.hasNext();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_fluent_aql_next
+/// @brief Request the next element in the result
+///
+/// The generated statement maintains a cursor for you.
+/// If this cursor is already present `next()` will
+/// use this cursors position to deliver the next result.
+/// Also the cursor position will be moved by one.
+/// If the query has not yet been executed `next()`
+/// will execute it and create the cursor for you.
+/// It will throw an error of your query has no further results.
+///
+/// @EXAMPLES
+///
+/// Request some elements with next: 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.next();
+///   query.next();
+///   query.next();
+///   query.next();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// The cursor is recreated if the query is changed.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.next();
+///   query.edges();
+///   query.next();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.next = function() {
   this._createCursor();
@@ -910,7 +1241,7 @@ AQLGenerator.prototype.next = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_general_graph_undirectedRelationDefinition
+/// @startDocuBlock JSF_general_graph_undirectedRelationDefinition
 /// @brief define an undirected relation.
 /// 
 /// @FUN{general-graph._undirectedRelationDefinition(@FA{relationName}, @FA{vertexCollections})}
@@ -935,6 +1266,7 @@ AQLGenerator.prototype.next = function() {
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._undirectedRelationDefinition("marriage", ["female", "male"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 

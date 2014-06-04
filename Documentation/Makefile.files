@@ -73,6 +73,7 @@ WIKI = \
 	JSModuleConsole \
 	JSModuleFs \
 	JSModuleGraph \
+	JSModuleGeneralGraph \
 	JSModules \
 	NamingConventions \
 	NewFeatures11 \

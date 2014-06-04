@@ -36,6 +36,8 @@
 
 struct TRI_datafile_s;
 struct TRI_df_marker_s;
+struct TRI_document_collection_s;
+struct TRI_doc_datafile_info_s;
 struct TRI_server_s;
 
 namespace triagens {
@@ -43,7 +45,30 @@ namespace triagens {
 
     class LogfileManager;
     class Logfile;
-    
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class CollectorCache
+// -----------------------------------------------------------------------------
+
+    struct CollectorCache {
+      CollectorCache () 
+        : dfi(nullptr),
+          lastFid(0) {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile info cache, updated when the collector transfers markers
+////////////////////////////////////////////////////////////////////////////////
+        
+      struct TRI_doc_datafile_info_s* dfi;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of last datafile handled
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_voc_fid_t lastFid;
+    };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CollectorThread
 // -----------------------------------------------------------------------------
@@ -144,15 +169,6 @@ namespace triagens {
         bool removeLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback to handle one marker during collection
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool ScanMarker (struct TRI_df_marker_s const*,
-                                void*,
-                                struct TRI_datafile_s*,
-                                bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collect one logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,14 +180,23 @@ namespace triagens {
 
         int transferMarkers (TRI_voc_cid_t,
                              TRI_voc_tick_t,
-                             OperationsType const&);
+                             OperationsType const&,
+                             CollectorCache&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sync the journals of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int syncCollection (struct TRI_document_collection_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next free position for a new marker of the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* nextFreeMarkerPosition (TRI_df_marker_type_e,
-                                      TRI_voc_size_t);
+        char* nextFreeMarkerPosition (struct TRI_document_collection_s*, 
+                                      TRI_df_marker_type_e,
+                                      TRI_voc_size_t,
+                                      CollectorCache&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a marker
@@ -186,6 +211,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void finishMarker (char*,
+                           struct TRI_document_collection_s*,
                            TRI_voc_tick_t);
 
 // -----------------------------------------------------------------------------
@@ -205,7 +231,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_server_s* _server;
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the collector thread
 ////////////////////////////////////////////////////////////////////////////////

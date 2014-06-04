@@ -323,7 +323,6 @@ typedef struct TRI_document_collection_s {
   TRI_condition_t          _journalsCondition;
 
   // whether or not there was a request to create a(nother) journal for the collection
-  TRI_voc_size_t           _requestedJournalSize;
   bool                     _rotateRequested;
   
   // whether or not any of the indexes may need to be garbage-collected

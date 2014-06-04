@@ -683,10 +683,8 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t*,
-                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                          void* data,
-                          bool journal,
-                          bool setTicks);
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
+                          void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only

@@ -33,20 +33,23 @@
 
   var createSocialGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._undirectedRelationDefinition("friend", "user"));
+    edgeDefinition.push(Graph._undirectedRelationDefinition("relation", ["female", "male"]));
     var g = Graph._create("social", edgeDefinition);
-    var a = g.user.save({name: "Alice"});
-    var b = g.user.save({name: "Bob"});
-    var c = g.user.save({name: "Charly"});
-    var d = g.user.save({name: "Diana"});
-    g.friend.save(a._id, b._id, {type: "married"});
-    g.friend.save(a._id, c._id, {type: "friend"});
-    g.friend.save(c._id, d._id, {type: "married"});
-    g.friend.save(b._id, d._id, {type: "friend"});
+    var a = g.female.save({name: "Alice"});
+    var b = g.male.save({name: "Bob"});
+    var c = g.male.save({name: "Charly"});
+    var d = g.female.save({name: "Diana"});
+    g.relation.save(a._id, b._id, {type: "married"});
+    g.relation.save(a._id, c._id, {type: "friend"});
+    g.relation.save(c._id, d._id, {type: "married"});
+    g.relation.save(b._id, d._id, {type: "friend"});
     return g;
   };
 
   var loadGraph = function(name) {
+    if (Graph._exists(name)) {
+      return Graph._graph(name);
+    }
     switch (name) {
       case "social":
         return createSocialGraph();
