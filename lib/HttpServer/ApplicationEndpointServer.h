@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRIAGENS_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H
@@ -53,11 +53,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief application http server feature
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -66,18 +61,9 @@ namespace triagens {
         ApplicationEndpointServer (ApplicationEndpointServer const&);
         ApplicationEndpointServer& operator= (ApplicationEndpointServer const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -99,18 +85,9 @@ namespace triagens {
 
         ~ApplicationEndpointServer ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -136,18 +113,9 @@ namespace triagens {
           _basePath = basePath;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -166,11 +134,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::map<std::string, std::vector<std::string> > getEndpoints ();
-       
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new endpoint at runtime, and connects to it
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool addEndpoint (std::string const&,
                           std::vector<std::string> const&,
                           bool);
@@ -178,7 +146,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an existing endpoint and disconnects from it
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool removeEndpoint (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,18 +198,9 @@ namespace triagens {
 
         void stop ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -257,18 +216,9 @@ namespace triagens {
 
         bool createSslContext ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -311,7 +261,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context data passed to callback functions
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void* _contextData;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -395,7 +345,7 @@ namespace triagens {
 ///
 /// @CMDOPT{\--server.reuse-address}
 ///
-/// If this boolean option is set to `true` then the socket option 
+/// If this boolean option is set to `true` then the socket option
 /// SO_REUSEADDR is set on all server endpoints, which is the default.
 /// If this option is set to `false` it is possible that it takes up
 /// to a minute after a server has terminated until it is possible for
@@ -427,24 +377,24 @@ namespace triagens {
         double _keepAliveTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default API compatibility 
+/// @brief default API compatibility
 ///
 /// @CMDOPT{\--server.default-api-compatibility}
 ///
 /// This option can be used to determine the API compatibility of the ArangoDB
 /// server. It expects an ArangoDB version number as an integer, calculated as
 /// follows:
-/// 
+///
 /// `10000 * major + 100 * minor` (example: `10400` for ArangoDB 1.4)
 ///
-/// The value of this option will have an influence on some API return values 
+/// The value of this option will have an influence on some API return values
 /// when the HTTP client used does not send any compatibility information.
 ///
-/// In most cases it will be sufficient to not set this option explicitly but to 
-/// keep the default value. However, in case an "old" ArangoDB client is used 
-/// that does not send any compatibility information and that cannot handle the 
-/// responses of the current version of ArangoDB, it might be reasonable to set 
-/// the option to an old version number to improve compatibility with older 
+/// In most cases it will be sufficient to not set this option explicitly but to
+/// keep the default value. However, in case an "old" ArangoDB client is used
+/// that does not send any compatibility information and that cannot handle the
+/// responses of the current version of ArangoDB, it might be reasonable to set
+/// the option to an old version number to improve compatibility with older
 /// clients.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -456,7 +406,7 @@ namespace triagens {
 /// @CMDOPT{\--server.allow-method-override}
 ///
 /// When this option is set to `true`, the HTTP request method will optionally
-/// be fetched from one of the following HTTP request headers if present in 
+/// be fetched from one of the following HTTP request headers if present in
 /// the request:
 ///
 /// - `x-http-method`
@@ -466,7 +416,7 @@ namespace triagens {
 /// If the option is set to `true` and any of these headers is set, the
 /// request method will be overriden by the value of the header. For example,
 /// this allows issuing an HTTP DELETE request which to the outside world will
-/// look like an HTTP GET request. This allows bypassing proxies and tools that 
+/// look like an HTTP GET request. This allows bypassing proxies and tools that
 /// will only let certain request types pass.
 ///
 /// Setting this option to `true` may impose a security risk so it should only
@@ -629,10 +579,6 @@ namespace triagens {
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
