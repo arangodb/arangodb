@@ -338,7 +338,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   memcpy(data, datafile->_data, vocSize);
 
   // patch the datafile structure
-  res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
+  res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
 
   if (res < 0) {
     TRI_CLOSE(datafile->_fd);
@@ -853,7 +853,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("cannot write header to datafile '%s'", datafile->getName(datafile));
-      TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
+      TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
 
       datafile->close(datafile);
       datafile->destroy(datafile);
@@ -1472,10 +1472,8 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
-                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                          void* data,
-                          bool journal,
-                          bool setTicks) {
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
+                          void* data) {
   char* ptr;
   char* end;
 
@@ -1500,35 +1498,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
       return true;
     }
 
-    // set min/max tick values for datafile
-    if (setTicks) {
-      TRI_voc_tick_t tick;
-
-      tick = marker->_tick;
-
-      if (datafile->_tickMin == 0) {
-        datafile->_tickMin = tick;
-      }
-
-      if (tick > datafile->_tickMax) {
-        datafile->_tickMax = tick;
-      }
-
-      // set tick values for data markers (document/edge), too
-      if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-          marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-
-        if (datafile->_dataMin == 0) {
-          datafile->_dataMin = tick;
-        }
-
-        if (tick > datafile->_dataMax) {
-          datafile->_dataMax = tick;
-        }
-      }
-    }
-
-    result = iterator(marker, data, datafile, journal);
+    result = iterator(marker, data, datafile);
 
     if (! result) {
       return false;
@@ -1564,7 +1534,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   ok = CheckDatafile(datafile);
 
   if (! ok) {
-    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
+    TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
     TRI_CLOSE(datafile->_fd);
 
     LOG_ERROR("datafile '%s' is corrupt", datafile->getName(datafile));
@@ -1577,7 +1547,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   // change to read-write if no footer has been found
   if (! datafile->_isSealed) {
     datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle));
+    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
   }
 
   return datafile;
@@ -1611,7 +1581,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
   else {
     if (! datafile->_isSealed) {
       datafile->_state = TRI_DF_STATE_WRITE;
-      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &(datafile->_mmHandle));
+      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
     }
   }
 
@@ -1626,7 +1596,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ || datafile->_state == TRI_DF_STATE_WRITE) {
     int res;
 
-    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &(datafile->_mmHandle));
+    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("munmap failed with: %d", res);
@@ -1751,7 +1721,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
     TODO: do we have to unmap file? That is, release the memory which has been allocated for
           this file? At the moment the windows of function TRI_ProtectMMFile does nothing.
   */
-  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, datafile->_fd, &(datafile->_mmHandle));
+  TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ, datafile->_fd, &datafile->_mmHandle);
 
   // truncate datafile
   if (ok) {
