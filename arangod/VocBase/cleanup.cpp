@@ -84,10 +84,9 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
   while (true) {
     TRI_barrier_list_t* container;
     TRI_barrier_t* element;
-    bool hasUnloaded = false;
 
     container = &document->_barrierList;
-    element = NULL;
+    element = nullptr;
 
     // check and remove all callback elements at the beginning of the list
     TRI_LockSpin(&container->_lock);
@@ -96,7 +95,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
     // to document data in a datafile. We must then not unload or remove a file
 
-    if (container->_begin == NULL ||
+    if (container->_begin == nullptr ||
         container->_begin->_type == TRI_BARRIER_ELEMENT ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION ||
@@ -122,16 +121,25 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
 
     element = container->_begin;
-    assert(element);
+    assert(element != nullptr);
+
+    if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
+      // check if we can really unload, this is only the case if the collection's WAL markers
+      // were fully collected
+      if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+        TRI_UnlockSpin(&container->_lock);
+        return;
+      }
+    }
 
     // found an element to go on with
     container->_begin = element->_next;
 
-    if (element->_next == NULL) {
-      container->_end = NULL;
+    if (element->_next == nullptr) {
+      container->_end = nullptr;
     }
     else {
-      element->_next->_prev = NULL;
+      element->_next->_prev = nullptr;
     }
 
     // yes, we can release the lock here
@@ -161,10 +169,8 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     }
     else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
       // collection is unloaded
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
       if (hasUnloaded) {
@@ -174,10 +180,8 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     }
     else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
       // collection is dropped
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
       if (hasUnloaded) {

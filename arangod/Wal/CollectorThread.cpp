@@ -417,7 +417,7 @@ int CollectorThread::collect (Logfile* logfile) {
       CollectorCache cache;
 
       // TODO: handle errors indicated by transferMarkers!
-      transferMarkers(cid, state.collections[cid], sortedOperations, cache);
+      transferMarkers(logfile->id(), cid, state.collections[cid], sortedOperations, cache);
     }
   }
 
@@ -434,7 +434,8 @@ int CollectorThread::collect (Logfile* logfile) {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
+int CollectorThread::transferMarkers (Logfile::IdType logfileId,
+                                      TRI_voc_cid_t collectionId,
                                       TRI_voc_tick_t databaseId,
                                       OperationsType const& operations,
                                       CollectorCache& cache) {
@@ -673,6 +674,8 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
 
   // now sync the datafile
   int res = syncCollection(document);
+
+  TRI_SetLastCollectedDocumentCollection(document, logfileId);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
 
