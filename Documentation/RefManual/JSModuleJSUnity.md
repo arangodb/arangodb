@@ -17,8 +17,7 @@ Assume that you have a test file containing
 
     function aqlTestSuite () {
       return {
-	testSizeOfTestCollection : function () {
-	  assertEqual(5, 5);
+  testSizeOfTestCollection : function () {  	  assertEqual(5, 5);
       };
     }
 

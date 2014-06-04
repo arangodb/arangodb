@@ -1,14 +1,13 @@
-<a name="graph_constructors_and_methods"></a>
-# Graph Constructors and Methods
+!CHAPTER Graph Constructors and Methods
 
 
 The graph module provides basic functions dealing with graph structures.  The
 examples assume
 
-	arango> var Graph = require("org/arangodb/graph").Graph;
-	
-	arango> g = new Graph("graph", "vertices", "edges");
-	Graph("graph")
+  arango> var Graph = require("org/arangodb/graph").Graph;
+
+  arango> g = new Graph("graph", "vertices", "edges");
+  Graph("graph")
 
 `Graph(name, vertices, edges)`
 
@@ -18,16 +17,15 @@ Constructs a new graph object using the collection vertices for all vertices and
 
 Returns a known graph.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> var Graph = require("org/arangodb/graph").Graph;
-	
-	arango> new Graph("graph", db.vertices, db.edges);
-	Graph("graph")
-	
-	arango> new Graph("graph", "vertices", "edges");
-	Graph("graph")
+  arango> var Graph = require("org/arangodb/graph").Graph;
+
+  arango> new Graph("graph", db.vertices, db.edges);
+  Graph("graph")
+
+  arango> new Graph("graph", "vertices", "edges");
+  Graph("graph")
 
 `graph.addEdge( out, in, id)`
 
@@ -45,20 +43,19 @@ Creates a new edge and returns the edge object. The edge contains the properties
 
 Creates a new edge and returns the edge object. The edge has the label label and contains the properties defined in data. out and in can either be vertices or their IDs
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> v1 = g.addVertex(1);
-	Vertex(1)
-	
-	arango> v2 = g.addVertex(2);
-	Vertex(2)
-	
-	arango> e = g.addEdge(v1, v2, 3);
-	Edge(3)
-	
-	arango> e = g.addEdge(v1, v2, 4, "1->2", { name : "Emil");
-	Edge(4)
+  arango> v1 = g.addVertex(1);
+  Vertex(1)
+
+  arango> v2 = g.addVertex(2);
+  Vertex(2)
+
+  arango> e = g.addEdge(v1, v2, 3);
+  Edge(3)
+
+  arango> e = g.addEdge(v1, v2, 4, "1->2", { name : "Emil");
+  Edge(4)
 
 `graph.addVertex( id)`
 
@@ -68,108 +65,102 @@ Creates a new vertex and returns the vertex object. The identifier id must be a 
 
 Creates a new vertex and returns the vertex object. The vertex contains the properties defined in data.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
 Without any properties:
 
-	arango> v = g.addVertex("hugo");
-	Vertex("hugo")
+  arango> v = g.addVertex("hugo");
+  Vertex("hugo")
 
 With given properties:
 
-	arango> v = g.addVertex("Emil", { age : 123 });
-	Vertex("Emil")
-	
-	arango> v.getProperty("age");
-	123
+  arango> v = g.addVertex("Emil", { age : 123 });
+  Vertex("Emil")
+
+  arango> v.getProperty("age");
+  123
 
 `graph.getEdges()`
 
 Returns an iterator for all edges of the graph. The iterator supports the methods hasNext and next.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> f = g.getEdges();
-	[edge iterator]
-	
-	arango> f.hasNext();
-	true
-	
-	arango> e = f.next();
-	Edge("4636053")
+  arango> f = g.getEdges();
+  [edge iterator]
+
+  arango> f.hasNext();
+  true
+
+  arango> e = f.next();
+  Edge("4636053")
 
 `graph.getVertex( id)`
 
 Returns the vertex identified by id or null.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> g.addVertex(1);
-	Vertex(1)
+  arango> g.addVertex(1);
+  Vertex(1)
 
-	arango> g.getVertex(1)
-	Vertex(1)
+  arango> g.getVertex(1)
+  Vertex(1)
 
 `graph.getVertices()`
 
 Returns an iterator for all vertices of the graph. The iterator supports the methods hasNext and next.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> f = g.getVertices();
-	[vertex iterator]
-	
-	arango> f.hasNext();
-	true
-	
-	arango> v = f.next();
-	Vertex(18364)
+  arango> f = g.getVertices();
+  [vertex iterator]
+
+  arango> f.hasNext();
+  true
+
+  arango> v = f.next();
+  Vertex(18364)
 
 `graph.removeVertex( vertex, waitForSync)`
 
 Deletes the vertex and all its edges.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> v1 = g.addVertex(1);
-	Vertex(1)
-	
-	arango> v2 = g.addVertex(2);
-	Vertex(2)
-	
-	arango> e = g.addEdge(v1, v2, 3);
-	Edge(3)
-	
-	arango> g.removeVertex(v1);
-	
-	arango> v2.edges();
-	[ ]
+  arango> v1 = g.addVertex(1);
+  Vertex(1)
+
+  arango> v2 = g.addVertex(2);
+  Vertex(2)
+
+  arango> e = g.addEdge(v1, v2, 3);
+  Edge(3)
+
+  arango> g.removeVertex(v1);
+
+  arango> v2.edges();
+  [ ]
 
 `graph.removeEdge( vertex, waitForSync)`
 
 Deletes the edge. Note that the in and out vertices are left untouched.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arango> v1 = g.addVertex(1);
-	Vertex(1)
-	
-	arango> v2 = g.addVertex(2);
-	Vertex(2)
-	
-	arango> e = g.addEdge(v1, v2, 3);
-	Edge(3)
-	
-	arango> g.removeEdge(e);
-	
-	arango> v2.edges();
-	[ ]
+  arango> v1 = g.addVertex(1);
+  Vertex(1)
+
+  arango> v2 = g.addVertex(2);
+  Vertex(2)
+
+  arango> e = g.addEdge(v1, v2, 3);
+  Edge(3)
+
+  arango> g.removeEdge(e);
+
+  arango> v2.edges();
+  [ ]
 
 `graph.drop( waitForSync)`
 

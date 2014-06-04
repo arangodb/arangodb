@@ -1,6 +1,5 @@
 
-<a name="exploring_collections_and_documents"></a>
-# Exploring Collections and Documents
+!CHAPTER Exploring Collections and Documents
 
 ArangoDB is a database that serves documents to clients.
 
@@ -21,8 +20,7 @@ If you are familiar with RDBMS then it is safe to compare collections
 to tables and documents to rows. However, bringing structure to the
 "rows" has many advantages - as you will see later.
 
-<a name="starting_the_javascript_shell"></a>
-## Starting the JavaScript shell
+!SECTION Starting the JavaScript shell
 
 The easiest way to connect to the database is the JavaScript shell
 _arangosh_. You can either start it from the command-line or as an
@@ -30,12 +28,12 @@ embedded version in the browser. Using the command-line tool has the
 advantage that you can use autocompletion.
 
     unix> arangosh --server.password ""
-					   _     
+             _
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
     | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
      \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
-			   |___/                 
+         |___/
 
     Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
     Using Google V8 3.9.4 JavaScript engine.
@@ -81,8 +79,7 @@ A default configuration is normally installed under
 `/etc/arangodb/arangosh.conf`. It contains a default endpoint and an
 empty password.
 
-<a name="troubleshooting"></a>
-### Troubleshooting
+!SUBSECTION Troubleshooting 
 
 If the ArangoDB server does not start or if you cannot connect to it 
 using `arangosh` or other clients, you can try to find the problem cause by 
@@ -192,24 +189,24 @@ Now extract all elements:
     arangosh> db.example.all().toArray()
     [
       { 
-	_id : "example/6308263", 
+  _id : "example/6308263",
         _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
-	name : "Jane Smith"
+  _rev : "1993214",
+  age : 31,
+  name : "Jane Smith"
       }, 
       { 
-	_id : "example/6242727", 
+  _id : "example/6242727",
         _key : "1774564",
-	_rev : "1774564", 
-	age : 29, 
-	name : "John Doe"
+  _rev : "1774564",
+  age : 29,
+  name : "John Doe"
       }, 
       { 
-	_id : "example/5980583", 
+  _id : "example/5980583",
         _key : "1512420",
-	_rev : "1512420", 
-	Hello : "World"
+  _rev : "1512420",
+  Hello : "World"
       }
     ]
 
@@ -220,18 +217,18 @@ The last document was a mistake – so let's delete it:
     arangosh> db.example.all().toArray()
     [
       { 
-	_id : "example/6308263", 
+  _id : "example/6308263",
         _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
-	name : "Jane Smith"
+  _rev : "1993214",
+  age : 31,
+  name : "Jane Smith"
       }, 
       { 
-	_id : "example/6242727", 
+  _id : "example/6242727",
         _key : "1774564",
-	_rev : "1774564", 
-	age : 29, 
-	name : "John Doe"
+  _rev : "1774564",
+  age : 29,
+  name : "John Doe"
       }
     ]
 
@@ -242,11 +239,11 @@ matching a given example.
     arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()
     [
       { 
-	_id : "example/6308263", 
+  _id : "example/6308263",
         _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
-	name : "Jane Smith"
+  _rev : "1993214",
+  age : 31,
+  name : "Jane Smith"
       }
     ]
 
@@ -258,11 +255,11 @@ query language.
     arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
     [
       { 
-	_id : "example/6308263", 
+  _id : "example/6308263",
         _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
-	name : "Jane Smith"
+  _rev : "1993214",
+  age : 31,
+  name : "Jane Smith"
       }
     ]
 
@@ -271,11 +268,11 @@ Search for all persons over 30:
     arangosh> db._query('FOR user IN example FILTER user.age > 30 RETURN user').toArray()
     [
       { 
-	_id : "example/6308263", 
+  _id : "example/6308263",
         _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
-	name : "Jane Smith"
+  _rev : "1993214",
+  age : 31,
+  name : "Jane Smith"
       }
     ]
 
@@ -283,8 +280,7 @@ You can learn all about the query language @ref Aql "here". Note that
 `_query` is a short-cut for `_createStatement` and `execute`. We will
 come back to these functions when we talk about cursors.
 
-<a name="arangodb's_front-end"></a>
-## ArangoDB's Front-End
+!SECTION ArangoDB's Front-End
 
 The ArangoDB server has a graphical front-end, which allows you to
 inspect the current state of the server from within your browser. You

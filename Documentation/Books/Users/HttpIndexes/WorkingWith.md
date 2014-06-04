@@ -1,5 +1,4 @@
-<a name="working_with_indexes_using_http"></a>
-# Working with Indexes using HTTP
+!CHAPTER Working with Indexes using HTTP
 
 @anchor HttpIndexRead
 @copydetails JSF_get_api_index

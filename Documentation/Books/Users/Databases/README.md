@@ -1,5 +1,4 @@
-<a name="handling_databases"></a>
-# Handling Databases
+!CHAPTER Handling Databases
 
 This is an introduction to managing databases in ArangoDB from within 
 JavaScript. 

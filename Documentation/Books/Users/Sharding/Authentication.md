@@ -1,5 +1,4 @@
-<a name="authentication_in_a_cluster"></a>
-# Authentication in a cluster
+!CHAPTER Authentication in a cluster
 
 In this section we describe, how authentication in a cluster is done
 properly. For experiments it is possible to run the cluster completely

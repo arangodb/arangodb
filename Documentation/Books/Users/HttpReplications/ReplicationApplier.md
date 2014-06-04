@@ -1,5 +1,4 @@
-<a name="replication_applier_commands"></a>
-# Replication Applier Commands
+!CHAPTER Replication Applier Commands 
 
 The applier commands allow to remotely start, stop, and query the state and 
 configuration of an ArangoDB database's replication applier.

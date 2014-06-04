@@ -1,5 +1,4 @@
-<a name="details_on_foxxmodel"></a>
-# Details on FoxxModel
+!CHAPTER Details on FoxxModel
 
 The model doesn't know anything about the database. It is just a representation 
 of the data as an JavaScript object.  You can add and overwrite the methods of 
@@ -48,15 +47,13 @@ attributes that have not been set by hand. An example:
 
     person.attributes // => { name: "Pete", active: true }
 
-<a name="extend"></a>
-#### Extend
+!SUBSUBSECTION Extend
 
 `FoxxModel::extend(instanceProperties, classProperties)`
 
 Extend the Model prototype to add or overwrite methods. The first object contains the properties to be defined on the instance, the second object those to be defined on the prototype.
 
-<a name="initialize"></a>
-#### Initialize
+!SUBSUBSECTION Initialize
 
 `new FoxxModel(data)`
 
@@ -64,12 +61,11 @@ If you initialize a model, you can give it initial data as an object.
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
+  instance = new Model({
+    a: 1
+  });
 
-<a name="get"></a>
-#### Get
+!SUBSUBSECTION Get
 
 `FoxxModel::get(name)`
 
@@ -77,13 +73,12 @@ Get the value of an attribute
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
-	instance.get("a");
+  instance = new Model({
+    a: 1
+  });
+  instance.get("a");
 
-<a name="set"></a>
-#### Set
+!SUBSUBSECTION Set
 
 `FoxxModel::set(name, value)`
 
@@ -91,16 +86,15 @@ Set the value of an attribute or multiple attributes at once
 
 *Examples*
 
-	instance = new Model({
-		a: 1
-	});
-	instance.set("a", 2);
-	instance.set({
-		b: 2
-	});
+  instance = new Model({
+    a: 1
+  });
+  instance.set("a", 2);
+  instance.set({
+    b: 2
+  });
 
-<a name="has"></a>
-#### Has
+!SUBSUBSECTION Has
 
 `FoxxModel::has(name)`
 
@@ -108,24 +102,21 @@ Returns true if the attribute is set to a non-null or non-undefined value.
 
 *Examples*
 
-	instance = new Model({
-	a: 1
-	});
-	instance.has("a"); //=> true
-	instance.has("b"); //=> false
+  instance = new Model({
+  a: 1
+  });
+  instance.has("a"); //=> true
+  instance.has("b"); //=> false
 
-<a name="attributes"></a>
-#### Attributes
+!SUBSUBSECTION Attributes
 
-<a name="fordb"></a>
-#### forDB
+!SUBSUBSECTION forDB
 
 `FoxxModel::forDB()`
 
 Return a copy of the model which can be saved into ArangoDB
 
-<a name="forclient"></a>
-#### forClient
+!SUBSUBSECTION forClient
 
 `FoxxModel::forClient()`
 

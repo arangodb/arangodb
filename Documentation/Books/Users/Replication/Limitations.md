@@ -1,5 +1,4 @@
-<a name="replication_limitations"></a>
-# Replication Limitations
+!CHAPTER Replication Limitations 
 
 The replication in ArangoDB 1.4-alpha has a few limitations still. Some of these 
 limitations may be removed in later versions of ArangoDB:

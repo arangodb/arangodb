@@ -1,5 +1,4 @@
-<a name="details_on_foxxcontroller"></a>
-# Details on FoxxController
+!CHAPTER Details on FoxxController
 
 `New FoxxController(applicationContext, options)`
 
@@ -9,20 +8,18 @@ This creates a new Controller. The first argument is the controller context avai
 
 *Examples*
 
-	app = new Controller(applicationContext, {
-		urlPrefix: "/meadow"
-	});	
+  app = new Controller(applicationContext, {
+    urlPrefix: "/meadow"
+  });
 
 
 <!--
 @copydetails JSF_foxx_controller_initializer
 -->
-	
-<a name="http_methods"></a>
-### HTTP Methods
 
-<a name="get"></a>
-#### Get
+!SUBSECTION HTTP Methods
+
+!SUBSUBSECTION Get
 
 `FoxxController::get(path, callback)`
 
@@ -32,19 +29,17 @@ When defining a route you can also define a so called 'parameterized' path like 
 
 *Examples*
 
-	app.get('/goose/barn', function (req, res) {
-		// Take this request and deal with it!
-	});
+  app.get('/goose/barn', function (req, res) {
+    // Take this request and deal with it!
+  });
 
-<a name="head"></a>
-#### Head
+!SUBSUBSECTION Head
 
 `FoxxController::head(path, callback)`
 
 This handles requests from the HTTP verb head. You have to give a function as callback. It will get a request and response object as its arguments
 
-<a name="post"></a>
-#### Post
+!SUBSUBSECTION Post
 
 `FoxxController::post(path, callback)`
 
@@ -52,12 +47,11 @@ This handles requests from the HTTP verb post. See above for the arguments you c
 
 *Examples*
 
-	app.post('/goose/barn', function (req, res) {
-		// Take this request and deal with it!
-	});
+  app.post('/goose/barn', function (req, res) {
+    // Take this request and deal with it!
+  });
 
-<a name="put"></a>
-#### Put
+!SUBSUBSECTION Put
 
 `FoxxController::put(path, callback)`
 
@@ -65,12 +59,11 @@ This handles requests from the HTTP verb put. See above for the arguments you ca
 
 *Examples*
 
-	app.put('/goose/barn', function (req, res) {
-		// Take this request and deal with it!
-	});
+  app.put('/goose/barn', function (req, res) {
+    // Take this request and deal with it!
+  });
 
-<a name="patch"></a>
-#### Patch
+!SUBSUBSECTION Patch
 
 `FoxxController::patch(path, callback)`
 
@@ -78,12 +71,11 @@ This handles requests from the HTTP verb patch. See above for the arguments you 
 
 *Examples*
 
-	app.patch('/goose/barn', function (req, res) {
-		// Take this request and deal with it!
-	});
+  app.patch('/goose/barn', function (req, res) {
+    // Take this request and deal with it!
+  });
 
-<a name="delete"></a>
-#### Delete
+!SUBSUBSECTION Delete
 
 `FoxxController::delete(path, callback)`
 
@@ -121,21 +113,20 @@ Do not forget that delete is a reserved word in JavaScript and therefore needs t
 @copydetails JSF_foxx_controller_delete
 
 -->
-<a name="documenting_and_constraining_a_specific_route"></a>
-### Documenting and constraining a specific route
+!SUBSECTION Documenting and constraining a specific route
 
 If you now want to document your route, you can use JSDoc style comments (a 
 multiline comment block with the first line starting with `/**` instead 
 of `/*`) above your routes to do that:
 
-	/** Get all foxxes
-	  * 
-	  * If you want to get all foxxes, please use this
-	  * method to do that.
-	  */
-	app.get("/foxxes", function () {
-	  // ...
-	});
+  /** Get all foxxes
+    *
+    * If you want to get all foxxes, please use this
+    * method to do that.
+    */
+  app.get("/foxxes", function () {
+    // ...
+  });
 
 <!--
 @verbinclude foxx-doc-comment
@@ -148,8 +139,7 @@ view of the route documentation. With the provided information, Foxx will
 generate a nice documentation for you. Furthermore you can describe your 
 API by chaining the following methods onto your path definition:
 
-<a name="path_param"></a>
-#### Path Param
+!SUBSUBSECTION Path Param
 
 If you defined a route "/foxx/:id", you can constrain which format a path parameter (/foxx/12) can have by giving it a type. We currently support the following types:
 
@@ -159,17 +149,16 @@ You can also provide a description of this parameter.
 
 *Examples*
 
-	app.get("/foxx/:id", function {
-		// Do something
-	}).pathParam("id", {
-		description: "Id of the Foxx",
-		type: "int"
-	});
+  app.get("/foxx/:id", function {
+    // Do something
+  }).pathParam("id", {
+    description: "Id of the Foxx",
+    type: "int"
+  });
 
-<a name="query_param"></a>
-#### Query Param
+!SUBSUBSECTION Query Param
 
-	FoxxController::queryParam(id, options)
+  FoxxController::queryParam(id, options)
 
 Describe a query parameter:
 
@@ -181,17 +170,16 @@ You can also provide a description of this parameter, if it is required and if y
 
 *Examples*
 
-	app.get("/foxx", function {
-	// Do something
-	}).queryParam("id", {
-	description: "Id of the Foxx",
-	type: "int",
-	required: true,
-	allowMultiple: false
-	});
+  app.get("/foxx", function {
+  // Do something
+  }).queryParam("id", {
+  description: "Id of the Foxx",
+  type: "int",
+  required: true,
+  allowMultiple: false
+  });
 
-<a name="body_param"></a>
-#### Body Param
+!SUBSUBSECTION Body Param
 
 `FoxxController::bodyParam(paramName, description, Model)`
 
@@ -209,26 +197,25 @@ It also adds documentation for this error response to the generated documentatio
 
 *Examples*
 
-	/* define our own error type, FoxxyError */
-	var FoxxyError = function (message) {
-	this.message = "the following FoxxyError occurred: ' + message;
-	};
-	FoxxyError.prototype = new Error();
-	app.get("/foxx", function {
-	/* throws a FoxxyError */
-	throw new FoxxyError();
-	}).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-	app.get("/foxx", function {
-	throw new FoxxyError("oops!");
-	}).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
-		return {
-			code: 123,
-			desc: e.message
-		};
-	});
+  /* define our own error type, FoxxyError */
+  var FoxxyError = function (message) {
+  this.message = "the following FoxxyError occurred: ' + message;
+  };
+  FoxxyError.prototype = new Error();
+  app.get("/foxx", function {
+  /* throws a FoxxyError */
+  throw new FoxxyError();
+  }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+  app.get("/foxx", function {
+  throw new FoxxyError("oops!");
+  }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+    return {
+      code: 123,
+      desc: e.message
+    };
+  });
 
-<a name="onlyif"></a>
-#### onlyIf
+!SUBSUBSECTION onlyIf
 
 `FoxxController::onlyIf(check)`
 
@@ -236,12 +223,11 @@ Provide it with a function that throws an exception if the normal processing sho
 
 *Examples*
 
-	app.get("/foxx", function {
-	// Do something
-	}).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+  app.get("/foxx", function {
+  // Do something
+  }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
 
-<a name="onlyifauthenticated"></a>
-#### onlyIfAuthenticated
+!SUBSUBSECTION onlyIfAuthenticated
 
 `FoxxController::onlyIf(code, reason)`
 
@@ -249,9 +235,9 @@ Please activate authentification for this app if you want to use this function. 
 
 *Examples*
 
-	app.get("/foxx", function {
-		// Do something
-	}).onlyIfAuthenticated(401, "You need to be authenticated");
+  app.get("/foxx", function {
+    // Do something
+  }).onlyIfAuthenticated(401, "You need to be authenticated");
 
 
 <!--
@@ -279,8 +265,7 @@ Please activate authentification for this app if you want to use this function. 
 
 @copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
 -->
-<a name="documenting_and_constraining_all_routes_of_a_controller"></a>
-### Documenting and constraining all routes of a controller
+!SUBSECTION Documenting and constraining all routes of a controller
 
 In addition to documenting a specific route, you can also
 do the same for all routes of a controller. For this purpose
@@ -295,11 +280,11 @@ Defines an errorResponse for all routes of this controller. For details on error
 
 *Examples*
 
-	app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-	app.get("/foxx", function {
-		// Do something
-	});
-	onlyIf
+  app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+  app.get("/foxx", function {
+    // Do something
+  });
+  onlyIf
 
 `RequestContextBuffer::onlyIf(code, reason)`
 
@@ -307,21 +292,21 @@ Defines an onlyIf for all routes of this controller. For details on onlyIf see t
 
 *Examples*
 
-	app.allroutes.onlyIf(myPersonalCheck);
-	app.get("/foxx", function {
-		// Do something
-	});
-	onlyIfAuthenticated
+  app.allroutes.onlyIf(myPersonalCheck);
+  app.get("/foxx", function {
+    // Do something
+  });
+  onlyIfAuthenticated
 
 RequestContextBuffer::errorResponse(errorClass, code, description)
 Defines an onlyIfAuthenticated for all routes of this controller. For details on onlyIfAuthenticated see the according method on routes.
 
 *Examples*
 
-	app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
-	app.get("/foxx", function {
-		// Do something
-	});
+  app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+  app.get("/foxx", function {
+    // Do something
+  });
 
 
 <!--
@@ -337,16 +322,14 @@ Defines an onlyIfAuthenticated for all routes of this controller. For details on
 
 @copydetails JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 -->
-<a name="before_and_after_hooks"></a>
-### Before and After Hooks
+!SUBSECTION Before and After Hooks
 
 You can use the following two functions to do something before or respectively 
 after the normal routing process is happening. You could use that for logging 
 or to manipulate the request or response (translate it to a certain format for 
 example).
 
-<a name="before"></a>
-#### Before
+!SUBSUBSECTION Before
 
 `FoxxController::before(path, callback)`
 
@@ -354,12 +337,11 @@ The before function takes a path on which it should watch and a function that it
 
 *Examples*
 
-	app.before('/high/way', function(req, res) {
-		//Do some crazy request logging
-	});
+  app.before('/high/way', function(req, res) {
+    //Do some crazy request logging
+  });
 
-<a name="after"></a>
-#### After
+!SUBSUBSECTION After
 
 `FoxxController::after(path, callback)`
 
@@ -367,9 +349,9 @@ This works pretty similar to the before function. But it acts after the executio
 
 *Examples*
 
-	app.after('/high/way', function(req, res) {
-		//Do some crazy response logging
-	});
+  app.after('/high/way', function(req, res) {
+    //Do some crazy response logging
+  });
 
 <!--
 ### Before
@@ -381,8 +363,7 @@ This works pretty similar to the before function. But it acts after the executio
 @copydetails JSF_foxx_controller_after
 -->
 
-<a name="the_request_and_response_objects"></a>
-## The Request and Response Objects
+!SECTION The Request and Response Objects
 
 When you have created your FoxxController you can now define routes on it. 
 You provide each with a function that will handle the request. It gets two 
@@ -394,8 +375,7 @@ arguments (four, to be honest. But the other two are not relevant for now):
 These objects are provided by the underlying ArangoDB actions and enhanced 
 by the `BaseMiddleware` provided by Foxx.
 
-<a name="the_request_object"></a>
-### The Request Object
+!SUBSECTION The Request Object
 
 
 The `request` object inherits several attributes from the underlying Actions:
@@ -437,22 +417,19 @@ The `request` object inherits several attributes from the underlying Actions:
 In addition to these attributes, a Foxx request objects provides the following
 convenience methods:
 
-<a name="body"></a>
-#### Body
+!SUBSUBSECTION Body
 
 `request.body()`
 
 Get the JSON parsed body of the request. If you need the raw version, please refer to the rawBody function.
 
-<a name="raw_body"></a>
-#### Raw Body
+!SUBSUBSECTION Raw Body
 
 `request.rawBody()`
 
 The raw request body, not parsed. Just a String.
 
-<a name="params"></a>
-#### Params
+!SUBSUBSECTION Params
 
 `request.params(key)`
 
@@ -475,16 +452,14 @@ If you have defined an URL like /test and the user gives a query component, the 
 @copydetails JSF_foxx_BaseMiddleware_request_params
 -->
 
-<a name="the_response_object"></a>
-### The Response Object
+!SUBSECTION The Response Object
 
 Every response object has the body attribute from the underlying Actions
 to set the raw body by hand.
 
 You provide your response body as a string here.
 
-<a name="status"></a>
-#### Status
+!SUBSUBSECTION Status
 
 `response.status(code)`
 
@@ -492,10 +467,9 @@ Set the status code of your response.
 
 *Examples*
 
-	response.status(404);
+  response.status(404);
 
-<a name="set"></a>
-#### Set
+!SUBSUBSECTION Set
 
 `response.set(key, value)`
 
@@ -503,16 +477,15 @@ Set a header attribute.
 
 *Examples*
 
-	response.set("Content-Length", 123);
-	response.set("Content-Type", "text/plain");
-	// or alternatively:
-	response.set({
-		"Content-Length": "123",
-		"Content-Type": "text/plain"
-	});
+  response.set("Content-Length", 123);
+  response.set("Content-Type", "text/plain");
+  // or alternatively:
+  response.set({
+    "Content-Length": "123",
+    "Content-Type": "text/plain"
+  });
 
-<a name="json"></a>
-#### JSON
+!SUBSUBSECTION JSON
 
 `response.json(object)`
 
@@ -520,7 +493,7 @@ Set the content type to JSON and the body to the JSON encoded object you provide
 
 *Examples*
 
-	response.json({'born': 'December 12, 1915'});
+  response.json({'born': 'December 12, 1915'});
 
 <!--
 ### Status

@@ -1,5 +1,4 @@
-<a name="managing_databases_using_http"></a>
-# Managing Databases using HTTP
+!CHAPTER Managing Databases using HTTP 
 
 @anchor HttpDatabaseCurrent
 @copydetails JSF_get_api_database_current

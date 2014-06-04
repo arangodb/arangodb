@@ -1,5 +1,4 @@
-<a name="accessing_the_web_interface"></a>
-# Accessing the Web Interface
+!CHAPTER Accessing the Web Interface
 
 ArangoDB comes with a built-in web interface for administration. The web 
 interface can be accessed via the URL

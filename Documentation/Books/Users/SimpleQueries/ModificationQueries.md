@@ -1,5 +1,4 @@
-<a name="modification_queries"></a>
-# Modification Queries
+!CHAPTER Modification Queries
 
 ArangoDB also allows removing, replacing, and updating documents based 
 on an example document.  Every document in the collection will be 
@@ -13,10 +12,9 @@ All methods can optionally be restricted to a specific number of operations.
 However, if a limit is specific but is less than the number of matches, it
 will be undefined which of the matching documents will get removed/modified.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arangod> db.content.removeByExample({ "domain": "de.celler" })
+  arangod> db.content.removeByExample({ "domain": "de.celler" })
 
 `collection.replaceByExample( example, newValue)`
 
@@ -30,10 +28,9 @@ The optional waitForSync parameter can be used to force synchronisation of the d
 
 The optional limit parameter can be used to restrict the number of replacements to the specified value. If limit is specified but less than the number of documents in the collection, it is undefined which documents are replaced.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
+  arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
 
 `collection.updateByExample( example, newValue)`
 
@@ -49,10 +46,9 @@ The optional waitForSync parameter can be used to force synchronisation of the d
 
 The optional limit parameter can be used to restrict the number of updates to the specified value. If limit is specified but less than the number of documents in the collection, it is undefined which documents are updated.
 
-<a name="examples"></a>
-#### Examples
+!SUBSUBSECTION Examples
 
-	arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
+  arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
 
 
 <!--

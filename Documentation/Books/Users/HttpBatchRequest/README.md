@@ -1,5 +1,4 @@
-<a name="http_interface_for_batch_requests"></a>
-# HTTP Interface for Batch Requests
+!CHAPTER HTTP Interface for Batch Requests
 
 Clients normally send individual operations to ArangoDB in individual
 HTTP requests. This is straightforward and simple, but has the

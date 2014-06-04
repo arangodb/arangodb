@@ -1,5 +1,4 @@
-<a name="document_keys"></a>
-# Document Keys
+!CHAPTER Document Keys 
 
 Users can define their own keys for documents they save. The document key will
 be saved along with a document in the `_key` attribute. Users can pick key
@@ -10,8 +9,8 @@ restrictions:
   `_key` attribute from a document)
 - It must consist of the letters a-z (lower or upper case), the digits 0-9,
   the underscore (_), dash (-), or colon (:) characters only
-	- Any other characters, especially multi-byte sequences, whitespace or
-	  punctuation characters cannot be used inside key values
+  - Any other characters, especially multi-byte sequences, whitespace or
+    punctuation characters cannot be used inside key values
 - The key must be unique within the collection it is used
 
 Keys are case-sensitive, i.e. `myKey` and `MyKEY` are considered to be

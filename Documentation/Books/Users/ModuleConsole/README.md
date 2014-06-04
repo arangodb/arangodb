@@ -1,11 +1,9 @@
-<a name="console_module"></a>
-# Console Module
+!CHAPTER Console Module
 
 The implementation follows the CommonJS specification
 [Console](http://wiki.commonjs.org/wiki/Console).
 
-<a name="console.assert"></a>
-### console.assert
+!SUBSECTION console.assert
 
 `console.assert(expression, format, argument1, ...)`
 
@@ -17,8 +15,7 @@ Example usage:
     console.assert(value === "abc", "expected: value === abc, actual:", value);
 
 
-<a name="console.debug"></a>
-### console.debug
+!SUBSECTION console.debug
 
 `console.debug(format, argument1, ...)`
 
@@ -38,8 +35,7 @@ Example usage:
 
     console.debug("%s", "this is a test");
 
-<a name="console.dir"></a>
-### console.dir
+!SUBSECTION console.dir
 
 `console.dir(object)`
 
@@ -49,8 +45,7 @@ Example usage:
 
     console.dir(myObject);
 
-<a name="console.error"></a>
-### console.error
+!SUBSECTION console.error
 
 `console.error(format, argument1, ...)`
 
@@ -68,15 +63,13 @@ Example usage:
 
     console.error("error '%s': %s", type, message);
 
-<a name="console.getline"></a>
-### console.getline
+!SUBSECTION console.getline
 
 `console.getline()`
 
 Reads in a line from the console and returns it as string.
 
-<a name="console.group"></a>
-### console.group
+!SUBSECTION console.group
 
 `console.group(format, argument1, ...)`
 
@@ -93,22 +86,19 @@ Example usage:
     console.log("id", user.id);
     console.groupEnd();
 
-<a name="console.groupcollapsed"></a>
-### console.groupCollapsed
+!SUBSECTION console.groupCollapsed
 
 `console.groupCollapsed(format, argument1, ...)`
 
 Same as `console.group`, but with the group initially collapsed.
 
-<a name="console.groupend"></a>
-### console.groupEnd
+!SUBSECTION console.groupEnd
 
 `console.groupEnd()`
 
 Closes the most recently opened block created by a call to *group*.
 
-<a name="console.info"></a>
-### console.info
+!SUBSECTION console.info
 
 `console.info(format, argument1, ...)`
 
@@ -126,16 +116,14 @@ Example usage:
 
     console.info("The %s jumped over %d fences", animal, count);
 
-<a name="console.log"></a>
-### console.log
+!SUBSECTION console.log
 
 `console.log(format, argument1, ...)`
 
 Formats the arguments according to *format* and logs the result as
 log message. This is an alias for `console.info`.
 
-<a name="console.time"></a>
-### console.time
+!SUBSECTION console.time
 
 `console.time(name)`
 
@@ -148,23 +136,20 @@ Example usage:
     ...
     console.timeEnd("mytimer"); // this will print the elapsed time
 
-<a name="console.timeend"></a>
-### console.timeEnd
+!SUBSECTION console.timeEnd
 
 `console.timeEnd(name)`
 
 Stops a timer created by a call to *time* and logs the time elapsed. 
 
-<a name="console.timeend"></a>
-### console.timeEnd
+!SUBSECTION console.timeEnd
 
 `console.trace()`
 
 Logs a stack trace of JavaScript execution at the point where it is
 called. 
 
-<a name="console.warn"></a>
-### console.warn
+!SUBSECTION console.warn
 
 `console.warn(format, argument1, ...)`
 

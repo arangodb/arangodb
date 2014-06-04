@@ -1,5 +1,4 @@
-<a name="installing"></a>
-# Installing
+!CHAPTER Installing
 
 This chapter describes how to install ArangoDB under various operation
 systems.

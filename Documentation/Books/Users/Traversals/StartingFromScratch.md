@@ -1,5 +1,4 @@
-<a name="starting_from_scratch"></a>
-# Starting from Scratch
+!CHAPTER Starting from Scratch
 
 ArangoDB provides the `edges`, `inEdges`, and `outEdges` methods for edge collections.
 These methods can be used to quickly determine if a vertex is connected to other vertices,

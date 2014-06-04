@@ -1,5 +1,4 @@
-<a name="modifying_a_collection"></a>
-# Modifying a Collection
+!CHAPTER Modifying a Collection
 
 @anchor HttpCollectionLoad
 @copydetails JSF_put_api_collection_load

@@ -1,12 +1,10 @@
-<a name="grouping"></a>
-# Grouping
+!CHAPTER Grouping
 
 To group results by arbitrary criteria, AQL provides the `COLLECT` keyword.
 `COLLECT` will perform a grouping, but no aggregation. Aggregation can still be
 added in the query if required.
 
-<a name="grouping_by_criteria"></a>
-### Grouping by criteria
+!SUBSECTION Grouping by criteria
 
 To group users by age, and result the names of the users with the highest ages,
 we'll issue a query like this:
@@ -61,8 +59,7 @@ result document per distinct `age` value (let aside the `LIMIT`). For each group
 we have access to the matching document via the `usersByAge` variable introduced in
 the `COLLECT` statement. 
 
-<a name="list_expander"></a>
-### list expander
+!SUBSECTION list expander
 
 
 The `usersByAge` variable contains the full documents found, and as we're only 
@@ -75,8 +72,7 @@ could also write:
     FOR temp IN usersByAge
       RETURN temp.u.name
 
-<a name="grouping_by_multiple_criteria"></a>
-### Grouping by multiple criteria
+!SUBSECTION Grouping by multiple criteria
 
 To group by multiple criteria, we'll use multiple arguments in the `COLLECT` clause.
 For example, to group users by `ageGroup` (a derived value we need to calculate first)
@@ -119,8 +115,7 @@ and then by `gender`, we'll do:
       } 
     ]
 
-<a name="aggregation"></a>
-### Aggregation
+!SUBSECTION Aggregation
 
 So far we only grouped data without aggregation. Adding aggregation is simple in AQL,
 as all that needs to be done is to run an aggregate function on the list created by
@@ -178,8 +173,7 @@ basic aggregation functions.
 In AQL all aggregation functions can be run on lists only. If an aggregation function
 is run on anything that is not a list, an error will be occure and the query will fail.
 
-<a name="post-filtering_aggregated_data"></a>
-### Post-filtering aggregated data
+!SUBSECTION Post-filtering aggregated data
 
 To filter on the results of a grouping or aggregation operation (i.e. something
 similar to `HAVING` in SQL), simply add another `FILTER` clause after the `COLLECT` 

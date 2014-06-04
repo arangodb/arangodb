@@ -1,5 +1,4 @@
-<a name="arangodb_shell_configuration"></a>
-# ArangoDB Shell Configuration
+!CHAPTER ArangoDB Shell Configuration
 
 _arangosh_ will look for a user-defined startup script named `.arangosh.rc` in the
 user's home directory on startup. If the file is present _arangosh_ will execute

@@ -73,13 +73,13 @@ Note: some other collection properties, such as type, isVolatile, or keyOptions 
 
 Read all properties
 
-	arango> db.examples.properties()
-	{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
+  arango> db.examples.properties()
+  { "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
 
 Change a property
 
-	arango> db.examples.properties({ waitForSync : false })
-	{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
+  arango> db.examples.properties({ waitForSync : false })
+  { "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
 
 
 <!--@copydetails JS_PropertiesVocbaseCol-->
