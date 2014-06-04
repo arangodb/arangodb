@@ -1,5 +1,4 @@
-<a name="traversals"></a>
-# Traversals
+!CHAPTER Traversals
 
 ArangoDB provides several ways to query graph data. Very simple operations can
 be composed with the low-level edge methods `edges`, `inEdges`, and `outEdges` for

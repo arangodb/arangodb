@@ -1,23 +1,21 @@
-<a name="emergency_console"></a>
-# Emergency Console
+!CHAPTER Emergency Console
 
-<a name="in_case_of_disaster"></a>
-### In Case Of Disaster
+!SUBSECTION In Case Of Disaster
 
 The following command starts a emergency console.
 
 *Note:* Never start the emergency console for a database which also has a
 server attached to it. In general the ArangoDB shell is what you want.
 
-	> ./arangod --console --log error /tmp/vocbase
-	ArangoDB shell [V8 version 3.9.4, DB version 1.x.y]
-	
-	arango> 1 + 2;
-	3
-	
-	arango> db.geo.count();
-	703
-	
+  > ./arangod --console --log error /tmp/vocbase
+  ArangoDB shell [V8 version 3.9.4, DB version 1.x.y]
+
+  arango> 1 + 2;
+  3
+
+  arango> db.geo.count();
+  703
+
 <!--@EXAMPLE{start-emergency-console,emergency console} -->
 
 The emergency console disables the HTTP interface of the server and

@@ -662,7 +662,7 @@ AQL supports the following functions to operate on document values:
 
       [ 
         { "user1" : { "name" : "J" }, 
-  	"user2" : { "name" : "T" } } 
+    "user2" : { "name" : "T" } }
       ]
 
   When merging documents with identical attribute names, the attribute values of the

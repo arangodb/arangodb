@@ -1,8 +1,6 @@
-<a name="module_"fs""></a>
-# Module "fs"
+!CHAPTER Module "fs"
 
-<a name="file_system_module"></a>
-### File System Module
+!SUBSECTION File System Module
 
 The implementation follows the CommonJS specification 
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).

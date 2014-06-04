@@ -1,5 +1,4 @@
-<a name="deploying_a_foxx_application"></a>
-# Deploying a Foxx application
+!CHAPTER Deploying a Foxx application
 
 When a Foxx application is ready to be used in production, it is time to leave the
 development mode and deploy the app in a production environment.

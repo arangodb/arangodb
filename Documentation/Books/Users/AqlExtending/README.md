@@ -1,5 +1,4 @@
-<a name="extending_aql_with_user_functions"></a>
-# Extending AQL with User Functions
+!CHAPTER Extending AQL with User Functions
 
 AQL comes with a built-in set of functions, but it is no
 full-feature programming language.

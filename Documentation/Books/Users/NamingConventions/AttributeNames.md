@@ -1,5 +1,4 @@
-<a name="attribute_names"></a>
-# Attribute Names
+!CHAPTER Attribute Names 
 
 Users can pick attribute names for document attributes as desired, provided the
 following attribute naming constraints are not violated:

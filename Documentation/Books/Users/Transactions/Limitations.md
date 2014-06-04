@@ -1,5 +1,4 @@
-<a name="limitations"></a>
-# Limitations
+!CHAPTER Limitations
 
 Transactions in ArangoDB have been designed with particular use cases 
 in mind. They will be mainly useful for short and small data retrieval 

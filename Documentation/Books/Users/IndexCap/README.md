@@ -1,9 +1,7 @@
-<a name="cap_constraint"></a>
-# Cap Constraint
+!CHAPTER Cap Constraint
 
 
-<a name="introduction_to_cap_constraints"></a>
-### Introduction to Cap Constraints
+!SUBSECTION Introduction to Cap Constraints
 
 This is an introduction to ArangoDB's size restrictions aka cap constraints for
 collections.
@@ -29,8 +27,7 @@ indefinitely. Cap constraints can be used to automate the process of getting rid
 of "old" documents, and so save the user from implementing own jobs to purge
 "old" collection data.
 
-<a name="accessing_cap_constraints_from_the_shell"></a>
-## Accessing Cap Constraints from the Shell
+!SECTION Accessing Cap Constraints from the Shell
 
 `collection.ensureCapConstraint( size, {byteSize})`
 
@@ -46,13 +43,13 @@ Note that this does not imply any restriction of the number of revisions of docu
 
 Restrict the number of document to at most 10 documents:
 
-	arango> db.examples.ensureCapConstraint(10);
-	{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
-	
-	arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
-	
-	arango> db.examples.count();
-	10
+  arango> db.examples.ensureCapConstraint(10);
+  { "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
+
+  arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+
+  arango> db.examples.count();
+  10
 
 
 <!--

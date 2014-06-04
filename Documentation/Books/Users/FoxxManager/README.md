@@ -1,8 +1,6 @@
-<a name="foxx_manager"></a>
-# Foxx Manager
+!CHAPTER Foxx Manager
 
-<a name="foxx_applications"></a>
-## Foxx Applications
+!SECTION Foxx Applications
 
 Foxx is an easy way to create APIs and simple web applications from within ArangoDB. 
 It is inspired by Sinatra, the classy Ruby web framework.  An application built 

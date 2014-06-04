@@ -1,8 +1,6 @@
-<a name="fulltext_indexes"></a>
-# Fulltext indexes
+!CHAPTER Fulltext indexes
 
-<a name="introduction_to_fulltext_indexes"></a>
-### Introduction to Fulltext Indexes
+!SUBSECTION Introduction to Fulltext Indexes
 
 This is an introduction to ArangoDB's fulltext indexes.
 
@@ -10,8 +8,7 @@ It is possible to define a fulltext index on one textual attribute of a
 collection of documents. The fulltext index can then be used to efficiently find
 exact words or prefixes of words contained in these documents.
 
-<a name="accessing_fulltext_indexes_from_the_shell"></a>
-## Accessing Fulltext Indexes from the Shell
+!SECTION Accessing Fulltext Indexes from the Shell
 
 `ensureFulltextIndex(field, minWordLength)`
 
@@ -21,8 +18,8 @@ The minimum length of words that are indexed can be specified with the minWordLe
 
 In case that the index was successfully created, the index identifier is returned.
 
-	arangod> db.emails.ensureFulltextIndex("body");
-	{ "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }
+  arangod> db.emails.ensureFulltextIndex("body");
+  { "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }
 
 <!--
 @anchor IndexFulltextShellEnsureFulltextIndex

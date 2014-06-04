@@ -1,8 +1,6 @@
-<a name="general_http_request_handling_in_arangodb"></a>
-# General HTTP Request Handling in ArangoDB
+!CHAPTER General HTTP Request Handling in ArangoDB 
 
-<a name="protocol"></a>
-### Protocol
+!SUBSECTION Protocol
 
 ArangoDB exposes its API via HTTP, making the server accessible easily with
 a variety of clients and tools (e.g. browsers, curl, telnet). The communication
@@ -24,8 +22,7 @@ ArangoDB will always respond to client requests with HTTP 1.1. Clients
 should therefore support HTTP version 1.1. 
 
 
-<a name="blocking_vs._non-blocking_requests"></a>
-### Blocking vs. Non-blocking Requests
+!SUBSECTION Blocking vs. Non-blocking Requests
 
 ArangoDB supports both blocking and non-blocking requests.
 
@@ -72,8 +69,7 @@ case of a crash. Clients should therefore not use the asynchronous feature
 when they have strict durability requirements or if they rely on the immediate 
 result of the request they send.
 
-<a name="http_keep-alive"></a>
-### HTTP Keep-Alive
+!SUBSECTION HTTP Keep-Alive
 
 ArangoDB supports HTTP keep-alive. If the client does not send a `Connection`
 header in its request, and the client uses HTTP version 1.1, ArangoDB will assume 
@@ -88,8 +84,7 @@ using HTTP 1.0, except if they send an `Connection: Keep-Alive` header.
 The default Keep-Alive timeout can be specified at server start using the
 `--server.keep-alive-timeout` parameter.
 
-<a name="authentication"></a>
-### Authentication
+!SUBSECTION Authentication
 
 Client authentication can be achieved by using the `Authorization` HTTP header in
 client requests. ArangoDB supports HTTP Basic authentication.
@@ -131,8 +126,7 @@ to ArangoDB, ArangoDB will only send status code 401, but no `WWW-Authenticate` 
 This allows clients to implement credentials handling and bypassing the browser's
 built-in dialog.
 
-<a name="error_handling"></a>
-### Error Handling
+!SUBSECTION Error Handling 
 
 The following should be noted about how ArangoDB handles client errors in its
 HTTP layer:
@@ -187,8 +181,7 @@ HTTP layer:
   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
   will be rejected by ArangoDB.
 
-<a name="cross_origin_resource_sharing_(cors)_requests"></a>
-### Cross Origin Resource Sharing (CORS) requests
+!SUBSECTION Cross Origin Resource Sharing (CORS) requests
 
 ArangoDB will automatically handle CORS requests as follows:
 
@@ -233,8 +226,7 @@ The response to the HTTP OPTIONS request will however be a generic response that
 will not expose any private data and thus can be considered "safe" even without
 credentials.
 
-<a name="http_method_overriding"></a>
-### HTTP method overriding
+!SUBSECTION HTTP method overriding
 
 Since version 1.4, ArangoDB provides a startup option `--server.allow-method-override`.
 This option can be set to allow overriding the HTTP request method (e.g. GET, POST,

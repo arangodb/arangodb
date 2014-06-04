@@ -22,12 +22,12 @@ AQL supports two types of comments:
   lines as necessary.
 
 
-	/* this is a comment */ RETURN 1
-	/* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1	
-	/* this is
-	   a multi line
-	   comment */
-	// a single line comment
+  /* this is a comment */ RETURN 1
+  /* these */ RETURN /* are */ 1 /* multiple */ + /* comments */ 1
+  /* this is
+     a multi line
+     comment */
+  // a single line comment
 
 !SUBSECTION Keywords
 
@@ -125,8 +125,8 @@ attribute naming conventions.
 
     FOR u IN users
       FOR f IN friends
-	FILTER u.active == true && f.active == true && u.id == f.userId
-	RETURN u.name
+  FILTER u.active == true && f.active == true && u.id == f.userId
+  RETURN u.name
 
 In the above example, the attribute names `active`, `name`, `id`, and `userId`
 are qualified using the collection names they belong to (`u` and `f`
@@ -316,7 +316,7 @@ when using the bind parameter in a query, two `@` symbols must be used).
 
     FOR u IN @@collection
       FILTER u.active == true
-	RETURN u
+  RETURN u
 
 !SUBSECTION Type and value order
 

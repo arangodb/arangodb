@@ -1,5 +1,4 @@
-<a name="modules_path_versus_modules_collection"></a>
-# Modules Path versus Modules Collection
+!CHAPTER Modules Path versus Modules Collection
 
 ArangoDB comes with predefined modules defined in the file-system under the path
 specified by *startup.startup-directory*. In a standard installation this
@@ -47,8 +46,7 @@ follows
   executed in a new module context and the value of `exports` object is
   returned. This value is also stored in the module cache.
 
-<a name="modules_cache"></a>
-### Modules Cache
+!SUBSECTION Modules Cache
 
 As `require` uses a module cache to store the exports objects of the required
 modules, changing the design documents for the modules in the `_modules` collection

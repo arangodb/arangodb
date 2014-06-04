@@ -1,8 +1,6 @@
-<a name="working_with_databases"></a>
-# Working with Databases
+!CHAPTER Working with Databases 
 
-<a name="database_methods"></a>
-### Database Methods
+!SUBSECTION Database Methods
 
 The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the _system

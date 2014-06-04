@@ -1,8 +1,6 @@
-<a name="datafile_debugger"></a>
-# Datafile Debugger
+!CHAPTER Datafile Debugger
 
-<a name="in_case_of_disaster"></a>
-## In Case Of Disaster
+!SECTION In Case Of Disaster
 
 AranagoDB uses append-only journals. Data corruption should only occur when the
 database server is killed. In this case, the corruption should only occur in the
@@ -18,7 +16,7 @@ the program
 
 in order to check the consistency of the datafiles and journals. This brings up
 
-	___      _         __ _ _           ___  ___    ___ 
+  ___      _         __ _ _           ___  ___    ___
        /   \__ _| |_ __ _ / _(_) | ___     /   \/ __\  / _ \
       / /\ / _` | __/ _` | |_| | |/ _ \   / /\ /__\// / /_\/
      / /_// (_| | || (_| |  _| | |  __/  / /_// \/  \/ /_\\ 

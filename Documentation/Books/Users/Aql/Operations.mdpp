@@ -39,7 +39,7 @@ statements will be created.
 
     FOR u IN users
       FOR l IN locations
-	RETURN { "user" : u, "location" : l }
+  RETURN { "user" : u, "location" : l }
 
 In this example, there are two list iterations: an outer iteration over the list
 `users` plus an inner iteration over the list `locations`.  The inner list is
@@ -170,14 +170,14 @@ making the whole query more readable.
 
     FOR u IN users
       LET friends = (
-	FOR f IN friends 
-	  FILTER u.id == f.userId
-	  RETURN f
+  FOR f IN friends
+    FILTER u.id == f.userId
+    RETURN f
       )
       LET memberships = (
-	FOR m IN memberships
-	  FILTER u.id == m.userId
-	  RETURN m
+  FOR m IN memberships
+    FILTER u.id == m.userId
+    RETURN m
       )
       RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }
 

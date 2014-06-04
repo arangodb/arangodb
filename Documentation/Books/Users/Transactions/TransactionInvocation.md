@@ -1,5 +1,4 @@
-<a name="transaction_invocation"></a>
-# Transaction invocation
+!CHAPTER Transaction invocation
 
 ArangoDB transactions are different from transactions in SQL.
 
@@ -26,8 +25,7 @@ data retrieval and/or modification operations, and at the end automatically
 commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
 
-<a name="declaration_of_collections"></a>
-### Declaration of collections
+!SUBSECTION Declaration of collections
 
 All collections which are to participate in a transaction need to be declared 
 beforehand. This is a necessity to ensure proper locking and isolation. 
@@ -75,8 +73,7 @@ Even without specifying them, it is still possible to read from such collections
 from within a transaction, but with relaxed isolation. Please refer to 
 @ref TransactionsLocking for more details.
 
-<a name="declaration_of_data_modification_and_retrieval_operations"></a>
-### Declaration of data modification and retrieval operations
+!SUBSECTION Declaration of data modification and retrieval operations
 
 All data modification and retrieval operations that are to be executed inside
 the transaction need to be specified in a Javascript function, using the `action`
@@ -159,8 +156,7 @@ case, the user can return any legal Javascript value from the function:
       }
     });
 
-<a name="examples"></a>
-### Examples
+!SUBSECTION Examples
 
 The first example will write 3 documents into a collection named `c1`. 
 The `c1` collection needs to be declared in the `write` attribute of the 
@@ -272,8 +268,7 @@ start. The following example using a cap constraint should illustrate that:
 
     // we now have these keys back: [ "key2", "key3", "key4" ] 
 
-<a name="cross-collection_transactions"></a>
-### Cross-collection transactions
+!SUBSECTION Cross-collection transactions
 
 There's also the possibility to run a transaction across multiple collections. 
 In this case, multiple collections need to be declared in the `collections`

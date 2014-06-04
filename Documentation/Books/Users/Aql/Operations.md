@@ -1,9 +1,7 @@
-<a name="high-level_operations"></a>
-# High-level operations
+!CHAPTER High-level operations
 
 
-<a name="for"></a>
-### FOR
+!SUBSECTION FOR
 
 The `FOR` keyword can be to iterate over all elements of a list.
 The general syntax is:
@@ -41,7 +39,7 @@ statements will be created.
 
     FOR u IN users
       FOR l IN locations
-	RETURN { "user" : u, "location" : l }
+  RETURN { "user" : u, "location" : l }
 
 In this example, there are two list iterations: an outer iteration over the list
 `users` plus an inner iteration over the list `locations`.  The inner list is
@@ -49,8 +47,7 @@ traversed as many times as there are elements in the outer list.  For each
 iteration, the current values of `users` and `locations` are made available for
 further processing in the variable `u` and `l`.
 
-<a name="return"></a>
-### RETURN
+!SUBSECTION RETURN 
 
 The `RETURN` statement can (and must) be used to produce the result of a query.
 It is mandatory to specify a `RETURN` statement at the end of each block in a
@@ -76,8 +73,7 @@ scope the `RETURN` is placed in can be used for the computations.
 Note: Return will close the current scope and eliminate all local variables in
 it.
 
-<a name="filter"></a>
-### FILTER
+!SUBSECTION FILTER
 
 The `FILTER` statement can be used to restrict the results to elements that
 match an arbitrary logical condition. The general syntax is:
@@ -108,8 +104,7 @@ include an element.
       FILTER u.age < 39
       RETURN u
 
-<a name="sort"></a>
-### SORT
+!SUBSECTION SORT 
 
 The `SORT` statement will force a sort of the list of already produced
 intermediate results in the current block. `SORT` allows specifying one or
@@ -129,8 +124,7 @@ always undefined unless an explicit sort order is defined using `SORT`.
       SORT u.lastName, u.firstName, u.id DESC
       RETURN u
 
-<a name="limit"></a>
-### LIMIT
+!SUBSECTION LIMIT
 
 The `LIMIT` statement allows slicing the list of result documents using an
 offset and a count. It reduces the number of elements in the result to at most
@@ -152,8 +146,7 @@ elements should be at most included in the result.
       LIMIT 0, 5
       RETURN u
 
-<a name="let"></a>
-### LET
+!SUBSECTION LET 
 
 The `LET` statement can be used to assign an arbitrary value to a variable.  The
 variable is then introduced in the scope the `LET` statement is placed in.  The
@@ -177,19 +170,18 @@ making the whole query more readable.
 
     FOR u IN users
       LET friends = (
-	FOR f IN friends 
-	  FILTER u.id == f.userId
-	  RETURN f
+  FOR f IN friends
+    FILTER u.id == f.userId
+    RETURN f
       )
       LET memberships = (
-	FOR m IN memberships
-	  FILTER u.id == m.userId
-	  RETURN m
+  FOR m IN memberships
+    FILTER u.id == m.userId
+    RETURN m
       )
       RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }
 
-<a name="collect"></a>
-### COLLECT
+!SUBSECTION COLLECT
 
 The `COLLECT` keyword can be used to group a list by one or multiple group
 criteria.  The two general syntaxes for `COLLECT` are:

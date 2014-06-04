@@ -1,5 +1,4 @@
-<a name="getting_started"></a>
-# Getting started
+!CHAPTER Getting started
 
 To use a traversal object, we first need to require the `traversal` module:
     
@@ -87,8 +86,7 @@ Note that the result is limited to vertices directly connected to the start vert
 achieved this by setting the `maxDepth` attribute to `1`. Not setting it would return the
 full list of vertices.
 
-<a name="traversal_direction"></a>
-### Traversal Direction
+!SUBSECTION Traversal Direction
 
 For the examples contained in this manual, we'll be starting the traversals at vertex
 `v/world`. Vertices in our graph are connected like this:
@@ -158,11 +156,9 @@ The result is:
 
 which confirms that now we're going outbound.
 
-<a name="traversal_strategy"></a>
-### Traversal Strategy
+!SUBSECTION Traversal Strategy
 
-<a name="depth-first_traversals"></a>
-#### Depth-first traversals
+!SUBSUBSECTION Depth-first traversals
 
 The visitation order of vertices is determined by the `strategy`, `order` attributes set
 in the configuration. We chose `depthfirst` and `preorder`, meaning the traverser will 
@@ -241,8 +237,7 @@ vertices will be emitted first):
       ...
     ]
 
-<a name="breadth-first_traversals"></a>
-#### Breadth-first traversals
+!SUBSUBSECTION Breadth-first traversals
 
 If we go back to `preorder`, but change the strategy to `breadth-first` and re-run the 
 traversal, we'll see that the return order changes, and items on the same level will be 
@@ -304,8 +299,7 @@ If you are using custom expanders (see @ref TraversalsCustomExpanders)
 you have to organise the sorting within the specified expander.
 
 
-<a name="writing_custom_visitors"></a>
-#### Writing Custom Visitors
+!SUBSUBSECTION Writing Custom Visitors
 
 So far we have used much of the traverser's default functions. The traverser is very
 configurable and many of the default functions can be overridden with custom functionality.
@@ -344,11 +338,9 @@ the current vertex as we traverse:
     traverser.traverse(undefined, startVertex);
 
 
-<a name="filtering_vertices_and_edges"></a>
-### Filtering Vertices and Edges
+!SUBSECTION Filtering Vertices and Edges
 
-<a name="filtering_vertices"></a>
-#### Filtering Vertices
+!SUBSUBSECTION Filtering Vertices
 
 So far we have returned all vertices that were visited during the traversal. This is not 
 always required. If the result shall be restrict to just specific vertices, we can use a
@@ -405,8 +397,7 @@ values:
 
     return [ 'exclude', 'prune' ];
 
-<a name="filtering_edges"></a>
-### Filtering Edges
+!SUBSECTION Filtering Edges
 
 It is possible to exclude certain edges from the traversal. To filter on edges, a
 filter function can be defined via the `expandFilter` attribute. The `expandFilter`
@@ -431,8 +422,7 @@ of edges:
       }
     };
 
-<a name="writing_custom_expanders"></a>
-### Writing Custom Expanders
+!SUBSECTION Writing Custom Expanders
 
 
 The edges connected to a vertex are determined by the expander. So far we have used a 
@@ -561,8 +551,7 @@ has the highest `when` attribute value:
     };
 
 
-<a name="configuration_overview"></a>
-### Configuration Overview
+!SUBSECTION Configuration Overview
 
 This section summarizes the configuration attributes for the traversal object. The
 configuration can consist of the following attributes:

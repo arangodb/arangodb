@@ -1,8 +1,6 @@
-<a name="http_interface_for_documents"></a>
-# HTTP Interface for Documents
+!CHAPTER HTTP Interface for Documents
 
-<a name="documents,_identifiers,_handles"></a>
-### Documents, Identifiers, Handles
+!SUBSECTION Documents, Identifiers, Handles
 
 This is an introduction to ArangoDB's REST interface for documents.
 
