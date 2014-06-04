@@ -21,8 +21,8 @@ namespace triagens {
         : marker(marker),
           trxCollection(trxCollection),
           header(nullptr),
-          type(type),
           rid(rid),
+          type(type),
           handled(false),
           hasReachedIndexes(false) {
 
@@ -117,14 +117,14 @@ namespace triagens {
         }
       }
 
-      Marker* marker;
-      struct TRI_transaction_collection_s* trxCollection;
-      TRI_doc_mptr_t* header;
-      TRI_doc_mptr_t oldHeader;
-      TRI_voc_document_operation_e type;
-      TRI_voc_rid_t const rid;
-      bool handled;
-      bool hasReachedIndexes;
+      Marker*                               marker;
+      struct TRI_transaction_collection_s*  trxCollection;
+      TRI_doc_mptr_t*                       header;
+      TRI_doc_mptr_t                        oldHeader;
+      TRI_voc_rid_t const                   rid;
+      TRI_voc_document_operation_e          type;
+      bool                                  handled;
+      bool                                  hasReachedIndexes;
     };
   }
 }
