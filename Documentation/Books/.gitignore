@@ -1,3 +1,4 @@
 *.md
+**/*.md
 !SUMMARY.md
 books
