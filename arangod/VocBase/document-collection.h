@@ -56,6 +56,11 @@ struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_s;
 struct TRI_key_generator_s;
+namespace triagens {
+  namespace arango {
+    class TransactionBase;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -440,7 +445,8 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_document_collection_t*);
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorPrimaryCollection (TRI_document_collection_t*,
+size_t TRI_DocumentIteratorPrimaryCollection (triagens::arango::TransactionBase const*,
+                                              TRI_document_collection_t*,
                                               void*,
                                               bool (*callback)(TRI_doc_mptr_t const*, 
                                               TRI_document_collection_t*, void*));
