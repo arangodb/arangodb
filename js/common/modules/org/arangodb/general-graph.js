@@ -802,7 +802,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   } else {
     opts = {};
   }
-  opts.vertexExamples = ex;
+  opts.neighborExamples = ex;
   this.bindVars["options_" + this.stack.length] = opts;
   var stmt = new AQLStatement(query, "neighbor");
   this.stack.push(stmt);
