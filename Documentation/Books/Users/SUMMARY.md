@@ -62,10 +62,13 @@
 	* [Joins](AqlExamples/Join.md)
 	* [Grouping](AqlExamples/Grouping.md)
 <!-- 13 -->
-* [Graphs](Graphs/README.md)
-	* [Graph Constructor](Graphs/GraphConstructor.md)
-	* [Vertex Methods](Graphs/VertexMethods.md)
-	* [Edge Methods](Graphs/EdgeMethods.md)
+* [Blueprint-Graphs](Blueprint-Graphs/README.md)
+	* [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
+	* [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
+	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
+<!-- 13.5 -->
+* [General-Graphs](General-Graphs/README.md)
+	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
 * [Traversals](Traversals/README.md)
 	* [Starting from Scratch](Traversals/StartingFromScratch.md)	

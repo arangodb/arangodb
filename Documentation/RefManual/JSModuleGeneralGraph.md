@@ -475,6 +475,22 @@ Returns the outgoing vertex of an edge
 
 ## Fluent query options
 
+### ToArray
+
+@copydetails JSF_general_graph_fluent_aql_toArray
+
+### HasNext
+
+@copydetails JSF_general_graph_fluent_aql_hasNext
+
+### Next
+
+@copydetails JSF_general_graph_fluent_aql_next
+
+### Count
+
+@copydetails JSF_general_graph_fluent_aql_count
+
 ### Edges
 
 @copydetails JSF_general_graph_fluent_aql_edges
@@ -498,6 +514,22 @@ Returns the outgoing vertex of an edge
 ### ToVertices
 
 @copydetails JSF_general_graph_fluent_aql_toVertices
+
+### Neighbors
+
+@copydetails JSF_general_graph_fluent_aql_neighbors
+
+### Restrict
+
+@copydetails JSF_general_graph_fluent_aql_restrict
+
+### Filter
+
+@copydetails JSF_general_graph_fluent_aql_filter
+
+### Path
+
+@copydetails JSF_general_graph_fluent_aql_path
 
 ## Restrict \& Filter
 ### Restrict

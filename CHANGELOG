@@ -35,6 +35,8 @@ v2.2.0 (XXXX-XX-XX)
 v2.1.1 (2014-06-06)
 -------------------
 
+* fixed dfdb: should not start any other V8 threads
+
 * signature for collection functions was modified
 
   The basic change was the substitution of the input parameter of the
