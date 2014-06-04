@@ -342,7 +342,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
     assert(_lastCollectedId <= _lastSealedId);
   }
 
-  LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
+  // LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
 
   return true;
 }
@@ -362,7 +362,7 @@ void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
     }
   }
 
-  LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
+  // LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
