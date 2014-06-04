@@ -2297,14 +2297,14 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
   // prefill with 0's to init counters
   TRI_doc_collection_info_t* info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
 
-  if (info == NULL) {
-    return NULL;
+  if (info == nullptr) {
+    return nullptr;
   }
     
   for (size_t i = 0;  i < document->_datafileInfo._nrAlloc;  ++i) {
     TRI_doc_datafile_info_t* d = static_cast<TRI_doc_datafile_info_t*>(document->_datafileInfo._table[i]);
 
-    if (d != NULL) {
+    if (d != nullptr) {
       info->_numberAlive        += d->_numberAlive;
       info->_numberDead         += d->_numberDead;
       info->_numberTransaction  += d->_numberTransaction; // not used here (only in compaction)
@@ -2346,12 +2346,12 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 
   // add index information
   info->_numberIndexes = 0;
-  info->_sizeIndexes = 0;
+  info->_sizeIndexes   = 0;
 
   for (size_t i = 0; i < document->_allIndexes._length; ++i) { 
     TRI_index_t const* idx = static_cast<TRI_index_t const*>(TRI_AtVectorPointer(&document->_allIndexes, i)); 
 
-    if (idx->memory != NULL) {
+    if (idx->memory != nullptr) {
       info->_sizeIndexes += idx->memory(idx);
     }
     info->_numberIndexes++; 
@@ -2370,12 +2370,12 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     TRI_shaper_t* shaper) {
-  TRI_index_t* primaryIndex;
-  int res;
+  document->_cleanupIndexes   = false;
 
-  document->_cleanupIndexes = false;
+  document->_lastWrittenId    = 0;
+  document->_lastCollectedId  = 0;
 
-  res = TRI_InitPrimaryCollection(document, shaper);
+  int res = TRI_InitPrimaryCollection(document, shaper);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyCollection(&document->base);
@@ -2386,7 +2386,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   document->_headersPtr = TRI_CreateSimpleHeaders();  // ONLY IN CREATE COLLECTION
 
-  if (document->_headersPtr == NULL) {  // ONLY IN CREATE COLLECTION
+  if (document->_headersPtr == nullptr) {  // ONLY IN CREATE COLLECTION
     TRI_DestroyPrimaryCollection(document);
 
     return false;
@@ -2402,9 +2402,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   }
 
   // create primary index
-  primaryIndex = TRI_CreatePrimaryIndex(document);
+  TRI_index_t* primaryIndex = TRI_CreatePrimaryIndex(document);
 
-  if (primaryIndex == NULL) {
+  if (primaryIndex == nullptr) {
     TRI_DestroyVectorPointer(&document->_allIndexes);
     TRI_DestroyPrimaryCollection(document);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -2429,7 +2429,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
     edgesIndex = TRI_CreateEdgeIndex(document, document->base._info._cid);
 
-    if (edgesIndex == NULL) {
+    if (edgesIndex == nullptr) {
       TRI_FreeIndex(primaryIndex);
       TRI_DestroyVectorPointer(&document->_allIndexes);
       TRI_DestroyPrimaryCollection(document);
@@ -2474,6 +2474,8 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // we do not require an initial journal
   document->_rotateRequested       = false;
+  
+  TRI_InitSpin(&document->_idLock);
 
   return true;
 }
@@ -2640,22 +2642,23 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
-  size_t i, n;
-
   TRI_DestroyCondition(&document->_journalsCondition);
 
   TRI_FreeSimpleHeaders(document->_headersPtr);  // PROTECTED because collection is already closed
 
   // free memory allocated for indexes
-  n = document->_allIndexes._length;
-  for (i = 0 ; i < n ; ++i) {
+  size_t const n = document->_allIndexes._length;
+  for (size_t i = 0 ; i < n ; ++i) {
     TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
     TRI_FreeIndex(idx);
   }
+
   // free index vector
   TRI_DestroyVectorPointer(&document->_allIndexes);
   TRI_DestroyVector(&document->_failedTransactions);
+  
+  TRI_DestroySpin(&document->_idLock);
 
   TRI_DestroyPrimaryCollection(document);
 }
@@ -2672,6 +2675,42 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the "last written" value for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLastWrittenDocumentCollection (TRI_document_collection_t* document, 
+                                           TRI_voc_tick_t id) {
+  // the id is the id of the last WAL file that contains data for the collection
+  TRI_LockSpin(&document->_idLock);
+  document->_lastWrittenId = id;
+  TRI_UnlockSpin(&document->_idLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the "last collected" value for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLastCollectedDocumentCollection (TRI_document_collection_t* document, 
+                                           TRI_voc_tick_t id) {
+  // the id is the id of the last WAL file that contains data for the collection
+  TRI_LockSpin(&document->_idLock);
+  document->_lastCollectedId = id;
+  TRI_UnlockSpin(&document->_idLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not markers of a collection were fully collected
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document) { 
+  TRI_LockSpin(&document->_idLock);
+  bool result = (document->_lastCollectedId == document->_lastWrittenId);
+  TRI_UnlockSpin(&document->_idLock);
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a primary collection
@@ -3182,7 +3221,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   if (TRI_IsTraceLogging(__FILE__)) {
     TRI_DebugDatafileInfoPrimaryCollection(document);
   }
-
+  
   return document;
 }
 

@@ -56,6 +56,7 @@ struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_s;
 struct TRI_key_generator_s;
+
 namespace triagens {
   namespace arango {
     class TransactionBase;
@@ -320,6 +321,11 @@ typedef struct TRI_document_collection_s {
   int64_t                      _numberDocuments;
   TRI_read_write_lock_t        _compactionLock;
   double                       _lastCompaction;
+
+  // this lock protected _lastWrittenId and _lastCollectedId
+  TRI_spin_t                   _idLock;
+  TRI_voc_tick_t               _lastWrittenId;
+  TRI_voc_tick_t               _lastCollectedId;
 
   // .............................................................................
   // this condition variable protects the _journalsCondition
@@ -588,6 +594,26 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the "last written" value for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLastWrittenDocumentCollection (TRI_document_collection_t*, 
+                                           TRI_voc_tick_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the "last collected" value for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetLastCollectedDocumentCollection (TRI_document_collection_t*, 
+                                             TRI_voc_tick_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not markers of a collection were fully collected
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description

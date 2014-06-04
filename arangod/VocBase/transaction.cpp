@@ -890,10 +890,14 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     copy->handle();
   }
 
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+
   if (operation.rid > 0) {
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_SetRevisionDocumentCollection(document, operation.rid, false);
   }
+
+  // update logfile id
+  TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
 
   return TRI_ERROR_NO_ERROR;
 }
