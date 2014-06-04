@@ -1,7 +1,6 @@
 # Summary
 <!-- 1 -->
 * [Installing](Installing/README.md)
-<<<<<<< HEAD
   * [Linux](Installing/Linux.md)
   * [Mac OS X](Installing/MacOSX.md)
   * [Windows](Installing/Windows.md)
