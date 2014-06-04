@@ -32,7 +32,7 @@ namespace triagens {
         if (handled) {
           if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
             TRI_document_collection_t* document = trxCollection->_collection->_collection;
-            document->_headers->release(document->_headers, header, false);
+            document->_headersPtr->release(document->_headersPtr, header, false);  // PROTECTED by trx in trxCollection
           }
         }
         else {
@@ -76,11 +76,11 @@ namespace triagens {
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // move header to the end of the list
-          document->_headers->moveBack(document->_headers, header, &oldHeader);
+          document->_headersPtr->moveBack(document->_headersPtr, header, &oldHeader);  // PROTECTED by trx in trxCollection
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           // unlink the header
-          document->_headers->unlink(document->_headers, header);
+          document->_headersPtr->unlink(document->_headersPtr, header);  // PROTECTED by trx in trxCollection
         }
  
         // free the local marker buffer 
@@ -95,13 +95,13 @@ namespace triagens {
         TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-          document->_headers->release(document->_headers, header, true);
+          document->_headersPtr->release(document->_headersPtr, header, true);  // PROTECTED by trx in trxCollection
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-          document->_headers->move(document->_headers, header, &oldHeader);
+          document->_headersPtr->move(document->_headersPtr, header, &oldHeader);  // PROTECTED by trx in trxCollection
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          document->_headers->relink(document->_headers, header, header);
+          document->_headersPtr->relink(document->_headersPtr, header, header);  // PROTECTED by trx in trxCollection
         }
       }
 

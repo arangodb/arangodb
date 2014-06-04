@@ -53,7 +53,7 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   size_t currentCount;
   int res;
 
-  headers      = document->_headers;
+  headers      = document->_headersPtr;  // PROTECTED by trx in trxCollection
   currentCount = headers->count(headers);
   currentSize  = headers->size(headers);
 
@@ -109,7 +109,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   
   TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
   
-  headers = document->_headers;
+  headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
   currentCount = headers->count(headers);
   currentSize = headers->size(headers);
   
