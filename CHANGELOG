@@ -1,6 +1,8 @@
 v2.1.1-alpha1 (XXXX-XX-XX)
 -------------------
 
+* fixed dfdb: should not start any other V8 threads
+
 * cleanup of version-check, added module org/arangodb/database-version,
   added --check-version option
 
