@@ -1091,7 +1091,37 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_general_graph_fluent_aql_hasNext
-/// @brief TODO write
+/// @brief Checks if the query has further results.
+///
+/// The generated statement maintains a cursor for you.
+/// If this cursor is already present `hasNext()` will
+/// use this cursors position to determine if there are
+/// further results available.
+/// If the query has not yet been executed `hasNext()`
+/// will execute it and create the cursor for you.
+///
+/// @EXAMPLES
+///
+/// Start query execution with hasNext: 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.hasNext();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Iterate over the result as long as it has more elements:
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   while(query.hasNext()) {
+///     query.next();
+///   }
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// 
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.hasNext = function() {
@@ -1101,7 +1131,41 @@ AQLGenerator.prototype.hasNext = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_general_graph_fluent_aql_next
-/// @brief TODO write
+/// @brief Request the next element in the result
+///
+/// The generated statement maintains a cursor for you.
+/// If this cursor is already present `next()` will
+/// use this cursors position to deliver the next result.
+/// Also the cursor position will be moved by one.
+/// If the query has not yet been executed `next()`
+/// will execute it and create the cursor for you.
+/// It will throw an error of your query has no further results.
+///
+/// @EXAMPLES
+///
+/// Request some elements with next: 
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.next();
+///   query.next();
+///   query.next();
+///   query.next();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// The cursor is recreated if the query is changed.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var query = g._vertices();
+///   query.next();
+///   query.edges();
+///   query.next();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.next = function() {
