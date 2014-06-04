@@ -37,6 +37,7 @@
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
+#include "Utils/Transaction.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
@@ -51,6 +52,8 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
+
+using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a WAL operation for a transaction collection
@@ -2947,9 +2950,14 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_document_collection_t* document
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorPrimaryCollection (TRI_document_collection_t* document,
+size_t TRI_DocumentIteratorPrimaryCollection (TransactionBase const*,
+                                              TRI_document_collection_t* document,
                                               void* data,
                                               bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*)) {
+  // The first argument is only used to make the compiler prove that a
+  // transaction is ongoing. We need this to prove that accesses to 
+  // master pointers and their data pointers in the callback are 
+  // protected.
   if (document->_primaryIndex._nrUsed > 0) {
     void** ptr = document->_primaryIndex._table;
     void** end = ptr + document->_primaryIndex._nrAlloc;

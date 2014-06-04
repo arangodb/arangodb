@@ -37,6 +37,7 @@
 #include "FulltextIndex/fulltext-query.h"
 #include "SkipLists/skiplistIndex.h"
 #include "Utils/Barrier.h"
+#include "Utils/Transaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/EmbeddableTransaction.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
@@ -1872,7 +1873,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
-  document._dataptr = nullptr;
+  document._dataptr = nullptr;  // PROTECTED by stack locality
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1894,7 +1895,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._dataptr == nullptr) {
+  if (document._dataptr == nullptr) {  // PROTECTED by trx here
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
@@ -2275,7 +2276,10 @@ collection_checksum_t;
 template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
                                                            TRI_document_collection_t* document, 
                                                            void* data) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);
+  // This callback is only called in TRI_DocumentIteratorPrimaryCollection
+  // and there we have an ongoing transaction. Therefore all master pointer
+  // and data pointer accesses here are safe!
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
@@ -2394,20 +2398,20 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<true, true>);
+      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<true, true>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<false, true>);
+      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<false, true>);
     }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<true, false>);
+      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<true, false>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(document, &helper, &ChecksumCalculator<false, false>);
+      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<false, false>);
     }
   }
 
