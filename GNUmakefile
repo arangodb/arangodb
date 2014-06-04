@@ -247,7 +247,7 @@ pack-winXX-cmake:
 
 	cd Build$(BITS) && cpack -G NSIS
           
-	./installer-generator.sh $(BITS) 
+	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
 ################################################################################
 ### @brief Windows Vista 64-bit bundle
