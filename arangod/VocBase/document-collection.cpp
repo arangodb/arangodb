@@ -1138,7 +1138,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headers->request(document->_headers, marker->size());
+    TRI_doc_mptr_t* header = operation.header = document->_headers->request(document->_headers, marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
