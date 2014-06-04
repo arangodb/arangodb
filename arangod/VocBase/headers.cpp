@@ -512,7 +512,7 @@ static void DumpHeaders (TRI_headers_t const* h) {
               next, 
               next->_prev, 
               next->_next, 
-              TRI_EXTRACT_MARKER_KEY(next));
+              TRI_EXTRACT_MARKER_KEY(next));  // ONLY IN HEADERS
     i++;
 
     if (next->_next == nullptr) {

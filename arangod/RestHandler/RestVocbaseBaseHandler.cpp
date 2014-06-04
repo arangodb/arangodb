@@ -301,7 +301,7 @@ void RestVocbaseBaseHandler::generateDocument (TransactionBase const*,
     return;
   }
 
-  char const* k = TRI_EXTRACT_MARKER_KEY(document);
+  char const* k = TRI_EXTRACT_MARKER_KEY(document);  // PROTECTED by trx from above
   const string id = DocumentHelper::assembleDocumentId(_resolver.getCollectionName(cid), k);
 
   TRI_json_t augmented;

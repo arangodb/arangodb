@@ -118,7 +118,7 @@ static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header, void const* 
   }
 
   // only after that compare actual keys
-  return (strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);
+  return (strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ static inline bool IsEqualHashElement (char const* key, uint64_t hash, void cons
   if (hash != e->_hash) {
     return false;
   }
-  return (strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);
+  return (strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX
 }
 
 // -----------------------------------------------------------------------------
