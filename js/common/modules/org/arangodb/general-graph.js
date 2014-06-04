@@ -1440,18 +1440,34 @@ var _create = function (graphName, edgeDefinitions) {
 
 };
 
+var createHiddenProperty = function(obj, name, value) {
+  Object.defineProperty(obj, name, {
+    enumerable: false,
+    writable: true
+  });
+  obj[name] = value;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
 
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
   var self = this;
-  this.__name = graphName;
+  // Create Hidden Properties
+  createHiddenProperty(this, "__name", graphName);
+  createHiddenProperty(this, "__vertexCollections", vertexCollections);
+  createHiddenProperty(this, "__edgeCollections", edgeCollections);
+  createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
+  createHiddenProperty(this, "__idsToRemove", []);
+  createHiddenProperty(this, "__collectionsToLock", []);
+  /*
   this.__vertexCollections = vertexCollections;
   this.__edgeCollections = edgeCollections;
   this.__edgeDefinitions = edgeDefinitions;
   this.__idsToRemove = [];
   this.__collectionsToLock = [];
+  */
 
   // fills this.__idsToRemove and this.__collectionsToLock
   var removeEdge = function (edgeId, options) {
