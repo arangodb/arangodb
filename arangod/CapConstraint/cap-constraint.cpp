@@ -53,7 +53,7 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   size_t currentCount;
   int res;
 
-  headers      = document->_headers;
+  headers      = document->_headersPtr;  // PROTECTED by trx in trxCollection
   currentCount = headers->count(headers);
   currentSize  = headers->size(headers);
 
@@ -67,8 +67,8 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
     if (oldest != NULL) {
       size_t oldSize;
      
-      assert(oldest->_dataptr != NULL);
-      oldSize = ((TRI_df_marker_t*) (oldest->_dataptr))->_size;
+      assert(oldest->_dataptr != NULL);  // ONLY IN INDEX
+      oldSize = ((TRI_df_marker_t*) (oldest->_dataptr))->_size;  // ONLY IN INDEX
 
       assert(oldSize > 0);
 
@@ -109,7 +109,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   
   TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
   
-  headers = document->_headers;
+  headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
   currentCount = headers->count(headers);
   currentSize = headers->size(headers);
   
@@ -218,7 +218,7 @@ static int InsertCapConstraint (TRI_index_t* idx,
     // there is a size restriction
     TRI_df_marker_t* marker;
     
-    marker = (TRI_df_marker_t*) doc->_dataptr;
+    marker = (TRI_df_marker_t*) doc->_dataptr;  // ONLY IN INDEX
 
     // check if the document would be too big
     if ((int64_t) marker->_size > (int64_t) cap->_size) {

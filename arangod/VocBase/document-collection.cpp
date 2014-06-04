@@ -37,6 +37,7 @@
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
+#include "Utils/Transaction.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
@@ -51,6 +52,8 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
+
+using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a WAL operation for a transaction collection
@@ -575,7 +578,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   // we found a previous revision in the index
   // the found revision is still alive
   LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-            TRI_EXTRACT_MARKER_KEY(header),
+            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX
             (unsigned long long) found->_rid,
             (unsigned long long) header->_rid);
 
@@ -624,7 +627,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   // .............................................................................
 
   TRI_WriteLockPrimaryIndex(&document->_primaryIndex);
-  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header)));
+  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX
   TRI_WriteUnlockPrimaryIndex(&document->_primaryIndex);
 
   if (found == nullptr) {
@@ -672,7 +675,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   assert(markerSize > 0);
 
   // get a new header pointer
-  header = document->_headers->request(document->_headers, markerSize);
+  header = document->_headersPtr->request(document->_headersPtr, markerSize);  // ONLY IN OPENITERATOR
 
   if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -681,7 +684,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->_dataptr = marker;  // ONLY IN OPENITERATOR
-  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));
+  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -1067,7 +1070,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headers->request(document->_headers, marker->size());
+    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(document->_headersPtr, marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
@@ -1605,7 +1608,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (res != TRI_ERROR_NO_ERROR) {
       // insertion failed
       LOG_ERROR("inserting document into indexes failed");
-      document->_headers->release(document->_headers, header, true);
+      document->_headersPtr->release(document->_headersPtr, header, true);  // ONLY IN OPENITERATOR
 
       return res;
     }
@@ -1633,7 +1636,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headers->moveBack(document->_headers, newHeader, &oldData);
+    document->_headersPtr->moveBack(document->_headersPtr, newHeader, &oldData);  // ONLY IN OPENITERATOR
       
     // update the datafile info
     if (oldData._fid == state->_fid) {
@@ -1756,7 +1759,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headers->release(document->_headers, found, true); 
+    document->_headersPtr->release(document->_headersPtr, found, true);   // ONLY IN OPENITERATOR
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2381,9 +2384,9 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     return false;
   }
 
-  document->_headers = TRI_CreateSimpleHeaders();
+  document->_headersPtr = TRI_CreateSimpleHeaders();  // ONLY IN CREATE COLLECTION
 
-  if (document->_headers == NULL) {
+  if (document->_headersPtr == NULL) {  // ONLY IN CREATE COLLECTION
     TRI_DestroyPrimaryCollection(document);
 
     return false;
@@ -2598,7 +2601,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (false == InitDocumentCollection(document, shaper)) {
     LOG_ERROR("cannot initialise document collection");
 
-    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
     TRI_DestroyVector(&document->_failedTransactions);
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
@@ -2613,7 +2616,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   res = TRI_SaveCollectionInfo(collection->_directory, parameter, vocbase->_settings.forceSyncProperties);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headers etc.?
+    // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'", 
               collection->_directory, 
               TRI_last_error());
@@ -2641,7 +2644,7 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
 
   TRI_DestroyCondition(&document->_journalsCondition);
 
-  TRI_FreeSimpleHeaders(document->_headers);
+  TRI_FreeSimpleHeaders(document->_headersPtr);  // PROTECTED because collection is already closed
 
   // free memory allocated for indexes
   n = document->_allIndexes._length;
@@ -2855,9 +2858,14 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_document_collection_t* document
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorPrimaryCollection (TRI_document_collection_t* document,
+size_t TRI_DocumentIteratorPrimaryCollection (TransactionBase const*,
+                                              TRI_document_collection_t* document,
                                               void* data,
                                               bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*)) {
+  // The first argument is only used to make the compiler prove that a
+  // transaction is ongoing. We need this to prove that accesses to 
+  // master pointers and their data pointers in the callback are 
+  // protected.
 
   TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
   
@@ -3449,7 +3457,7 @@ static int FillIndex (TRI_document_collection_t* document,
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
                     (unsigned long long) document->base._info._cid,
-                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),
+                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),  // ONLY IN INDEX
                     (unsigned long long) idx->_iid);
   
         TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
@@ -5612,7 +5620,7 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);
+  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -351,7 +351,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
   shaper = geo->base._collection->_shaper;
 
   // lookup latitude and longitude
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_dataptr);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_dataptr);  // ONLY IN INDEX
 
   if (geo->_location != 0) {
     if (geo->_geoJson) {
@@ -429,7 +429,7 @@ static int RemoveGeoIndex (TRI_index_t* idx,
 
   geo = (TRI_geo_index_t*) idx;
   shaper = geo->base._collection->_shaper;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_dataptr);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_dataptr);  // ONLY IN INDEX
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
