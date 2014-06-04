@@ -721,8 +721,6 @@ static int RotateJournal (TRI_document_collection_t* document) {
       TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(base->_journals._buffer[0]);
       datafile->_full = true;
 
-      document->_rotateRequested = true;
-
       // TODO: this will probably never be triggered after
       // the introduction of WAL    
       TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -2472,9 +2470,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->readDocument      = ReadDocumentShapedJson;
   document->cleanupIndexes    = CleanupIndexes;
 
-  // we do not require an initial journal
-  document->_rotateRequested       = false;
-  
   TRI_InitSpin(&document->_idLock);
 
   return true;
