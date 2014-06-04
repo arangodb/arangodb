@@ -8,15 +8,15 @@ This creates a new Controller. The first argument is the controller context avai
 
 *Examples*
 
-  app = new Controller(applicationContext, {
-    urlPrefix: "/meadow"
-  });
+	app = new Controller(applicationContext, {
+		urlPrefix: "/meadow"
+	});	
 
 
 <!--
 @copydetails JSF_foxx_controller_initializer
 -->
-
+	
 !SUBSECTION HTTP Methods
 
 !SUBSUBSECTION Get
@@ -29,9 +29,9 @@ When defining a route you can also define a so called 'parameterized' path like 
 
 *Examples*
 
-  app.get('/goose/barn', function (req, res) {
-    // Take this request and deal with it!
-  });
+	app.get('/goose/barn', function (req, res) {
+		// Take this request and deal with it!
+	});
 
 !SUBSUBSECTION Head
 
@@ -47,9 +47,9 @@ This handles requests from the HTTP verb post. See above for the arguments you c
 
 *Examples*
 
-  app.post('/goose/barn', function (req, res) {
-    // Take this request and deal with it!
-  });
+	app.post('/goose/barn', function (req, res) {
+		// Take this request and deal with it!
+	});
 
 !SUBSUBSECTION Put
 
@@ -59,9 +59,9 @@ This handles requests from the HTTP verb put. See above for the arguments you ca
 
 *Examples*
 
-  app.put('/goose/barn', function (req, res) {
-    // Take this request and deal with it!
-  });
+	app.put('/goose/barn', function (req, res) {
+		// Take this request and deal with it!
+	});
 
 !SUBSUBSECTION Patch
 
@@ -71,9 +71,9 @@ This handles requests from the HTTP verb patch. See above for the arguments you 
 
 *Examples*
 
-  app.patch('/goose/barn', function (req, res) {
-    // Take this request and deal with it!
-  });
+	app.patch('/goose/barn', function (req, res) {
+		// Take this request and deal with it!
+	});
 
 !SUBSUBSECTION Delete
 
@@ -119,14 +119,14 @@ If you now want to document your route, you can use JSDoc style comments (a
 multiline comment block with the first line starting with `/**` instead 
 of `/*`) above your routes to do that:
 
-  /** Get all foxxes
-    *
-    * If you want to get all foxxes, please use this
-    * method to do that.
-    */
-  app.get("/foxxes", function () {
-    // ...
-  });
+	/** Get all foxxes
+	  * 
+	  * If you want to get all foxxes, please use this
+	  * method to do that.
+	  */
+	app.get("/foxxes", function () {
+	  // ...
+	});
 
 <!--
 @verbinclude foxx-doc-comment
@@ -149,16 +149,16 @@ You can also provide a description of this parameter.
 
 *Examples*
 
-  app.get("/foxx/:id", function {
-    // Do something
-  }).pathParam("id", {
-    description: "Id of the Foxx",
-    type: "int"
-  });
+	app.get("/foxx/:id", function {
+		// Do something
+	}).pathParam("id", {
+		description: "Id of the Foxx",
+		type: "int"
+	});
 
 !SUBSUBSECTION Query Param
 
-  FoxxController::queryParam(id, options)
+	FoxxController::queryParam(id, options)
 
 Describe a query parameter:
 
@@ -170,14 +170,14 @@ You can also provide a description of this parameter, if it is required and if y
 
 *Examples*
 
-  app.get("/foxx", function {
-  // Do something
-  }).queryParam("id", {
-  description: "Id of the Foxx",
-  type: "int",
-  required: true,
-  allowMultiple: false
-  });
+	app.get("/foxx", function {
+	// Do something
+	}).queryParam("id", {
+	description: "Id of the Foxx",
+	type: "int",
+	required: true,
+	allowMultiple: false
+	});
 
 !SUBSUBSECTION Body Param
 
@@ -197,23 +197,23 @@ It also adds documentation for this error response to the generated documentatio
 
 *Examples*
 
-  /* define our own error type, FoxxyError */
-  var FoxxyError = function (message) {
-  this.message = "the following FoxxyError occurred: ' + message;
-  };
-  FoxxyError.prototype = new Error();
-  app.get("/foxx", function {
-  /* throws a FoxxyError */
-  throw new FoxxyError();
-  }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-  app.get("/foxx", function {
-  throw new FoxxyError("oops!");
-  }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
-    return {
-      code: 123,
-      desc: e.message
-    };
-  });
+	/* define our own error type, FoxxyError */
+	var FoxxyError = function (message) {
+	this.message = "the following FoxxyError occurred: ' + message;
+	};
+	FoxxyError.prototype = new Error();
+	app.get("/foxx", function {
+	/* throws a FoxxyError */
+	throw new FoxxyError();
+	}).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+	app.get("/foxx", function {
+	throw new FoxxyError("oops!");
+	}).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+		return {
+			code: 123,
+			desc: e.message
+		};
+	});
 
 !SUBSUBSECTION onlyIf
 
@@ -223,9 +223,9 @@ Provide it with a function that throws an exception if the normal processing sho
 
 *Examples*
 
-  app.get("/foxx", function {
-  // Do something
-  }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+	app.get("/foxx", function {
+	// Do something
+	}).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
 
 !SUBSUBSECTION onlyIfAuthenticated
 
@@ -235,9 +235,9 @@ Please activate authentification for this app if you want to use this function. 
 
 *Examples*
 
-  app.get("/foxx", function {
-    // Do something
-  }).onlyIfAuthenticated(401, "You need to be authenticated");
+	app.get("/foxx", function {
+		// Do something
+	}).onlyIfAuthenticated(401, "You need to be authenticated");
 
 
 <!--
@@ -280,11 +280,11 @@ Defines an errorResponse for all routes of this controller. For details on error
 
 *Examples*
 
-  app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-  app.get("/foxx", function {
-    // Do something
-  });
-  onlyIf
+	app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+	app.get("/foxx", function {
+		// Do something
+	});
+	onlyIf
 
 `RequestContextBuffer::onlyIf(code, reason)`
 
@@ -292,21 +292,21 @@ Defines an onlyIf for all routes of this controller. For details on onlyIf see t
 
 *Examples*
 
-  app.allroutes.onlyIf(myPersonalCheck);
-  app.get("/foxx", function {
-    // Do something
-  });
-  onlyIfAuthenticated
+	app.allroutes.onlyIf(myPersonalCheck);
+	app.get("/foxx", function {
+		// Do something
+	});
+	onlyIfAuthenticated
 
 RequestContextBuffer::errorResponse(errorClass, code, description)
 Defines an onlyIfAuthenticated for all routes of this controller. For details on onlyIfAuthenticated see the according method on routes.
 
 *Examples*
 
-  app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
-  app.get("/foxx", function {
-    // Do something
-  });
+	app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+	app.get("/foxx", function {
+		// Do something
+	});
 
 
 <!--
@@ -337,9 +337,9 @@ The before function takes a path on which it should watch and a function that it
 
 *Examples*
 
-  app.before('/high/way', function(req, res) {
-    //Do some crazy request logging
-  });
+	app.before('/high/way', function(req, res) {
+		//Do some crazy request logging
+	});
 
 !SUBSUBSECTION After
 
@@ -349,9 +349,9 @@ This works pretty similar to the before function. But it acts after the executio
 
 *Examples*
 
-  app.after('/high/way', function(req, res) {
-    //Do some crazy response logging
-  });
+	app.after('/high/way', function(req, res) {
+		//Do some crazy response logging
+	});
 
 <!--
 ### Before
@@ -467,7 +467,7 @@ Set the status code of your response.
 
 *Examples*
 
-  response.status(404);
+	response.status(404);
 
 !SUBSUBSECTION Set
 
@@ -477,13 +477,13 @@ Set a header attribute.
 
 *Examples*
 
-  response.set("Content-Length", 123);
-  response.set("Content-Type", "text/plain");
-  // or alternatively:
-  response.set({
-    "Content-Length": "123",
-    "Content-Type": "text/plain"
-  });
+	response.set("Content-Length", 123);
+	response.set("Content-Type", "text/plain");
+	// or alternatively:
+	response.set({
+		"Content-Length": "123",
+		"Content-Type": "text/plain"
+	});
 
 !SUBSUBSECTION JSON
 
@@ -493,7 +493,7 @@ Set the content type to JSON and the body to the JSON encoded object you provide
 
 *Examples*
 
-  response.json({'born': 'December 12, 1915'});
+	response.json({'born': 'December 12, 1915'});
 
 <!--
 ### Status

@@ -25,14 +25,14 @@ Here are the details of the functionality:
 This constructor builds a cluster planner object. The one and only argument is an object that can have the properties described below. The planner can plan clusters on a single machine (basically for testing purposes) and on multiple machines. The resulting "cluster plans" can be used by the kickstarter (see JSF_Cluster_Kickstarter_Constructor) to start up the processes comprising the cluster, including the agency. To this end, there has to be one dispatcher on every machine participating in the cluster. A dispatcher is a simple instance of ArangoDB, compiled with the cluster extensions, but not running in cluster mode. This is why the configuration option dispatchers below is of central importance.
 
 * dispatchers: an object with a property for each dispatcher, the property name is the ID of the dispatcher and the value should be an object with at least the property endpoint containing the endpoint of the corresponding dispatcher. Further optional properties are:
-  * avoidPorts which is an object in which all port numbers that should not be used are bound to true, default is empty, that is, all ports can be used
-  * arangodExtraArgs, which is a list of additional command line arguments that will be given to DBservers and coordinators started by this dispatcher, the default is an empty list. These arguments will be appended to those produced automatically, such that one can overwrite things with this.
-  * allowCoordinators, which is a boolean value indicating whether or not coordinators should be started on this dispatcher, the default is true
-  * allowDBservers, which is a boolean value indicating whether or not DBservers should be started on this dispatcher, the default is true
-  * allowAgents, which is a boolean value indicating whether or not agents should be started on this dispatcher, the default is true
-  * username, which is a string that contains the user name for authentication with this dispatcher
-  * passwd, which is a string that contains the password for authentication with this dispatcher, if not both username and passwd are set, then no authentication is used between dispatchers. Note that this will not work if the dispatchers are configured with authentication.
-  * If .dispatchers is empty (no property), then an entry for the local arangod itself is automatically added. Note that if the only configured dispatcher has endpoint tcp://localhost:, all processes are started in a special "local" mode and are configured to bind their endpoints only to the localhost device. In all other cases both agents and arangod instances bind their endpoints to all available network devices.
+	* avoidPorts which is an object in which all port numbers that should not be used are bound to true, default is empty, that is, all ports can be used
+	* arangodExtraArgs, which is a list of additional command line arguments that will be given to DBservers and coordinators started by this dispatcher, the default is an empty list. These arguments will be appended to those produced automatically, such that one can overwrite things with this.
+	* allowCoordinators, which is a boolean value indicating whether or not coordinators should be started on this dispatcher, the default is true
+	* allowDBservers, which is a boolean value indicating whether or not DBservers should be started on this dispatcher, the default is true
+	* allowAgents, which is a boolean value indicating whether or not agents should be started on this dispatcher, the default is true
+	* username, which is a string that contains the user name for authentication with this dispatcher
+	* passwd, which is a string that contains the password for authentication with this dispatcher, if not both username and passwd are set, then no authentication is used between dispatchers. Note that this will not work if the dispatchers are configured with authentication.
+	* If .dispatchers is empty (no property), then an entry for the local arangod itself is automatically added. Note that if the only configured dispatcher has endpoint tcp://localhost:, all processes are started in a special "local" mode and are configured to bind their endpoints only to the localhost device. In all other cases both agents and arangod instances bind their endpoints to all available network devices.
 * numberOfAgents: the number of agents in the agency, usually there is no reason to deviate from the default of 3. The planner distributes them amongst the dispatchers, if possible.
 * agencyPrefix: a string that is used as prefix for all keys of configuration data stored in the agency.
 * numberOfDBservers: the number of DBservers in the cluster. The planner distributes them evenly amongst the dispatchers.
@@ -53,29 +53,29 @@ This constructor builds a cluster planner object. The one and only argument is a
 
 All these values have default values. Here is the current set of default values:
 
-  {
-    "agencyPrefix"            : "arango",
-    "numberOfAgents"          : 1,
-    "numberOfDBservers"       : 2,
-    "startSecondaries"        : false,
-    "numberOfCoordinators"    : 1,
-    "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
-                                 "Pit", "Pia", "Pablo" ],
-    "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
-                                 "Claas", "Clemens", "Chris" ],
-    "dataPath"                : "",   // means configured in dispatcher
-    "logPath"                 : "",   // means configured in dispatcher
-    "arangodPath"             : "",   // means configured as dispatcher
-    "agentPath"               : "",   // means configured in dispatcher
-    "agentExtPorts"           : [4001],
-    "agentIntPorts"           : [7001],
-    "DBserverPorts"           : [8629],
-    "coordinatorPorts"        : [8530],
-    "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
-                                // this means only we as a local instance
-    "useSSLonDBservers"       : false,
-    "useSSLonCoordinators"    : false
-  };
+	{
+	  "agencyPrefix"            : "arango",
+	  "numberOfAgents"          : 1,
+	  "numberOfDBservers"       : 2,
+	  "startSecondaries"        : false,
+	  "numberOfCoordinators"    : 1,
+	  "DBserverIDs"             : ["Pavel", "Perry", "Pancho", "Paul", "Pierre",
+	                               "Pit", "Pia", "Pablo" ],
+	  "coordinatorIDs"          : ["Claus", "Chantalle", "Claire", "Claudia",
+	                               "Claas", "Clemens", "Chris" ],
+	  "dataPath"                : "",   // means configured in dispatcher
+	  "logPath"                 : "",   // means configured in dispatcher
+	  "arangodPath"             : "",   // means configured as dispatcher
+	  "agentPath"               : "",   // means configured in dispatcher
+	  "agentExtPorts"           : [4001],
+	  "agentIntPorts"           : [7001],
+	  "DBserverPorts"           : [8629],
+	  "coordinatorPorts"        : [8530],
+	  "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
+	                              // this means only we as a local instance
+	  "useSSLonDBservers"       : false,
+	  "useSSLonCoordinators"    : false
+	};
 
 `Planner.getPlan()`
 

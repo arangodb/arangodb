@@ -25,14 +25,14 @@ The optional waitForSync parameter can be used to force synchronisation of the d
 
 *Examples*
 
-  arango> v1 = db.vertex.save({ name : "vertex 1" });
-  { "_id" : "vertex/1528086", "_key" : "1528086", "_rev" : "1528086" }
-  arango> v2 = db.vertex.save({ name : "vertex 2" });
-  { "_id" : "vertex/1593622", "_key" : "1593622", "_rev" : "1593622" }
-  arango> e1 = db.relation.save(v1, v2, { label : "knows" });
-  { "_id" : "relation/3100950", "_key" : "3100950", "_rev" : "3100950" }
-  arango> db._document(e1);
-  { "_id" : "relation/3100950", "_key" : "3100950", "_rev" : "3100950", "_from" : "vertex/1528086", "_to" : "vertex/1593622", "label" : "knows" }
+	arango> v1 = db.vertex.save({ name : "vertex 1" });
+	{ "_id" : "vertex/1528086", "_key" : "1528086", "_rev" : "1528086" }
+	arango> v2 = db.vertex.save({ name : "vertex 2" });
+	{ "_id" : "vertex/1593622", "_key" : "1593622", "_rev" : "1593622" }
+	arango> e1 = db.relation.save(v1, v2, { label : "knows" });
+	{ "_id" : "relation/3100950", "_key" : "3100950", "_rev" : "3100950" }
+	arango> db._document(e1);
+	{ "_id" : "relation/3100950", "_key" : "3100950", "_rev" : "3100950", "_from" : "vertex/1528086", "_to" : "vertex/1593622", "label" : "knows" }
 
 `edge-collection.edges( vertex)`
 
@@ -43,18 +43,18 @@ The edges operator finds all edges starting from (outbound) or ending in (inboun
 The edges operator finds all edges starting from (outbound) or ending in (inbound) a document from vertices, which must a list of documents or document handles.
 
 *Examples*
-
-  arango> db.relation.edges("vertex/1593622");
-  [
-    {
-      "_id" : "relation/3100950",
-      "_key" : "3100950",
-      "_rev" : "3100950",
-      "_from" : "vertex/1528086",
-      "_to" : "vertex/1593622",
-      "label" : "knows"
-    }
-  ]
+	
+	arango> db.relation.edges("vertex/1593622");
+	[
+	  {
+	    "_id" : "relation/3100950", 
+	    "_key" : "3100950", 
+	    "_rev" : "3100950", 
+	    "_from" : "vertex/1528086",
+	    "_to" : "vertex/1593622", 
+	    "label" : "knows"
+	  }
+	]
 
 `edge-collection.inEdges( vertex)`
 
@@ -66,19 +66,19 @@ The edges operator finds all edges ending in (inbound) a document from vertices,
 
 *Examples*
 
-  arango> db.relation.inEdges("vertex/1528086");
-  [ ]
-  arango> db.relation.inEdges("vertex/1593622");
-  [
-    {
-      "_id" : "inEdges/3100950",
-      "_key" : "3100950",
-      "_rev" : "3100950",
-      "_from" : "vertex/1528086",
-      "_to" : "vertex/1593622",
-      "label" : "knows"
-    }
-  ]
+	arango> db.relation.inEdges("vertex/1528086");
+	[ ]
+	arango> db.relation.inEdges("vertex/1593622");
+	[
+	  {
+	    "_id" : "inEdges/3100950",
+	    "_key" : "3100950",
+	    "_rev" : "3100950", 
+	    "_from" : "vertex/1528086",
+	    "_to" : "vertex/1593622",
+	    "label" : "knows"
+	  }
+	]
 
 `edge-collection.outEdges( vertex)`
 
@@ -90,20 +90,20 @@ The edges operator finds all edges starting from (outbound) a document from vert
 
 *Examples*
 
-  arango> db.relation.outEdges("vertex/1528086");
-  [
-    {
-      "_id" : "relation/3100950",
-      "_key" : "3100950",
-      "_rev" : "3100950",
-      "_from" : "vertex/1528086",
-      "_to" : "vertex/1593622",
-      "label" : "knows"
-    }
-  ]
-  arango> db.relation.outEdges("vertex/1593622");
-  [ ]
-
+	arango> db.relation.outEdges("vertex/1528086");
+	[
+	  {
+	    "_id" : "relation/3100950",
+	    "_key" : "3100950",
+	    "_rev" : "3100950",
+	    "_from" : "vertex/1528086",
+	    "_to" : "vertex/1593622",
+	    "label" : "knows"
+	  }
+	]
+	arango> db.relation.outEdges("vertex/1593622");
+	[ ]
+	
 
 <!--
 @anchor HandlingEdgesCreate
