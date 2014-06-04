@@ -489,7 +489,7 @@ Let us summarize what you have to do, to enable authentication in a cluster:
      files of all dispatchers (this is already the default).
   2. Put the same values for `cluster.username` and `cluster.password`
      in the very same configuration files of all dispatchers.
-  3. The same procedure from step 2 must be done in the cluster plan as well. 	 
+  3. The same procedure from step 2 must be done in the cluster plan as well.
   4. Create users via the usual interface on the coordinators
      (initially after the cluster launch there will be a single user `root`
      with empty password).

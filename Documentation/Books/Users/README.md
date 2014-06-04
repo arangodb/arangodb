@@ -1,5 +1,4 @@
-<a name="arangodb_documentation"></a>
-# ArangoDB Documentation
+!BOOK ArangoDB Documentation
 
 Welcome to the ArangoDB documentation!
 
@@ -31,8 +30,7 @@ If you want to test the shell go [here](https://www.arangodb.org/shtutorial).
 
 If you want to play with our query language, go to our [AQL Tutorial](https://www.arangodb.org/shtutorial).
 
-<a name="community"></a>
-### Community
+!SUBSECTION Community
 
 If you have any questions don't hesitate to ask on:
 

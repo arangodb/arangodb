@@ -1,5 +1,4 @@
-<a name="fulltext_queries"></a>
-# Fulltext queries
+!CHAPTER Fulltext queries 
 
 ArangoDB allows to run queries on text contained in document attributes.  To use
 this, a fulltext index must be defined for the attribute of the collection that
@@ -26,13 +25,12 @@ In order to use the fulltext operator, a fulltext index must be defined for the 
 
 To find all documents which contain the terms foo and bar:
 
-	arango> db.emails.fulltext("text", "word").toArray();
-	[ { "_id" : "emails/1721603", "_key" : "1721603", "_rev" : "1721603", "text" : "this document contains a word" },  
-	  { "_id" : "emails/1783231", "_key" : "1783231", "_rev" : "1783231", "text" : "this document also contains a word" } ] 
+  arango> db.emails.fulltext("text", "word").toArray();
+  [ { "_id" : "emails/1721603", "_key" : "1721603", "_rev" : "1721603", "text" : "this document contains a word" },
+    { "_id" : "emails/1783231", "_key" : "1783231", "_rev" : "1783231", "text" : "this document also contains a word" } ]
 
 
-<a name="fulltext_query_syntax:"></a>
-#### Fulltext query syntax:
+!SUBSUBSECTION Fulltext query syntax:
 
 In the simplest form, a fulltext query contains just the sought word. If
 multiple search words are given in a query, they should be separated by commas.

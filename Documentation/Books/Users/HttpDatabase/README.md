@@ -1,8 +1,6 @@
-<a name="http_interface_for_databases"></a>
-# HTTP Interface for Databases
+!CHAPTER HTTP Interface for Databases
 
-<a name="address_of_a_database"></a>
-### Address of a Database
+!SUBSECTION Address of a Database
 
 Any operation triggered via ArangoDB's HTTP REST API is executed in the context of exactly
 one database. To explicitly specify the database in a request, the request URI must contain

@@ -1,5 +1,4 @@
-<a name="importing_into_edge_collections"></a>
-# Importing into Edge Collections
+!CHAPTER Importing into Edge Collections
 
 Please note that when importing documents into an edge collection, it is 
 mandatory that all imported documents contain the `_from` and `_to` attributes,

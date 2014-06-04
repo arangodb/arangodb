@@ -1,5 +1,4 @@
-<a name="components"></a>
-# Components
+!CHAPTER Components
 
 The replication architecture in ArangoDB 1.4 consists of two main components, which 
 can be used together or in isolation: the *replication logger* and the *replication applier*.
@@ -13,11 +12,9 @@ In most cases, the *replication logger* will be run inside a master database, an
 As there can be multiple database inside an ArangoDB instance, there can be multiple
 replication loggers and multiple replication appliers per ArangoDB instance.
 
-<a name="replication_logger"></a>
-### Replication Logger
+!SUBSECTION Replication Logger
 
-<a name="purpose"></a>
-#### Purpose
+!SUBSUBSECTION Purpose
 
 The purpose of the replication logger is to log all changes that modify the state
 of data in a specific database. This includes document insertions, updates, and deletions. 
@@ -41,8 +38,7 @@ the applier runs in. The event log is persisted and will still be present after 
 shutdown or crash. The event log's underlying collection should not be modified by users 
 directly. It should only be accessed using the special API methods offered by ArangoDB.
 
-<a name="starting_and_stopping"></a>
-#### Starting and Stopping
+!SUBSUBSECTION Starting and Stopping
 
 ArangoDB will only log changes if the replication logger is turned on for the specific
 database. Should there be any write operations in the database while the replication logger 
@@ -99,8 +95,7 @@ fetching of data.
 
 Note: the replication logger state can also be queried via the HTTP API (see @ref HttpReplication).
 
-<a name="configuration"></a>
-#### Configuration
+!SUBSUBSECTION Configuration
 
 To determine whether the current database's replication logger is automatically started 
 when the ArangoDB server is started, the logger has a separate configuration. The 
@@ -161,11 +156,9 @@ cumulated event data sizes:
     });
 
 
-<a name="replication_applier"></a>
-### Replication Applier
+!SUBSECTION Replication Applier
 
-<a name="purpose"></a>
-#### Purpose
+!SUBSUBSECTION Purpose
 
 The purpose of the replication applier is to read data from a master database's event log, 
 and apply them locally. The applier will check the master database for new events periodically. 
@@ -263,8 +256,7 @@ Here is an example of the state after the replication applier terminated itself 
 Note: the state of a database's replication applier is queryable via the HTTP API, too. 
 Please refer to [HTTP Interface for Replication](../HttpReplications/README.md) for more details.
 
-<a name="starting_and_stopping"></a>
-#### Starting and Stopping
+!SUBSUBSECTION Starting and Stopping
 
 To start and stop the applier in the current database, the `start` and `stop` commands can 
 be used:
@@ -298,8 +290,7 @@ This is sensible because replication log events should be applied incrementally.
 replication applier of a database has never been started before, it needs some `tick` value from the
 master database's event log from which to start fetching events.
 
-<a name="configuration"></a>
-#### Configuration
+!SUBSUBSECTION Configuration
 
 To configure the replication applier of a specific database, use the `properties` command. Using 
 it without any arguments will return the current configuration:

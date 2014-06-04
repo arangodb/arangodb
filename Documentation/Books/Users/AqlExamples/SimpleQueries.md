@@ -1,5 +1,4 @@
-<a name="simple_queries"></a>
-# Simple queries
+!CHAPTER Simple queries
 
 Following is a query that returns a string value. The result string is contained in a list
 because the result of every valid query is a list:

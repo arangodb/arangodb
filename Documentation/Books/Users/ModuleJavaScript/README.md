@@ -1,8 +1,6 @@
-<a name="javascript_modules"></a>
-# JavaScript Modules
+!CHAPTER JavaScript Modules
 
-<a name="introduction_to_javascript_modules"></a>
-### Introduction to Javascript Modules
+!SUBSECTION Introduction to Javascript Modules
 
 The ArangoDB uses a [CommonJS](http://wiki.commonjs.org/wiki)
 compatible module and package concept. You can use the function `require` in

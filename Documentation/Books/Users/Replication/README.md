@@ -1,5 +1,4 @@
-<a name="introduction_to_replication"></a>
-# Introduction to Replication
+!CHAPTER Introduction to Replication
 
 Starting with ArangoDB 1.4, ArangoDB comes with optional asynchronous master-slave 
 replication. Replication is configured on a per-database level, meaning that 

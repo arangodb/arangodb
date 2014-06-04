@@ -1,5 +1,4 @@
-<a name="transactions"></a>
-# Transactions
+!CHAPTER Transactions
 
 Starting with version 1.3, ArangoDB provides support for user-definable 
 transactions. 

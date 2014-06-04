@@ -1,5 +1,4 @@
-<a name="address_and_etag_of_a_document"></a>
-# Address and ETag of a Document
+!CHAPTER Address and ETag of a Document
 
 All documents in ArangoDB have a document handle. This handle uniquely defines a
 document and is managed by ArangoDB. The interface allows you to access the

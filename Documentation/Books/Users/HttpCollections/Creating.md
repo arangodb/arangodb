@@ -1,5 +1,4 @@
-<a name="creating_and_deleting_collections"></a>
-# Creating and Deleting Collections
+!CHAPTER Creating and Deleting Collections
 
 @anchor HttpCollectionCreate
 @copydetails JSF_post_api_collection

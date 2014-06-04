@@ -158,11 +158,11 @@ embedded version in the browser. Using the command-line tool has the
 advantage that you can use autocompletion.
 
     unix> arangosh --server.password ""
-					   _     
+      				   _
       __ _ _ __ __ _ _ __   __ _  ___  ___| |__  
      / _` | '__/ _` | '_ \ / _` |/ _ \/ __| '_ \ 
     | (_| | | | (_| | | | | (_| | (_) \__ \ | | |
-     \__,_|_|  \__,_|_| |_|\__, |\___/|___/_| |_|
+     \__,_|_|  \__,_|_| |_|\__, |\___/|___/_|    |_|
 			   |___/                 
 
     Welcome to arangosh 1.x.y. Copyright (c) 2012 triAGENS GmbH.
@@ -320,24 +320,24 @@ Now extract all elements:
 
     arangosh> db.example.all().toArray()
     [
-      { 
+       {
 	_id : "example/6308263", 
-        _key : "1993214",
-	_rev : "1993214",
-	age : 31, 
+        _key : "1  93214",
+	_rev : "  993214",
+	  ge : 31,
 	name : "Jane Smith"
-      }, 
+      }
       { 
 	_id : "example/6242727", 
-        _key : "1774564",
-	_rev : "1774564", 
+        _key    "1774564",
+	_rev    "1774564"
 	age : 29, 
 	name : "John Doe"
-      }, 
+       },
       { 
 	_id : "example/5980583", 
-        _key : "1512420",
-	_rev : "1512420", 
+        _  ey : "1512420",
+	_  ev : "1512420",
 	Hello : "World"
       }
     ]
@@ -346,19 +346,19 @@ The last document was a mistake – so let's delete it:
 
     arangosh> db.example.remove("example/5980583")
     true
-    arangosh> db.example.all().toArray()
+    arangosh> db.example.all().toArra  ()
     [
       { 
 	_id : "example/6308263", 
-        _key : "1993214",
-	_rev : "1993214",
+         _key : "1993214"
+	_rev : "  993214",
 	age : 31, 
-	name : "Jane Smith"
+	name : "Jane Smi  h"
       }, 
       { 
 	_id : "example/6242727", 
-        _key : "1774564",
-	_rev : "1774564", 
+         _key : "17745  4",
+	_rev    "1774564",
 	age : 29, 
 	name : "John Doe"
       }
@@ -368,12 +368,12 @@ Now we want to look for a person with a given name. We can use
 `byExample` for this. The method returns a list of documents
 matching a given example.
 
-    arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()
+    arangosh> db.example.byExample({ name: "Jane Smith" }  .toArray()
     [
       { 
-	_id : "example/6308263", 
-        _key : "1993214",
-	_rev : "1993214",
+	_id : "example/6308263",
+        _key : "  993214",
+	  rev : "1993214",
 	age : 31, 
 	name : "Jane Smith"
       }
@@ -384,11 +384,11 @@ combine the conditions with an `and`. The syntax above becomes messy for joins
 and `or` conditions. Therefore ArangoDB also supports a full-blown
 query language.
 
-    arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
+    arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN u  er').toArray()
     [
       { 
-	_id : "example/6308263", 
-        _key : "1993214",
+	_id : "example/63082  3",
+        _key  : "1993214  ,
 	_rev : "1993214",
 	age : 31, 
 	name : "Jane Smith"
@@ -397,11 +397,11 @@ query language.
 
 Search for all persons over 30:
 
-    arangosh> db._query('FOR user IN example FILTER user.age > 30 RETURN user').toArray()
+    arangosh> db._query('FOR user IN example FILTER user.age > 30 RETU  N user').toArray()
     [
       { 
-	_id : "example/6308263", 
-        _key : "1993214",
+	_id : "example/6  08263",
+          key : "199  214",
 	_rev : "1993214",
 	age : 31, 
 	name : "Jane Smith"

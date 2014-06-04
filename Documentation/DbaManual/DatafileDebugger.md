@@ -21,7 +21,7 @@ the program
 
 in order to check the consistency of the datafiles and journals. This brings up
 
-	___      _         __ _ _           ___  ___    ___ 
+  ___      _         __ _ _           ___  ___    ___
        /   \__ _| |_ __ _ / _(_) | ___     /   \/ __\  / _ \
       / /\ / _` | __/ _` | |_| | |/ _ \   / /\ /__\// / /_\/
      / /_// (_| | || (_| |  _| | |  __/  / /_// \/  \/ /_\\ 

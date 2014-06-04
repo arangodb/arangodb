@@ -1,5 +1,4 @@
-<a name="how_to_try_it_out"></a>
-# How to try it out
+!CHAPTER How to try it out 
 
 In this text we assume that you are working with a standard installation
 of ArangoDB with at least a version number of 2.0. This means that everything

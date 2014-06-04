@@ -1,13 +1,11 @@
-<a name="command-line_options_for_logging"></a>
-# Command-Line Options for Logging
+!CHAPTER Command-Line Options for Logging 
 
 There are two different kinds of logs. Human-readable logs and machine-readable
 logs. The human-readable logs are used to provide an administration with
 information about the server. The machine-readable logs are used to provide
 statistics about executed requests and timings about computation steps.
 
-<a name="general_logging_options"></a>
-### General Logging Options
+!SUBSECTION General Logging Options
 
 `--log.file filename`
 
@@ -61,8 +59,7 @@ The value of arg depends on your syslog configuration. In general it will be use
 @anchor CommandLineLoggingLogSyslog
 @copydetails triagens::rest::ApplicationServer::_logSyslog
 -->
-<a name="human_readable_logging"></a>
-### Human Readable Logging
+!SUBSECTION Human Readable Logging
 
 `--log.level level`
 `--log level`
@@ -73,18 +70,18 @@ Allows the user to choose the level of information which is logged by the server
 
 Fatal errors generally indicate some inconsistency with the manner in which the server has been coded. Fatal errors may also indicate a problem with the platform on which the server is running. Fatal errors always cause the server to terminate. For example,
 
-	2010-09-20T07:32:12Z [4742] FATAL a http server has already been created
+  2010-09-20T07:32:12Z [4742] FATAL a http server has already been created
 
 * error: Logs errors which the server has encountered.
 
 These errors may not necessarily result in the termination of the server. For example,
 
-	2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors', going to 'warning'
+  2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors', going to 'warning'
 
 * warning: Provides information on errors encountered by the server, which are not necessarily detrimental to it's continued operation.
 For example,
 
-	2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'
+  2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'
 
 Note that, setting the log level to warning will also result in all errors to be logged as well.
 
@@ -92,7 +89,7 @@ Note that, setting the log level to warning will also result in all errors to be
 
 For example,
 
-	2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business
+  2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business
 
 Note that, setting the log level to info will also result in all errors and warnings to be logged as well.
 
@@ -100,7 +97,7 @@ Note that, setting the log level to info will also result in all errors and warn
 
 Debug log information is generally useful to find out the state of the server in the case of an error. For example,
 
-	2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any
+  2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any
 
 Note that, setting the log level to debug will also result in all errors, warnings and server status information to be logged as well.
 
@@ -108,7 +105,7 @@ Note that, setting the log level to debug will also result in all errors, warnin
 
 For example,
 
-	2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000
+  2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000
 
 Note that, setting the log level to trace will also result in all errors, warnings, status information, and debug information to be logged as well.
 
@@ -127,11 +124,11 @@ This option is used specify an prefix to logged text.
 
 Whenever log output is generated, the process ID is written as part of the log information. Setting this option appends the thread id of the calling thread to the process id. For example,
 
-	2010-09-20T13:04:01Z [19355] INFO ready for business
+  2010-09-20T13:04:01Z [19355] INFO ready for business
 
 when no thread is logged and
 
-	2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business
+  2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business
 
 when this command line option is set.
 
@@ -171,8 +168,7 @@ Only log message containing the specified string arg.
 @copydetails triagens::rest::ApplicationServer::_logContentFilter
 -->
 
-<a name="machine_readable_logging"></a>
-### Machine Readable Logging
+!SUBSECTION Machine Readable Logging
 
 `--log.application name`
 

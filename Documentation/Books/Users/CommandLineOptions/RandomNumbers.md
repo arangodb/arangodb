@@ -1,5 +1,4 @@
-<a name="command-line_options_for_random_numbers"></a>
-### Command-Line Options for Random Numbers
+!SUBSECTION Command-Line Options for Random Numbers
 
 `--random.generator arg`
 

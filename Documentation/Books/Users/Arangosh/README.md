@@ -1,5 +1,4 @@
-<a name="arangodb_shell_introduction"></a>
-# ArangoDB Shell Introduction
+!CHAPTER ArangoDB Shell Introduction
 
 The ArangoDB shell (_arangosh_) is a command-line tool that can be used for
 administration of ArangoDB, including running ad-hoc queries.

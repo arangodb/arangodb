@@ -1,5 +1,4 @@
-<a name="http_interface_for_miscellaneous_functions"></a>
-# HTTP Interface for Miscellaneous functions
+!CHAPTER HTTP Interface for Miscellaneous functions
 
 This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 

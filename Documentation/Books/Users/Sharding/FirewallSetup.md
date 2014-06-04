@@ -1,5 +1,4 @@
-<a name="recommended_firewall_setup"></a>
-# Recommended firewall setup
+!CHAPTER Recommended firewall setup
 
 This section is intended for people who run a cluster in production
 systems.

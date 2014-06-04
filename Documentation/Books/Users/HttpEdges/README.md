@@ -1,5 +1,4 @@
-<a name="http_interface_for_edges"></a>
-# HTTP Interface for Edges
+!CHAPTER HTTP Interface for Edges 
 
 This is an introduction to ArangoDB's REST interface for edges.
 
@@ -20,8 +19,7 @@ Example:
 - `_from` is the document handle of the linked vertex (incoming relation)
 - `_to` is the document handle of the linked vertex (outgoing relation)
 
-<a name="documents,_identifiers,_handles"></a>
-## Documents, Identifiers, Handles
+!SECTION Documents, Identifiers, Handles
 
 Edges in ArangoDB are special documents. In addition to the internal attributes 
 _key, _id and _rev, they have two attributes _from and _to, which contain 
