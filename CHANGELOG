@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* added mountedApp function for foxx-manager
+
 * cleanup of version-check, added module org/arangodb/database-version,
   added --check-version option
 
@@ -32,6 +34,8 @@ v2.2.0 (XXXX-XX-XX)
 
 v2.1.1 (2014-06-06)
 -------------------
+
+* fixed dfdb: should not start any other V8 threads
 
 * signature for collection functions was modified
 

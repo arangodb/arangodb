@@ -172,6 +172,10 @@ void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::prepare () {
+  if (_disabled) {
+    return true;
+  }
+
   buildDispatcher(_applicationScheduler->scheduler());
 
   return true;
@@ -182,6 +186,10 @@ bool ApplicationDispatcher::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::start () {
+  if (_disabled) {
+    return true;
+  }
+
   buildDispatcherReporter();
 
   bool ok = _dispatcher->start();
@@ -203,6 +211,10 @@ bool ApplicationDispatcher::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationDispatcher::open () {
+  if (_disabled) {
+    return true;
+  }
+
   if (_dispatcher != 0) {
     return _dispatcher->open();
   }
@@ -215,6 +227,10 @@ bool ApplicationDispatcher::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::close () {
+  if (_disabled) {
+    return;
+  }
+
   if (_dispatcher != 0) {
     _dispatcher->beginShutdown();
   }
@@ -225,6 +241,10 @@ void ApplicationDispatcher::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::stop () {
+  if (_disabled) {
+    return;
+  }
+
   if (_dispatcherReporterTask != 0) {
     _dispatcherReporterTask = 0;
   }
