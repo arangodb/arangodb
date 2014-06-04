@@ -466,7 +466,7 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   
   triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, false).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +480,7 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 
   triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, false).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,7 +494,7 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
 
   triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
