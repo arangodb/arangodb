@@ -352,12 +352,12 @@ sessionLifetime: An integer. Lifetime of sessions in seconds.
 
 *Examples*
 
-  app.activateAuthentication({
-    type: "cookie",
-    cookieLifetime: 360000,
-    cookieName: "my_cookie",
-    sessionLifetime: 400,
-  });
+	app.activateAuthentication({
+		type: "cookie",
+		cookieLifetime: 360000,
+		cookieName: "my_cookie",
+		sessionLifetime: 400,
+	});
 
 !SUBSUBSECTION Adding a login route
 
@@ -369,11 +369,11 @@ usernameField and passwordField can be used to adjust the expected attributes in
 
 *Examples*
 
-  app.login('/login', {
-    onSuccess: function (req, res) {
-      res.json({"success": true});
-    }
-  });
+	app.login('/login', {
+		onSuccess: function (req, res) {
+			res.json({"success": true});
+		}
+	});
 
 !SUBSUBSECTION Adding a logout route
 
@@ -383,11 +383,11 @@ This works pretty similar to the logout function and adds a path to your app for
 
 *Examples*
 
-  app.logout('/logout', {
-    onSuccess: function (req, res) {
-      res.json({"message": "Bye, Bye"});
-    }
-  });
+	app.logout('/logout', {
+		onSuccess: function (req, res) {
+			res.json({"message": "Bye, Bye"});
+		}
+	});
 
 !SUBSUBSECTION Adding a register route
 
@@ -397,12 +397,12 @@ This works pretty similar to the logout function and adds a path to your app for
 
 `Examples`
 
-  app.register('/logout', {
-    acceptedAttributes: ['name'],
-    defaultAttributes: {
-      admin: false
-    }
-  });
+	app.register('/logout', {
+		acceptedAttributes: ['name'],
+		defaultAttributes: {
+			admin: false
+		}
+	});
 
 !SUBSUBSECTION Adding a change password route
 
@@ -414,11 +414,11 @@ passwordField can be used to adjust the expected attribute in the post request. 
 
 *Examples*
 
-  app.changePassword('/changePassword', {
-    onSuccess: function (req, res) {
-      res.json({"success": true});
-    }
-  });
+	app.changePassword('/changePassword', {
+		onSuccess: function (req, res) {
+			res.json({"success": true});
+		}
+	});
 
 
 <!--
@@ -502,12 +502,12 @@ Initialize with the name of a collection or a collection and optionally a set of
 
 *Examples*
 
-  templateMiddleware = new TemplateMiddleware("templates", {
-    uppercase: function (x) { return x.toUpperCase(); }
-  });
-  // or without helpers:
-  //templateMiddleware = new TemplateMiddleware("templates");
-  app.before(templateMiddleware);
+	templateMiddleware = new TemplateMiddleware("templates", {
+		uppercase: function (x) { return x.toUpperCase(); }
+	});
+	// or without helpers:
+	//templateMiddleware = new TemplateMiddleware("templates");
+	app.before(templateMiddleware);
 
 !SUBSUBSECTION Render
 
@@ -517,7 +517,7 @@ When the TemplateMiddleware is included, you will have access to the render func
 
 *Examples*
 
-  response.render("high/way", {username: 'Application'})
+	response.render("high/way", {username: 'Application'})
 
 <!--
 ### Initialize

@@ -221,7 +221,7 @@ It is possible to use more then one constraint for the same URL part.
     { 
       url: { 
         match: "/hello/:name|:id/world",
-  constraint: {
+	constraint: { 
           name: "/[a-z]+/", id: "/[0-9]+/" 
         } 
       }
@@ -310,9 +310,10 @@ You can write the following document into the `_routing` collection
 to test the above examples.
 
     {
-      routes: [  	{ url: { match: "/hello/world" }, content: "route 1" }
-	{ url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2"   ,
-	{ url: { match: "/:something/world" }, content: "route 3"  },
+      routes: [
+	{ url: { match: "/hello/world" }, content: "route 1" },
+	{ url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
+	{ url: { match: "/:something/world" }, content: "route 3" },
 	{ url: { match: "/hello/*" }, content: "route 4" },
       ]
     }
@@ -357,8 +358,8 @@ Static Content{#UserManualActionsContentStatic}
 You can specify a body and a content-type.
 
     { 
-      conten  : {
-	contentType: "text/h  ml",
+      content: {
+	contentType: "text/html",
 	body: "<html><body>Hello World</body></html>"
       }
     }
