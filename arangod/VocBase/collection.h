@@ -220,6 +220,7 @@ typedef struct TRI_collection_s {
   TRI_col_info_t       _info;
 
   TRI_vocbase_t*       _vocbase;
+  TRI_voc_tick_t       _tickMax;
 
   TRI_col_state_e      _state;       // state of the collection
   int                  _lastError;   // last (critical) error
@@ -374,7 +375,7 @@ int TRI_RenameCollection (TRI_collection_t*, char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection (TRI_collection_t*,
-                            bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                            bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                             void*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +438,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateTicksCollection (const char* const,
-                                 bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                 bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                  void*);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -75,11 +75,6 @@ old_doc_mptr_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the document id. this is used from the UpgradeOpenIterator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,8 +117,7 @@ static bool IsEqualKeyDocument (TRI_associative_pointer_t* array, void const* ke
 
 static bool UpgradeOpenIterator (TRI_df_marker_t const* marker, 
                                  void* data, 
-                                 TRI_datafile_t* datafile, 
-                                 bool journal) {
+                                 TRI_datafile_t* datafile) { 
   old_doc_mptr_t* found;
   TRI_associative_pointer_t* primaryIndex;
   TRI_voc_key_t key = NULL;
@@ -215,8 +209,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
 
 static bool UpgradeShapeIterator (TRI_df_marker_t const* marker, 
                                   void* data, 
-                                  TRI_datafile_t* datafile, 
-                                  bool journal) {
+                                  TRI_datafile_t* datafile) { 
   shape_iterator_t* si = static_cast<shape_iterator_t*>(data);
   ssize_t* written     = si->_written;
 
@@ -240,18 +233,9 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -395,6 +379,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
   collection->_lastError = 0;
 
   collection->_directory = directory;
+  collection->_tickMax = 0;
 
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
@@ -881,7 +866,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
-                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                    bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                     void* data) {
   size_t i, n;
 
@@ -897,7 +882,7 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
               datafile->getName(datafile), 
               (unsigned long long) datafile->_fid);
 
-    result = TRI_IterateDatafile(datafile, iterator, data, false, true);
+    result = TRI_IterateDatafile(datafile, iterator, data);
 
     if (! result) {
       return false;
@@ -933,23 +918,19 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IterateFiles (TRI_vector_string_t* vector,
-                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                          void* data,
-                          bool journal) {
-  size_t i, n;
-  
-  n = vector->_length;
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
+                          void* data) {
+  size_t const n = vector->_length;
 
-  for (i = 0; i < n ; ++i) {
-    TRI_datafile_t* datafile;
-    char* filename;
+  for (size_t i = 0; i < n ; ++i) {
 
-    filename = TRI_AtVectorString(vector, i);
+    char* filename = TRI_AtVectorString(vector, i);
     LOG_DEBUG("iterating over collection journal file '%s'", filename);
-    datafile = TRI_OpenDatafile(filename);
+    
+    TRI_datafile_t* datafile = TRI_OpenDatafile(filename);
 
-    if (datafile != NULL) {
-      TRI_IterateDatafile(datafile, iterator, data, journal, false);
+    if (datafile != nullptr) {
+      TRI_IterateDatafile(datafile, iterator, data);
       TRI_CloseDatafile(datafile);
       TRI_FreeDatafile(datafile);
     }
@@ -958,19 +939,9 @@ static bool IterateFiles (TRI_vector_string_t* vector,
   return true;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection parameters struct
@@ -1222,18 +1193,9 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
@@ -1634,25 +1596,16 @@ int TRI_RenameCollection (TRI_collection_t* collection,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection (TRI_collection_t* collection,
-                            bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                            bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                             void* data) {
   TRI_vector_pointer_t* datafiles;
   TRI_vector_pointer_t* journals;
@@ -1957,7 +1910,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
         for (i = 0; i < datafiles._length; ++i) {
           TRI_datafile_t* df = static_cast<TRI_datafile_t*>(datafiles._buffer[i]);
 
-          TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex, false, false);
+          TRI_IterateDatafile(df, UpgradeOpenIterator, &primaryIndex);
         }
 
 
@@ -2281,7 +2234,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
         si._fdout = fdout;
         si._written = &written;
         
-        TRI_IterateDatafile(df, UpgradeShapeIterator, &si, false, false);
+        TRI_IterateDatafile(df, UpgradeShapeIterator, &si);
         
         TRI_CloseDatafile(df);
         TRI_FreeDatafile(df);
@@ -2359,7 +2312,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateTicksCollection (const char* const path,
-                                 bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                 bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                  void* data) {
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
@@ -2370,12 +2323,12 @@ bool TRI_IterateTicksCollection (const char* const path,
   if (structure._journals._length == 0) {
     // no journal found for collection. should not happen normally, but if
     // it does, we need to grab the ticks from the datafiles, too
-    result = IterateFiles(&structure._datafiles, iterator, data, false);
+    result = IterateFiles(&structure._datafiles, iterator, data);
   }
   else {
     // compactor files don't need to be iterated... they just contain data copied
     // from other files, so their tick values will never be any higher
-    result = IterateFiles(&structure._journals, iterator, data, true);
+    result = IterateFiles(&structure._journals, iterator, data);
   }
   
   TRI_DestroyFileStructureCollection(&structure);
@@ -2456,10 +2409,6 @@ char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
   assert(false);
   return "unknown";
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
