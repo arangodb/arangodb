@@ -5,20 +5,19 @@
 # Required-Start:    
 # Required-Stop:     
 # Default-Start:     2 3 4 5
-# Default-Stop:
+# Default-Stop:      0 1 6
 # Short-Description: arangodb
-# Description:       arangodb database server 
+# Description:       arango database server 
 ### END INIT INFO
 
 . /lib/lsb/init-functions
 
-[ -f /etc/default/rcS ] && . /etc/default/rcS
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 DAEMON=/usr/sbin/arangod
-DESC="ArangoDB"
+DESC="arango database server"
 NAME="arangod"
 PIDDIR=/var/run/arangodb
-PIDFILE=${PIDDIR}/arangod.pid
+PIDFILE=/var/run/arangodb/arangod.pid
 CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
@@ -41,13 +40,20 @@ start () {
 
     if [ "$1" = "--upgrade" ]; then
       $DAEMON -c $CONF --uid arangodb --gid arangodb $@
+      RETVAL=$?
+      log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --check-version
+      RETVAL=$?
+
+      if test $RETVAL -eq 0;  then
+        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+	RETVAL=$?
+	log_end_msg $RETVAL
+      else
+	log_failure_msg "database version check failed, maybe need to run 'upgrade'?"
+      fi
     fi
-
-    RETVAL=$?
-
-    log_end_msg $RETVAL
 
     return $RETVAL
 }
@@ -63,7 +69,7 @@ case "$1" in
   stop)
     log_daemon_msg "Stopping $DESC" "$NAME"
 
-    start-stop-daemon --stop --quiet --oknodo --exec $DAEMON --startas $DAEMON
+    start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
     RETVAL=$?
     log_end_msg $RETVAL
 
@@ -84,7 +90,7 @@ case "$1" in
     ;;
 
   status)
-    status_of_proc $DAEMON $NAME && exit 0 || exit $?
+    status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
     ;;
 
   upgrade)
@@ -95,7 +101,7 @@ case "$1" in
     ;;
 
   *)
-    log_success_msg "Usage: /etc/init.d/arango {start|stop|restart|force-reload|status|upgrade}"
+    log_success_msg "Usage: /etc/init.d/arangodb {start|stop|restart|force-reload|status|upgrade}"
     exit 1
     ;;
 esac
