@@ -1,9 +1,9 @@
 # Summary
 <!-- 1 -->
 * [Installing](Installing/README.md)
-    * [Linux](Installing/Linux.md)
-    * [Mac OS X](Installing/MacOSX.md)
-    * [Windows](Installing/Windows.md)
+  * [Linux](Installing/Linux.md)
+  * [Mac OS X](Installing/MacOSX.md)
+  * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)

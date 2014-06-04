@@ -76,12 +76,6 @@
       expect(localStorage.setItem).toHaveBeenCalled();
     });
 
-    it("should show the shortkeys modal", function() {
-      spyOn(window.arangoHelper.hotkeysFunctions, "showHotkeysModal");
-      view.shortcutModal();
-      expect(window.arangoHelper.hotkeysFunctions.showHotkeysModal).toHaveBeenCalled();
-    });
-
     it("should create a custom query modal", function() {
       spyOn(window.modalView, "createTextEntry");
       spyOn(window.modalView, "createSuccessButton");
