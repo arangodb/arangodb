@@ -56,6 +56,14 @@ namespace triagens {
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
+    class TransactionBase {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction base, every transaction class has to inherit from here
+////////////////////////////////////////////////////////////////////////////////
+
+      // intentionally empty
+    };
 
     template<typename T>
     class Transaction : public T {

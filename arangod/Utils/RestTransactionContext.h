@@ -31,11 +31,12 @@
 #include "Basics/Common.h"
 
 #include "VocBase/transaction.h"
+#include "Utils/Transaction.h"
 
 namespace triagens {
   namespace arango {
 
-    class RestTransactionContext {
+    class RestTransactionContext : public TransactionBase {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestTransactionContext
