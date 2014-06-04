@@ -1,4 +1,5 @@
-!CHAPTER Sharding
+<a name="sharding"></a>
+# Sharding
 
 Sharding allows to use multiple machines to run a cluster of ArangoDB
 instances that together constitute a single database. This enables

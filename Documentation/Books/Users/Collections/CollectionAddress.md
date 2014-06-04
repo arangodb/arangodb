@@ -1,10 +1,11 @@
-!CHAPTER Address of a Collection 
+<a name="address_of_a_collection"></a>
+# Address of a Collection
 
 All collections in ArangoDB have an unique identifier and an unique
 name. ArangoDB internally uses the collection's unique identifier to look up
 collections. This identifier, however, is managed by ArangoDB and the user has
 no control over it. In order to allow users to use their own names, each collection
-  also has an unique name which is specified by the user. To access a collection
+	also has an unique name which is specified by the user. To access a collection
 from the user perspective, the collection name should be used, i.e.:
 
 *db._collection(collection-name)*

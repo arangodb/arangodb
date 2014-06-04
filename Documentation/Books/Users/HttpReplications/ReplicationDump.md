@@ -1,4 +1,5 @@
-!CHAPTER Replication Dump Commands
+<a name="replication_dump_commands"></a>
+# Replication Dump Commands
 
 The `inventory` method can be used to query an ArangoDB database's current
 set of collections plus their indexes. Clients can use this method to get an 

@@ -1,4 +1,5 @@
-!CHAPTER Example Setup
+<a name="example_setup"></a>
+# Example Setup
 
 Setting up a working master-slave replication requires two ArangoDB instances:
 - _master_: this is the instance we'll activate the replication logger on

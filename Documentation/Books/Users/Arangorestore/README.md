@@ -1,11 +1,14 @@
-!CHAPTER Arangorestore
+<a name="arangorestore"></a>
+# Arangorestore
 
 To reload data from a dump previously created with [arangodump](../Arangodum/README.md),
 ArangoDB provides the _arangorestore_ tool.
 
-!SECTION Reloading Data into an ArangoDB database
+<a name="reloading_data_into_an_arangodb_database"></a>
+## Reloading Data into an ArangoDB database
 
-!SUBSECTION Invoking arangorestore
+<a name="invoking_arangorestore"></a>
+### Invoking arangorestore
 
 _arangorestore_ can be invoked from the command-line as follows:
 
@@ -88,7 +91,8 @@ collections being processed before all edge collections. This is to ensure that 
 data into edge collections will have the document collections linked in edges (`_from` and
 `_to` attributes) loaded.
 
-!SUBSECTION Restoring Revision Ids and Collection Ids
+<a name="restoring_revision_ids_and_collection_ids"></a>
+### Restoring Revision Ids and Collection Ids
  
 _arangorestore_ will reload document and edges data with the exact same `_key`, `_from` and 
 `_to` values found in the input directory. However, when loading document data, it will assign
@@ -107,7 +111,8 @@ Setting `--recycle-ids` to `false` or omitting it will only use the collection n
 input directory and allow the target database to create the collection with a different id
 (though with the same name) than in the input directory.
 
-!SUBSECTION Reloading Data into a different Collection
+<a name="reloading_data_into_a_different_collection"></a>
+### Reloading Data into a different Collection
 
 With some creativity you can use _arangodump_ and _arangorestore_ to transfer data from one
 collection into another (either on the same server or not). For example, to copy data from
@@ -123,7 +128,8 @@ After that, run the following command:
     
     unix> arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
 
-!SUBSECTION Using arangorestore with sharding
+<a name="using_arangorestore_with_sharding"></a>
+### Using arangorestore with sharding
 
 As of Version 2.1 the `arangorestore` tool supports sharding. Simply
 point it to one of the coordinators in your cluster and it will

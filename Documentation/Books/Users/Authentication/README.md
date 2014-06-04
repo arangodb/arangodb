@@ -1,6 +1,8 @@
-!CHAPTER Authentication and Authorization
+<a name="authentication_and_authorization"></a>
+# Authentication and Authorization
 
-!SUBSECTION Authentication and Authorization
+<a name="authentication_and_authorization"></a>
+### Authentication and Authorization
 
 ArangoDB only provides a very simple authentication interface and no
 authorization. We plan to add authorization features in later releases, which
@@ -12,15 +14,15 @@ fashion. The collection `_users` contains all users and a salted SHA256 hash
 of their passwords. A user can be active or inactive. A typical document of this
 collection is
 
-  {
-    "_id" : "_users/1172449",
-    "_rev" : "1172449",
-    "_key" : "1172449",
-    "active" : true,
-    "changePassword" : false,
-    "user" : "root",
-    "password" : "$1$bd5458a8$8b23e2e1a762f75001ab182235b8ab1b8665bc572b0734a042a501b3c34e567a"
-  }
+	{ 
+	  "_id" : "_users/1172449", 
+	  "_rev" : "1172449", 
+	  "_key" : "1172449", 
+	  "active" : true, 
+	  "changePassword" : false, 
+	  "user" : "root", 
+	  "password" : "$1$bd5458a8$8b23e2e1a762f75001ab182235b8ab1b8665bc572b0734a042a501b3c34e567a" 
+	}
 
 <!--
 
@@ -30,7 +32,8 @@ collection is
 
 -->
 
-!SUBSECTION Command-Line Options for the Authentication and Authorization
+<a name="command-line_options_for_the_authentication_and_authorization"></a>
+### Command-Line Options for the Authentication and Authorization
 
 `--server.disable-authentication value`
 
@@ -40,7 +43,8 @@ The default value is false.
 
 <!--@copydetails triagens::arango::ArangoServer::_disableAuthentication-->
 
-!SECTION Introduction to User Management
+<a name="introduction_to_user_management"></a>
+## Introduction to User Management
 
 ArangoDB provides basic functionality to add, modify and remove database users
 programmatically. The following functionality is provided by the `users` module
@@ -72,7 +76,8 @@ the server authentication cache is [reloaded](#examples_reload).
 
 Note: this function will not work from within the web interface
 
-!SUBSUBSECTION EXAMPLES
+<a name="examples"></a>
+#### EXAMPLES
 
     arangosh> require("org/arangodb/users").save("my-user", "my-secret-password");
 
@@ -108,7 +113,8 @@ database.
 
 Note: this function will not work from within the web interface
 
-!SUBSUBSECTION EXAMPLES Update
+<a name="examples_update"></a>
+#### EXAMPLES Update
 
     arangosh> require("org/arangodb/users").replace("my-user", "my-changed-password");
 
@@ -131,7 +137,8 @@ database.
 
 Note: this function will not work from within the web interface
 
-!SUBSUBSECTION EXAMPLES Remove
+<a name="examples_remove"></a>
+#### EXAMPLES Remove
 
     arangosh> require("org/arangodb/users").update("my-user", "my-secret-password");
 
@@ -146,7 +153,8 @@ This method will fail if the user cannot be found in the database.
 
 Note: this function will not work from within the web interface
 
-!SUBSUBSECTION EXAMPLES Reload
+<a name="examples_reload"></a>
+#### EXAMPLES Reload
 
     arangosh> require("org/arangodb/users").remove("my-user");
 

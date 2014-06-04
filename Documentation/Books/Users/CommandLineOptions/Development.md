@@ -1,4 +1,5 @@
-!CHAPTER Command-Line Options for Development
+<a name="command-line_options_for_development"></a>
+# Command-Line Options for Development
 
 `--development-mode`
 

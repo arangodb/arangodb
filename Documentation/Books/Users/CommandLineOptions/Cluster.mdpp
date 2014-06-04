@@ -4,16 +4,16 @@
 
 An agency endpoint the server can connect to. The option can be specified multiple times so the server can use a cluster of agency servers. Endpoints have the following pattern:
 
-  tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
-  tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
-  ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
-  ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
+	tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+	tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+	ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+	ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 
 At least one endpoint must be specified or ArangoDB will refuse to start. It is recommended to specify at least two endpoints so ArangoDB has an alternative endpoint if one of them becomes unavailable.
 
 `Examples`
 
-  --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002
+	--cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002
 
 `--cluster.agency-prefix prefix`
 
@@ -36,16 +36,16 @@ id must be a string consisting of the letters a-z, A-Z or the digits 0-9 only.
 
 The server's endpoint for cluster-internal communication. If specified, it must have the following pattern:
 
-  tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
-  tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
-  ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
-  ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
+	tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
+	tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
+	ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
+	ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 
 If no endpoint is specified, the server will look up its internal endpoint address in the agency. If no endpoint can be found in the agency for the server's id, ArangoDB will refuse to start.
 
 *Examples*
 
-  --cluster.my-address tcp://192.168.1.1:8530
+	--cluster.my-address tcp://192.168.1.1:8530
 
 `--cluster.username username`
 

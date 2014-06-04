@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Graphs
+<a name="http_interface_for_graphs"></a>
+# HTTP Interface for Graphs
 
 @NAVIGATE_HttpGraph
 @EMBEDTOC{HttpGraphTOC}

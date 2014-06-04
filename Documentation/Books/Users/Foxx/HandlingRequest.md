@@ -1,4 +1,5 @@
-!CHAPTER Handling Requests
+<a name="handling_requests"></a>
+# Handling Requests
 
 In development mode all available applications from the application directory 
 `/home/user/apps/databases/<database name>/` are visible under 
@@ -44,7 +45,8 @@ Note: browsers tend to cache results of redirections. To see the new default
 document in effect, first clear your browser's cache and point your browser
 to `http://localhost:8529/dev/my_app/`.
 
-!SUBSECTION Accessing collections from Foxx
+<a name="accessing_collections_from_foxx"></a>
+### Accessing collections from Foxx
 
 
 Foxx assumes by default that an application has itws own collections. 
@@ -104,7 +106,8 @@ could use it like this:
 Of course you can create your own methods in the repository to add extra 
 functionality. 
 
-!SUBSECTION Application Context
+<a name="application_context"></a>
+### Application Context
 
 JavaScript modules within a Foxx application can access the application using 
 the variable `applicationContext`. The applicationContext provides the following

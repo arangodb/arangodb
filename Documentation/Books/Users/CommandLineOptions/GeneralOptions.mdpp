@@ -37,25 +37,25 @@ Only command line options with a value should be set within the configuration fi
 
 Whitespace in the configuration file is ignored. Each option is specified on a separate line in the form
 
-  key = value
+	key = value
  
 Alternatively, a header section can be specified and options pertaining to that section can be specified in a shorter form
 
-  [log]
-  level = trace
+	[log] 
+	level = trace
 
 rather than specifying
 
-  log.level = trace
+	log.level = trace 
 
 Comments can be placed in the configuration file, only if the line begins with one or more hash symbols (#).
 
 There may be occasions where a configuration file exists and the user wishes to override configuration settings stored in a configuration file. Any settings specified on the command line will overwrite the same setting when it appears in a configuration file. If the user wishes to completely ignore configuration files without necessarily deleting the file (or files), then add the command line option
 
-  -c none
+	-c none 
 or
 
-  --configuration none
+	--configuration none 
 
 when starting up the server. Note that, the word none is case-insensitive.
 
@@ -159,7 +159,7 @@ No requests can be made to the server in this mode, and the only way to work wit
 @anchor CommandLineConsole
 @CMDOPT{\--console}
 -->
-
+	
 Runs the server in an exclusive emergency console mode. When 
 starting the server with this option, the server is started with
 an interactive JavaScript emergency console, with all networking

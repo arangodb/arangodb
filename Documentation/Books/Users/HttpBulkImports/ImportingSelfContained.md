@@ -1,4 +1,5 @@
-!CHAPTER Importing Self-Contained JSON Documents
+<a name="importing_self-contained_json_documents"></a>
+# Importing Self-Contained JSON Documents
 
 This import method allows uploading self-contained JSON documents. The documents
 must be uploaded in the body of the HTTP POST request. Each line of the body
@@ -37,7 +38,8 @@ To use this method, the `type` URL parameter should be set to `array`.
 Setting the `type` URL parameter to `auto` will make the server auto-detect whether
 the data are line-wise JSON documents (type = documents) or a JSON list (type = array).
 
-@EXAMPLES
+__Examples__
+
 
 @verbinclude api-import-documents
 

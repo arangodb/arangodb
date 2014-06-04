@@ -1,4 +1,5 @@
-!CHAPTER Foxx Manager Commands
+<a name="foxx_manager_commands"></a>
+# Foxx Manager Commands
 
 Use `help` to see all commands
 

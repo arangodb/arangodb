@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for AQL Queries
+<a name="http_interface_for_aql_queries"></a>
+# HTTP Interface for AQL Queries
 
 ArangoDB has an Http interface to syntactically validate AQL queries.
 Furthermore, it offers an Http interface to retrieve the execution plan for any

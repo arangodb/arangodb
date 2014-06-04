@@ -1,9 +1,11 @@
-!CHAPTER Operators
+<a name="operators"></a>
+# Operators
 
 AQL supports a number of operators that can be used in expressions.  There are
 comparison, logical, arithmetic, and the ternary operator.
 
-!SUBSUBSECTION Comparison operators
+<a name="comparison_operators"></a>
+#### Comparison operators
 
 Comparison (or relational) operators compare two operands. They can be used with
 any input data types, and will return a boolean result value.
@@ -35,7 +37,8 @@ Some examples for comparison operations in AQL:
     1.23 < 1.32
     1.5 IN [ 2, 3, 1.5 ]
 
-!SUBSUBSECTION Logical operators
+<a name="logical_operators"></a>
+#### Logical operators
 
 Logical operators combine two boolean operands in a logical operation and return
 a boolean result value.
@@ -61,7 +64,8 @@ Both the `&&` and `||` operators use short-circuit evaluation and only evaluate
 the second operand if the result of the operation cannot be determined by
 checking the first operand alone.
 
-!SUBSUBSECTION Arithmetic operators
+<a name="arithmetic_operators"></a>
+#### Arithmetic operators
 
 Arithmetic operators perform an arithmetic operation on two numeric
 operands. The result of an arithmetic operation is again a numeric value.
@@ -93,7 +97,8 @@ Some example arithmetic operations:
     -15
     +9.99
 
-!SUBSUBSECTION Ternary operator
+<a name="ternary_operator"></a>
+#### Ternary operator
 
 AQL also supports a ternary operator that can be used for conditional
 evaluation. The ternary operator expects a boolean condition as its first
@@ -104,7 +109,8 @@ Example:
 
     u.age > 15 || u.active == true ? u.userId : null
 
-!SUBSUBSECTION Range operator
+<a name="range_operator"></a>
+#### Range operator
 
 AQL supports expressing simple numeric ranges with the `..` operator.
 This operator can be used to easily iterate over a sequence of numeric
@@ -121,7 +127,8 @@ will produce the following result:
 
     [ 2010, 2011, 2012, 2013 ]
 
-!SUBSUBSECTION Operator precedence
+<a name="operator_precedence"></a>
+#### Operator precedence
 
 The operator precedence in AQL is as follows (lowest precedence first):
 
@@ -143,7 +150,8 @@ The operator precedence in AQL is as follows (lowest precedence first):
 The parentheses `(` and `)` can be used to enforce a different operator
 evaluation order.
 
-!SUBSECTION Functions
+<a name="functions"></a>
+### Functions
 
 AQL supports functions to allow more complex computations. Functions can be
 called at any query position where an expression is allowed. The general
@@ -166,7 +174,8 @@ Some example function calls:
 In contrast to collection and variable names, function names are case-insensitive, 
 i.e. `LENGTH(foo)` and `length(foo)` are equivalent.
 
-!SUBSUBSECTION Extending AQL
+<a name="extending_aql"></a>
+#### Extending AQL
  
 Since ArangoDB 1.3, it is possible to extend AQL with user-defined functions. 
 These functions need to be written in Javascript, and be registered before usage
@@ -188,7 +197,8 @@ separator:
 As all AQL function names, user function names are also case-insensitive.
 
 
-!SUBSUBSECTION Type cast functions
+<a name="type_cast_functions"></a>
+#### Type cast functions
 
 As mentioned before, some of the operators expect their operands to have a
 certain data type. For example, the logical operators expect their operands to
@@ -232,7 +242,8 @@ will return a number value):
     value as its single element
   - Documents are converted to a list containing their attribute values as list elements
 
-!SUBSUBSECTION Type check functions
+<a name="type_check_functions"></a>
+#### Type check functions
 
 AQL also offers functions to check the data type of a value at runtime. The
 following type check functions are available. Each of these functions takes an
@@ -253,7 +264,8 @@ The following type check functions are available:
 
 - *IS_DOCUMENT(value)*: Checks whether *value* is a `document` value
 
-!SUBSUBSECTION String functions
+<a name="string_functions"></a>
+#### String functions
 
 For string processing, AQL offers the following functions:
 
@@ -311,7 +323,8 @@ For string processing, AQL offers the following functions:
   The value for *search* cannot be a variable or a document attribute. The actual 
   value must be present at query parse time already.
 
-!SUBSUBSECTION Numeric functions
+<a name="numeric_functions"></a>
+#### Numeric functions
 
 AQL offers some numeric functions for calculations. The following functions are
 supported:
@@ -328,7 +341,8 @@ supported:
 
 - *RAND()*: Returns a pseudo-random number between 0 and 1
 
-!SUBSUBSECTION Date functions
+<a name="date_functions"></a>
+#### Date functions
 
 AQL offers functionality to work with dates. Dates are no datatypes of their own in 
 AQL (neither they are in JSON, which is often used as a format to ship data into and
@@ -443,7 +457,8 @@ The following other date functions are also available:
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
 
-!SUBSUBSECTION List functions
+<a name="list_functions"></a>
+#### List functions
 
 AQL supports the following functions to operate on list values:
 
@@ -616,7 +631,8 @@ AQL supports the following functions to operate on list values:
 Apart from these functions, AQL also offers several language constructs (e.g.
 `FOR`, `SORT`, `LIMIT`, `COLLECT`) to operate on lists.
 
-!SUBSUBSECTION Document functions
+<a name="document_functions"></a>
+#### Document functions
 
 AQL supports the following functions to operate on document values:
 
@@ -662,7 +678,7 @@ AQL supports the following functions to operate on document values:
 
       [ 
         { "user1" : { "name" : "J" }, 
-    "user2" : { "name" : "T" } }
+  	"user2" : { "name" : "T" } } 
       ]
 
   When merging documents with identical attribute names, the attribute values of the
@@ -739,7 +755,8 @@ AQL supports the following functions to operate on document values:
         { "collection" : "mycollection", "key" : "mykey" } 
       ]
 
-!SUBSUBSECTION Geo functions
+<a name="geo_functions"></a>
+#### Geo functions
 
 AQL offers the following functions to filter data based on geo indexes:
 
@@ -768,7 +785,8 @@ Note: these functions require the collection *collection* to have at least
 one geo index.  If no geo index can be found, calling this function will fail
 with an error.
 
-!SUBSUBSECTION Fulltext functions
+<a name="fulltext_functions"></a>
+#### Fulltext functions
 
 AQL offers the following functions to filter data based on fulltext indexes:
 
@@ -823,7 +841,8 @@ Note: the `FULLTEXT` function requires the collection *collection* to have a
 fulltext index on `attribute`. If no fulltext index is available, this function
 will fail with an error.
 
-!SUBSUBSECTION Graph functions
+<a name="graph_functions"></a>
+#### Graph functions
 
 AQL has the following functions to traverse graphs:
 
@@ -1148,7 +1167,8 @@ time and memory for the result set.
       NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
 
-!SUBSUBSECTION Control flow functions
+<a name="control_flow_functions"></a>
+#### Control flow functions
 
 AQL offers the following functions to let the user control the flow of operations:
 
@@ -1161,7 +1181,8 @@ AQL offers the following functions to let the user control the flow of operation
 - *FIRST_DOCUMENT(alternative, ...)*: Returns the first alternative that is a document,
   and `null` if none of the alternatives is a document
 
-!SUBSUBSECTION Miscellaneous functions
+<a name="miscellaneous_functions"></a>
+#### Miscellaneous functions
 
 Finally, AQL supports the following functions that do not belong to any of the other
 function categories:

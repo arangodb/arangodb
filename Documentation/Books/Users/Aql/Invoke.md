@@ -1,4 +1,5 @@
-!CHAPTER How to invoke AQL 
+<a name="how_to_invoke_aql"></a>
+# How to invoke AQL
 
 You can run AQL queries from your application via the HTTP REST API. The full
 API description is available at [Http Interface for AQL Query Cursor](../HttpAqlQueryCursor/README.md). 

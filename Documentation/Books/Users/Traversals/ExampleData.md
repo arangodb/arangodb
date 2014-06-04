@@ -1,4 +1,5 @@
-!CHAPTER Example Data
+<a name="example_data"></a>
+# Example Data
 
 The above examples all use a vertex collection `e` and an edge collection `e`. The vertex
 collection `v` contains continents, countries, and captials. The edge collection `e` 

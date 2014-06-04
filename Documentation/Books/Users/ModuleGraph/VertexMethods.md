@@ -1,4 +1,5 @@
-!CHAPTER Vertex Methods
+<a name="vertex_methods"></a>
+# Vertex Methods
 
 `vertex.addInEdge( peer, id)`
 
@@ -14,22 +15,22 @@ Creates a new edge from peer to vertex with given label and properties defined i
 
 *Examples*
 
-  arango> v1 = g.addVertex(1);
-  Vertex(1)
-
-  arango> v2 = g.addVertex(2);
-  Vertex(2)
-
-  arango> v1.addInEdge(v2, "2 -> 1");
-  Edge("2 -> 1")
-
-  arango> v1.getInEdges();
-  [ Edge("2 -> 1") ]
-  arango> v1.addInEdge(v2, "D", "knows", { data : 1 });
-  Edge("D")
-
-  arango> v1.getInEdges();
-  [ Edge("K"), Edge("2 -> 1"), Edges("D") ]
+	arango> v1 = g.addVertex(1);
+	Vertex(1)
+	
+	arango> v2 = g.addVertex(2);
+	Vertex(2)
+	
+	arango> v1.addInEdge(v2, "2 -> 1");
+	Edge("2 -> 1")
+	
+	arango> v1.getInEdges();
+	[ Edge("2 -> 1") ]
+	arango> v1.addInEdge(v2, "D", "knows", { data : 1 });
+	Edge("D")
+	
+	arango> v1.getInEdges();
+	[ Edge("K"), Edge("2 -> 1"), Edges("D") ]
 
 `vertex.addOutEdge( peer)`
 
@@ -45,21 +46,21 @@ Creates a new edge from vertex to peer with given label and properties defined i
 
 *Examples*
 
-  arango> v1 = g.addVertex(1);
-  Vertex(1)
-
-  arango> v2 = g.addVertex(2);
-  Vertex(2)
-
-  arango> v1.addOutEdge(v2, "1->2");
-  Edge("1->2")
-
-  arango> v1.getOutEdges();
-  [ Edge(1->2") ]
-  arango> v1.addOutEdge(v2, 3, "knows");
-  Edge(3)
-  arango> v1.addOutEdge(v2, 4, "knows", { data : 1 });
-  Edge(4)
+	arango> v1 = g.addVertex(1);
+	Vertex(1)
+	
+	arango> v2 = g.addVertex(2);
+	Vertex(2)
+	
+	arango> v1.addOutEdge(v2, "1->2");
+	Edge("1->2")
+	
+	arango> v1.getOutEdges();
+	[ Edge(1->2") ]
+	arango> v1.addOutEdge(v2, 3, "knows");
+	Edge(3)
+	arango> v1.addOutEdge(v2, 4, "knows", { data : 1 });
+	Edge(4)
 
 `vertex.edges()`
 
@@ -67,20 +68,20 @@ Returns a list of in- or outbound edges of the vertex.
 
 *Examples*
 
-  arango> v1 = g.addVertex(1);
-  Vertex(1)
-
-  arango> v2 = g.addVertex();
-  Vertex(2)
-
-  arango> e = g.addEdge(v1, v2, "1->2");
-  Edge("1->2")
-
-  arango> v1.edges();
-  [  Edge("1->2") ]
-
-  arango> v2.edges();
-  [  Edge("1->2") ]
+	arango> v1 = g.addVertex(1);
+	Vertex(1)
+	
+	arango> v2 = g.addVertex(); 
+	Vertex(2)
+	
+	arango> e = g.addEdge(v1, v2, "1->2");
+	Edge("1->2")
+	
+	arango> v1.edges();
+	[  Edge("1->2") ]
+	
+	arango> v2.edges();
+	[  Edge("1->2") ]
 
 `vertex.getId()`
 
@@ -88,11 +89,11 @@ Returns the identifier of the vertex. If the vertex was deleted, then undefined 
 
 *Examples*
 
-  arango> v = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v.getId();
-  "1"
+	arango> v = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v.getId();
+	"1"
 
 `vertex.getInEdges( label, ...)`
 
@@ -100,29 +101,29 @@ Returns a list of inbound edges of the vertex with given label(s).
 
 *Examples*
 
-  arango> v1 = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v2 = g.addVertex(2, { name : "Emil" });
-  Vertex(2)
-
-  arango> e1 = g.addEdge(v1, v2, 3, "knows");
-  Edge(3)
-
-  arango> e2 = g.addEdge(v1, v2, 4, "hates");
-  Edge(4)
-
-  arango> v2.getInEdges();
-  [ Edge(3), Edge(4) ]
-
-  arango> v2.getInEdges("knows");
-  [ Edge(3) ]
-
-  arango> v2.getInEdges("hates");
-  [ Edge(4) ]
-
-  arango> v2.getInEdges("knows", "hates");
-  [ Edge(3), Edge(4) ]
+	arango> v1 = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v2 = g.addVertex(2, { name : "Emil" }); 
+	Vertex(2)
+	
+	arango> e1 = g.addEdge(v1, v2, 3, "knows");
+	Edge(3)
+	
+	arango> e2 = g.addEdge(v1, v2, 4, "hates");
+	Edge(4)
+	
+	arango> v2.getInEdges();
+	[ Edge(3), Edge(4) ]
+	
+	arango> v2.getInEdges("knows");
+	[ Edge(3) ]
+	
+	arango> v2.getInEdges("hates");
+	[ Edge(4) ]
+	
+	arango> v2.getInEdges("knows", "hates");
+	[ Edge(3), Edge(4) ]
 
 `vertex.getOutEdges( label, ...)`
 
@@ -130,29 +131,29 @@ Returns a list of outbound edges of the vertex with given label(s).
 
 *Examples*
 
-  arango> v1 = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v2 = g.addVertex(2, { name : "Emil" });
-  Vertex(2)
-
-  arango> e1 = g.addEdge(v1, v2, 3, "knows");
-  Edge(3)
-
-  arango> e2 = g.addEdge(v1, v2, 4, "hates");
-  Edge(4)
-
-  arango> v1.getOutEdges();
-  [ Edge(3), Edge(4) ]
-
-  arango> v1.getOutEdges("knows");
-  [ Edge(3) ]
-
-  arango> v1.getOutEdges("hates");
-  [ Edge(4) ]
-
-  arango> v1.getOutEdges("knows", "hates");
-  [ Edge(3), Edge(4) ]
+	arango> v1 = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v2 = g.addVertex(2, { name : "Emil" }); 
+	Vertex(2)
+	
+	arango> e1 = g.addEdge(v1, v2, 3, "knows");
+	Edge(3)
+	
+	arango> e2 = g.addEdge(v1, v2, 4, "hates");
+	Edge(4)
+	
+	arango> v1.getOutEdges();
+	[ Edge(3), Edge(4) ]
+	
+	arango> v1.getOutEdges("knows");
+	[ Edge(3) ]
+	
+	arango> v1.getOutEdges("hates");
+	[ Edge(4) ]
+	
+	arango> v1.getOutEdges("knows", "hates");
+	[ Edge(3), Edge(4) ]
 
 `vertex.getEdges( label, ...)`
 
@@ -164,11 +165,11 @@ Returns the property name a vertex.
 
 *Examples*
 
-  arango> v = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
+	arango> v = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
 
-  arango> v.getProperty("name");
-  Hugo
+	arango> v.getProperty("name");
+	Hugo
 
 `vertex.getPropertyKeys()`
 
@@ -176,28 +177,28 @@ Returns all propety names a vertex.
 
 *Examples*
 
-  arango> v = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v.getPropertyKeys();
-  [ "name" ]
-
-  arango> v.setProperty("email", "hugo@hugo.de");
-  "hugo@hugo.de"
-
-  arango> v.getPropertyKeys();
-  [ "name", "email" ]
+	arango> v = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v.getPropertyKeys();
+	[ "name" ]
+	
+	arango> v.setProperty("email", "hugo@hugo.de");
+	"hugo@hugo.de"
+	
+	arango> v.getPropertyKeys();
+	[ "name", "email" ]
 
 `vertex.properties()`
 Returns all properties and their values of a vertex
 
 *Examples*
 
-  arango> v = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v.properties();
-  { name : "Hugo" }
+	arango> v = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v.properties();
+	{ name : "Hugo" }
 
 `vertex.setProperty( name, value)`
 
@@ -205,17 +206,17 @@ Changes or sets the property name a vertex to value.
 
 *Examples*
 
-  arango> v = g.addVertex(1, { name : "Hugo" });
-  Vertex(1)
-
-  arango> v.getProperty("name");
-  "Hugo"
-
-  arango> v.setProperty("name", "Emil");
-  "Emil"
-
-  arango> v.getProperty("name");
-  "Emil"
+	arango> v = g.addVertex(1, { name : "Hugo" });
+	Vertex(1)
+	
+	arango> v.getProperty("name");
+	"Hugo"
+	
+	arango> v.setProperty("name", "Emil");
+	"Emil"
+	
+	arango> v.getProperty("name");
+	"Emil"
 
 `vertex.commonNeighborsWith( target_vertex, options)`
 

@@ -1,4 +1,5 @@
-!CHAPTER Replication Logger Commands
+<a name="replication_logger_commands"></a>
+# Replication Logger Commands
 
 The logger commands allow starting, starting, and fetching the current state of a
 database's replication logger. 

@@ -1,4 +1,5 @@
-!CHAPTER Database Management
+<a name="database_management"></a>
+# Database Management
 
 This is an introduction to ArangoDB's Http interface for managing databases.
 

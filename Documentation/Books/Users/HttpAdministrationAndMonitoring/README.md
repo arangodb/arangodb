@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Administration and Monitoring
+<a name="http_interface_for_administration_and_monitoring"></a>
+# HTTP Interface for Administration and Monitoring
 
 @NAVIGATE_HttpSystem
 @EMBEDTOC{HttpSystemTOC}

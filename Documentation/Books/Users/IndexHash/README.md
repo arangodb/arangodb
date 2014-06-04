@@ -1,6 +1,8 @@
-!CHAPTER Hash Indexes
+<a name="hash_indexes"></a>
+# Hash Indexes
 
-!SUBSECTION Introduction to Hash Indexes
+<a name="introduction_to_hash_indexes"></a>
+### Introduction to Hash Indexes
 
 This is an introduction to ArangoDB's hash indexes.
 
@@ -9,7 +11,8 @@ document. This hash index is then used in queries to locate documents in O(1)
 operations. If the hash is unique, then no two documents are allowed to have the
 same set of attribute values.
 
-!SECTION Accessing Hash Indexes from the Shell
+<a name="accessing_hash_indexes_from_the_shell"></a>
+## Accessing Hash Indexes from the Shell
 
 `ensureUniqueConstraint(field1, field2, ..., fieldn)`
 
@@ -23,24 +26,24 @@ In case that the index was successfully created, the index identifier is returne
 
 *Examples*
 
-  arango> db.four.ensureUniqueConstraint("a", "b.c");
-  { "id" : "four/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
-
-  arango> db.four.save({ a : 1, b : { c : 1 } });
-  { "_id" : "four/1868341", "_key" : "1868341", "_rev" : "1868341" }
-
-  arango> db.four.save({ a : 1, b : { c : 1 } });
-  JavaScript exception in file '(arango)' at 1,9: [ArangoError 1210: cannot save document]
-  !db.four.save({ a : 1, b : { c : 1 } });
-  !        ^
-  stacktrace: [ArangoError 1210: cannot save document]
+	arango> db.four.ensureUniqueConstraint("a", "b.c");
+	{ "id" : "four/1147445", "unique" : true, "type" : "hash", "fields" : ["a", "b.c"], "isNewlyCreated" : true }
+	
+	arango> db.four.save({ a : 1, b : { c : 1 } });
+	{ "_id" : "four/1868341", "_key" : "1868341", "_rev" : "1868341" }
+	
+	arango> db.four.save({ a : 1, b : { c : 1 } });
+	JavaScript exception in file '(arango)' at 1,9: [ArangoError 1210: cannot save document]
+	!db.four.save({ a : 1, b : { c : 1 } });
+	!        ^
+	stacktrace: [ArangoError 1210: cannot save document]
     at (arango):1:9
-
-  arango> db.four.save({ a : 1, b : { c : null } });
-  { "_id" : "four/2196021", "_key" : "2196021", "_rev" : "2196021" }
-
-  arango> db.four.save({ a : 1 });
-  { "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
+	
+	arango> db.four.save({ a : 1, b : { c : null } });
+	{ "_id" : "four/2196021", "_key" : "2196021", "_rev" : "2196021" }
+	
+	arango> db.four.save({ a : 1 });
+	{ "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
 
 `ensureHashIndex(field1, field2, ..., fieldn)`
 
@@ -52,17 +55,17 @@ In case that the index was successfully created, the index identifier is returne
 
 *Examples*
 
-  arango> db.test.ensureHashIndex("a");
-  { "id" : "test/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
-
-  arango> db.test.save({ a : 1 });
-  { "_id" : "test/6381143", "_key" : "6381143", "_rev" : "6381143" }
-
-  arango> db.test.save({ a : 1 });
-  { "_id" : "test/6446679", "_key" : "6446679", "_rev" : "6446679" }
-
-  arango> db.test.save({ a : null });
-  { "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }
+	arango> db.test.ensureHashIndex("a");
+	{ "id" : "test/5922391", "unique" : false, "type" : "hash", "fields" : ["a"], "isNewlyCreated" : true }
+	
+	arango> db.test.save({ a : 1 });
+	{ "_id" : "test/6381143", "_key" : "6381143", "_rev" : "6381143" }
+	
+	arango> db.test.save({ a : 1 });
+	{ "_id" : "test/6446679", "_key" : "6446679", "_rev" : "6446679" }
+	
+	arango> db.test.save({ a : null });
+	{ "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }
 
 <!--
 @anchor IndexHashShellEnsureUniqueConstraint

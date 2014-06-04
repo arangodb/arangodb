@@ -1,8 +1,10 @@
-!CHAPTER Module "actions" 
+<a name="module_"actions""></a>
+# Module "actions"
 
 The action module provides the infrastructure for defining HTTP actions.
 
-!SUBSECTION Basics
+<a name="basics"></a>
+### Basics
 
 `actions.getErrorMessage(code)`
 
@@ -15,7 +17,8 @@ Returns the error message for an error code.
 
 -->
 
-!SECTION Standard HTTP Result Generators
+<a name="standard_http_result_generators"></a>
+## Standard HTTP Result Generators
 
 `actions.resultOk(req, res, code, result, headers)`
 

@@ -1,4 +1,5 @@
-!CHAPTER Managing Endpoints via HTTP
+<a name="managing_endpoints_via_http"></a>
+# Managing Endpoints via HTTP
 
 @anchor HttpEndpointPost
 @copydetails JSF_post_api_endpoint

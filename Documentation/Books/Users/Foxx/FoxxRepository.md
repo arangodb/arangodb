@@ -1,4 +1,5 @@
-!CHAPTER Details on FoxxRepository
+<a name="details_on_foxxrepository"></a>
+# Details on FoxxRepository
 
 A repository is a gateway to the database. It gets data from the
 database, updates it or saves new data. It uses the given model when it 
@@ -30,47 +31,58 @@ model: MyModelPrototype,
 prefix: app.collectionPrefix,
 });
 
-!SUBSUBSECTION Collection
+<a name="collection"></a>
+#### Collection
 
 See the documentation of collection.
 
-!SUBSUBSECTION Prefix
+<a name="prefix"></a>
+#### Prefix
 
 See the documentation of collection.
 
-!SUBSUBSECTION ModelPrototype
+<a name="modelprototype"></a>
+#### ModelPrototype
 
 See the documentation of collection.
 
-!SUBSUBSECTION Save
+<a name="save"></a>
+#### Save
 
 Expects a model. Will set the ID and Rev on the model. Returns the model (for convenience).
 
-!SUBSUBSECTION Remove By Id
+<a name="remove_by_id"></a>
+#### Remove By Id
 
 Expects an ID of an existing document.
 
-!SUBSUBSECTION Remove By Example
+<a name="remove_by_example"></a>
+#### Remove By Example
 
 Find all documents that fit this example and remove them.
 
-!SUBSUBSECTION Replace
+<a name="replace"></a>
+#### Replace
 
 Find the model in the database by its _id and replace it with this version. Expects a model. Sets the Revision of the model. Returns the model (for convenience).
 
-!SUBSUBSECTION ReplaceById
+<a name="replacebyid"></a>
+#### ReplaceById
 
 Find the model in the database by the given ID and replace it with the given. model. Expects a model. Sets the ID and Revision of the model. Returns the model (for convenience).
 
-!SUBSUBSECTION By Id
+<a name="by_id"></a>
+#### By Id
 
 Returns the model for the given ID.
 
-!SUBSUBSECTION By Example
+<a name="by_example"></a>
+#### By Example
 
 Returns an array of models for the given ID.
 
-!SUBSUBSECTION First Example
+<a name="first_example"></a>
+#### First Example
 
 Returns a model that matches the given example.
 
@@ -125,7 +137,8 @@ Returns a model that matches the given example.
 
 @copydetails JSF_foxx_repository_firstExample
 -->
-!SECTION The Manifest File
+<a name="the_manifest_file"></a>
+## The Manifest File
 
 In the `manifest.json` you define the components of your application. 
 The content is a JSON object with the following attributes (not all 
@@ -187,7 +200,8 @@ A more complete example for a Manifest file:
       "teardown": "scripts/teardown.js"
     }
 
-!SUBSECTION The setup and teardown scripts
+<a name="the_setup_and_teardown_scripts"></a>
+### The setup and teardown scripts
 
 You can provide a path to a JavaScript file that prepares ArangoDB for your
 application (or respectively removes it entirely). These scripts have access to
@@ -204,7 +218,8 @@ practice to drop any collections in the teardown script that the application use
 exclusively, but this is not enforced. Maybe there are reasons to keep application
 data even after removing an application. It's up to you to decide what to do.
 
-!SUBSECTION controllers is an object that matches routes to files
+<a name="controllers_is_an_object_that_matches_routes_to_files"></a>
+### controllers is an object that matches routes to files
 
 * The `key` is the route you want to mount at
 
@@ -222,7 +237,8 @@ text files as well as binaries:
       "/images": "images"
     }
 
-!SUBSECTION The assets
+<a name="the_assets"></a>
+### The assets
 
 The value for the asset key is an object consisting of paths that are matched 
 to the files they are composed of. Let's take the following example:
@@ -262,7 +278,8 @@ setting the optional `contentType` attribute of an asset as follows:
     }
   }
 
-!SUBSECTION Development Mode
+<a name="development_mode"></a>
+### Development Mode
 
 If you start ArangoDB with the option `--javascript.dev-app-path` followed by 
 the path to a directory containing a manifest file and the path to the 
@@ -280,13 +297,15 @@ This means that you do not have to restart ArangoDB if you change anything
 in your app. It is of course not meant for production, because the reloading 
 makes the app relatively slow.
 
-!SUBSECTION Production Mode
+<a name="production_mode"></a>
+### Production Mode
 
 To run a Foxx app in production first copy your app code to the directory given in 
 the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
 You can also use Foxx manager to find out your current app-path.
 
-!SUBSECTION Controlling Access to Foxx Applications
+<a name="controlling_access_to_foxx_applications"></a>
+### Controlling Access to Foxx Applications
 
 
 Access to Foxx applications is controlled by the regular authentication mechanisms 
@@ -352,14 +371,15 @@ sessionLifetime: An integer. Lifetime of sessions in seconds.
 
 *Examples*
 
-  app.activateAuthentication({
-    type: "cookie",
-    cookieLifetime: 360000,
-    cookieName: "my_cookie",
-    sessionLifetime: 400,
-  });
+	app.activateAuthentication({
+		type: "cookie",
+		cookieLifetime: 360000,
+		cookieName: "my_cookie",
+		sessionLifetime: 400,
+	});
 
-!SUBSUBSECTION Adding a login route
+<a name="adding_a_login_route"></a>
+#### Adding a login route
 
 `FoxxController::login(path, opts)`
 
@@ -369,13 +389,14 @@ usernameField and passwordField can be used to adjust the expected attributes in
 
 *Examples*
 
-  app.login('/login', {
-    onSuccess: function (req, res) {
-      res.json({"success": true});
-    }
-  });
+	app.login('/login', {
+		onSuccess: function (req, res) {
+			res.json({"success": true});
+		}
+	});
 
-!SUBSUBSECTION Adding a logout route
+<a name="adding_a_logout_route"></a>
+#### Adding a logout route
 
 `FoxxController::logout(path, opts)`
 
@@ -383,13 +404,14 @@ This works pretty similar to the logout function and adds a path to your app for
 
 *Examples*
 
-  app.logout('/logout', {
-    onSuccess: function (req, res) {
-      res.json({"message": "Bye, Bye"});
-    }
-  });
+	app.logout('/logout', {
+		onSuccess: function (req, res) {
+			res.json({"message": "Bye, Bye"});
+		}
+	});
 
-!SUBSUBSECTION Adding a register route
+<a name="adding_a_register_route"></a>
+#### Adding a register route
 
 `FoxxController::register(path, opts)`
 
@@ -397,14 +419,15 @@ This works pretty similar to the logout function and adds a path to your app for
 
 `Examples`
 
-  app.register('/logout', {
-    acceptedAttributes: ['name'],
-    defaultAttributes: {
-      admin: false
-    }
-  });
+	app.register('/logout', {
+		acceptedAttributes: ['name'],
+		defaultAttributes: {
+			admin: false
+		}
+	});
 
-!SUBSUBSECTION Adding a change password route
+<a name="adding_a_change_password_route"></a>
+#### Adding a change password route
 
 `FoxxController::changePassword(route, opts)`
 
@@ -414,11 +437,11 @@ passwordField can be used to adjust the expected attribute in the post request. 
 
 *Examples*
 
-  app.changePassword('/changePassword', {
-    onSuccess: function (req, res) {
-      res.json({"success": true});
-    }
-  });
+	app.changePassword('/changePassword', {
+		onSuccess: function (req, res) {
+			res.json({"success": true});
+		}
+	});
 
 
 <!--
@@ -441,11 +464,13 @@ passwordField can be used to adjust the expected attribute in the post request. 
 @copydetails JSF_foxx_controller_changePassword
 -->
 
-!SUBSUBSECTION  Restricting routes
+<a name="restricting_routes"></a>
+#### Restricting routes
 
 To restrict routes, see the documentation for Documenting and Restraining the routes.
 
-!SUBSECTION Optional Functionality: FormatMiddleware
+<a name="optional_functionality:_formatmiddleware"></a>
+### Optional Functionality: FormatMiddleware
 
 To use this plugin, please require it first:
 
@@ -471,7 +496,8 @@ In both forms you can give a default format as a second parameter, if no
 format could be determined. If you give no `defaultFormat` this case will be 
 handled as an error.
 
-!SUBSECTION Optional Functionality: TemplateMiddleware
+<a name="optional_functionality:_templatemiddleware"></a>
+### Optional Functionality: TemplateMiddleware
 
 To use this plugin, please require it first:
 
@@ -496,20 +522,22 @@ one choice now: `underscore`.  Which would set the body of the response to
 `contentType` to `text/plain` in this case.  In addition to the attributes 
 you provided, you also have access to all your view helpers.
 
-!SUBSUBSECTION Initialize
+<a name="initialize"></a>
+#### Initialize
 
 Initialize with the name of a collection or a collection and optionally a set of helper functions. Then use before to attach the initialized middleware to your Foxx.Controller
 
 *Examples*
 
-  templateMiddleware = new TemplateMiddleware("templates", {
-    uppercase: function (x) { return x.toUpperCase(); }
-  });
-  // or without helpers:
-  //templateMiddleware = new TemplateMiddleware("templates");
-  app.before(templateMiddleware);
+	templateMiddleware = new TemplateMiddleware("templates", {
+		uppercase: function (x) { return x.toUpperCase(); }
+	});
+	// or without helpers:
+	//templateMiddleware = new TemplateMiddleware("templates");
+	app.before(templateMiddleware);
 
-!SUBSUBSECTION Render
+<a name="render"></a>
+#### Render
 
 `response.render(templatePath, data)`
 
@@ -517,7 +545,7 @@ When the TemplateMiddleware is included, you will have access to the render func
 
 *Examples*
 
-  response.render("high/way", {username: 'Application'})
+	response.render("high/way", {username: 'Application'})
 
 <!--
 ### Initialize

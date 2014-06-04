@@ -1,4 +1,5 @@
-!CHAPTER Address of an Index 
+<a name="address_of_an_index"></a>
+# Address of an Index
 
 All indexes in ArangoDB have an unique handle. This index handle identifies an
 index and is managed by ArangoDB. All indexes are found under the URI

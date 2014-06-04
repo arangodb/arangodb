@@ -1,6 +1,8 @@
-!CHAPTER Query results 
+<a name="query_results"></a>
+# Query results
 
-!SUBSECTION Result sets
+<a name="result_sets"></a>
+### Result sets
 
 The result of an AQL query is a list of values. The individual values in the
 result list may or may not have a homogeneous structure, depending on what is
@@ -42,7 +44,8 @@ found, it will produce an empty result list:
 
     [ ]
 
-!SUBSECTION Errors
+<a name="errors"></a>
+### Errors
 
 Issuing an invalid query to the server will result in a parse error if the query
 is syntactically invalid. ArangoDB will detect such errors during query

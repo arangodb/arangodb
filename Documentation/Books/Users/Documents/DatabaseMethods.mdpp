@@ -14,8 +14,8 @@ As before. Instead of document a document-handle can be passed as first argument
 
 Returns the document:
 
-  arango> db._document("example/3053939");
-  { "_id" : "example/3053939", "_key" : "3053939", "_rev" : "3053939", "Hello" : "World" }
+	arango> db._document("example/3053939");
+	{ "_id" : "example/3053939", "_key" : "3053939", "_rev" : "3053939", "Hello" : "World" }
 
 `db._exists( document)`
 
@@ -47,16 +47,16 @@ As before. Instead of document a document-handle can be passed as first argument
 
 Create and replace a document:
 
-  arango> a1 = db.example.save({ a : 1 });
-  { "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1717678" }
-  arango> a2 = db._replace(a1, { a : 2 });
-  { "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1783214", "_oldRev" : "1717678" }
-  arango> a3 = db._replace(a1, { a : 3 });
-  JavaScript exception in file '(arango)' at 1,9: [ArangoError 1200: conflict: cannot replace document]
-  !a3 = db._replace(a1, { a : 3 });
-  !        ^
-  arango> a4 = db.example.replace(a1, { a : 4 }, true);
-  { "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1848750", "_oldRev" : "1783214" }
+	arango> a1 = db.example.save({ a : 1 });
+	{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1717678" }
+	arango> a2 = db._replace(a1, { a : 2 });
+	{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1783214", "_oldRev" : "1717678" }
+	arango> a3 = db._replace(a1, { a : 3 });
+	JavaScript exception in file '(arango)' at 1,9: [ArangoError 1200: conflict: cannot replace document]
+	!a3 = db._replace(a1, { a : 3 });
+	!        ^
+	arango> a4 = db.example.replace(a1, { a : 4 }, true);
+	{ "_id" : "example/1717678", "_key" : "1717678", "_rev" : "1848750", "_oldRev" : "1783214" }
 
 `db._update( document, data, overwrite, keepNull, waitForSync)`
 
@@ -80,16 +80,16 @@ As before. Instead of document a document-handle can be passed as first argument
 
 Create and update a document:
 
-  arango> a1 = db.example.save({ a : 1 });
-  { "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19660691" }
-  arango> a2 = db._update(a1, { b : 2 });
-  { "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19791763" }
-  arango> a3 = db._update(a1, { c : 3 });
-  JavaScript exception in file 'client/client.js' at 2364,13: [ArangoError 1200: precondition failed]
-  !      throw new ArangoError(requestResult);
-  !            ^
-  arango> a4 = db.example.update(a1, { c : 3 }, true);
-  { "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19857299" }
+	arango> a1 = db.example.save({ a : 1 });
+	{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19660691" }
+	arango> a2 = db._update(a1, { b : 2 });
+	{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19791763" }
+	arango> a3 = db._update(a1, { c : 3 });
+	JavaScript exception in file 'client/client.js' at 2364,13: [ArangoError 1200: precondition failed]
+	!      throw new ArangoError(requestResult);
+	!            ^
+	arango> a4 = db.example.update(a1, { c : 3 }, true);
+	{ "error" : false, "_id" : "example/19660691", "_key" : "19660691", "_rev" : "19857299" }
 
 `db._remove( document)`
 
@@ -111,33 +111,33 @@ As before. Instead of document a document-handle can be passed as first argument
 
 Remove a document:
 
-  arango> a1 = db.example.save({ a : 1 });
-  { "_id" : "116308/4214943", "_rev" : "4214943" }
-  arango> db._remove(a1);
-  true
-  arango> db._remove(a1);
-  JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: cannot remove document]
-  !db._remove(a1);
-  ! ^
-  arango> db._remove(a1, true);
-  false
+	arango> a1 = db.example.save({ a : 1 });
+	{ "_id" : "116308/4214943", "_rev" : "4214943" }
+	arango> db._remove(a1);
+	true
+	arango> db._remove(a1);
+	JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: cannot remove document]
+	!db._remove(a1);
+	! ^
+	arango> db._remove(a1, true);
+	false
 
 Remove a document with a conflict:
 
-  arango> a1 = db.example.save({ a : 1 });
-  { "_id" : "116308/4042634", "_rev" : "4042634" }
-  arango> a2 = db._replace(a1, { a : 2 });
-  { "_id" : "116308/4042634", "_rev" : "4108170", "_oldRev" : 4042634 }
-  arango> db._delete(a1);
-  JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
-  !db._delete(a1);
-  ! ^
-  arango> db._delete(a1, true);
-  true
-  arango> db._document(a1);
-  JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
-  !db._document(a1);
-  ! ^
+	arango> a1 = db.example.save({ a : 1 });
+	{ "_id" : "116308/4042634", "_rev" : "4042634" }
+	arango> a2 = db._replace(a1, { a : 2 });
+	{ "_id" : "116308/4042634", "_rev" : "4108170", "_oldRev" : 4042634 }
+	arango> db._delete(a1);
+	JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
+	!db._delete(a1);
+	! ^
+	arango> db._delete(a1, true);
+	true
+	arango> db._document(a1);
+	JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
+	!db._document(a1);
+	! ^
 
 <!--
 @anchor HandlingDocumentsDbRead

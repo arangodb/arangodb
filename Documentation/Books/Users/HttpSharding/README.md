@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Sharding 
+<a name="http_interface_for_sharding"></a>
+# HTTP Interface for Sharding
 
 @NAVIGATE_HttpSharding
 @EMBEDTOC{HttpShardingTOC}

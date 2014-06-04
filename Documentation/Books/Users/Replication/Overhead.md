@@ -1,4 +1,5 @@
-!CHAPTER Replication Overhead
+<a name="replication_overhead"></a>
+# Replication Overhead
 
 Running the replication logger will make all data modification operations more 
 expensive, as the ArangoDB server will write the operations into the replication log, too.
