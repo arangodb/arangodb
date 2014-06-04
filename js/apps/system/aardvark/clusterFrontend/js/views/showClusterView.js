@@ -173,6 +173,8 @@
     },
 
     render: function() {
+      this.knownServers = [];
+      delete this.hist;
       var self = this;
       this.listByAddress(function(byAddress) {
         if (Object.keys(byAddress).length === 1) {

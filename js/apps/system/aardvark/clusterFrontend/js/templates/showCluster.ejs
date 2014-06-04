@@ -99,7 +99,11 @@
             <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
           </a>
         <% }); %>
-      <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui<%=buttonClass(c.get('status'))%>" href="<%=url%>" target="_blank">GUI</a></h5>
+        <% if (s.coords) { %>
+          <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%><a class="button-gui<%=buttonClass(_.first(s.coords).get('status'))%>" href="<%=url%>" target="_blank">GUI</a></h5>
+        <% } else { %>
+          <h5 class="collectionName"><%=a%> <%=dbName!==""?"(Shards: <span id=\"" + dbName + "Shards\" class=\"shardCounter\"/>)":""%></h5>
+         <% } %>
       </li>
     <%
     });
