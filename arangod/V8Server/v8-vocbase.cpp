@@ -2362,8 +2362,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
   
-  Barrier barrier(primary);
-
   res = trx.updateDocument(key, &document, shaped, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
@@ -2558,8 +2556,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   TRI_doc_mptr_t document;
   res = trx->createEdge(key, &document, shaped, forceSync, &edge);
-
-  Barrier barrier(primary);
 
   res = trx->finish(res);
    
@@ -2768,7 +2764,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   res = trx.updateDocument(key, &document, patchedJson, policy, options.waitForSync, rid, &actualRevision);
 
-  Barrier barrier(primary);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
