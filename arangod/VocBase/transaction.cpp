@@ -149,7 +149,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
       delete op;
     }
     
-    TRI_SetRevisionDocumentCollection(document, trxCollection->_originalRevision, true);
+    TRI_UpdateStatisticsDocumentCollection(document, trxCollection->_originalRevision, true, 0);
 
     delete trxCollection->_operations;
     trxCollection->_operations = nullptr;
@@ -892,12 +892,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  if (operation.rid > 0) {
-    TRI_SetRevisionDocumentCollection(document, operation.rid, false);
-  }
-
-  // update logfile id
-  TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
+  TRI_UpdateStatisticsDocumentCollection(document, operation.rid, false, 1);
 
   return TRI_ERROR_NO_ERROR;
 }

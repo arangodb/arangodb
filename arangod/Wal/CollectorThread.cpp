@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectorThread.h"
+#include "Basics/MutexLocker.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
@@ -39,6 +40,38 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a reference to an existing datafile statistics struct
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_doc_datafile_info_t& getDfi (CollectorCache* cache,
+                                               TRI_voc_fid_t fid) {
+  return cache->dfi[fid];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a reference to an existing datafile statistics struct,
+/// create it if it does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_doc_datafile_info_t& createDfi (CollectorCache* cache,
+                                                  TRI_voc_fid_t fid) {
+  auto it = cache->dfi.find(fid);
+  if (it != cache->dfi.end()) {
+    return (*it).second;
+  }
+
+  TRI_doc_datafile_info_t dfi;
+  memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
+  cache->dfi.insert(std::make_pair(fid, dfi));
+
+  return getDfi(cache, fid);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    CollectorState
 // -----------------------------------------------------------------------------
 
@@ -48,6 +81,7 @@ using namespace triagens::wal;
 
 struct CollectorState {
   std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t>                           collections;
+  std::unordered_map<TRI_voc_cid_t, int64_t>                                  operationsCount;
   std::unordered_map<TRI_voc_cid_t, CollectorThread::OperationsType>          structuralOperations;
   std::unordered_map<TRI_voc_cid_t, CollectorThread::DocumentOperationsType>  documentOperations;
   std::unordered_set<TRI_voc_tid_t>                                           failedTransactions;
@@ -106,6 +140,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       
       // fill list of structural operations 
       state->structuralOperations[collectionId].push_back(marker);
+      // state->operationsCount[collectionId]++; // do not count this operation
       break;
     }
 
@@ -118,6 +153,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       // fill list of structural operations 
       state->structuralOperations[collectionId].push_back(marker);
+      // state->operationsCount[collectionId]++; // do not count this operation
       break;
     }
       
@@ -133,7 +169,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
-      
+      state->operationsCount[collectionId]++;
       state->collections[collectionId] = m->_databaseId;
       break;
     }
@@ -150,6 +186,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
+      state->operationsCount[collectionId]++;
       state->collections[collectionId] = m->_databaseId;
       break;
     }
@@ -166,13 +203,14 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       char const* key = reinterpret_cast<char const*>(m) + sizeof(remove_marker_t);
       state->documentOperations[collectionId][std::string(key)] = marker;
+      state->operationsCount[collectionId]++;
       state->collections[collectionId] = m->_databaseId;
       break;
     }
 
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION:
+    case TRI_WAL_MARKER_BEGIN_TRANSACTION: 
     case TRI_WAL_MARKER_COMMIT_TRANSACTION: {
-      // do nothing
+      break;
     }
 
     case TRI_WAL_MARKER_ABORT_TRANSACTION: {
@@ -284,6 +322,9 @@ void CollectorThread::run () {
     // collect a logfile if any qualifies
     bool worked = this->collectLogfiles();
 
+    // update master pointers
+    worked |= this->processQueuedOperations();
+
     // delete a logfile if any qualifies
     worked |= this->removeLogfiles();
     
@@ -302,7 +343,7 @@ void CollectorThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform collection of a logfile (if any)
+/// @brief step 1: perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::collectLogfiles () {
@@ -331,7 +372,164 @@ bool CollectorThread::collectLogfiles () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform removal of a logfile (if any)
+/// @brief step 2: process all still-queued collection operations
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::processQueuedOperations () {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  // process operations for each collection
+  for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); ++it) {
+    auto& operations = (*it).second;
+    assert(! operations.empty());
+
+    for (auto it2 = operations.begin(); it2 != operations.end(); /* no hoisting */ ) {
+      Logfile* logfile = (*it2)->logfile;
+
+      if (processCollectionOperations((*it2)) != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+      // delete the element from the vector while iterating over the vector
+      it2 = operations.erase(it2);
+
+      _logfileManager->decreaseCollectQueueSize(logfile);
+    }
+    // next collection
+  }
+
+  // finally remove all entries from the map with empty vectors
+  for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); /* no hoisting */) {
+    if ((*it).second.empty()) {
+      it = _operationsQueue.erase(it);
+    }
+    else {
+      ++it;
+    }
+  }
+
+  // TODO: report an error?
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process all operations for a single collection
+////////////////////////////////////////////////////////////////////////////////
+
+int CollectorThread::processCollectionOperations (CollectorCache* cache) {
+  triagens::arango::DatabaseGuard guard(_server, cache->databaseId);
+    
+  TRI_vocbase_t* vocbase = guard.database();
+
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  
+  TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, cache->collectionId);
+
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  TRI_document_collection_t* document = collection->_collection;
+
+  // try to acquire the write lock on the collection
+  if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
+    TRI_ReleaseCollectionVocBase(vocbase, collection);
+
+    LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->base._info._cid);
+
+    return TRI_ERROR_LOCK_TIMEOUT;
+  }
+    
+  // now we have the write lock on the collection
+  LOG_TRACE("wal collector processing operations for collection '%s'", document->base._info._name);
+
+  for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
+    auto operation = (*it);
+
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.mem);
+    TRI_voc_fid_t fid = operation.fid;
+  
+    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+      TRI_doc_document_key_marker_t const* m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(operation.mem);
+      char const* key = operation.mem + m->_offsetKey;
+
+      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+
+      if (found == nullptr || found->_rid != m->_rid) {
+        // somebody inserted a new revision of the document
+        auto& dfi = createDfi(cache, fid);  
+        dfi._numberDead++;
+        dfi._sizeDead += (int64_t) marker->_size;
+      }
+      else {
+        // we can safely update the master pointer's dataptr value
+        found->_dataptr = operation.mem;
+      }
+    }
+    else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(operation.mem);
+      char const* key = operation.mem + m->base._offsetKey;
+      
+      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+
+      if (found == nullptr || found->_rid != m->base._rid) {
+        // somebody inserted a new revision of the document
+        auto& dfi = createDfi(cache, fid);  
+        dfi._numberDead++;
+        dfi._sizeDead += (int64_t) marker->_size;
+      }
+      else {
+        // we can safely update the master pointer's dataptr value
+        found->_dataptr = operation.mem;
+      }
+    }
+    else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+      TRI_doc_deletion_key_marker_t const* m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(operation.mem);
+      char const* key = operation.mem + m->_offsetKey;
+      
+      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+      
+      if (found != nullptr && found->_rid > m->_rid) {
+        // somebody re-created the document with a newer revision
+        auto& dfi = createDfi(cache, fid);  
+        dfi._numberDead++;
+        dfi._sizeDead += (int64_t) marker->_size;
+      }
+    }
+    else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+      // move the pointer to the attribute from WAL to the datafile
+      TRI_MoveMarkerVocShaper(document->_shaper, const_cast<TRI_df_marker_t*>(marker));
+    }
+    else if (marker->_type == TRI_DF_MARKER_SHAPE) {
+      // move the pointer to the shape from WAL to the datafile
+      TRI_MoveMarkerVocShaper(document->_shaper, const_cast<TRI_df_marker_t*>(marker));
+    }
+    else {
+      // a marker we won't care about (e.g. shapes and attributes)
+    }
+  }
+
+  // finally update all datafile statistics
+  LOG_TRACE("updating datafile statistics for collection '%s'", document->base._info._name);
+  updateDatafileStatistics(document, cache);
+
+  assert(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+  document->_uncollectedLogfileEntries -= cache->totalOperationsCount; 
+
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  
+  LOG_TRACE("wal collector successfully processed operations for collection '%s'", document->base._info._name);
+  TRI_ReleaseCollectionVocBase(vocbase, collection);
+
+  delete cache;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief step 3: perform removal of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::removeLogfiles () {
@@ -350,7 +548,7 @@ bool CollectorThread::removeLogfiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::collect (Logfile* logfile) {
-  LOG_INFO("collecting logfile %llu", (unsigned long long) logfile->id());
+  LOG_TRACE("collecting logfile %llu", (unsigned long long) logfile->id());
 
   TRI_datafile_t* df = logfile->df();
 
@@ -414,13 +612,12 @@ int CollectorThread::collect (Logfile* logfile) {
     }
 
     if (! sortedOperations.empty()) {
-      CollectorCache cache;
-
       // TODO: handle errors indicated by transferMarkers!
-      transferMarkers(logfile->id(), cid, state.collections[cid], sortedOperations, cache);
+      transferMarkers(logfile, cid, state.collections[cid], state.operationsCount[cid], sortedOperations);
     }
   }
 
+  // TODO: what to do if an error has occurred?
 
   // remove all handled transactions from failedTransactions list
   if (! state.handledTransactions.empty()) {
@@ -434,12 +631,13 @@ int CollectorThread::collect (Logfile* logfile) {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CollectorThread::transferMarkers (Logfile::IdType logfileId,
+int CollectorThread::transferMarkers (Logfile* logfile,
                                       TRI_voc_cid_t collectionId,
                                       TRI_voc_tick_t databaseId,
-                                      OperationsType const& operations,
-                                      CollectorCache& cache) {
+                                      int64_t totalOperationsCount,
+                                      OperationsType const& operations) {
 
+  // GENERAL TODO: remove TRI_SetLastCollectedDocumentOperation or remove the lock for the collection
   assert(! operations.empty());
 
   triagens::arango::DatabaseGuard guard(_server, databaseId);
@@ -455,6 +653,13 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
   if (collection == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  
+  CollectorCache* cache = new CollectorCache(collectionId, 
+                                             databaseId, 
+                                             logfile,
+                                             totalOperationsCount, 
+                                             operations.size());
+
 
   TRI_document_collection_t* document = collection->_collection;
   assert(document != nullptr);
@@ -489,16 +694,12 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         // copy attribute name into marker
         memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
 
-        finishMarker(dst, document, source->_tick);
+        finishMarker(dst, document, source->_tick, cache);
         
-        // move the pointer to the shape from WAL to the datafile
-        TRI_MoveMarkerVocShaper(document->_shaper, reinterpret_cast<TRI_df_marker_t*>(dst));
-  
         // update statistics
-        if (cache.dfi != nullptr) {
-          cache.dfi->_numberAttributes++;
-          cache.dfi->_sizeAttributes += (int64_t) totalSize;
-        }
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi._numberAttributes++;
+        dfi._sizeAttributes += (int64_t) totalSize;
         break;
       }
 
@@ -516,16 +717,12 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         // copy shape into marker
         memcpy(dst + sizeof(TRI_df_shape_marker_t), shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick);
+        finishMarker(dst, document, source->_tick, cache);
     
-        // move the pointer to the shape from WAL to the datafile
-        TRI_MoveMarkerVocShaper(document->_shaper, reinterpret_cast<TRI_df_marker_t*>(dst));
-
         // update statistics
-        if (cache.dfi != nullptr) {
-          cache.dfi->_numberShapes++;
-          cache.dfi->_sizeShapes += (int64_t) totalSize;
-        }
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi._numberShapes++;
+        dfi._sizeShapes += (int64_t) totalSize;
         break;
       }
 
@@ -559,20 +756,12 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         // copy shape into marker
         memcpy(dst + m->_offsetJson, shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick);
+        finishMarker(dst, document, source->_tick, cache);
         
         // update statistics
-        if (cache.dfi != nullptr) {
-          cache.dfi->_numberAlive++;
-          cache.dfi->_sizeAlive += (int64_t) totalSize;
-        }
-
-        // lookup the document in the primary index and update its master pointer
-        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-
-        if (found != nullptr) {
-          found->_dataptr = static_cast<void*>(dst);
-        }
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi._numberAlive++;
+        dfi._sizeAlive += (int64_t) totalSize;
         break;
       }
 
@@ -619,20 +808,13 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         // copy shape into marker
         memcpy(dst + m->base._offsetJson, shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick);
+        finishMarker(dst, document, source->_tick, cache);
         
         // update statistics
-        if (cache.dfi != nullptr) {
-          cache.dfi->_numberAlive++;
-          cache.dfi->_sizeAlive += (int64_t) totalSize;
-        }
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi._numberAlive++;
+        dfi._sizeAlive += (int64_t) totalSize;
         
-        // lookup the document in the primary index and update its master pointer
-        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-
-        if (found != nullptr) {
-          found->_dataptr = static_cast<void*>(dst);
-        }
         break;
       }
 
@@ -657,21 +839,20 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         // copy key into marker
         memcpy(dst + m->_offsetKey, key, n);
 
-        finishMarker(dst, document, source->_tick);
+        finishMarker(dst, document, source->_tick, cache);
         
         // update statistics
-        if (cache.dfi != nullptr) {
-          cache.dfi->_numberDeletion++;
-        }
+        auto& dfi = getDfi(cache, cache->lastFid);
+        dfi._numberDeletion++;
         break;
       }
     }
   }
 
   // now sync the datafile
-  int res = syncCollection(document);
+  int res = syncDatafileCollection(document);
 
-  TRI_SetLastCollectedDocumentCollection(document, logfileId);
+  queueOperations(logfile, cache);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
 
@@ -679,10 +860,71 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the collect operations into a per-collection queue
+////////////////////////////////////////////////////////////////////////////////
+
+int CollectorThread::queueOperations (triagens::wal::Logfile* logfile, 
+                                      CollectorCache* cache) {
+  TRI_voc_cid_t cid = cache->collectionId;
+
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  auto it = _operationsQueue.find(cid);
+  if (it == _operationsQueue.end()) {
+    std::vector<CollectorCache*> ops;
+    ops.push_back(cache);
+    _operationsQueue.insert(it, std::make_pair(cid, ops));
+    
+    _logfileManager->increaseCollectQueueSize(logfile);
+  }
+  else {
+    (*it).second.push_back(cache);
+    
+    _logfileManager->increaseCollectQueueSize(logfile);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a collection's datafile information
+////////////////////////////////////////////////////////////////////////////////
+  
+int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* document,
+                                               CollectorCache* cache) {
+  // iterate over all datafile infos and update the collection's datafile stats
+  for (auto it = cache->dfi.begin(); it != cache->dfi.end(); ++it) {
+    TRI_voc_fid_t fid = (*it).first;
+    
+    TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoPrimaryCollection(document, fid, true);
+
+    if (dst != nullptr) {
+      auto& dfi = (*it).second;
+
+      dst->_numberAttributes += dfi._numberAttributes;
+      dst->_sizeAttributes   += dfi._sizeAttributes;
+      dst->_numberShapes     += dfi._numberShapes;
+      dst->_sizeShapes       += dfi._sizeShapes;
+      dst->_numberAlive      += dfi._numberAlive;
+      dst->_sizeAlive        += dfi._sizeAlive;
+      dst->_numberDead       += dfi._numberDead;
+      dst->_sizeDead         += dfi._sizeDead;
+      dst->_numberDeletion   += dfi._numberDeletion;
+
+      // flush the local datafile info so we don't update the statistics twice
+      // with the same values
+      memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sync all journals of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CollectorThread::syncCollection (TRI_document_collection_t* document) {
+int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document) {
   TRI_collection_t* collection = &document->base;
   int res = TRI_ERROR_NO_ERROR;
 
@@ -731,7 +973,7 @@ int CollectorThread::syncCollection (TRI_document_collection_t* document) {
 char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* document,
                                                TRI_df_marker_type_e type,
                                                TRI_voc_size_t size,
-                                               CollectorCache& cache) {
+                                               CollectorCache* cache) {
   TRI_collection_t* collection = &document->base;
   size = TRI_DF_ALIGN_BLOCK(size);
  
@@ -793,12 +1035,12 @@ leave:
         
     assert(datafile != nullptr);
 
-    if (datafile->_fid != cache.lastFid) {
-      cache.dfi = TRI_FindDatafileInfoPrimaryCollection(document, datafile->_fid, true);
+    if (datafile->_fid != cache->lastFid) {
+      // datafile has changed
+      cache->lastFid = datafile->_fid;
 
-      if (cache.dfi != nullptr) {
-        cache.lastFid = datafile->_fid;
-      }
+      // create a local datafile info struct
+      createDfi(cache, datafile->_fid);
     }
   }
 
@@ -826,18 +1068,21 @@ void CollectorThread::initMarker (TRI_df_marker_t* marker,
 
 void CollectorThread::finishMarker (char* mem,
                                     TRI_document_collection_t* document,
-                                    TRI_voc_tick_t tick) {
+                                    TRI_voc_tick_t tick,
+                                    CollectorCache* cache) {
   TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(mem);
   
   marker->_tick = tick;
 
   // calculate the CRC
   TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, (char const*) marker, marker->_size);
+  crc = TRI_BlockCrc32(crc, const_cast<char*>(mem), marker->_size);
   marker->_crc = TRI_FinalCrc32(crc);
 
   assert(document->base._tickMax < tick);
   document->base._tickMax = tick;
+
+  cache->operations->emplace_back(CollectorOperation(mem, cache->lastFid));
 }
 
 // Local Variables:

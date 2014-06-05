@@ -139,7 +139,6 @@ typedef enum {
 
   TRI_DF_MARKER_HEADER               = 1000,
   TRI_DF_MARKER_FOOTER               = 1001,
-  TRI_DF_MARKER_SKIP                 = 1002, // currently unused
   TRI_DF_MARKER_ATTRIBUTE            = 1003,
   TRI_DF_MARKER_SHAPE                = 1004,
 

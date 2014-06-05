@@ -80,6 +80,8 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupDocumentCollection (TRI_document_collection_t* document) {
+  bool unloadChecked = false;
+
   // loop until done
   while (true) {
     TRI_barrier_list_t* container;
@@ -126,10 +128,25 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
       // check if we can really unload, this is only the case if the collection's WAL markers
       // were fully collected
-      if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+
+      if (! unloadChecked) {
+        // we must release the lock temporarily to check if the collection is fully collected
         TRI_UnlockSpin(&container->_lock);
-        return;
+
+        // must not hold the spin lock while querying the collection
+        if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+          // collection is not fully collected - postpone the unload
+          return;
+        }
+
+        unloadChecked = true;
+        continue;
       }
+      // fall-through intentional
+    }
+    else {
+      // retry in next iteration
+      unloadChecked = false;
     }
 
     // found an element to go on with
