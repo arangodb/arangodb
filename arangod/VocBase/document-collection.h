@@ -922,11 +922,11 @@ struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_coll
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SelectByExample (struct TRI_transaction_collection_s*,
+std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
+                          struct TRI_transaction_collection_s*,
                           size_t,
                           TRI_shape_pid_t*,
-                          TRI_shaped_json_t**,
-                          std::vector<TRI_doc_mptr_t>&);
+                          TRI_shaped_json_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer

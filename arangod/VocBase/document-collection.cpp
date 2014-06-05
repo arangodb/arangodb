@@ -5600,31 +5600,32 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
+std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
+                          TRI_transaction_collection_t* trxCollection,
                           size_t length,
                           TRI_shape_pid_t* pids,
-                          TRI_shaped_json_t** values,
-                          std::vector<TRI_doc_mptr_t>& filtered) {
+                          TRI_shaped_json_t** values) {
   TRI_shaper_t* shaper;
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   // use filtered to hold copies of the master pointer
-  filtered.clear();
+  std::vector<TRI_doc_mptr_t*> filtered;
 
   // do a full scan
   shaper = document->_shaper;
 
-  TRI_doc_mptr_t const** ptr = (TRI_doc_mptr_t const**) (document->_primaryIndex._table);
-  TRI_doc_mptr_t const** end = (TRI_doc_mptr_t const**) ptr + document->_primaryIndex._nrAlloc;
+  TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) (document->_primaryIndex._table);
+  TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
     if (IsVisible(*ptr)) {
       if (IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
-        filtered.push_back(**ptr);
+        filtered.push_back(*ptr);
       }
     }
   }
+  return filtered;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
