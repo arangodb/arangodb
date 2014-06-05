@@ -54,7 +54,7 @@ typedef struct TRI_shape_access_s {
   TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
   TRI_shape_pid_t _pid;                 // path identifier of the attribute path
 
-  TRI_shape_t const* _shape;            // resulting shape
+  TRI_shape_sid_t _resultSid;           // resulting shape
   void* const* _code;                   // bytecode
 
   TRI_memory_zone_t* _memoryZone;
@@ -67,9 +67,8 @@ TRI_shape_access_t;
 
 typedef enum {
   TRI_SHAPE_AC_DONE = 1,
-  TRI_SHAPE_AC_SHAPE_PTR = 2,
-  TRI_SHAPE_AC_OFFSET_FIX = 3,
-  TRI_SHAPE_AC_OFFSET_VAR = 4
+  TRI_SHAPE_AC_OFFSET_FIX = 2,
+  TRI_SHAPE_AC_OFFSET_VAR = 3
 }
 TRI_shape_ac_bc_e;
 

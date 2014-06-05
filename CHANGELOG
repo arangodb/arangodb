@@ -1,4 +1,11 @@
-v2.0.8 (2014-05-29)
+v2.0.9 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #883: arango 2.1 - when starting multi-machine cluster, UI web
+  does not change to cluster overview
+
+
+v2.0.8 (2014-05-09)
 -------------------
 
 * fixed too-busy iteration over skiplists
