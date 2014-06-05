@@ -2018,8 +2018,6 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
     "ex2": ex2
   };
   return db._query(query, bindVars, {count: true}).toArray();
-
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
