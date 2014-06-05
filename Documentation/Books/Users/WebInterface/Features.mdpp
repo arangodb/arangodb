@@ -54,7 +54,7 @@ application can be installed multiple times using different mount points.
 !SECTION Graphs Tab 
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB. It
-allows browsing ArangoDB graphs stored in the `_graphs` system collection or a
+allows browsing ArangoDB graphs stored in the *_graphs* system collection or a
 graph consisting of an arbitrary vertex and edge collection. 
 
 Please note that the graph viewer requires client-side SVG and that you need a
@@ -80,7 +80,7 @@ database server.
 
 Any valid JavaScript code can be executed inside the shell. The code will be
 executed inside your browser. To contact the ArangoDB server you can use the
-`db` object, for example as follows:
+*db* object, for example as follows:
 
     JSH> db._create("mycollection");
     JSH> db.mycollection.save({ _key: "test", value: "something" });
