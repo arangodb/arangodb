@@ -542,7 +542,7 @@ namespace triagens {
               return res;
             }
           }
-          
+    
           if (document->_primaryIndex._nrUsed > 0) {
             ids.reserve(document->_primaryIndex._nrUsed);
 
@@ -556,7 +556,7 @@ namespace triagens {
               }
             }
           }
-
+          
           if (lock) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
@@ -649,10 +649,9 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-
+          
           if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
-
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
@@ -662,6 +661,7 @@ namespace triagens {
 
           if (*barrier == 0) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -744,11 +744,11 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-
+            
           if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
-
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
             // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
           }
@@ -786,7 +786,7 @@ namespace triagens {
               }
             }
           }
-
+            
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 

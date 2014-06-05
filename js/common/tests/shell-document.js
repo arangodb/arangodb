@@ -34,6 +34,20 @@ var db = arangodb.db;
 var wait = require("internal").wait;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+      
+function waitUnload (collection) {      
+  collection.unload();
+  /*
+  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+    wait(1);
+  }
+  assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+  */
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
 
@@ -366,11 +380,7 @@ function CollectionDocumentSuite () {
       d1 = null;
       d2 = null;
 
-      collection.unload();
-      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
-        wait(1);
-      }
-      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+      waitUnload(collection);
 
       collection.load();
 
@@ -403,11 +413,7 @@ function CollectionDocumentSuite () {
       d1 = null;
       d2 = null;
 
-      collection.unload();
-      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
-        wait(1);
-      }
-      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+      waitUnload(collection);
 
       collection.load();
 
@@ -435,11 +441,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(0, collection.count());
 
-      collection.unload();
-      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
-        wait(1);
-      }
-      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+      waitUnload(collection);
 
       collection.load();
 
@@ -475,11 +477,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(1, collection.count());
 
-      collection.unload();
-      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
-        wait(1);
-      }
-      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+      waitUnload(collection);
 
       collection.load();
 
@@ -520,11 +518,7 @@ function CollectionDocumentSuite () {
       assertEqual(0, doc.value);
       doc = null;
 
-      collection.unload();
-      while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
-        wait(1);
-      }
-      assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
+      waitUnload(collection);
 
       collection.load();
 
@@ -1572,6 +1566,7 @@ function DatabaseDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests the _replace function with new signature
 ////////////////////////////////////////////////////////////////////////////////

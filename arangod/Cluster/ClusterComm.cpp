@@ -47,8 +47,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::arango::ClusterCommRestCallback(string& coordinator, 
-                             triagens::rest::HttpResponse* response)
-{
+                             triagens::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -81,21 +80,12 @@ ClusterComm::~ClusterComm () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual singleton instance
-////////////////////////////////////////////////////////////////////////////////
-
-ClusterComm* ClusterComm::_theinstance = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for our singleton instance
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm* ClusterComm::instance () {
-  // This does not have to be thread-safe, because we guarantee that
-  // this is called very early in the startup phase when there is still
-  // a single thread.
-  assert(_theinstance != 0);
-  return _theinstance;
+  static ClusterComm* Instance = new ClusterComm();
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,10 +93,19 @@ ClusterComm* ClusterComm::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialise () {
-  assert(_theinstance == 0);
-  _theinstance = new ClusterComm();  // this now happens exactly once
- 
-  _theinstance->startBackgroundThread(); 
+  auto* i = instance();
+  i->startBackgroundThread(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+void ClusterComm::cleanup () {
+  auto i = instance();
+  assert(i != nullptr);
+
+  delete i;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -342,7 +342,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
     assert(_lastCollectedId <= _lastSealedId);
   }
 
-  LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
+  // LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
 
   return true;
 }
@@ -362,7 +362,7 @@ void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
     }
   }
 
-  LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
+  // LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,16 +484,6 @@ SlotInfo LogfileManager::allocate (uint32_t size) {
 void LogfileManager::finalise (SlotInfo& slotInfo,
                                bool waitForSync) {
   _slots->returnUsed(slotInfo, waitForSync);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write a marker into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
-////////////////////////////////////////////////////////////////////////////////
-
-SlotInfo LogfileManager::writeMarker (Marker& marker,
-                                      bool waitForSync) {
-  return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,7 +632,6 @@ void LogfileManager::setLogfileSealed (Logfile::IdType id) {
     return;
   }
 
-std::cout << "SEALING LOGFILE\n";
   (*it).second->setStatus(Logfile::StatusType::SEALED);
   _lastSealedId = id;
 }

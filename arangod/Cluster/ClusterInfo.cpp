@@ -236,18 +236,13 @@ void CollectionInfoCurrent::copyAllJsons () {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-ClusterInfo* ClusterInfo::_theinstance = 0;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an instance of the cluster info class
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo* ClusterInfo::instance () {
-  // This does not have to be thread-safe, because we guarantee that
-  // this is called very early in the startup phase when there is still
-  // a single thread.
-  assert(_theinstance != 0);
-  return _theinstance;
+  static ClusterInfo* Instance = new ClusterInfo();
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,8 +250,18 @@ ClusterInfo* ClusterInfo::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::initialise () {
-  assert(_theinstance == 0);
-  _theinstance = new ClusterInfo();  // this now happens exactly once
+  instance();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+void ClusterInfo::cleanup () {
+  auto i = instance();
+  assert(i != nullptr);
+
+  delete i;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -572,8 +572,8 @@ static size_t MemoryPrimary (TRI_index_t const* idx) {
 static TRI_json_t* JsonPrimary (TRI_index_t const* idx) { 
   TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
   
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
@@ -595,8 +595,8 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
   // create primary index
   TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false));
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx == nullptr) {
+    return nullptr;
   }
 
   char* id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
@@ -832,8 +832,8 @@ static size_t MemoryEdge (TRI_index_t const* idx) {
 static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
   TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
@@ -1054,7 +1054,6 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 // TRI_skiplist_iterator_t* results
 // .............................................................................
 
-
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx, 
                                                   TRI_index_operator_t* slOperator) {
   TRI_skiplist_index_t*    skiplistIndex;
@@ -1074,7 +1073,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   if (errorResult != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errorResult);
 
-    return NULL;
+    return nullptr;
   }
 
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, 
@@ -1240,7 +1239,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 static size_t MemorySkiplistIndex (TRI_index_t const* idx) {
   TRI_skiplist_index_t const* skiplistIndex = (TRI_skiplist_index_t const*) idx;
 
-  if (skiplistIndex == NULL) {
+  if (skiplistIndex == nullptr) {
     return 0;
   }
 
@@ -1263,8 +1262,8 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   
   TRI_skiplist_index_t const* skiplistIndex = (TRI_skiplist_index_t const*) idx;
 
-  if (skiplistIndex == NULL) {
-    return NULL;
+  if (skiplistIndex == nullptr) {
+    return nullptr;
   }
 
   TRI_document_collection_t* document = idx->_collection;
@@ -1283,7 +1282,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
     const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
 
-    if (path == NULL) {
+    if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
       return NULL;
@@ -1330,7 +1329,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
   
-  if (skiplistElement._subObjects == NULL) {
+  if (skiplistElement._subObjects == nullptr) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
@@ -1433,7 +1432,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
   // Note that the last argument is the "sparse" flag. This will be
   // implemented soon but has no consequences as of now.
 
-  if (skiplistIndex->_skiplistIndex == NULL) {
+  if (skiplistIndex->_skiplistIndex == nullptr) {
     TRI_DestroyVector(&skiplistIndex->_paths);
     TRI_DestroyVectorString(&idx->_fields);
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
@@ -1488,6 +1487,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
   if (idx == nullptr) {
     return;
   }
+
   TRI_DestroySkiplistIndex(idx);
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
@@ -1506,7 +1506,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
-                                             const TRI_doc_mptr_t* const document) {
+                                             TRI_doc_mptr_t const* document) {
   TRI_fulltext_index_t* fulltextIndex;
   TRI_fulltext_wordlist_t* wordlist;
   TRI_shaped_json_t shaped;
@@ -1523,36 +1523,36 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX
   ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
 
-  if (! ok || shape == NULL) {
-    return NULL;
+  if (! ok || shape == nullptr) {
+    return nullptr;
   }
 
   // extract the string value for the indexed attribute
   ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
 
   if (! ok) {
-    return NULL;
+    return nullptr;
   }
 
   // parse the document text
   words = TRI_get_words(text, textLength, (size_t) fulltextIndex->_minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
 
-  if (words == NULL) {
-    return NULL;
+  if (words == nullptr) {
+    return nullptr;
   }
 
   wordlist = TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
 
-  if (wordlist == NULL) {
+  if (wordlist == nullptr) {
     TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    return NULL;
+    return nullptr;
   }
 
   // this really is a hack, but it works well:
   // make the word list vector think it's empty and free it
   // this does not free the word list, that we have already over the result
   words->_length = 0;
-  words->_buffer = NULL;
+  words->_buffer = nullptr;
   TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
 
   return wordlist;
@@ -1570,7 +1570,8 @@ static int InsertFulltextIndex (TRI_index_t* idx,
   int res;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  if (idx == NULL) {
+
+  if (idx == nullptr) {
     LOG_WARNING("internal error in InsertFulltextIndex");
     return TRI_ERROR_INTERNAL;
   }
@@ -1579,7 +1580,7 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 
   wordlist = GetWordlist(idx, doc);
 
-  if (wordlist == NULL) {
+  if (wordlist == nullptr) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_WARNING("could not build wordlist");
     return res;
@@ -1620,8 +1621,8 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
 
   TRI_fulltext_index_t const* fulltextIndex = (TRI_fulltext_index_t const*) idx;
 
-  if (fulltextIndex == NULL) {
-    return NULL;
+  if (fulltextIndex == nullptr) {
+    return nullptr;
   }
 
   TRI_document_collection_t* document = idx->_collection;
@@ -1630,7 +1631,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
   path = document->_shaper->lookupAttributePathByPid(document->_shaper, fulltextIndex->_attribute);
 
   if (path == 0) {
-    return NULL;
+    return nullptr;
   }
 
   attributeName = ((char const*) path) + sizeof(TRI_shape_path_t) + (path->_aidLength * sizeof(TRI_shape_aid_t));
@@ -1653,9 +1654,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
 static int RemoveFulltextIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
                                 const bool isRollback) {
-  TRI_fulltext_index_t* fulltextIndex;
-
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
 
@@ -1670,13 +1669,10 @@ static int RemoveFulltextIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CleanupFulltextIndex (TRI_index_t* idx) {
-  TRI_fulltext_index_t* fulltextIndex;
-  int res;
-
   LOG_TRACE("fulltext cleanup called");
 
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
-  res = TRI_ERROR_NO_ERROR;
+  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
+  int res = TRI_ERROR_NO_ERROR;
 
   // check whether we should do a cleanup at all
   if (! TRI_CompactFulltextIndex(fulltextIndex->_fulltextIndex)) {
@@ -1710,7 +1706,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
   attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
-    return NULL;
+    return nullptr;  
   }
 
   copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, attributeName);
@@ -1718,9 +1714,9 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   fts = TRI_CreateFtsIndex(2048, 1, 1);
 
-  if (fts == NULL) {
+  if (fts == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, fulltextIndex);
-    return NULL;
+    return nullptr;
   }
 
   idx = &fulltextIndex->base;
@@ -1749,18 +1745,14 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
-  TRI_fulltext_index_t* fulltextIndex;
-
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
 
-  fulltextIndex = (TRI_fulltext_index_t*) idx;
+  TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_DestroyVectorString(&idx->_fields);
-
   LOG_TRACE("destroying fulltext index");
-
   TRI_FreeFtsIndex(fulltextIndex->_fulltextIndex);
 }
 
@@ -1769,7 +1761,7 @@ void TRI_DestroyFulltextIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFulltextIndex (TRI_index_t* idx) {
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
 
@@ -1790,7 +1782,7 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
 // .............................................................................
 
 static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_document_collection_t* collection) {
-  if (indexOperator == NULL) {
+  if (indexOperator == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -2541,20 +2533,19 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyBitarrayIndex (TRI_index_t* idx) {
-  TRI_bitarray_index_t* baIndex;
-  size_t j;
-
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
 
   LOG_TRACE("destroying bitarray index");
   TRI_DestroyVectorString(&idx->_fields);
 
-  baIndex = (TRI_bitarray_index_t*) idx;
-  for (j = 0;  j < baIndex->_values._length;  ++j) {
+  TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
+
+  for (size_t j = 0;  j < baIndex->_values._length;  ++j) {
     TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j)));
   }
+
   TRI_DestroyVector(&baIndex->_paths);
   TRI_DestroyVector(&baIndex->_values);
   BitarrayIndex_free(baIndex->_bitarrayIndex);
@@ -2565,9 +2556,10 @@ void TRI_DestroyBitarrayIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBitarrayIndex (TRI_index_t* idx) {
-  if (idx == NULL) {
+  if (idx == nullptr) {
     return;
   }
+
   TRI_DestroyBitarrayIndex(idx);
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }

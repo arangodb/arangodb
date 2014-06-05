@@ -466,7 +466,7 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   
   triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, false).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +480,7 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 
   triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, false).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,7 +494,7 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
 
   triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->writeMarker(marker, trx->_waitForSync).errorCode;
+  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,8 +865,6 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
- //   operation.revert();
-
     return slotInfo.errorCode;
   }
 
@@ -892,10 +890,14 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     copy->handle();
   }
 
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+
   if (operation.rid > 0) {
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_SetRevisionDocumentCollection(document, operation.rid, false);
   }
+
+  // update logfile id
+  TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
 
   return TRI_ERROR_NO_ERROR;
 }
