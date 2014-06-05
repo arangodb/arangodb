@@ -1195,7 +1195,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
-    if (acc == NULL || acc->_shape == NULL) {
+    if (acc == NULL || acc->_resultSid == 0) {
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }  
       
@@ -2035,7 +2035,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
-      if (acc == NULL || acc->_shape == NULL) {
+      if (acc == NULL || acc->_resultSid == 0) {
         return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }
 
@@ -2078,7 +2078,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
 
-      if (acc == NULL || acc->_shape == NULL) {
+      if (acc == NULL || acc->_resultSid == 0) {
         return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
 
