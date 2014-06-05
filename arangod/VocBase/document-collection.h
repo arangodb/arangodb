@@ -318,14 +318,10 @@ typedef struct TRI_document_collection_s {
   TRI_vector_pointer_t         _allIndexes;
   TRI_vector_t                 _failedTransactions;
   
+  int64_t                      _uncollectedLogfileEntries;
   int64_t                      _numberDocuments;
   TRI_read_write_lock_t        _compactionLock;
   double                       _lastCompaction;
-
-  // this lock protected _lastWrittenId and _lastCollectedId
-  TRI_spin_t                   _idLock;
-  TRI_voc_tick_t               _lastWrittenId;
-  TRI_voc_tick_t               _lastCollectedId;
 
   // .............................................................................
   // this condition variable protects the _journalsCondition
@@ -593,24 +589,20 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update the "last written" value for a collection
+/// @brief update statistics for a collection
+/// note: the write-lock for the collection must be held to call this
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetLastWrittenDocumentCollection (TRI_document_collection_t*, 
-                                           TRI_voc_tick_t);
+void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t*, 
+                                             TRI_voc_rid_t,
+                                             bool,
+                                             int64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update the "last collected" value for a collection
+/// @brief whether or not a collection is fully collected
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetLastCollectedDocumentCollection (TRI_document_collection_t*, 
-                                             TRI_voc_tick_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not markers of a collection were fully collected
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*); 
+bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description
@@ -928,14 +920,6 @@ TRI_vector_t TRI_SelectByExample (struct TRI_transaction_collection_s*,
 int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
                                           struct TRI_doc_update_policy_s const*,
                                           TRI_doc_mptr_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection revision
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetRevisionDocumentCollection (TRI_document_collection_t*,
-                                        TRI_voc_rid_t, 
-                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the current journal of the collection

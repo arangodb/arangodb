@@ -2366,8 +2366,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     TRI_shaper_t* shaper) {
   document->_cleanupIndexes   = false;
 
-  document->_lastWrittenId    = 0;
-  document->_lastCollectedId  = 0;
+  document->_uncollectedLogfileEntries = 0;
 
   int res = TRI_InitPrimaryCollection(document, shaper);
 
@@ -2465,8 +2464,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->updateDocument    = UpdateDocumentShapedJson;
   document->readDocument      = ReadDocumentShapedJson;
   document->cleanupIndexes    = CleanupIndexes;
-
-  TRI_InitSpin(&document->_idLock);
 
   return true;
 }
@@ -2649,8 +2646,6 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
   TRI_DestroyVectorPointer(&document->_allIndexes);
   TRI_DestroyVector(&document->_failedTransactions);
   
-  TRI_DestroySpin(&document->_idLock);
-
   TRI_DestroyPrimaryCollection(document);
 }
 
@@ -2666,42 +2661,6 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update the "last written" value for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetLastWrittenDocumentCollection (TRI_document_collection_t* document, 
-                                           TRI_voc_tick_t id) {
-  // the id is the id of the last WAL file that contains data for the collection
-  TRI_LockSpin(&document->_idLock);
-  document->_lastWrittenId = id;
-  TRI_UnlockSpin(&document->_idLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update the "last collected" value for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetLastCollectedDocumentCollection (TRI_document_collection_t* document, 
-                                           TRI_voc_tick_t id) {
-  // the id is the id of the last WAL file that contains data for the collection
-  TRI_LockSpin(&document->_idLock);
-  document->_lastCollectedId = id;
-  TRI_UnlockSpin(&document->_idLock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not markers of a collection were fully collected
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document) { 
-  TRI_LockSpin(&document->_idLock);
-  bool result = (document->_lastCollectedId == document->_lastWrittenId);
-  TRI_UnlockSpin(&document->_idLock);
-
-  return result;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a primary collection
@@ -3865,6 +3824,35 @@ static int ComparePidName (void const* left, void const* right) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update statistics for a collection
+/// note: the write-lock for the collection must be held to call this
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t* document, 
+                                             TRI_voc_rid_t rid,
+                                             bool force,
+                                             int64_t logfileEntries) {
+  if (rid > 0) {
+    SetRevision(document, rid, force);
+  }
+  document->_uncollectedLogfileEntries += logfileEntries;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection is fully collected
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document) {
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+
+  int64_t uncollected = document->_uncollectedLogfileEntries;
+  
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+
+  return (uncollected == 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a description of all indexes
@@ -5637,16 +5625,6 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
   return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the collection revision
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetRevisionDocumentCollection (TRI_document_collection_t* document,
-                                        TRI_voc_rid_t rid,
-                                        bool force) {
-  SetRevision(document, rid, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

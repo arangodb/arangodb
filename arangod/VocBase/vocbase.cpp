@@ -2044,7 +2044,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->base._info._deleted = true;
 
-    res = TRI_UpdateCollectionInfo(vocbase, &collection->_collection->base, 0);
+    res = TRI_UpdateCollectionInfo(vocbase, &collection->_collection->base, nullptr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);

@@ -44,7 +44,8 @@ Logfile::Logfile (Logfile::IdType id,
                   StatusType status)
   : _id(id),
     _df(df),
-    _status(status) {
+    _status(status),
+    _collectQueueSize(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

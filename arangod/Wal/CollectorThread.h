@@ -30,15 +30,16 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "VocBase/datafile.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 
 struct TRI_datafile_s;
 struct TRI_df_marker_s;
 struct TRI_document_collection_s;
-struct TRI_doc_datafile_info_s;
 struct TRI_server_s;
 
 namespace triagens {
@@ -48,20 +49,82 @@ namespace triagens {
     class Logfile;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class CollectorCache
+// --SECTION--                                         struct CollectorOperation
+// -----------------------------------------------------------------------------
+
+    struct CollectorOperation {
+      CollectorOperation (char const* mem,
+                          TRI_voc_fid_t fid)
+        : mem(mem),
+          fid(fid) {
+      };
+
+      char const*         mem;
+      TRI_voc_fid_t const fid;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             struct CollectorCache
 // -----------------------------------------------------------------------------
 
     struct CollectorCache {
-      CollectorCache () 
-        : dfi(nullptr),
+      explicit CollectorCache (TRI_voc_cid_t collectionId,
+                               TRI_voc_tick_t databaseId,
+                               Logfile* logfile,
+                               int64_t totalOperationsCount,
+                               size_t operationsSize) 
+        : collectionId(collectionId),
+          databaseId(databaseId),
+          logfile(logfile),
+          totalOperationsCount(totalOperationsCount),
+          operations(new std::vector<CollectorOperation>()),
+          dfi(),
           lastFid(0) {
+
+        operations->reserve(operationsSize);
       }
+
+      ~CollectorCache () {
+        if (operations != nullptr) {
+          delete operations;
+        }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of collection
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_voc_cid_t const collectionId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of database
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_voc_tick_t const databaseId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of the WAL logfile
+////////////////////////////////////////////////////////////////////////////////
+
+      Logfile* logfile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of operations in this block
+////////////////////////////////////////////////////////////////////////////////
+
+      int64_t const totalOperationsCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all collector operations of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<CollectorOperation>* operations;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile info cache, updated when the collector transfers markers
 ////////////////////////////////////////////////////////////////////////////////
         
-      struct TRI_doc_datafile_info_s* dfi;
+      std::unordered_map<TRI_voc_fid_t, TRI_doc_datafile_info_t> dfi;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief id of last datafile handled
@@ -158,16 +221,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform collection of a logfile (if any)
+/// @brief step 1: perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
         bool collectLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform removal of a logfile (if any)
+/// @brief step 2: process all still-queued collection operations
+////////////////////////////////////////////////////////////////////////////////
+
+        bool processQueuedOperations ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief step 3: perform removal of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
         bool removeLogfiles ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process all operations for a single collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int processCollectionOperations (CollectorCache*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collect one logfile
@@ -179,17 +254,31 @@ namespace triagens {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int transferMarkers (triagens::wal::Logfile::IdType,
+        int transferMarkers (triagens::wal::Logfile*,
                              TRI_voc_cid_t,
                              TRI_voc_tick_t,
-                             OperationsType const&,
-                             CollectorCache&);
+                             int64_t,
+                             OperationsType const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert the collect operations into a per-collection queue
+////////////////////////////////////////////////////////////////////////////////
+
+        int queueOperations (triagens::wal::Logfile*, 
+                             CollectorCache*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a collection's datafile information
+////////////////////////////////////////////////////////////////////////////////
+  
+        int updateDatafileStatistics (TRI_document_collection_t*,
+                                      CollectorCache*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync the journals of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int syncCollection (struct TRI_document_collection_s*);
+        int syncDatafileCollection (struct TRI_document_collection_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next free position for a new marker of the specified size
@@ -198,7 +287,7 @@ namespace triagens {
         char* nextFreeMarkerPosition (struct TRI_document_collection_s*, 
                                       TRI_df_marker_type_e,
                                       TRI_voc_size_t,
-                                      CollectorCache&);
+                                      CollectorCache*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a marker
@@ -214,7 +303,8 @@ namespace triagens {
 
         void finishMarker (char*,
                            struct TRI_document_collection_s*,
-                           TRI_voc_tick_t);
+                           TRI_voc_tick_t,
+                           CollectorCache*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -239,6 +329,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ConditionVariable _condition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief operations lock
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Mutex _operationsQueueLock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief operations to collect later
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<TRI_voc_cid_t, std::vector<CollectorCache*>> _operationsQueue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag

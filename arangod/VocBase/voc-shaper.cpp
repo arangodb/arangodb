@@ -205,8 +205,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     // enter into the dictionaries
     f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
     assert(f == nullptr);
-    
-    TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
   }
 
   return aid;
@@ -358,8 +356,6 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
     assert(f == nullptr);
-    
-    TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
@@ -450,20 +446,18 @@ static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* 
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitStep1VocShaper (voc_shaper_t* shaper) {
-  int res;
-
   shaper->base.findOrCreateAttributeByName = FindOrCreateAttributeByName;
   shaper->base.lookupAttributeByName       = LookupAttributeByName;
   shaper->base.lookupAttributeId           = LookupAttributeId;
   shaper->base.findShape                   = FindShape;
   shaper->base.lookupShapeId               = LookupShapeId;
 
-  res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
-                                  TRI_UNKNOWN_MEM_ZONE,
-                                  HashKeyAttributeName,
-                                  HashElementAttributeName,
-                                  EqualKeyAttributeName,
-                                  0);
+  int res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
+                                      TRI_UNKNOWN_MEM_ZONE,
+                                      HashKeyAttributeName,
+                                      HashElementAttributeName,
+                                      EqualKeyAttributeName,
+                                      0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
