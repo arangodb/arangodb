@@ -578,7 +578,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
   TRI_ASSERT_MAINTAINER(document != nullptr);
   TRI_ASSERT_MAINTAINER(header != nullptr);
-  TRI_ASSERT_MAINTAINER(header->_dataptr != nullptr);  // ONLY IN INDEX
+  TRI_ASSERT_MAINTAINER(header->getDataPtr() != nullptr);  // ONLY IN INDEX
   
   // add a new header
   res = TRI_InsertKeyPrimaryIndex(&document->_primaryIndex, header, (void const**) &found);
@@ -702,7 +702,7 @@ static int CreateHeader (TRI_document_collection_t* document,
 
   header->_rid     = marker->_rid;
   header->_fid     = fid;
-  header->_dataptr = marker;  // ONLY IN OPENITERATOR
+  header->setDataPtr(marker);  // ONLY IN OPENITERATOR
   header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR
   *result = header;
 
@@ -836,7 +836,7 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 
   newHeader->_rid     = marker->_rid;
   newHeader->_fid     = fid;
-  newHeader->_dataptr = marker;  // ONLY IN OPENITERATOR
+  newHeader->setDataPtr(marker);  // ONLY IN OPENITERATOR
 }
 
 // -----------------------------------------------------------------------------
@@ -1059,7 +1059,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   // TODO: isRestore is not used yet!
   assert(mptr != nullptr);
-  mptr->_dataptr = nullptr;  // PROTECTED by trx in trxCollection
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   rid = GetRevisionId(rid);
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
@@ -1148,7 +1148,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     // update the header we got
     void* mem = operation.marker->mem();
     header->_rid  = rid;
-    header->_dataptr = mem;  // PROTECTED by trx in trxCollection
+    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
     header->_hash = TRI_FnvHashString(keyString.c_str());
 
     // insert into indexes
@@ -1156,13 +1156,13 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   
     if (res != TRI_ERROR_NO_ERROR) {
       // release the header. nobody else should point to it now
-      assert(mptr->_dataptr == nullptr);  // PROTECTED by trx in trxCollection
+      assert(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
   
       // something has failed.... now delete from the indexes again
       RollbackInsert(document, header);
     }
     else {
-      assert(mptr->_dataptr != nullptr);  // PROTECTED by trx in trxCollection
+      assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     }
   }
 
@@ -1200,7 +1200,7 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    TRI_doc_mptr_t* mptr,
                                    bool lock) {
   assert(mptr != nullptr);
-  mptr->_dataptr = nullptr;  // PROTECTED by trx in trxCollection
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   {
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -1217,7 +1217,7 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
     *mptr = *header;
   }
 
-  assert(mptr->_dataptr != nullptr);  // PROTECTED by trx in trxCollection
+  assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
   assert(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
@@ -1261,7 +1261,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   
   // update the header. this will modify oldHeader, too !!!
   newHeader->_rid  = operation.rid;
-  newHeader->_dataptr = operation.marker->mem();  // PROTECTED by trx in trxCollection
+  newHeader->setDataPtr(operation.marker->mem());  // PROTECTED by trx in trxCollection
 
   // insert new document into secondary indexes
   res = InsertSecondaryIndexes(document, newHeader, false);
@@ -1310,7 +1310,7 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   // initialise the result
   assert(mptr != nullptr);
-  mptr->_dataptr = nullptr;  // PROTECTED by trx in trxCollection
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
     
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
@@ -1334,7 +1334,7 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     }
 
     triagens::wal::Marker* marker = nullptr;
-    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->_dataptr);  // PROTECTED by trx in trxCollection
+    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
 
     if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
         original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
@@ -1373,11 +1373,11 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
    
   if (res == TRI_ERROR_NO_ERROR) { 
-    assert(mptr->_dataptr != nullptr);  // PROTECTED by trx in trxCollection
+    assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     assert(mptr->_rid > 0);
   }
   else {
-    assert(mptr->_dataptr == nullptr);  // PROTECTED by trx in trxCollection
+    assert(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
     assert(mptr->_rid == 0);
   }
 
@@ -1733,11 +1733,11 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi = TRI_FindDatafileInfoPrimaryCollection(document, oldData._fid, true);
     }
 
-    if (dfi != NULL && found->_dataptr != NULL) {  // ONLY IN OPENITERATOR
+    if (dfi != NULL && found->getDataPtr() != NULL) {  // ONLY IN OPENITERATOR
       int64_t size;
 
-      TRI_ASSERT_MAINTAINER(found->_dataptr != NULL);  // ONLY IN OPENITERATOR
-      size = (int64_t) ((TRI_df_marker_t*) found->_dataptr)->_size;  // ONLY IN OPENITERATOR
+      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
@@ -1755,10 +1755,10 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // it is a stale update
   else {
     if (state->_dfi != NULL) {
-      TRI_ASSERT_MAINTAINER(found->_dataptr != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
 
       state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->_dataptr)->_size);  // ONLY IN OPENITERATOR
+      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR
     }
   }
 
@@ -1827,9 +1827,9 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     if (dfi != NULL) {
       int64_t size;
 
-      TRI_ASSERT_MAINTAINER(found->_dataptr != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
 
-      size = (int64_t) ((TRI_df_marker_t*) found->_dataptr)->_size;  // ONLY IN OPENITERATOR
+      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
@@ -5600,7 +5600,7 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
   TRI_shaped_json_t result;
   TRI_shape_t const* shape;
 
-  TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->_dataptr);  // PROTECTED by trx coming from above
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, doc->getDataPtr());  // PROTECTED by trx coming from above
 
   for (size_t i = 0;  i < len;  ++i) {
     TRI_shaped_json_t* example = values[i];

@@ -40,7 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 struct TRI_document_collection_s;
 
 // -----------------------------------------------------------------------------
@@ -68,7 +68,7 @@ TRI_skiplist_index_key_t;
 typedef struct {
   TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the 
                                     // collection should know about
-  struct TRI_doc_mptr_s* _document; // master document pointer
+  struct TRI_doc_mptr_t* _document; // master document pointer
 } 
 TRI_skiplist_index_element_t;
 

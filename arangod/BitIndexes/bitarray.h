@@ -128,13 +128,13 @@ int TRI_FreeBitarray (TRI_bitarray_t*);
 
 int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*,
                                       TRI_bitarray_mask_t*,
-                                      struct TRI_doc_mptr_s*);  
+                                      struct TRI_doc_mptr_t*);  
 
 int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, 
                                   TRI_bitarray_mask_set_t*,
                                   struct TRI_index_iterator_s*); 
 
-int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_s*);
+int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_t*);
 
 #endif
 

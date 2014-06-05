@@ -500,8 +500,8 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found); 
-    assert(found2->_dataptr != NULL);
-    assert(((TRI_df_marker_t*) found2->_dataptr)->_size > 0);
+    assert(found2->getDataPtr() != NULL);
+    assert(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);
 
     // the fid might change
     if (found->_fid != context->_compactor->_fid) {
@@ -517,7 +517,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     // let marker point to the new position
-    found2->_dataptr = result;
+    found2->setDataPtr(result);
 
     // update datafile info
     context->_dfi._numberAlive += 1;

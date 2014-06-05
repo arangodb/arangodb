@@ -48,7 +48,7 @@ namespace triagens {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
 

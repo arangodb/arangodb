@@ -60,7 +60,7 @@ typedef struct {
 typedef struct {
   size_t numFields;             // the number of fields
   TRI_shaped_json_t* fields;    // list of shaped json objects which the collection should know about
-  struct TRI_doc_mptr_s* data;  // master document pointer
+  struct TRI_doc_mptr_t* data;  // master document pointer
   void* collection;             // pointer to the collection;
 }
 TRI_bitarray_index_key_t;

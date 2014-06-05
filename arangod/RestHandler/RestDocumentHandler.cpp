@@ -359,7 +359,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  assert(document._dataptr != nullptr); // PROTECTED by trx here
+  assert(document.getDataPtr() != nullptr); // PROTECTED by trx here
 
   // generate result
   if (wasSynchronous) {
@@ -592,7 +592,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  if (mptr._dataptr == nullptr) {   // PROTECTED by trx here
+  if (mptr.getDataPtr() == nullptr) {   // PROTECTED by trx here
     generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
@@ -1373,7 +1373,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    if (oldDocument._dataptr == nullptr) {  // PROTECTED by trx here
+    if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1382,7 +1382,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._dataptr); // PROTECTED by trx here
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
     if (old == nullptr) {
@@ -1442,7 +1442,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
 
-      if (oldDocument._dataptr == nullptr) {  // PROTECTED by trx here
+      if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
         trx.abort();
         generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1451,7 +1451,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
 
       TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._dataptr); // PROTECTED by trx here
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {

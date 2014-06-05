@@ -484,7 +484,7 @@ namespace triagens {
             *barrier = 0;
 
             // no document found
-            mptr->_dataptr = nullptr;  // PROTECTED by trx in trxCollection
+            mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
           }
           else {
             size_t total = document->_primaryIndex._nrAlloc;
