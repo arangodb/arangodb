@@ -1,10 +1,10 @@
 # Summary
 <!-- 1 -->
 * [Installing](Installing/README.md)
-    * [Linux](Installing/Linux.md)
-    * [Mac OS X](Installing/MacOSX.md)
-    * [Windows](Installing/Windows.md)
-	* [Compiling](Installing/Compiling.md)
+  * [Linux](Installing/Linux.md)
+  * [Mac OS X](Installing/MacOSX.md)
+  * [Windows](Installing/Windows.md)
+  * [Compiling](Installing/Compiling.md)
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)
 	* [Getting Familiar](FirstSteps/GettingFamiliar.md)
@@ -24,7 +24,6 @@
 	* [Notes about Databases](Databases/Notes.md)	
 <!-- 6 -->
 * [Handling Collections](Collections/README.md)
-	* [Address of a Collection](Collections/CollectionAddress.md)
 	* [Collection Methods](Collections/CollectionMethods.md)
 	* [Database Methods](Collections/DatabaseMethods.md)
 <!-- 7 -->
@@ -68,6 +67,7 @@
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 13.5 -->
 * [General-Graphs](General-Graphs/README.md)
+	* [Graph Functions](General-Graphs/GeneralGraphFunctions.md)
 	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
 * [Traversals](Traversals/README.md)

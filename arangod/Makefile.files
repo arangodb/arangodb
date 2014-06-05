@@ -1,25 +1,18 @@
 # -*- mode: Makefile; -*-
 
-################################################################################
-## --SECTION--                                                           PROGRAM
-################################################################################
+## -----------------------------------------------------------------------------
+## --SECTION--                                                           LIBRARY
+## -----------------------------------------------------------------------------
 
 ################################################################################
-### @brief program "arangod"
+### @brief library "libarangod.a"
 ################################################################################
 
-bin_arangod_CPPFLAGS = \
+arangod_libarangod_a_CPPFLAGS = \
 	-I@top_srcdir@/arangod \
 	$(AM_CPPFLAGS) 
 
-bin_arangod_LDADD = \
-	lib/libarango_fe.a \
-	lib/libarango_v8.a \
-	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@ 
-
-bin_arangod_SOURCES = \
+arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Ahuacatl/ahuacatl-access-optimiser.cpp \
@@ -48,6 +41,16 @@ bin_arangod_SOURCES = \
 	arangod/BitIndexes/bitarray.cpp \
 	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
+        arangod/Cluster/AgencyComm.cpp \
+	arangod/Cluster/ApplicationCluster.cpp \
+	arangod/Cluster/ClusterComm.cpp \
+	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/HeartbeatThread.cpp \
+	arangod/Cluster/RestShardHandler.cpp \
+	arangod/Cluster/ServerJob.cpp \
+	arangod/Cluster/ServerState.cpp \
+	arangod/Cluster/v8-cluster.cpp \
+	arangod/Cluster/ClusterMethods.cpp \
 	arangod/FulltextIndex/fulltext-handles.cpp \
 	arangod/FulltextIndex/fulltext-index.cpp \
 	arangod/FulltextIndex/fulltext-list.cpp \
@@ -117,18 +120,38 @@ bin_arangod_SOURCES = \
 	arangod/Wal/Marker.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
-	arangod/Wal/SynchroniserThread.cpp \
-        arangod/Cluster/AgencyComm.cpp \
-	arangod/Cluster/ApplicationCluster.cpp \
-	arangod/Cluster/ClusterComm.cpp \
-	arangod/Cluster/ClusterInfo.cpp \
-	arangod/Cluster/HeartbeatThread.cpp \
-	arangod/Cluster/RestShardHandler.cpp \
-	arangod/Cluster/ServerJob.cpp \
-	arangod/Cluster/ServerState.cpp \
-	arangod/Cluster/v8-cluster.cpp \
-	arangod/Cluster/ClusterMethods.cpp
+	arangod/Wal/SynchroniserThread.cpp 
 
+## -----------------------------------------------------------------------------
+## --SECTION--                                                           PROGRAM
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief program "arangod"
+################################################################################
+
+bin_arangod_CPPFLAGS = \
+	-I@top_srcdir@/arangod \
+	$(AM_CPPFLAGS) 
+
+bin_arangod_LDADD = \
+	arangod/libarangod.a \
+	lib/libarango_fe.a \
+	lib/libarango_v8.a \
+	lib/libarango.a \
+	$(LIBS) \
+	@V8_LIBS@ 
+
+bin_arangod_SOURCES = \
+	arangod/RestServer/arango.cpp
+
+if ENABLE_MRUBY
+
+bin_arangod_LDADD += \
+	lib/libarango_mruby.a \
+	@MRUBY_LIBS@
+
+endif
 
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
