@@ -1993,10 +1993,12 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   trx.lockRead();
 
   // find documents by example
-  TRI_vector_t filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  vector<TRI_doc_mptr_t> filtered;
+  
+  TRI_SelectByExample(trx.trxCollection(), n,  pids, values, filtered);
 
   // convert to list of shaped jsons
-  size_t total = filtered._length;
+  size_t total = filtered.size();
   size_t count = 0;
   bool error = false;
   
@@ -2004,7 +2006,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     size_t s;
     size_t e;
 
-    CalculateSkipLimitSlice(filtered._length, skip, limit, s, e);
+    CalculateSkipLimitSlice(filtered.size(), skip, limit, s, e);
 
     if (s < e) {
       // only go in here if something has to be done, otherwise barrier memory might be lost
@@ -2017,7 +2019,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
         bool usedBarrier = false;
 
         for (size_t j = s; j < e; ++j) {
-          TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+          TRI_doc_mptr_t* mptr = &(filtered[j]);
 
           v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier, usedBarrier);
 
@@ -2037,8 +2039,6 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       }
     }
   }
-
-  TRI_DestroyVector(&filtered);
 
   trx.finish(res);
 
@@ -2523,7 +2523,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  vector<TRI_doc_mptr_t const*> documents;
+  std::vector<TRI_doc_mptr_t const*> documents;
   res = trx.readPositional(documents, 0, count);
 
   const size_t n = documents.size();
