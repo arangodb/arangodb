@@ -568,13 +568,11 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         }
 
         // lookup the document in the primary index and update its master pointer
-        TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
           found->_dataptr = static_cast<void*>(dst);
         }
-        TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
         break;
       }
 
@@ -630,13 +628,11 @@ int CollectorThread::transferMarkers (Logfile::IdType logfileId,
         }
         
         // lookup the document in the primary index and update its master pointer
-        TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
           found->_dataptr = static_cast<void*>(dst);
         }
-        TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
         break;
       }
 

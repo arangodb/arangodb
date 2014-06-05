@@ -461,12 +461,8 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
-    TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
-
     found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
-
-    TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
     if (deleted) {
       LOG_TRACE("found a stale document: %s", key);
@@ -483,8 +479,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     // check if the document is still active
-    TRI_WriteLockPrimaryIndex(&document->_primaryIndex);
-
     found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
     deleted = found == NULL;
 
@@ -492,8 +486,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       context->_dfi._numberDead += 1;
       context->_dfi._sizeDead += (int64_t) marker->_size;
       
-      TRI_WriteUnlockPrimaryIndex(&document->_primaryIndex);
-
       LOG_DEBUG("found a stale document after copying: %s", key);
 
       return true;
@@ -522,8 +514,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // update datafile info
     context->_dfi._numberAlive += 1;
     context->_dfi._sizeAlive += (int64_t) marker->_size;
-
-    TRI_WriteUnlockPrimaryIndex(&document->_primaryIndex);
   }
 
   // deletions
@@ -703,12 +693,8 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
-    TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
-
     TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
     deleted = (found == NULL || found->_rid > d->_rid);
-
-    TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
 
     if (deleted) {
       return true;
