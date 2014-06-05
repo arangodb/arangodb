@@ -2630,9 +2630,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       }
     }
   }
-// LOG_ERROR ( "overwrite %d  keepNull %d waitForSync %d" , options.overwrite , options.keepNull , options.waitForSync);
-  // delete null attributes
-  // default value: null values are saved as Null
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
