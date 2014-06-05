@@ -1993,9 +1993,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   trx.lockRead();
 
   // find documents by example
-  vector<TRI_doc_mptr_t> filtered;
-  
-  TRI_SelectByExample(trx.trxCollection(), n,  pids, values, filtered);
+  vector<TRI_doc_mptr_t*> filtered
+    = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
 
   // convert to list of shaped jsons
   size_t total = filtered.size();
@@ -2019,7 +2018,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
         bool usedBarrier = false;
 
         for (size_t j = s; j < e; ++j) {
-          TRI_doc_mptr_t* mptr = &(filtered[j]);
+          TRI_doc_mptr_t* mptr = filtered[j];
 
           v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier, usedBarrier);
 
