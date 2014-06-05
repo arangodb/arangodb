@@ -38,7 +38,7 @@ def fetch_comments(dirpath):
             for comment in file_comments:
                 fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
-                    _text = _com.replace("/", "")
+                    _text = _com.replace("///", "")
                     if len(_text.strip()) == 0:
                         _text = _text.replace("\n", "<br />")    
                     _text = _text.strip()

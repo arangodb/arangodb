@@ -24,7 +24,6 @@
 	* [Notes about Databases](Databases/Notes.md)	
 <!-- 6 -->
 * [Handling Collections](Collections/README.md)
-	* [Address of a Collection](Collections/CollectionAddress.md)
 	* [Collection Methods](Collections/CollectionMethods.md)
 	* [Database Methods](Collections/DatabaseMethods.md)
 <!-- 7 -->
