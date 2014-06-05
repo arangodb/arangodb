@@ -203,7 +203,7 @@ namespace triagens {
 /// @brief read documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t*>& docs,
+        int read (vector<TRI_doc_mptr_t>& docs,
                   TRI_barrier_t** barrier,
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
@@ -218,7 +218,7 @@ namespace triagens {
 /// access to the documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readOffset (vector<TRI_doc_mptr_t*>& docs,
+        int readOffset (vector<TRI_doc_mptr_t>& docs,
                   TRI_barrier_t** barrier,
                   TRI_voc_size_t& internalSkip,
                   TRI_voc_size_t batchSize,
