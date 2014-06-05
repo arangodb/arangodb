@@ -74,10 +74,6 @@ typedef struct TRI_headers_s {
   
   // return the total size of headers currently present in the linked list
   int64_t (*size) (struct TRI_headers_s const*);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE 
-  void (*dump) (struct TRI_headers_s const*);
-#endif
 }
 TRI_headers_t;
 
