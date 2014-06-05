@@ -78,23 +78,6 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   // we need at least 4 entries in the vector to store an accessor
   TRI_InitVectorPointer2(&ops, shaper->_memoryZone, 4);
 
-  // start with the shape
-  res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("out of memory");
-    TRI_DestroyVectorPointer(&ops);
-    return false;
-  }
-
-  res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("out of memory");
-    TRI_DestroyVectorPointer(&ops);
-    return false;
-  }
-
   // and follow it
   for (i = 0;  i < path->_aidLength;  ++i, ++paids) {
 #ifdef DEBUG_SHAPE_ACCESSOR
@@ -179,22 +162,6 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
-          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
           break;
         }
       }
@@ -240,22 +207,6 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
             return false;
           }
 
-          res = TRI_PushBackVectorPointer(&ops, (void*) TRI_SHAPE_AC_SHAPE_PTR);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
-          res = TRI_PushBackVectorPointer(&ops, CONST_CAST(shape));
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("out of memory");
-            TRI_DestroyVectorPointer(&ops);
-            return false;
-          }
-
           break;
         }
       }
@@ -268,7 +219,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_shape = NULL;
+      accessor->_resultSid = 0;
       accessor->_code = NULL;
 
       return true;
@@ -276,7 +227,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     else {
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_shape = NULL;
+      accessor->_resultSid = 0;
       accessor->_code = NULL;
 
       return true;
@@ -292,7 +243,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     return false;
   }
 
-  accessor->_shape = shape;
+  accessor->_resultSid = shape->_sid;
   accessor->_code = static_cast<void const**>(TRI_Allocate(shaper->_memoryZone, ops._length * sizeof(void*), false));
 
   if (accessor->_code == NULL) {
@@ -319,7 +270,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   TRI_shape_size_t pos;
   TRI_shape_size_t* offsetsV;
 
-  if (accessor->_shape == NULL) {
+  if (accessor->_resultSid == 0) {
     return false;
   }
 
@@ -332,10 +283,6 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
     switch (op) {
       case TRI_SHAPE_AC_DONE:
         return true;
-
-      case TRI_SHAPE_AC_SHAPE_PTR:
-        ops++;
-        break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
         b = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
@@ -440,7 +387,7 @@ bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
     return false;
   }
 
-  result->_sid         = accessor->_shape->_sid;
+  result->_sid         = accessor->_resultSid;
   result->_data.data   = (char*) begin;
   result->_data.length = (uint32_t) (((char const*) end) - ((char const*) begin));
 
@@ -455,21 +402,19 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
   TRI_shape_size_t b;
   TRI_shape_size_t e;
   TRI_shape_size_t pos;
-  TRI_shape_t const* shape;
 
   printf("shape accessor for sid: %lu, pid: %lu\n",
          (unsigned long) accessor->_sid,
          (unsigned long) accessor->_pid);
 
-  if (accessor->_shape == NULL) {
+  if (accessor->_resultSid == 0) {
     printf("  result shape: -\n");
     return;
   }
 
-  printf("  result shape: %lu\n", (unsigned long) accessor->_shape->_sid);
+  printf("  result shape: %lu\n", (unsigned long) accessor->_resultSid);
 
   void const** ops = static_cast<void const**>(accessor->_code);
-  shape = accessor->_shape;
 
   while (true) {
     TRI_shape_ac_bc_e op = static_cast<TRI_shape_ac_bc_e>(*(TRI_shape_ac_bc_e*) ops);
@@ -478,13 +423,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
     switch (op) {
       case TRI_SHAPE_AC_DONE:
         return;
-
-      case TRI_SHAPE_AC_SHAPE_PTR:
-        shape = static_cast<TRI_shape_t const*>(*ops++);
-
-        printf("  OP: shape %lu\n",
-               (unsigned long) shape->_sid);
-        break;
 
       case TRI_SHAPE_AC_OFFSET_FIX:
         b = (TRI_shape_size_t) (uintptr_t) *ops++; // offset is always smaller than 4 GByte
