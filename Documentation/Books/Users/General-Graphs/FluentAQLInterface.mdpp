@@ -101,15 +101,13 @@ g._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 <!-- @endDocuBlock -->
 
-!SECTION Fluent query options
+!SECTION Working with the query cursor
 
-After the selection of the entry point you can now query your graph in
-a fluent way, meaning each of the functions on your query returns the query again.
-Hence it is possible to chain arbitrary many executions one after the other.
-The query object itself handles cursor creation and maintenance for you.
+The fluent query object handles cursor creation and maintenance for you.
 A cursor will be created as soon as you request the first result.
 If you are unhappy with the current result and want to refine it further you can execute a further step in the query which cleans up the cursor for you.
 In this interface you get the complete functionality available for general AQL cursors directly on your query.
+The cursor functionality is described in this section.
 
 !SUBSECTION ToArray
 
@@ -235,6 +233,13 @@ var query = g._vertices();
 query.count();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 <!-- @endDocuBlock -->
+
+!SECTION Fluent queries
+
+After the selection of the entry point you can now query your graph in
+a fluent way, meaning each of the functions on your query returns the query again.
+Hence it is possible to chain arbitrary many executions one after the other.
+In this section all available query statements are described.
 
 !SUBSECTION Edges
 
