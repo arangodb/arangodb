@@ -488,45 +488,6 @@ static int64_t TotalSizeHeaders (TRI_headers_t const* h) {
   return (int64_t) headers->_totalSize;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump all headers
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
-static void DumpHeaders (TRI_headers_t const* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-  TRI_doc_mptr_t* next = headers->_begin;
-  size_t i = 0;
-
-  printf("number of allocated headers: %lu\n", (unsigned long) headers->_nrAllocated);
-  printf("number of linked headers: %lu\n", (unsigned long) headers->_nrLinked);
-  printf("total size: %lld\n", (long long) headers->_totalSize);
-  
-  printf("begin ptr: %p\n", headers->_begin);
-  printf("end ptr: %p\n", headers->_end);
-
-  while (next != nullptr) {
-    printf("- header #%lu: ptr: %p, prev: %p, next: %p, key: %s\n", 
-              (unsigned long) i, 
-              next, 
-              next->_prev, 
-              next->_next, 
-              TRI_EXTRACT_MARKER_KEY(next));  // ONLY IN HEADERS
-    i++;
-
-    if (next->_next == nullptr) {
-      TRI_ASSERT_MAINTAINER(next == headers->_end);
-    }
-
-    next = next->_next;
-  }
-
-  TRI_ASSERT_MAINTAINER(i == headers->_nrLinked);
-}
-
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -560,9 +521,6 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
   headers->base.back      = BackHeaders;
   headers->base.count     = CountHeaders;
   headers->base.size      = TotalSizeHeaders;
-#ifdef TRI_ENABLE_MAINTAINER_MODE  
-  headers->base.dump      = DumpHeaders;
-#endif
 
   TRI_InitVectorPointer2(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
 
