@@ -417,7 +417,7 @@ int CollectorThread::collect (Logfile* logfile) {
       CollectorCache cache;
 
       // TODO: handle errors indicated by transferMarkers!
-      transferMarkers(cid, state.collections[cid], sortedOperations, cache);
+      transferMarkers(logfile->id(), cid, state.collections[cid], sortedOperations, cache);
     }
   }
 
@@ -434,7 +434,8 @@ int CollectorThread::collect (Logfile* logfile) {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
+int CollectorThread::transferMarkers (Logfile::IdType logfileId,
+                                      TRI_voc_cid_t collectionId,
                                       TRI_voc_tick_t databaseId,
                                       OperationsType const& operations,
                                       CollectorCache& cache) {
@@ -484,7 +485,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         // set attribute id
         TRI_df_attribute_marker_t* m = reinterpret_cast<TRI_df_attribute_marker_t*>(dst);
         m->_aid = reinterpret_cast<attribute_marker_t const*>(source)->_attributeId;
- 
+
         // copy attribute name into marker
         memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
 
@@ -551,7 +552,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         m->_shape      = orig->_shape;
         m->_offsetKey  = sizeof(TRI_doc_document_key_marker_t);
         m->_offsetJson = m->_offsetKey + TRI_DF_ALIGN_BLOCK(n);
-
+  
         // copy key into marker
         memcpy(dst + m->_offsetKey, key, n);
  
@@ -567,14 +568,11 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         }
 
         // lookup the document in the primary index and update its master pointer
-        TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
           found->setDataPtr(static_cast<void*>(dst));
         }
-
-        TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
         break;
       }
 
@@ -630,14 +628,11 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         }
         
         // lookup the document in the primary index and update its master pointer
-        TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
           found->setDataPtr(static_cast<void*>(dst));
         }
-
-        TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
         break;
       }
 
@@ -656,7 +651,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
 
         TRI_doc_deletion_key_marker_t* m = reinterpret_cast<TRI_doc_deletion_key_marker_t*>(dst);
         m->_rid       = orig->_revisionId;
-        m->_tid       = orig->_transactionId;
+        m->_tid       = 0; // convert into standalone transaction 
         m->_offsetKey = sizeof(TRI_doc_deletion_key_marker_t);
 
         // copy key into marker
@@ -675,6 +670,8 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
 
   // now sync the datafile
   int res = syncCollection(document);
+
+  TRI_SetLastCollectedDocumentCollection(document, logfileId);
 
   TRI_ReleaseCollectionVocBase(vocbase, collection);
 

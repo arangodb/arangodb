@@ -51,7 +51,7 @@ Marker::Marker (TRI_df_marker_type_e type,
     _size(static_cast<uint32_t>(size)) {
 
   TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
-  memset(m, 0, size); // to shut up valgrind
+  // memset(m, 0, size); // to shut up valgrind
 
   m->_type = type;
   m->_size = static_cast<TRI_voc_size_t>(size);
@@ -764,6 +764,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_revisionId    = revisionId;
   m->_transactionId = transactionId;
   m->_shape         = shapedJson->_sid;
+
   m->_offsetKey     = sizeof(document_marker_t); // start position of key
   m->_offsetLegend  = m->_offsetKey + alignedSize(key.size() + 1);
   m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());

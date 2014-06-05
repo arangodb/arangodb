@@ -192,7 +192,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     }
 
     // write marker into wal
-    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, false);
+    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("could not save attribute marker in log");
@@ -205,6 +205,8 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     // enter into the dictionaries
     f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
     assert(f == nullptr);
+    
+    TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
   }
 
   return aid;
@@ -341,7 +343,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     }
     
     // write marker into wal
-    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->writeMarker(marker, false);
+    triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
     
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       LOG_WARNING("could not save shape marker in log");
@@ -356,6 +358,8 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
     assert(f == nullptr);
+    
+    TRI_SetLastWrittenDocumentCollection(document, slotInfo.slot->logfileId());
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);

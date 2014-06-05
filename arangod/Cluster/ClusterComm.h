@@ -254,10 +254,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
         
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = 0;
-        }
+        static void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not connection errors should be logged as errors

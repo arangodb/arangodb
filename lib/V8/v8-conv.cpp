@@ -203,6 +203,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (*str == 0) {
+    // empty string
     dst->_type = TRI_SHAPE_SHORT_STRING;
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
     dst->_fixedSized = true;
@@ -214,10 +215,9 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
     }
 
     * ((TRI_shape_length_short_string_t*) ptr) = 1;
-    * (ptr + sizeof(TRI_shape_length_short_string_t)) = '\0';
   }
   else {
-    const size_t size = str.length();
+    size_t const size = str.length();
 
     if (size < TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
       dst->_type = TRI_SHAPE_SHORT_STRING;
@@ -226,7 +226,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
       dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-      if (dst->_value == 0) {
+      if (dst->_value == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -238,9 +238,9 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
       dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
       dst->_fixedSized = false;
       dst->_size = sizeof(TRI_shape_length_long_string_t) + size + 1;
-      dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
+      dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-      if (dst->_value == 0) {
+      if (dst->_value == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -1700,7 +1700,7 @@ uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const value,
 
   if (allowStringConversion && value->IsString()) {
     v8::String::Utf8Value str(value);
-    return StringUtils::uint64(string(*str, str.length()));
+    return StringUtils::uint64(*str, str.length());
   }
 
   return 0;

@@ -33,6 +33,7 @@
 #include "Basics/Thread.h"
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
+#include "Wal/Logfile.h"
 
 struct TRI_datafile_s;
 struct TRI_df_marker_s;
@@ -178,7 +179,8 @@ namespace triagens {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int transferMarkers (TRI_voc_cid_t,
+        int transferMarkers (triagens::wal::Logfile::IdType,
+                             TRI_voc_cid_t,
                              TRI_voc_tick_t,
                              OperationsType const&,
                              CollectorCache&);

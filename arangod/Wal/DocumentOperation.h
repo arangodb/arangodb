@@ -21,9 +21,10 @@ namespace triagens {
         : marker(marker),
           trxCollection(trxCollection),
           header(nullptr),
-          type(type),
           rid(rid),
-          handled(false) {
+          type(type),
+          handled(false),
+          hasReachedIndexes(false) {
 
         assert(marker != nullptr);
       }
@@ -48,9 +49,11 @@ namespace triagens {
         DocumentOperation* copy = new DocumentOperation(marker, trxCollection, type, rid);
         copy->header = header;
         copy->oldHeader = oldHeader;
+        copy->hasReachedIndexes = hasReachedIndexes;
 
         type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN; 
         marker = nullptr;
+        header = nullptr;
         handled = true;
 
         return copy;
@@ -68,11 +71,14 @@ namespace triagens {
       void handle () {
         assert(header != nullptr);
         assert(! handled);
-        
+
+        hasReachedIndexes = true;
+          
         TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-          // nothing to do for insert
+          // nothing special to do for insert
+          document->_numberDocuments++;
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // move header to the end of the list
@@ -81,6 +87,7 @@ namespace triagens {
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           // unlink the header
           document->_headersPtr->unlink(document->_headersPtr, header);  // PROTECTED by trx in trxCollection
+          document->_numberDocuments--;
         }
  
         // free the local marker buffer 
@@ -89,10 +96,15 @@ namespace triagens {
       }
 
       void revert () {
-        assert(header != nullptr);
-        
+        if (header == nullptr) {
+          return;
+        }
+
         TRI_document_collection_t* document = trxCollection->_collection->_collection;
-        TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
+
+        if (hasReachedIndexes) {
+          TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
+        }
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
           document->_headersPtr->release(document->_headersPtr, header, true);  // PROTECTED by trx in trxCollection
@@ -105,13 +117,14 @@ namespace triagens {
         }
       }
 
-      Marker* marker;
-      struct TRI_transaction_collection_s* trxCollection;
-      TRI_doc_mptr_t* header;
-      TRI_doc_mptr_t oldHeader;
-      TRI_voc_document_operation_e type;
-      TRI_voc_rid_t const rid;
-      bool handled;
+      Marker*                               marker;
+      struct TRI_transaction_collection_s*  trxCollection;
+      TRI_doc_mptr_t*                       header;
+      TRI_doc_mptr_t                        oldHeader;
+      TRI_voc_rid_t const                   rid;
+      TRI_voc_document_operation_e          type;
+      bool                                  handled;
+      bool                                  hasReachedIndexes;
     };
   }
 }

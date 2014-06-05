@@ -403,7 +403,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*) (ptr = static_cast<TRI_shape_number_t*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+  dst->_value = (char*) (ptr = static_cast<TRI_shape_number_t*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
   if (dst->_value == NULL) {
     return false;
@@ -426,6 +426,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
+    // must fill with 0's because the string might be shorter, and we might use the 
+    // full length for memcmp comparisons!!
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
 
     if (dst->_value == NULL) {
@@ -443,7 +445,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
-    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
     if (dst->_value == NULL) {
       return false;
@@ -500,7 +502,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
-    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
     if (dst->_value == NULL) {
       return false;
@@ -2164,14 +2166,14 @@ TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* 
     return NULL;
   }
 
-  TRI_shaped_json_t* newShapedJson = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true));
+  TRI_shaped_json_t* newShapedJson = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false));
 
   if (newShapedJson == NULL) {
     return NULL;
   }
 
-  newShapedJson->_sid  = oldShapedJson->_sid;
-  int res = TRI_CopyToBlob(shaper->_memoryZone, &(newShapedJson->_data), &(oldShapedJson->_data));
+  newShapedJson->_sid = oldShapedJson->_sid;
+  int res = TRI_CopyToBlob(shaper->_memoryZone, &newShapedJson->_data, &oldShapedJson->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(shaper->_memoryZone, newShapedJson);

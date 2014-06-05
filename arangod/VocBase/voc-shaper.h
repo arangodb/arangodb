@@ -134,21 +134,21 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
-                   TRI_shape_sid_t& dst, void const* src) {
-  if (static_cast<TRI_df_marker_t const*>(src)->_type == 
-      TRI_DOC_MARKER_KEY_DOCUMENT) {
+                   TRI_shape_sid_t& dst, 
+                   void const* src) {
+
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
+
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     dst = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
-           TRI_DOC_MARKER_KEY_EDGE) {
+  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     dst = static_cast<TRI_doc_edge_key_marker_t const*>(src)->base._shape;
   }
-  if (static_cast<TRI_df_marker_t const*>(src)->_type == 
-      TRI_WAL_MARKER_DOCUMENT) {
+  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT) {
     dst = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
-           TRI_WAL_MARKER_EDGE) {
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
     dst = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
   }
   else {
