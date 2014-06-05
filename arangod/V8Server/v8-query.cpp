@@ -1873,7 +1873,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
-  document._dataptr = nullptr;  // PROTECTED by stack locality
+  document.setDataPtr(nullptr);  // PROTECTED by stack locality
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1895,7 +1895,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._dataptr == nullptr) {  // PROTECTED by trx here
+  if (document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
@@ -1993,10 +1993,11 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   trx.lockRead();
 
   // find documents by example
-  TRI_vector_t filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  vector<TRI_doc_mptr_t*> filtered
+    = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
 
   // convert to list of shaped jsons
-  size_t total = filtered._length;
+  size_t total = filtered.size();
   size_t count = 0;
   bool error = false;
   
@@ -2004,7 +2005,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     size_t s;
     size_t e;
 
-    CalculateSkipLimitSlice(filtered._length, skip, limit, s, e);
+    CalculateSkipLimitSlice(filtered.size(), skip, limit, s, e);
 
     if (s < e) {
       // only go in here if something has to be done, otherwise barrier memory might be lost
@@ -2017,7 +2018,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
         bool usedBarrier = false;
 
         for (size_t j = s; j < e; ++j) {
-          TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
+          TRI_doc_mptr_t* mptr = filtered[j];
 
           v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier, usedBarrier);
 
@@ -2037,8 +2038,6 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       }
     }
   }
-
-  TRI_DestroyVector(&filtered);
 
   trx.finish(res);
 
@@ -2279,7 +2278,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
   // This callback is only called in TRI_DocumentIteratorPrimaryCollection
   // and there we have an ongoing transaction. Therefore all master pointer
   // and data pointer accesses here are safe!
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
@@ -2523,7 +2522,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  vector<TRI_doc_mptr_t const*> documents;
+  std::vector<TRI_doc_mptr_t const*> documents;
   res = trx.readPositional(documents, 0, count);
 
   const size_t n = documents.size();

@@ -32,7 +32,7 @@
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -86,7 +86,7 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t*, 
-                               struct TRI_doc_mptr_s const*,
+                               struct TRI_doc_mptr_t const*,
                                void const**);
 
 ////////////////////////////////////////////////////////////////////////////////

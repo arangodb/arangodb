@@ -272,7 +272,6 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     if (shaped != 0) {
       TRI_doc_mptr_t mptr;
-      memset(&mptr, 0, sizeof(TRI_doc_mptr_t));
 
       int res = document->readDocument(trxCollection, key, &mptr, false);
 

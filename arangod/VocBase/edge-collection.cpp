@@ -74,7 +74,7 @@ static TRI_edge_index_t* FindEdgesIndex (
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
-  TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_dataptr);  // ONLY IN INDEX
+  TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
   if (edge->_toCid == edge->_fromCid) {
     char* fromKey = (char*) edge + edge->_offsetFromKey;

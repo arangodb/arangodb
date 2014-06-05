@@ -117,15 +117,37 @@ namespace triagens {
 /// @brief master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_mptr_s {
-  TRI_voc_rid_t          _rid;      // this is the revision identifier
-  TRI_voc_fid_t          _fid;      // this is the datafile identifier
-  void const*            _dataptr;  // this is the pointer to the beginning of the raw marker
-  uint64_t               _hash;     // the pre-calculated hash value of the key
-  struct TRI_doc_mptr_s* _prev;     // previous master pointer
-  struct TRI_doc_mptr_s* _next;     // next master pointer
-}
-TRI_doc_mptr_t;
+struct TRI_doc_mptr_t {
+    TRI_voc_rid_t          _rid;     // this is the revision identifier
+    TRI_voc_fid_t          _fid;     // this is the datafile identifier
+  private:
+    void const*            _dataptr; // this is the pointer to the beginning of the raw marker
+  public:
+    uint64_t               _hash;    // the pre-calculated hash value of the key
+    TRI_doc_mptr_t*        _prev;    // previous master pointer
+    TRI_doc_mptr_t*        _next;    // next master pointer
+
+    TRI_doc_mptr_t () : _rid(0), _fid(0), _hash(0), _prev(nullptr), 
+                        _next(nullptr) {
+    }
+
+    void clear () {
+      _rid = 0;
+      _fid = 0;
+      setDataPtr(nullptr);
+      _hash = 0;
+      _prev = nullptr;
+      _next = nullptr;
+    }
+
+    void const* getDataPtr () const {
+      return _dataptr;
+    }
+
+    void setDataPtr (void const* d) {
+      _dataptr = d;
+    }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile info
@@ -531,31 +553,15 @@ size_t TRI_DocumentIteratorPrimaryCollection (triagens::arango::TransactionBase 
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*) mptr->_dataptr) + ((TRI_doc_document_key_marker_t const*) mptr->_dataptr)->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+    return ((char const*) mptr->getDataPtr()) + ((TRI_doc_document_key_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
   else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*) mptr->_dataptr) + ((triagens::wal::document_marker_t const*) mptr->_dataptr)->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+    return ((char const*) mptr->getDataPtr()) + ((triagens::wal::document_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
   return nullptr;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type containing a write operation for a transaction collection
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_transaction_operation_s {
-  TRI_doc_mptr_t*               _newHeader;
-  TRI_doc_mptr_t*               _oldHeader;
-  TRI_doc_mptr_t                _oldData;
-  TRI_voc_document_operation_e  _type;
-}
-TRI_transaction_operation_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -908,10 +914,11 @@ struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_coll
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (struct TRI_transaction_collection_s*,
-                                  size_t,
-                                  TRI_shape_pid_t*,
-                                  TRI_shaped_json_t**);
+std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
+                          struct TRI_transaction_collection_s*,
+                          size_t,
+                          TRI_shape_pid_t*,
+                          TRI_shaped_json_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer
