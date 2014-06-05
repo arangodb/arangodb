@@ -141,7 +141,7 @@ you can skip this section.
   accepting connections. Alternative tools to check connectivity are `lynx`
   or `ab`.
 
-!SECTIONS Querying for Documents
+!SECTION Querying for Documents
 
 All documents are stored in collections. All collections are stored in a
 database. The database object is accessible via the variable `db`.
