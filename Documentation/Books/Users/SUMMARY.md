@@ -68,6 +68,7 @@
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 13.5 -->
 * [General-Graphs](General-Graphs/README.md)
+	* [Graph Functions](General-Graphs/GeneralGraphFunctions.md)
 	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
 * [Traversals](Traversals/README.md)
