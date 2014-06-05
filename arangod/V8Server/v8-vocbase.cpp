@@ -2073,6 +2073,8 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
+  Barrier barrier(trx.primaryCollection());
+
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key);
@@ -2292,6 +2294,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   TRI_doc_mptr_t mptr;
+  Barrier barrier(document);
   
   // we must lock here, because below we are
   // - reading the old document in coordinator case
@@ -2345,8 +2348,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
   
-  Barrier barrier(document);
-
   res = trx.updateDocument(key, &mptr, shaped, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
@@ -2543,7 +2544,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   res = trx->createEdge(key, &mptr, shaped, forceSync, &edge);
 
   Barrier barrier(document);
-
   res = trx->finish(res);
    
   TRI_FreeShapedJson(zone, shaped);
@@ -2712,6 +2712,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   TRI_document_collection_t* document = trx.primaryCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
+  Barrier barrier(document);
 
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());  // PROTECTED by trx here
@@ -2747,7 +2748,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   res = trx.updateDocument(key, &mptr, patchedJson, policy, options.waitForSync, rid, &actualRevision);
 
-  Barrier barrier(document);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
@@ -9930,7 +9930,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
-  if (acc == 0 || acc->_shape == 0) {
+  if (acc == 0 || acc->_resultSid == 0) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 

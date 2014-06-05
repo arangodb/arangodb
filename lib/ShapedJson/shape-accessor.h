@@ -50,7 +50,7 @@ typedef struct TRI_shape_access_s {
   TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
   TRI_shape_pid_t _pid;                 // path identifier of the attribute path
 
-  TRI_shape_t const* _shape;            // resulting shape
+  TRI_shape_sid_t _resultSid;           // resulting shape
   void const** _code;                   // bytecode
 
   TRI_memory_zone_t* _memoryZone;

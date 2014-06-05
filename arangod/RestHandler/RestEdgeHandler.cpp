@@ -30,12 +30,13 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/tri-strings.h"
-#include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Rest/HttpRequest.h"
+#include "Utils/Barrier.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -247,8 +248,10 @@ bool RestEdgeHandler::createDocument () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
-  
-  if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_EDGE) {
+ 
+  TRI_document_collection_t* primary = trx.primaryCollection();
+ 
+  if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection    
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -301,6 +304,8 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
   // inside write transaction
   // .............................................................................
+  
+  Barrier barrier(primary);
 
   // will hold the result
   TRI_doc_mptr_t document;

@@ -62,8 +62,7 @@
         'keypress #aqlEditor': 'aqlShortcuts',
         'click #arangoQueryTable .table-cell0': 'editCustomQuery',
         'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-        'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
-        'click #queryDiv .showHotkeyHelp' : 'shortcutModal'
+        'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
       };
       expect(events).toEqual(view.events);
     });
@@ -75,12 +74,6 @@
       expect(view.tableDescription.rows).toEqual(view.customQueries);
       expect(view.getAQL).toHaveBeenCalled();
       expect(localStorage.setItem).toHaveBeenCalled();
-    });
-
-    it("should show the shortkeys modal", function() {
-      spyOn(window.arangoHelper.hotkeysFunctions, "showHotkeysModal");
-      view.shortcutModal();
-      expect(window.arangoHelper.hotkeysFunctions.showHotkeysModal).toHaveBeenCalled();
     });
 
     it("should create a custom query modal", function() {

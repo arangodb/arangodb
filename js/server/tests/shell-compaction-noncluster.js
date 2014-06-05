@@ -40,6 +40,88 @@ function CompactionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create movement of shapes
+////////////////////////////////////////////////////////////////////////////////
+
+    testShapesMovement : function () {
+      var cn = "example";
+      internal.db._drop(cn);
+
+      var cn = internal.db._create(cn, { "journalSize" : 1048576 });
+      var i, j;
+
+      for (i = 0; i < 1000; ++i) {
+        var doc = { _key: "old" + i, a: i, b: "test" + i, values: [ ], atts: { } }, x = { };
+        for (j = 0; j < 10; ++j) { 
+          doc.values.push(j);
+          doc.atts["test" + i + j] = "test";
+          x["foo" + i] = [ "1" ];
+        }
+        doc.atts.foo = x;
+        cn.save(doc);
+      }
+
+      // now access the documents once, to build the shape accessors
+      for (i = 0; i < 1000; ++i) {
+        var doc = cn.document("old" + i);
+        var keys = Object.keys(doc);
+
+        assertTrue(doc.hasOwnProperty("a"));
+        assertEqual(i, doc.a);
+        assertTrue(doc.hasOwnProperty("b"));
+        assertEqual("test" + i, doc.b);
+        assertTrue(doc.hasOwnProperty("values"));
+        assertEqual(10, doc.values.length);
+        assertTrue(doc.hasOwnProperty("atts"));
+        assertEqual(11, Object.keys(doc.atts).length);
+
+        for (j = 0; j < 10; ++j) {
+          assertEqual("test", doc.atts["test" + i + j]);
+        }
+        for (j = 0; j < 10; ++j) {
+          assertEqual([ "1" ], doc.atts.foo["foo" + i]);
+        }
+      }
+
+      // fill the datafile with rubbish
+      for (i = 0; i < 10000; ++i) {
+        cn.save({ _key: "test" + i, value: "thequickbrownfox" });
+      }
+
+      for (i = 0; i < 10000; ++i) {
+        cn.remove("test" + i);
+      }
+
+      internal.wait(7);
+
+      assertEqual(1000, cn.count());
+
+      // now access the "old" documents, which were probably moved
+      for (i = 0; i < 1000; ++i) {
+        var doc = cn.document("old" + i);
+        var keys = Object.keys(doc);
+
+        assertTrue(doc.hasOwnProperty("a"));
+        assertEqual(i, doc.a);
+        assertTrue(doc.hasOwnProperty("b"));
+        assertEqual("test" + i, doc.b);
+        assertTrue(doc.hasOwnProperty("values"));
+        assertEqual(10, doc.values.length);
+        assertTrue(doc.hasOwnProperty("atts"));
+        assertEqual(11, Object.keys(doc.atts).length);
+
+        for (j = 0; j < 10; ++j) {
+          assertEqual("test", doc.atts["test" + i + j]);
+        }
+        for (j = 0; j < 10; ++j) {
+          assertEqual([ "1" ], doc.atts.foo["foo" + i]);
+        }
+      }
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test shapes
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -1342,6 +1342,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   const string cidString = StringUtils::itoa(document->base._info._planId);
 
+  Barrier barrier(document);
+
   if (isPatch) {
     // patching an existing document
     bool nullMeansRemove;

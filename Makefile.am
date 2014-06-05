@@ -170,7 +170,8 @@ noinst_LIBRARIES = \
 	lib/libarango.a \
 	lib/libarango_v8.a \
 	lib/libarango_fe.a \
-	lib/libarango_client.a
+	lib/libarango_client.a \
+	arangod/libarangod.a
 
 if ENABLE_MRUBY
 noinst_LIBRARIES += lib/libarango_mruby.a
