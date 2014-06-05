@@ -5599,17 +5599,18 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
-                                  size_t length,
-                                  TRI_shape_pid_t* pids,
-                                  TRI_shaped_json_t** values) {
+
+void TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
+                          size_t length,
+                          TRI_shape_pid_t* pids,
+                          TRI_shaped_json_t** values,
+                          std::vector<TRI_doc_mptr_t>& filtered) {
   TRI_shaper_t* shaper;
-  TRI_vector_t filtered;
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   // use filtered to hold copies of the master pointer
-  TRI_InitVector(&filtered, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t));
+  filtered.clear();
 
   // do a full scan
   shaper = document->_shaper;
@@ -5620,12 +5621,10 @@ TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
   for (;  ptr < end;  ++ptr) {
     if (IsVisible(*ptr)) {
       if (IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
-        TRI_PushBackVector(&filtered, *ptr);
+        filtered.push_back(**ptr);
       }
     }
   }
-  
-  return filtered;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
