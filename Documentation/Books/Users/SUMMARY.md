@@ -24,7 +24,6 @@
 	* [Notes about Databases](Databases/Notes.md)	
 <!-- 6 -->
 * [Handling Collections](Collections/README.md)
-	* [Address of a Collection](Collections/CollectionAddress.md)
 	* [Collection Methods](Collections/CollectionMethods.md)
 	* [Database Methods](Collections/DatabaseMethods.md)
 <!-- 7 -->
@@ -68,6 +67,7 @@
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 13.5 -->
 * [General-Graphs](General-Graphs/README.md)
+	* [Graph Functions](General-Graphs/GeneralGraphFunctions.md)
 	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
 * [Traversals](Traversals/README.md)
