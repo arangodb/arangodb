@@ -157,7 +157,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
     acc = TRI_FindAccessorVocShaper(shaper, shapedJson._sid, path);
 
     // field not part of the object
-    if (acc == NULL || acc->_shape == NULL) {
+    if (acc == NULL || acc->_resultSid == 0) {
       shapedSub._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
       shapedSub._length = 0;
       shapedSub._offset = 0;
