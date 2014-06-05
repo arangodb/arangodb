@@ -1,6 +1,7 @@
 !CHAPTER Collection Methods
 
 `collection.drop()`
+
 Drops a collection and all its indexes.
 
 *Examples*
