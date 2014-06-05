@@ -562,9 +562,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   TRI_ASSERT_MAINTAINER(header->_dataptr != nullptr);  // ONLY IN INDEX
   
   // insert into primary index
-  TRI_WriteLockPrimaryIndex(&document->_primaryIndex);
   int res = TRI_InsertKeyPrimaryIndex(&document->_primaryIndex, header, (void const**) &found);
-  TRI_WriteUnlockPrimaryIndex(&document->_primaryIndex);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -626,9 +624,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   // remove from main index
   // .............................................................................
 
-  TRI_WriteLockPrimaryIndex(&document->_primaryIndex);
   TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX
-  TRI_WriteUnlockPrimaryIndex(&document->_primaryIndex);
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1107,9 +1103,7 @@ static int LookupDocument (TRI_document_collection_t* document,
                            TRI_voc_key_t key,
                            TRI_doc_update_policy_t const* policy,
                            TRI_doc_mptr_t*& header) {
-  TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
   header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-  TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
   
   if (! IsVisible(header)) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -2903,8 +2897,6 @@ size_t TRI_DocumentIteratorPrimaryCollection (TransactionBase const*,
   // master pointers and their data pointers in the callback are 
   // protected.
 
-  TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
-  
   size_t const nrUsed = (size_t) document->_primaryIndex._nrUsed;
 
   if (nrUsed > 0) {
@@ -2922,8 +2914,6 @@ size_t TRI_DocumentIteratorPrimaryCollection (TransactionBase const*,
     }
   }
   
-  TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
-
   return nrUsed;
 }
 
@@ -3470,8 +3460,6 @@ static int FillIndex (TRI_document_collection_t* document,
   void** ptr;
   int res;
 
-  TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
-
   ptr = document->_primaryIndex._table;
   end = ptr + document->_primaryIndex._nrAlloc;
     
@@ -3496,8 +3484,6 @@ static int FillIndex (TRI_document_collection_t* document,
                     (char*) TRI_EXTRACT_MARKER_KEY(mptr),  // ONLY IN INDEX
                     (unsigned long long) idx->_iid);
   
-        TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
-
         return res;
       }
 
@@ -3511,8 +3497,6 @@ static int FillIndex (TRI_document_collection_t* document,
     }
   }
   
-  TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -5630,8 +5614,6 @@ TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
   // do a full scan
   shaper = document->_shaper;
 
-  TRI_ReadLockPrimaryIndex(&document->_primaryIndex);
-
   TRI_doc_mptr_t const** ptr = (TRI_doc_mptr_t const**) (document->_primaryIndex._table);
   TRI_doc_mptr_t const** end = (TRI_doc_mptr_t const**) ptr + document->_primaryIndex._nrAlloc;
 
@@ -5643,8 +5625,6 @@ TRI_vector_t TRI_SelectByExample (TRI_transaction_collection_t* trxCollection,
     }
   }
   
-  TRI_ReadUnlockPrimaryIndex(&document->_primaryIndex);
-
   return filtered;
 }
 

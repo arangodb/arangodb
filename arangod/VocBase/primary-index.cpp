@@ -109,7 +109,8 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
 /// @brief comparison function, compares a master pointer to another 
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header, void const* element) {
+static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header, 
+                                      void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
   if (header->_hash != e->_hash) {
@@ -148,8 +149,6 @@ int TRI_InitPrimaryIndex (TRI_primary_index_t* idx,
   idx->_nrAlloc = 0;
   idx->_nrUsed  = 0;
 
-  TRI_InitReadWriteLock(&idx->_lock);
-
   if (nullptr == (idx->_table = (void**) TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -168,46 +167,12 @@ void TRI_DestroyPrimaryIndex (TRI_primary_index_t* idx) {
     TRI_Free(idx->_memoryZone, idx->_table);
     idx->_table = nullptr;
   }
-  
-  TRI_DestroyReadWriteLock(&idx->_lock);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write-locks the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_WriteLockPrimaryIndex (TRI_primary_index_t* idx) {
-  TRI_WriteLockReadWriteLock(&idx->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write-unlocks the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_WriteUnlockPrimaryIndex (TRI_primary_index_t* idx) {
-  TRI_WriteUnlockReadWriteLock(&idx->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-locks the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadLockPrimaryIndex (TRI_primary_index_t* idx) {
-  TRI_ReadLockReadWriteLock(&idx->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-unlocks the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadUnlockPrimaryIndex (TRI_primary_index_t* idx) {
-  TRI_ReadUnlockReadWriteLock(&idx->_lock);
-}
-   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
