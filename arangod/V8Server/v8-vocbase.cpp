@@ -2081,6 +2081,8 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
+  Barrier barrier(trx.primaryCollection());
+
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
   res = trx.read(&document, key);
@@ -2304,6 +2306,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
   TRI_doc_mptr_t document;
+  Barrier barrier(primary);
   
   // we must lock here, because below we are
   // - reading the old document in coordinator case
@@ -2551,6 +2554,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
+  Barrier barrier(primary);
+
   TRI_doc_mptr_t document;
   res = trx->createEdge(key, &document, shaped, forceSync, &edge);
 
@@ -2713,7 +2718,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   // we must use a write-lock that spans both the initial read and the update.
   // otherwise the operation is not atomic
   trx.lockWrite();
-
+  
   TRI_doc_mptr_t document;
   res = trx.read(&document, key);
 
@@ -2724,6 +2729,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   }
 
   TRI_primary_collection_t* primary = trx.primaryCollection();
+  Barrier barrier(primary);
   TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
 
   TRI_shaped_json_t shaped;
