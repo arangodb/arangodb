@@ -348,7 +348,7 @@ static void RelinkHeader (TRI_headers_t* h,
 static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
                                       size_t size) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  char const* header;
+  TRI_doc_mptr_t* header;
 
   assert(size > 0);
   
@@ -357,25 +357,20 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
     TRI_ASSERT_MAINTAINER(blockSize > 0);
 
     // initialise the memory with 0's
-    char* begin = reinterpret_cast<char*>(new TRI_doc_mptr_t[blockSize]);
+    TRI_doc_mptr_t* begin = new TRI_doc_mptr_t[blockSize];
+    // char* begin = reinterpret_cast<char*>(new TRI_doc_mptr_t[blockSize]);
 
-    // out of memory
-    if (begin == nullptr) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    char* ptr = begin + sizeof(TRI_doc_mptr_t) * (blockSize - 1);
+    TRI_doc_mptr_t* ptr = begin + (blockSize - 1);
 
     header = nullptr;
 
-    for (;  begin <= ptr;  ptr -= sizeof(TRI_doc_mptr_t)) {
-      ((TRI_doc_mptr_t*) ptr)->setDataPtr(header); // ONLY IN HEADERS
+    for (;  begin <= ptr;  ptr--) {
+      ptr->setDataPtr(header); // ONLY IN HEADERS
       header = ptr;
     }
 
     TRI_ASSERT_MAINTAINER(headers != nullptr);
-    headers->_freelist = (TRI_doc_mptr_t*) header;
+    headers->_freelist = header;
 
     TRI_PushBackVectorPointer(&headers->_blocks, begin);
   }
@@ -535,7 +530,7 @@ void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
   simple_headers_t* headers = (simple_headers_t*) h;
 
   for (size_t i = 0;  i < headers->_blocks._length;  ++i) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, headers->_blocks._buffer[i]);
+    delete[] static_cast<TRI_doc_mptr_t*>(headers->_blocks._buffer[i]);
   }
 
   headers->_nrAllocated = 0;
