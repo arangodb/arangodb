@@ -67,7 +67,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* hashIndex,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  char const* ptr = static_cast<char const*>(element->_document->_dataptr);  // ONLY IN INDEX
+  char const* ptr = static_cast<char const*>(element->_document->getDataPtr());  // ONLY IN INDEX
 
   size_t const n = NumPaths(hashIndex);
   for (size_t i = 0;  i < n;  ++i) {
@@ -131,7 +131,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   // can later be retreived.
   // .............................................................................
 
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);  // ONLY IN INDEX
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
   hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
 
@@ -169,7 +169,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
       shapedSub._sid = shapedObject._sid;
       shapedSub._length = shapedObject._data.length;
-      shapedSub._offset = ((char const*) shapedObject._data.data) - ((char const*) document->_dataptr);  // ONLY IN INDEX
+      shapedSub._offset = ((char const*) shapedObject._data.data) - ((char const*) document->getDataPtr());  // ONLY IN INDEX
     }
 
     // store the json shaped sub-object -- this is what will be hashed

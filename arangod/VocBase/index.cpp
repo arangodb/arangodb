@@ -658,7 +658,7 @@ static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_dataptr);  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
     char const* key = (char const*) edge + edge->_offsetFromKey;
 
     hash = edge->_fromCid;
@@ -682,7 +682,7 @@ static uint64_t HashElementEdgeTo (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->_dataptr);  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
     char const* key = (char const*) edge + edge->_offsetToKey;
 
     hash = edge->_toCid;
@@ -705,7 +705,7 @@ static bool IsEqualKeyEdgeFrom (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_dataptr);  // ONLY IN INDEX
+  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
   char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
 
   return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_fromCid;
@@ -724,7 +724,7 @@ static bool IsEqualKeyEdgeTo (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_dataptr);  // ONLY IN INDEX
+  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
   char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
 
   return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_toCid;
@@ -744,8 +744,8 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
   else {
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->_dataptr);  // ONLY IN INDEX
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_dataptr);  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
     char const* lKey = (char const*) lEdge + lEdge->_offsetFromKey;
     char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
 
@@ -767,8 +767,8 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
   else {
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->_dataptr);  // ONLY IN INDEX
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->_dataptr);  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
     char const* lKey = (char const*) lEdge + lEdge->_offsetToKey;
     char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
 
@@ -1107,9 +1107,9 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   // ..........................................................................
     
   assert(document != NULL); 
-  assert(document->_dataptr != NULL);   // ONLY IN INDEX
+  assert(document->getDataPtr() != NULL);   // ONLY IN INDEX
     
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);  // ONLY IN INDEX
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
   if (shapedJson._sid == 0) {
     LOG_WARNING("encountered invalid marker with shape id 0");
@@ -1118,7 +1118,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   }
 
   skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  ptr = (char const*) skiplistElement->_document->_dataptr;  // ONLY IN INDEX
+  ptr = (char const*) skiplistElement->_document->getDataPtr();  // ONLY IN INDEX
     
   for (j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths, j)));
@@ -1512,17 +1512,15 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   TRI_shaped_json_t shaped;
   TRI_shaped_json_t shapedJson;
   TRI_shape_t const* shape;
-  TRI_doc_mptr_t* doc;
   char* text;
   size_t textLength;
   TRI_vector_string_t* words;
   bool ok;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
-  doc = (TRI_doc_mptr_t*) ((uintptr_t) document);
 
   // extract the shape
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, doc->_dataptr);  // ONLY IN INDEX
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX
   ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
 
   if (! ok || shape == nullptr) {
@@ -1970,7 +1968,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape
       // ..........................................................................
 
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->_dataptr);  // ONLY IN INDEX
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
 

@@ -49,7 +49,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_collection_s;
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 struct TRI_shaped_json_s;
 struct TRI_document_collection_s;
 struct TRI_transaction_collection_s;
@@ -110,11 +110,11 @@ typedef struct TRI_index_s {
   // the following functions are called for document/collection administration
   // .........................................................................................
 
-  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
-  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
+  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, const bool);
+  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, const bool);
 
   // NULL by default. will only be called if non-NULL
-  int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_t const*);
 
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
@@ -243,7 +243,7 @@ TRI_bitarray_index_t;
 
 typedef struct TRI_index_result_s {
   size_t _length;
-  struct TRI_doc_mptr_s** _documents;     // simple list of elements
+  struct TRI_doc_mptr_t** _documents;     // simple list of elements
 }
 TRI_index_result_t;
 
@@ -457,7 +457,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, 
+struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*, 
                                                  const char*);
 
 ////////////////////////////////////////////////////////////////////////////////

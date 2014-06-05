@@ -128,7 +128,7 @@ static bool IsEqualKeyElement (TRI_hash_array_t* array,
     }
 
     if (0 < length) {
-      char* ptr = ((char*) right->_document->_dataptr) + rightSub->_offset;  // ONLY IN INDEX
+      char* ptr = ((char*) right->_document->getDataPtr()) + rightSub->_offset;  // ONLY IN INDEX
 
       if (memcmp(leftJson->_data.data, ptr, length) != 0) {
         return false;
@@ -166,7 +166,7 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 
   for (size_t j = 0;  j < array->_numFields;  j++) {
     // ignore the sid for hashing
-    char* ptr = ((char*) element->_document->_dataptr) + element->_subObjects[j]._offset;  // ONLY IN INDEX
+    char* ptr = ((char*) element->_document->getDataPtr()) + element->_subObjects[j]._offset;  // ONLY IN INDEX
 
     // only hash the data block
     hash = TRI_FnvHashBlock(hash, ptr, element->_subObjects[j]._length);

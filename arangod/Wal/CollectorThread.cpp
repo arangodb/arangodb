@@ -464,7 +464,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       }
       else {
         // we can safely update the master pointer's dataptr value
-        found->_dataptr = operation.mem;
+        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.mem)));
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -481,7 +481,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       }
       else {
         // we can safely update the master pointer's dataptr value
-        found->_dataptr = operation.mem;
+        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.mem)));
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
@@ -814,7 +814,6 @@ int CollectorThread::transferMarkers (Logfile* logfile,
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
         dfi._sizeAlive += (int64_t) totalSize;
-        
         break;
       }
 
