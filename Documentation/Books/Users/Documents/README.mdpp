@@ -33,11 +33,11 @@ For example:
 @END_EXAMPLE_ARANGOSH_OUTPUT
 -->
 	
-All documents contain special attributes: the document handle in `_id`, the
-document's unique key in `_key` and and the ETag aka document revision in
-`_rev`. The value of the `_key` attribute can be specified by the user when
-creating a document.  `_id` and `_key` values are immutable once the document
-has been created. The `_rev` value is maintained by ArangoDB autonomously.
+All documents contain special attributes: the document handle in *_id*, the
+document's unique key in *_key* and and the ETag aka document revision in
+*_rev*. The value of the *_key* attribute can be specified by the user when
+creating a document.  *_id* and *_key* values are immutable once the document
+has been created. The *_rev* value is maintained by ArangoDB autonomously.
 
 A document handle uniquely identifies a document in the database. It is a string and 
 consists of the collection's name and the document key (_key attribute) separated by /.

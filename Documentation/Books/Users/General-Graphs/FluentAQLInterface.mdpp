@@ -1,15 +1,18 @@
 !CHAPTER Fluent AQL Interface
 
 This chapter describes a fluent interface to query your graph.
-The philosophy of this interface is to at first select a group of starting elements (vertices or edges) and from there on explore the graph with your query by selecting connected elements.
+The philosophy of this interface is to select a group of starting elements (vertices or edges) at first and from there on explore the graph with your query by selecting connected elements.
+
 As an example you can start with a set of vertices, select their direct neighbors and finally their outgoing edges.
+
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
 !SECTION Starting Points
 
 This section describes the entry points for the fluent interface.
-In the philosophy of this module you have to start with a specific subset of vertices or edges and from there on iterate over the graph.
+The philosophy of this module is to start with a specific subset of vertices or edges and from there on iterate over the graph.
+
 Therefore you get exactly this two entry points:
 
 * Select a set of edges
