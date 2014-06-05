@@ -34,7 +34,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -46,28 +46,28 @@ struct TRI_doc_mptr_s;
 
 typedef struct TRI_headers_s {
   // request a new header
-  struct TRI_doc_mptr_s* (*request) (struct TRI_headers_s*, size_t);
+  struct TRI_doc_mptr_t* (*request) (struct TRI_headers_s*, size_t);
 
   // release/free an existing header, putting it back onto the freelist
-  void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, bool unlink);
+  void (*release) (struct TRI_headers_s*, struct TRI_doc_mptr_t*, bool unlink);
 
   // move an existing header to the end of the linked list
-  void (*moveBack) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
+  void (*moveBack) (struct TRI_headers_s*, struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
 
   // move an existing header to another position in the linked list
-  void (*move) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
+  void (*move) (struct TRI_headers_s*, struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
 
   // unlink an existing header from the linked list, without freeing it
-  void (*unlink) (struct TRI_headers_s*, struct TRI_doc_mptr_s*);
+  void (*unlink) (struct TRI_headers_s*, struct TRI_doc_mptr_t*);
 
   // relink an existing header into the linked list, at its original position
-  void (*relink) (struct TRI_headers_s*, struct TRI_doc_mptr_s*, struct TRI_doc_mptr_s*);
+  void (*relink) (struct TRI_headers_s*, struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
 
   // return the header at the head of list, without popping it from the list
-  struct TRI_doc_mptr_s* (*front) (struct TRI_headers_s const*);
+  struct TRI_doc_mptr_t* (*front) (struct TRI_headers_s const*);
   
   // return the headers at the end of list, without popping it from the list
-  struct TRI_doc_mptr_s* (*back) (struct TRI_headers_s const*);
+  struct TRI_doc_mptr_t* (*back) (struct TRI_headers_s const*);
 
   // return the number of headers currently present in the linked list
   size_t (*count) (struct TRI_headers_s const*);

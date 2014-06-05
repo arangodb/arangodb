@@ -1873,7 +1873,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
   TRI_doc_mptr_t document;
-  document._dataptr = nullptr;  // PROTECTED by stack locality
+  document.setDataPtr(nullptr);  // PROTECTED by stack locality
 
   CollectionNameResolver resolver(col->_vocbase);
   ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
@@ -1895,7 +1895,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._dataptr == nullptr) {  // PROTECTED by trx here
+  if (document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     if (barrier != 0) {
       TRI_FreeBarrier(barrier);
     }
@@ -2279,7 +2279,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
   // This callback is only called in TRI_DocumentIteratorPrimaryCollection
   // and there we have an ongoing transaction. Therefore all master pointer
   // and data pointer accesses here are safe!
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_dataptr);  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 

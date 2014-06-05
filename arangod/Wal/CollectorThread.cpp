@@ -571,7 +571,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
-          found->_dataptr = static_cast<void*>(dst);
+          found->setDataPtr(static_cast<void*>(dst));
         }
 
         TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
@@ -634,7 +634,7 @@ int CollectorThread::transferMarkers (TRI_voc_cid_t collectionId,
         TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
         if (found != nullptr) {
-          found->_dataptr = static_cast<void*>(dst);
+          found->setDataPtr(static_cast<void*>(dst));
         }
 
         TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);

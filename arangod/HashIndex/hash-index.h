@@ -38,7 +38,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 struct TRI_shaped_sub_s;
 
 // -----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ struct TRI_shaped_sub_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_hash_index_element_s {
-  struct TRI_doc_mptr_s*   _document;
+  struct TRI_doc_mptr_t*   _document;
   struct TRI_shaped_sub_s* _subObjects;
 }
 TRI_hash_index_element_t;
