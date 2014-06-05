@@ -630,7 +630,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
-                       vector<TRI_doc_mptr_t*>& docs,
+                       vector<TRI_doc_mptr_t>& docs,
                        TRI_barrier_t** barrier,
                        TRI_voc_ssize_t skip,
                        TRI_voc_size_t limit,
@@ -705,7 +705,7 @@ namespace triagens {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
 
-              docs.push_back(d);
+              docs.push_back(*d);
               ++count;
             }
           }
@@ -729,7 +729,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             vector<TRI_doc_mptr_t*>& docs,
+                             vector<TRI_doc_mptr_t>& docs,
                              TRI_barrier_t** barrier,
                              TRI_voc_size_t& internalSkip,
                              TRI_voc_size_t batchSize,
@@ -781,7 +781,7 @@ namespace triagens {
                 --skip;
               }
               else {
-                docs.push_back(d);
+                docs.push_back(*d);
                 ++count;
               }
             }
