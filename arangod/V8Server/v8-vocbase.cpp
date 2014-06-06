@@ -10119,9 +10119,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           bool& usedBarrier) {
   v8::HandleScope scope;
     
-  TRI_ASSERT_MAINTAINER(document != nullptr);
-  TRI_ASSERT_MAINTAINER(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
-  TRI_ASSERT_MAINTAINER(barrier != nullptr);
+  TRI_ASSERT(document != nullptr);
+  TRI_ASSERT(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
+  TRI_ASSERT(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();

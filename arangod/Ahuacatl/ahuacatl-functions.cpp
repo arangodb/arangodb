@@ -130,8 +130,8 @@ static param_t InitParam (void) {
 static const char* NormalizeName (const TRI_aql_function_t* const function) {
   const char* pos;
 
-  TRI_ASSERT_MAINTAINER(function != NULL);
-  TRI_ASSERT_MAINTAINER(function->_externalName != NULL);
+  TRI_ASSERT(function != NULL);
+  TRI_ASSERT(function->_externalName != NULL);
 
   pos = strstr(function->_externalName, "::");
 

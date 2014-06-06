@@ -32,11 +32,6 @@
 // --SECTION--                                             configuration options
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_WITHIN_COMMON 1
 #include "BasicsC/operating-system.h"
 #ifdef _WIN32
@@ -56,18 +51,9 @@
 
 #undef TRI_WITHIN_COMMON
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    C header files
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 #include <assert.h>
 #include <ctype.h>
@@ -127,18 +113,9 @@
 typedef long suseconds_t;
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            basic triAGENS headers
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WITHIN_COMMON 1
 #include "BasicsC/voc-errors.h"
@@ -149,36 +126,18 @@ typedef long suseconds_t;
 #include "BasicsC/structures.h"
 #undef TRI_WITHIN_COMMON
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              basic compiler stuff
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_WITHIN_COMMON 1
 #include "BasicsC/system-compiler.h"
 #include "BasicsC/system-functions.h"
 #undef TRI_WITHIN_COMMON
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 low level helpers
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Configuration
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief const cast for C
@@ -253,40 +212,28 @@ static inline void* TRI_StripMarkPointer (void const* p) {
   return (void*) ((uintptr_t) p & ~((uintptr_t)1));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper for assert()
 ///
-/// This wrapper maps TRI_ASSERT_MAINTAINER() to (void) 0 for non-maintainers. 
-/// It maps TRI_ASSERT_MAINTAINER() to assert() when TRI_ENABLE_MAINTAINER_MODE 
+/// This wrapper maps TRI_ASSERT() to (void) 0 for non-maintainers. 
+/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE 
 /// is set.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT_MAINTAINER(what) assert(what)
+#ifndef TRI_ASSERT
+#define TRI_ASSERT assert
+#define TRI_ASSERT_EXPENSIVE TRI_ASSERT
+#endif
 
 #else
 
-#ifdef __cplusplus
-
-// TODO: change back when releasing
-//#define TRI_ASSERT_MAINTAINER(what) (static_cast<void> (0))
-#define TRI_ASSERT_MAINTAINER(what) assert(what)
-
-#else
-
-// TODO: change back when releasing
-//#define TRI_ASSERT_MAINTAINER(what) ((void) (0))
-#define TRI_ASSERT_MAINTAINER(what) assert(what)
-
+#ifndef TRI_ASSERT ((void) (0))
+#define TRI_ASSERT_EXPENSIVE TRI_ASSERT 
 #endif
 
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

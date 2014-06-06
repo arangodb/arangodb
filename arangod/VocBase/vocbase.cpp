@@ -176,7 +176,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
   // pre-condition
-  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   // only if we find the collection by its id, we can delete it by name
   if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid) != NULL) {
@@ -186,7 +186,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   }
 
   // post-condition
-  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -546,7 +546,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_InitReadWriteLock(&collection->_lock);
 
@@ -760,7 +760,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
   assert(found == NULL);
 
-  TRI_ASSERT_MAINTAINER(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
+  TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -2269,7 +2269,7 @@ bool TRI_UseVocBase (TRI_vocbase_t* vocbase) {
 
 void TRI_ReleaseVocBase (TRI_vocbase_t* vocbase) {
   TRI_LockSpin(&vocbase->_usage._lock);
-  TRI_ASSERT_MAINTAINER(vocbase->_usage._refCount > 0);
+  TRI_ASSERT(vocbase->_usage._refCount > 0);
   --vocbase->_usage._refCount;
   TRI_UnlockSpin(&vocbase->_usage._lock);
 }

@@ -1107,9 +1107,9 @@ void TRI_InitMarkerDatafile (char* marker,
 
   TRI_df_marker_t* df = (TRI_df_marker_t*) marker;
 
-  TRI_ASSERT_MAINTAINER(marker != NULL);
-  TRI_ASSERT_MAINTAINER(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
-  TRI_ASSERT_MAINTAINER(size > 0);
+  TRI_ASSERT(marker != NULL);
+  TRI_ASSERT(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
+  TRI_ASSERT(size > 0);
 
   // initialise the basic bytes
   memset(marker, 0, size);

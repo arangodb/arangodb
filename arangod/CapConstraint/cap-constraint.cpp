@@ -107,7 +107,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   size_t currentCount;
   int64_t currentSize;
   
-  TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
+  TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
   
   headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
   currentCount = headers->count(headers);
@@ -240,7 +240,7 @@ static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
 
   cap = (TRI_cap_constraint_t*) idx;
 
-  TRI_ASSERT_MAINTAINER(cap->_count > 0 || cap->_size > 0);
+  TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
 
   return ApplyCap(cap, trxCollection->_collection->_collection, trxCollection);
 }

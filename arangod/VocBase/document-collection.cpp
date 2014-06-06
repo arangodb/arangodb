@@ -557,9 +557,9 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
                                bool isRollback) {
   TRI_doc_mptr_t* found;
 
-  TRI_ASSERT_MAINTAINER(document != nullptr);
-  TRI_ASSERT_MAINTAINER(header != nullptr);
-  TRI_ASSERT_MAINTAINER(header->getDataPtr() != nullptr);  // ONLY IN INDEX
+  TRI_ASSERT(document != nullptr);
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX
   
   // insert into primary index
   int res = TRI_InsertKeyPrimaryIndex(&document->_primaryIndex, header, (void const**) &found);
@@ -1594,7 +1594,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       return TRI_set_errno(res);
     }
 
-    TRI_ASSERT_MAINTAINER(header != NULL);
+    TRI_ASSERT(header != NULL);
 
     // insert into primary index
     res = InsertPrimaryIndex(document, header, false);
@@ -1643,7 +1643,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (dfi != NULL && found->getDataPtr() != NULL) {  // ONLY IN OPENITERATOR
       int64_t size;
 
-      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
       size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
 
       dfi->_numberAlive--;
@@ -1662,7 +1662,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // it is a stale update
   else {
     if (state->_dfi != NULL) {
-      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
 
       state->_dfi->_numberDead++;
       state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR
@@ -1735,7 +1735,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     if (dfi != NULL) {
       int64_t size;
 
-      TRI_ASSERT_MAINTAINER(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
 
       size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
 
@@ -2538,7 +2538,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  TRI_ASSERT_MAINTAINER(keyGenerator != NULL);
+  TRI_ASSERT(keyGenerator != NULL);
 
 
   // first create the document collection
@@ -3136,7 +3136,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  TRI_ASSERT_MAINTAINER(keyGenerator != NULL);
+  TRI_ASSERT(keyGenerator != NULL);
   document->_keyGenerator = keyGenerator;
 
   // iterate over all markers of the collection
