@@ -373,7 +373,7 @@ typedef struct TRI_document_collection_s {
   struct TRI_cap_constraint_s* _capConstraint;
   
   TRI_vector_pointer_t         _allIndexes;
-  TRI_vector_t                 _failedTransactions;
+  std::set<TRI_voc_tid_t>*     _failedTransactions;
   
   int64_t                      _uncollectedLogfileEntries;
   int64_t                      _numberDocuments;

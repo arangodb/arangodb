@@ -586,77 +586,6 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a transaction id is contained in the list of failed
-/// transactions
-////////////////////////////////////////////////////////////////////////////////
-
-static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
-  size_t n;
-
-  TRI_ASSERT(list != NULL);
-
-  n = list->_length;
- 
-  // decide how to search based on size of list
-  if (n == 0) {
-    // simple case: list is empty
-    return false;
-  }
-
-  else if (n < 16) {
-    // list is small: use a linear search
-    for (size_t i = 0; i < n; ++i) {
-      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, i));
-
-      if (*tid == search) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  else {
-    // list is somewhat bigger, use a binary search
-    size_t l = 0;
-    size_t r = (size_t) (n - 1);
-
-    while (true) {
-      // determine midpoint
-      size_t m;
-
-      m = l + ((r - l) / 2);
-      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, m));
-
-      if (*tid == search) {
-        return true;
-      }
-
-      if (*tid > search) {
-        if (m == 0) {
-          // we must abort because the following subtraction would
-          // make the size_t underflow
-          return false;
-        }
-        
-        r = m - 1;
-      }
-      else {
-        l = m + 1;
-      }
-
-      if (r < l) {
-        return false;
-      }
-    }
-  }
-
-  // we should never get here
-  TRI_ASSERT(false);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -699,37 +628,16 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
     TRI_datafile_t* datafile = e->_data;
-    TRI_vector_t* failedList;
     char const* ptr;
     char const* end;
-
-    failedList    = NULL;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-      if (document->_failedTransactions._length > 0) {
-        // there are failed transactions. just reference them
-        failedList = &document->_failedTransactions;
-      }
     }
     else {
       TRI_ASSERT(datafile->_isSealed);
-
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-      
-      if (document->_failedTransactions._length > 0) {
-        // there are failed transactions. copy the list of ids
-        failedList = TRI_CopyVector(TRI_UNKNOWN_MEM_ZONE, &document->_failedTransactions);
-
-        if (failedList == NULL) {
-          res = TRI_ERROR_OUT_OF_MEMORY;
-        }
-      }
-
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     
     ptr = datafile->_data;
@@ -799,7 +707,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
       // handle aborted/unfinished transactions
 
-      if (failedList == NULL) {
+      if (document->_failedTransactions == nullptr) {
         // there are no failed transactions
         ignoreMarkers = false;
       }
@@ -815,7 +723,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         // check if marker is from an aborted transaction
         if (tid > 0) {
           if (tid != lastTid) {
-            ignoreMarkers = InFailedList(failedList, tid);
+            ignoreMarkers = (document->_failedTransactions->find(tid) != document->_failedTransactions->end());
           }
 
           lastTid = tid;
@@ -852,12 +760,6 @@ NEXT_DF:
     if (e->_isJournal) {
       // read-unlock the journal
       TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-    }
-    else {
-      // free our copy of the failed list
-      if (failedList != NULL) {
-        TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, failedList);
-      }
     }
 
     if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {

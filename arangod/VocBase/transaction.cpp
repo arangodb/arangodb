@@ -83,20 +83,6 @@ static inline bool NeedWriteMarker (TRI_transaction_t const* trx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two transaction ids
-////////////////////////////////////////////////////////////////////////////////
-
-static int TidCompare (void const* l, void const* r) {
-  TRI_voc_tid_t const* left  = static_cast<TRI_voc_tid_t const*>(l);
-  TRI_voc_tid_t const* right = static_cast<TRI_voc_tid_t const*>(r);
-
-  if (*left != *right) {
-    return (*left < *right) ? -1 : 1;
-  }
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the status of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -791,49 +777,6 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
   }
 
   return trxCollection->_locked;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief as the id of a failed transaction to a vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AddIdFailedTransaction (TRI_vector_t* vector,
-                                TRI_voc_tid_t tid) {
-  if (tid == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  bool mustSort = false;
-  size_t n = vector->_length;
-
-  if (n > 0) {
-    TRI_voc_tid_t* lastTid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(vector, n - 1));
-
-    if (tid == *lastTid) {
-      // no need to insert same id
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (tid < *lastTid) {
-      // for some reason, the id of the transaction just inserted is lower than
-      // the last id in the vector
-      // this means we need to re-sort the list of transaction ids. 
-      // this case should almost never occur, but we need to handle it if it occurs
-      mustSort = true;
-    }
-  }
-
-  int res = TRI_PushBackVector(vector, &tid);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (mustSort) {
-    qsort(TRI_BeginVector(vector), n + 1, sizeof(TRI_voc_tid_t), TidCompare);
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
