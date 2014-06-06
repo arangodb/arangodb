@@ -718,14 +718,14 @@ static int RotateJournal (TRI_document_collection_t* document) {
 
 static int RollbackUpdate (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_t* oldHeader) {
+                           TRI_doc_mptr_copy_t* oldHeader) {
   TRI_ASSERT(newHeader != nullptr);
   TRI_ASSERT(oldHeader != nullptr);
 
   // ignore any errors we're getting from this
   DeleteSecondaryIndexes(document, newHeader, true);
 
-  *newHeader = *oldHeader; 
+  newHeader->copy(*oldHeader); 
 
   int res = InsertSecondaryIndexes(document, newHeader, true);
 
@@ -902,7 +902,7 @@ static inline TRI_voc_rid_t GetRevisionId (TRI_voc_rid_t previous) {
 static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* header,
                            triagens::wal::DocumentOperation& operation,
-                           TRI_doc_mptr_t* mptr, 
+                           TRI_doc_mptr_copy_t* mptr, 
                            bool syncRequested) {
  
   TRI_ASSERT(header != nullptr);
@@ -949,7 +949,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                      TRI_voc_key_t key,
                                      TRI_voc_rid_t rid,
-                                     TRI_doc_mptr_t* mptr,
+                                     TRI_doc_mptr_copy_t* mptr,
                                      TRI_df_marker_type_e markerType,
                                      TRI_shaped_json_t const* shaped,
                                      TRI_document_edge_t const* edge,
@@ -1096,7 +1096,7 @@ static int LookupDocument (TRI_document_collection_t* document,
 
 static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    const TRI_voc_key_t key,
-                                   TRI_doc_mptr_t* mptr,
+                                   TRI_doc_mptr_copy_t* mptr,
                                    bool lock) {
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
@@ -1129,12 +1129,12 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
 static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* oldHeader,
                            triagens::wal::DocumentOperation& operation,
-                           TRI_doc_mptr_t* mptr,
+                           TRI_doc_mptr_copy_t* mptr,
                            bool syncRequested) {
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
  
   // save the old data, remember
-  TRI_doc_mptr_t oldData = *oldHeader;
+  TRI_doc_mptr_copy_t oldData = *oldHeader;
   
   // .............................................................................
   // update indexes
@@ -1170,7 +1170,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     DeleteSecondaryIndexes(document, newHeader, true);
     
     // copy back old header data
-    *oldHeader = oldData;
+    oldHeader->copy(oldData);
     
     InsertSecondaryIndexes(document, oldHeader, true);
 
@@ -1197,7 +1197,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                      TRI_voc_key_t key,
                                      TRI_voc_rid_t rid,
-                                     TRI_doc_mptr_t* mptr,
+                                     TRI_doc_mptr_copy_t* mptr,
                                      TRI_shaped_json_t const* shaped,
                                      TRI_doc_update_policy_t const* policy,
                                      bool lock,
@@ -1594,7 +1594,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   else if (found->_rid < d->_rid || 
            (found->_rid == d->_rid && found->_fid <= operation->_fid)) {
     TRI_doc_mptr_t* newHeader;
-    TRI_doc_mptr_t oldData;
+    TRI_doc_mptr_copy_t oldData;
     TRI_doc_datafile_info_t* dfi;
 
     // save the old data
@@ -2987,7 +2987,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document,
                                              TRI_voc_document_operation_e type,
                                              TRI_doc_mptr_t* header,
-                                             TRI_doc_mptr_t* oldData) {
+                                             TRI_doc_mptr_copy_t* oldData) {
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     // ignore any errors we're getting from this

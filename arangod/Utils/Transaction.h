@@ -459,7 +459,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAny (TRI_transaction_collection_t* trxCollection,
-                     TRI_doc_mptr_t* mptr,
+                     TRI_doc_mptr_copy_t* mptr,
                      TRI_barrier_t** barrier) {
 
           TRI_document_collection_t* document = primaryCollection(trxCollection);
@@ -509,7 +509,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readSingle (TRI_transaction_collection_t* trxCollection,
-                        TRI_doc_mptr_t* mptr,
+                        TRI_doc_mptr_copy_t* mptr,
                         const string& key) {
 
           TRI_ASSERT(mptr != nullptr);
@@ -570,7 +570,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readOrdered (TRI_transaction_collection_t* trxCollection, 
-                         vector<TRI_doc_mptr_t const*>& documents,
+                         vector<TRI_doc_mptr_copy_t>& documents,
                          int64_t offset,
                          int64_t count) {
           TRI_document_collection_t* document = primaryCollection(trxCollection);
@@ -582,7 +582,7 @@ namespace triagens {
             return res;
           }
 
-          TRI_doc_mptr_t const* doc;
+          TRI_doc_mptr_t* doc;
 
           if (offset >= 0) {
             // read from front
@@ -596,7 +596,7 @@ namespace triagens {
 
             i = 0;
             while (doc != 0 && i < count) {
-              documents.push_back(doc);
+              documents.emplace_back(*doc);
               doc = doc->_next;
               ++i;
             }
@@ -613,7 +613,7 @@ namespace triagens {
 
             i = 0;
             while (doc != 0 && i < count) {
-              documents.push_back(doc);
+              documents.emplace_back(*doc);
               doc = doc->_prev;
               ++i;
             }
@@ -630,7 +630,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
-                       vector<TRI_doc_mptr_t>& docs,
+                       vector<TRI_doc_mptr_copy_t>& docs,
                        TRI_barrier_t** barrier,
                        TRI_voc_ssize_t skip,
                        TRI_voc_size_t limit,
@@ -705,7 +705,7 @@ namespace triagens {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
 
-              docs.push_back(*d);
+              docs.emplace_back(*d);
               ++count;
             }
           }
@@ -729,7 +729,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             vector<TRI_doc_mptr_t>& docs,
+                             vector<TRI_doc_mptr_copy_t>& docs,
                              TRI_barrier_t** barrier,
                              TRI_voc_size_t& internalSkip,
                              TRI_voc_size_t batchSize,
@@ -781,7 +781,7 @@ namespace triagens {
                 --skip;
               }
               else {
-                docs.push_back(*d);
+                docs.emplace_back(*d);
                 ++count;
               }
             }
@@ -805,7 +805,7 @@ namespace triagens {
 
         int create (TRI_transaction_collection_t* trxCollection,
                     const TRI_df_marker_type_e markerType,
-                    TRI_doc_mptr_t* mptr,
+                    TRI_doc_mptr_copy_t* mptr,
                     TRI_json_t const* json,
                     void const* data,
                     const bool forceSync) {
@@ -847,7 +847,7 @@ namespace triagens {
                            const TRI_voc_key_t key,
                            TRI_voc_rid_t rid,
                            const TRI_df_marker_type_e markerType,
-                           TRI_doc_mptr_t* mptr,
+                           TRI_doc_mptr_copy_t* mptr,
                            TRI_shaped_json_t const* shaped,
                            void const* data,
                            const bool forceSync) {
@@ -876,7 +876,7 @@ namespace triagens {
         int update (TRI_transaction_collection_t* trxCollection,
                     const string& key,
                     TRI_voc_rid_t rid,
-                    TRI_doc_mptr_t* mptr,
+                    TRI_doc_mptr_copy_t* mptr,
                     TRI_json_t* const json,
                     const TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
@@ -913,7 +913,7 @@ namespace triagens {
         inline int update (TRI_transaction_collection_t* const trxCollection,
                            const string& key,
                            TRI_voc_rid_t rid,
-                           TRI_doc_mptr_t* mptr,
+                           TRI_doc_mptr_copy_t* mptr,
                            TRI_shaped_json_t* const shaped,
                            const TRI_doc_update_policy_e policy,
                            const TRI_voc_rid_t expectedRevision,

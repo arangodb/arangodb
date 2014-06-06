@@ -120,7 +120,7 @@ namespace triagens {
 struct TRI_doc_mptr_t {
     TRI_voc_rid_t          _rid;     // this is the revision identifier
     TRI_voc_fid_t          _fid;     // this is the datafile identifier
-  private:
+  protected:
     void const*            _dataptr; // this is the pointer to the beginning of the raw marker
   public:
     uint64_t               _hash;    // the pre-calculated hash value of the key
@@ -140,12 +140,51 @@ struct TRI_doc_mptr_t {
       _next = nullptr;
     }
 
+    void copy (TRI_doc_mptr_t const& that) {
+      // This is for cases where we explicitly have to copy originals!
+      _rid = that._rid;
+      _fid = that._fid;
+      _dataptr = that._dataptr;
+      _hash = that._hash;
+      _prev = that._prev;
+      _next = that._next;
+    }
+
     void const* getDataPtr () const {
       return _dataptr;
     }
 
     void setDataPtr (void const* d) {
       _dataptr = d;
+    }
+    
+    TRI_doc_mptr_t& operator= (TRI_doc_mptr_t const&) = delete;
+    TRI_doc_mptr_t(TRI_doc_mptr_t const&) = delete;
+    
+};
+
+struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
+    TRI_doc_mptr_copy_t () : TRI_doc_mptr_t() {
+    }
+
+    TRI_doc_mptr_copy_t (TRI_doc_mptr_copy_t const& that) 
+      : TRI_doc_mptr_t() {
+      copy(that);
+    }
+
+    TRI_doc_mptr_copy_t (TRI_doc_mptr_t const& that) 
+      : TRI_doc_mptr_t() {
+      copy(that);
+    }
+
+    TRI_doc_mptr_copy_t& operator= (TRI_doc_mptr_copy_t const& that) {
+      copy(that);
+      return *this;
+    }
+
+    TRI_doc_mptr_copy_t const& operator= (TRI_doc_mptr_t const& that) {
+      copy(that);
+      return *this;
     }
 };
 
@@ -375,10 +414,10 @@ typedef struct TRI_document_collection_s {
 
   
   // WAL-based CRUD methods
-  int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, bool, bool);
+  int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, bool, bool);
   int (*removeDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, struct TRI_doc_update_policy_s const*, bool, bool);
-  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, struct TRI_document_edge_s const*, bool, bool, bool);
-  int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_t*, bool);
+  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, struct TRI_document_edge_s const*, bool, bool, bool);
+  int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_copy_t*, bool);
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_s*);
@@ -611,7 +650,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
                                              TRI_voc_document_operation_e,
                                              TRI_doc_mptr_t*,
-                                             TRI_doc_mptr_t*);
+                                             TRI_doc_mptr_copy_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a marker into the datafile
