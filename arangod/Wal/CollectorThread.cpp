@@ -30,7 +30,9 @@
 #include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
@@ -322,17 +324,26 @@ void CollectorThread::run () {
     int stop = (int) _stop;
     bool worked = false;
 
-    // step 1: collect a logfile if any qualifies
-    if (stop == 0) {
-      // don't collect additional logfiles in case we want to shut down
-      worked |= this->collectLogfiles();
+    try {
+      // step 1: collect a logfile if any qualifies
+      if (stop == 0) {
+        // don't collect additional logfiles in case we want to shut down
+        worked |= this->collectLogfiles();
+      }
+
+      // step 2: update master pointers
+      worked |= this->processQueuedOperations();
+
+      // step 3: delete a logfile if any qualifies
+      worked |= this->removeLogfiles();
     }
-
-    // step 2: update master pointers
-    worked |= this->processQueuedOperations();
-
-    // step 3: delete a logfile if any qualifies
-    worked |= this->removeLogfiles();
+    catch (triagens::arango::Exception const& ex) {
+      int res = ex.code();
+      LOG_ERROR("got unexpected error in collectorThread: %s", TRI_errno_string(res));
+    }
+    catch (...) {
+      LOG_ERROR("got unspecific error in collectorThread");
+    }
 
     if (stop == 0 && ! worked) {
       // sleep only if there was nothing to do
@@ -368,17 +379,11 @@ bool CollectorThread::collectLogfiles () {
 
   _logfileManager->setCollectionRequested(logfile);
 
-  try {
-    int res = collect(logfile);
+  int res = collect(logfile);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      _logfileManager->setCollectionDone(logfile);
-      return true;
-    }
-  }
-  catch (...) {
-    // collection failed
-    LOG_ERROR("logfile collection failed");
+  if (res == TRI_ERROR_NO_ERROR) {
+    _logfileManager->setCollectionDone(logfile);
+    return true;
   }
 
   return false;
@@ -404,14 +409,41 @@ bool CollectorThread::processQueuedOperations () {
     for (auto it2 = operations.begin(); it2 != operations.end(); /* no hoisting */ ) {
       Logfile* logfile = (*it2)->logfile;
 
-      if (processCollectionOperations((*it2)) != TRI_ERROR_NO_ERROR) {
-        break;
+      int res = TRI_ERROR_INTERNAL;
+
+      try {
+        res = processCollectionOperations((*it2));
       }
+      catch (triagens::arango::Exception const& ex) {
+        res = ex.code();
+      }
+
+      if (res == TRI_ERROR_LOCK_TIMEOUT) {
+        // could not acquire write-lock for collection in time
+        // do not delete the operations
+        continue;
+      }
+
+      // delete the object
+      delete (*it2);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        LOG_TRACE("queued operations applied successfully");
+      }
+      else if (res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
+               res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        LOG_TRACE("removing queued operations for already deleted collection");
+      }
+      else {
+        LOG_WARNING("got unexpected error code while applying queued operations: %s", TRI_errno_string(res));
+      }
+
       // delete the element from the vector while iterating over the vector
       it2 = operations.erase(it2);
 
       _logfileManager->decreaseCollectQueueSize(logfile);
     }
+
     // next collection
   }
 
@@ -425,7 +457,6 @@ bool CollectorThread::processQueuedOperations () {
     }
   }
 
-  // TODO: report an error?
   return true;
 }
 
@@ -444,26 +475,19 @@ bool CollectorThread::hasQueuedOperations () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::processCollectionOperations (CollectorCache* cache) {
-  triagens::arango::DatabaseGuard guard(_server, cache->databaseId);
-    
-  TRI_vocbase_t* vocbase = guard.database();
-
-  if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
+  triagens::arango::DatabaseGuard dbGuard(_server, cache->databaseId);
+  TRI_vocbase_t* vocbase = dbGuard.database();
+  TRI_ASSERT(vocbase != nullptr);
   
-  TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, cache->collectionId);
+  triagens::arango::CollectionGuard collectionGuard(vocbase, cache->collectionId);
+  TRI_vocbase_col_t* collection = collectionGuard.collection();
+  TRI_ASSERT(collection != nullptr);
 
-  if (collection == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
 
   TRI_document_collection_t* document = collection->_collection;
 
   // try to acquire the write lock on the collection
   if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
-    TRI_ReleaseCollectionVocBase(vocbase, collection);
-
     LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->base._info._cid);
 
     return TRI_ERROR_LOCK_TIMEOUT;
@@ -548,13 +572,9 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   
   LOG_TRACE("wal collector successfully processed operations for collection '%s'", document->base._info._name);
-  TRI_ReleaseCollectionVocBase(vocbase, collection);
-
-  delete cache;
-
+  
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief step 3: perform removal of a logfile (if any)
@@ -640,8 +660,20 @@ int CollectorThread::collect (Logfile* logfile) {
     }
 
     if (! sortedOperations.empty()) {
-      // TODO: handle errors indicated by transferMarkers!
-      transferMarkers(logfile, cid, state.collections[cid], state.operationsCount[cid], sortedOperations);
+      int res = TRI_ERROR_INTERNAL;
+
+      try {
+        res = transferMarkers(logfile, cid, state.collections[cid], state.operationsCount[cid], sortedOperations);
+      }
+      catch (triagens::arango::Exception const& ex) {
+        res = ex.code();
+      }
+
+      if (res != TRI_ERROR_NO_ERROR &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        LOG_WARNING("got unexpected error in collect: %s", TRI_errno_string(res));
+      }
     }
   }
 
@@ -665,23 +697,18 @@ int CollectorThread::transferMarkers (Logfile* logfile,
                                       int64_t totalOperationsCount,
                                       OperationsType const& operations) {
 
-  // GENERAL TODO: remove TRI_SetLastCollectedDocumentOperation or remove the lock for the collection
   TRI_ASSERT(! operations.empty());
 
-  triagens::arango::DatabaseGuard guard(_server, databaseId);
+  // prepare database and collection
+  triagens::arango::DatabaseGuard dbGuard(_server, databaseId);
+  TRI_vocbase_t* vocbase = dbGuard.database();
+  TRI_ASSERT(vocbase != nullptr);
 
-  TRI_vocbase_t* vocbase = guard.database();
-
-  if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-
-  TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(vocbase, collectionId);
-
-  if (collection == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-  
+  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId);
+  TRI_vocbase_col_t* collection =collectionGuard.collection();
+  TRI_ASSERT(collection != nullptr);
+ 
+ 
   CollectorCache* cache = new CollectorCache(collectionId, 
                                              databaseId, 
                                              logfile,
@@ -692,7 +719,42 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_document_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
-  TRI_voc_tick_t minTransferTick = document->base._tickMax; 
+  int res = TRI_ERROR_INTERNAL;
+
+  try {
+    res = executeTransferMarkers(document, cache, operations);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      // now sync the datafile
+      res = syncDatafileCollection(document);
+
+      // note: cache is passed by reference and can be modified by queueOperations
+      queueOperations(logfile, cache);
+    }
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  
+  if (cache != nullptr) {
+    // prevent memleak
+    delete cache;
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transfer markers into a collection, actual work
+/// the collection must have been prepared to call this function
+////////////////////////////////////////////////////////////////////////////////
+
+int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document,
+                                             CollectorCache* cache,
+                                             OperationsType const& operations) {
+
+  TRI_voc_tick_t const minTransferTick = document->base._tickMax;
+ 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
     TRI_df_marker_t const* source = (*it2);
 
@@ -876,14 +938,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
     }
   }
 
-  // now sync the datafile
-  int res = syncDatafileCollection(document);
-
-  queueOperations(logfile, cache);
-
-  TRI_ReleaseCollectionVocBase(vocbase, collection);
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -891,7 +946,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::queueOperations (triagens::wal::Logfile* logfile, 
-                                      CollectorCache* cache) {
+                                      CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
 
   MUTEX_LOCKER(_operationsQueueLock);
@@ -901,14 +956,16 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
     std::vector<CollectorCache*> ops;
     ops.push_back(cache);
     _operationsQueue.insert(it, std::make_pair(cid, ops));
-    
     _logfileManager->increaseCollectQueueSize(logfile);
   }
   else {
     (*it).second.push_back(cache);
-    
     _logfileManager->increaseCollectQueueSize(logfile);
   }
+
+  // we have put the object into the queue successfully
+  // now set the original pointer to null so it isn't double-freed
+  cache = nullptr;
 
   return TRI_ERROR_NO_ERROR;
 }
