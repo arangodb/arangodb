@@ -1473,7 +1473,50 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result.length, 4);
       findFriends(result, [ud3, ud4]);
       findBoughts(result, [d2, d3]);
+    },
+
+    test_path: function() {
+      var result = g._vertices({name: uaName})
+        .edges()
+        .toVertices()
+        .path()
+        .toArray();
+      assertEqual(uaName, result[0][0].name);
+      assertEqual(ud1, result[0][1].since);
+      assertEqual(ubName, result[0][2].name);
+      assertEqual(uaName, result[1][0].name);
+      assertEqual(ud2, result[1][1].since);
+      assertEqual(ucName, result[1][2].name);
+      assertEqual(uaName, result[2][0].name);
+      assertEqual(d1, result[2][1].date);
+      assertEqual(p1Name, result[2][2].name);
+    },
+
+    test_pathVertices: function() {
+      var result = g._vertices({name: uaName})
+        .edges()
+        .toVertices()
+        .pathVertices()
+        .toArray();
+      assertEqual(uaName, result[0][0].name);
+      assertEqual(ubName, result[0][1].name);
+      assertEqual(uaName, result[1][0].name);
+      assertEqual(ucName, result[1][1].name);
+      assertEqual(uaName, result[2][0].name);
+      assertEqual(p1Name, result[2][1].name);
+    },
+
+    test_pathEdges: function() {
+      var result = g._vertices({name: uaName})
+        .edges()
+        .toVertices()
+        .pathEdges()
+        .toArray();
+      assertEqual(ud1, result[0][0].since);
+      assertEqual(ud2, result[1][0].since);
+      assertEqual(d1, result[2][0].date);
     }
+
 
   };
 }
@@ -1922,22 +1965,20 @@ function EdgesAndVerticesSuite() {
 
     test_getInVertex : function() {
       var ids = fillCollections();
-      var result = g._getInVertex(ids.eId11);
+      var result = g._getFromVertex(ids.eId11);
       assertEqual(result._id, ids.vId11);
     },
 
     test_getOutVertex : function() {
       var ids = fillCollections();
-      var result = g._getOutVertex(ids.eId11);
+      var result = g._getToVertex(ids.eId11);
       assertEqual(result._id, ids.vId12);
-      result = g._getOutVertex(ids.eId25);
+      result = g._getToVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
     }
 
   };
 }
-
-
 
 function GeneralGraphCommonNeighborsSuite() {
   var vertex = null;

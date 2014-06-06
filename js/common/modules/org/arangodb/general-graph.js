@@ -225,6 +225,14 @@ AQLStatement.prototype.isPathQuery = function() {
   return this.type === "path";
 };
 
+AQLStatement.prototype.isPathVerticesQuery = function() {
+  return this.type === "pathVertices";
+};
+
+AQLStatement.prototype.isPathEdgesQuery = function() {
+  return this.type === "pathEdges";
+};
+
 AQLStatement.prototype.isEdgeQuery = function() {
   return this.type === "edge";
 };
@@ -263,6 +271,8 @@ var AQLGenerator = function(graph) {
   this.cursor = null;
   this.lastVar = "";
   this._path = [];
+  this._pathVertices = [];
+  this._pathEdges = [];
   this._getPath = false;
 };
 
@@ -363,6 +373,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
   this.stack.push(stmt);
   this.lastVar = edgeName;
   this._path.push(edgeName);
+  this._pathEdges.push(edgeName);
   return this;
 };
 
@@ -558,6 +569,7 @@ AQLGenerator.prototype._vertices = function(example, options) {
   this.stack.push(stmt);
   this.lastVar = vertexName;
   this._path.push(vertexName);
+  this._pathVertices.push(vertexName);
   return this;
 
 };
@@ -824,6 +836,20 @@ AQLGenerator.prototype.path = function() {
   return this;
 };
 
+AQLGenerator.prototype.pathVertices = function() {
+  this._clearCursor();
+  var statement = new AQLStatement("", "pathVertices");
+  this.stack.push(statement);
+  return this;
+};
+
+AQLGenerator.prototype.pathEdges = function() {
+  this._clearCursor();
+  var statement = new AQLStatement("", "pathEdges");
+  this.stack.push(statement);
+  return this;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
 /// Select all neighbors of the vertices selected in the step before.
@@ -896,6 +922,8 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
   this.stack.push(stmt);
   this.lastVar = resultName + ".vertex";
   this._path.push(resultName + ".path");
+  this._pathVertices.push("SLICE(" + resultName + ".path.vertices, 1)");
+  this._pathEdges.push(resultName + ".path.edges");
   return this;
 };
 
@@ -1084,6 +1112,11 @@ AQLGenerator.prototype.execute = function() {
   var bindVars = this.bindVars;
   if (this.stack[this.stack.length-1].isPathQuery()) {
     query += " RETURN [" + this._path + "]";
+  } else if (this.stack[this.stack.length-1].isPathVerticesQuery()) {
+    query += " RETURN FLATTEN([" + this._pathVertices + "])";
+    require("internal").print(query);
+  } else if (this.stack[this.stack.length-1].isPathEdgesQuery()) {
+    query += " RETURN FLATTEN([" + this._pathEdges + "])";
   } else {
     query += " RETURN " + this.getLastVar();
   }
@@ -1449,7 +1482,189 @@ var createHiddenProperty = function(obj, name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor.
 ////////////////////////////////////////////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_save
+/// Creates and saves a new vertex in collection *vertexCollectionName*
+///
+/// `general-graph.vertexCollectionName.save(data)`
+///
+/// *data*: json - data of vertex
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.male.save({name: "Floyd", _key: "floyd"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_replace
+/// Replaces the data of a vertex in collection *vertexCollectionName*
+///
+/// `general-graph.vertexCollectionName.replace(vertexId, data, options)`
+///
+/// *vertexId*: string - id of the vertex
+/// *data*: json - data of vertex
+/// *options*: json - (optional) - see collection documentation
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.male.save({neym: "Jon", _key: "john"});
+///   g.male.replace("male/john", {name: "John"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_update
+/// Updates the data of a vertex in collection *vertexCollectionName*
+///
+/// `general-graph.vertexCollectionName.update(vertexId, data, options)`
+///
+/// *vertexId*: string - id of the vertex
+/// *data*: json - data of vertex
+/// *options*: json - (optional) - see collection documentation
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.female.save({name: "Lynda", _key: "linda"});
+///   g.female.update({name: "Linda", _key: "linda"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_remove
+/// Removes a vertex in collection *vertexCollectionName*
+///
+/// `general-graph.vertexCollectionName.remove(vertexId, options)`
+///
+/// Additionally removes all ingoing and outgoing edges of the vertex recursively
+/// (see [edge remove](#edge.remove)).
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.male.save({name: "Kermit", _key: "kermit"});
+///   db._exists("male/kermit")
+///   g.male.remove("male/kermit")
+///   db._exists("male/kermit")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_collection_save
+/// Creates and saves a new edge from vertex *from* to vertex *to* in
+/// collection *edgeCollectionName*
+///
+/// `general-graph.edgeCollectionName.save(from, to, data)`
+///
+/// *from*: string - id of outgoing vertex
+/// *to*: string -  of ingoing vertex
+/// *data*: json - data of edge
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// the edge will not be stored.
+///
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave2}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.relation.save("relation/aliceAndBob", "female/alice", {type: "married", _key: "bobAndAlice"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_collection_replace
+/// Replaces the data of an edge in collection *edgeCollectionName*
+///
+/// `general-graph.edgeCollectionName.replace(edgeId, data, options)`
+///
+/// *edgeId*: string - id of the edge
+/// *data*: json - data of edge
+/// *options*: json - (optional) - see collection documentation
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
+///   g.relation.replace("relation/aliceAndDiana", {type: "knows"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_collection_update
+/// Updates the data of an edge in collection *edgeCollectionName*
+///
+/// `general-graph.edgeCollectionName.update(edgeId, data, options)`
+///
+/// *edgeId*: string - id of the edge
+/// *data*: json - data of edge
+/// *options*: json - (optional) - see collection documentation
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
+///   g.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_collection_remove
+/// Removes an edge in collection *edgeCollectionName*
+///
+/// `general-graph.edgeCollectionName.remove(edgeId, options)`
+///
+/// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
+///   db._exists("relation/aliceAndDiana")
+///   g.relation.remove("relation/aliceAndDiana")
+///   db._exists("relation/aliceAndDiana")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
   var self = this;
   // Create Hidden Properties
@@ -1945,10 +2160,26 @@ Graph.prototype._vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get ingoing vertex of an edge.
+/// @startDocuBlock JSF_general_graph_getFromVertex
+/// Get the vertex of an edge defined as *_from*
+///
+/// `general-graph._getFromVertex(edgeId)`
+///
+/// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g._getFromVertex("relation/aliceAndBob")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getInVertex = function(edgeId) {
+Graph.prototype._getFromVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -1959,10 +2190,26 @@ Graph.prototype._getInVertex = function(edgeId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get outgoing vertex of an edge .
+/// @startDocuBlock JSF_general_graph_getToVertex
+/// Get the vertex of an edge defined as *_to*
+///
+/// `general-graph._getToVertex(edgeId)`
+///
+/// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g._getToVertex("relation/aliceAndBob")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getOutVertex = function(edgeId) {
+Graph.prototype._getToVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
