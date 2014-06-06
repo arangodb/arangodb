@@ -5,35 +5,172 @@ set will be returned back to the client.
 
 There are two ways the client can get the result set from the server:
 
-- In a single roundtrip
-- Using a cursor
+* In a single roundtrip
+* Using a cursor
 
 !SUBSECTION Single roundtrip
 
 The server will only transfer a certain number of result documents back to the
 client in one roundtrip. This number is controllable by the client by setting
-the `batchSize` attribute when issuing the query.
+the *batchSize* attribute when issuing the query.
 
 If the complete result can be transferred to the client in one go, the client
 does not need to issue any further request. The client can check whether it has
-retrieved the complete result set by checking the `hasMore` attribute of the
-result set. If it is set to `false`, then the client has fetched the complete
+retrieved the complete result set by checking the *hasMore* attribute of the
+result set. If it is set to *false*, then the client has fetched the complete
 result set from the server. In this case no server side cursor will be created.
 
+```
+> curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
+{ "query" : "FOR u IN users LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "hasMore" : false,
+  "error" : false,
+  "result" : [
+    {
+      "name" : "user1",
+      "_rev" : "210304551",
+      "_key" : "210304551",
+      "_id" : "users/210304551"
+    },
+    {
+      "name" : "user2",
+      "_rev" : "210304552",
+      "_key" : "210304552",
+      "_id" : "users/210304552"
+    }
+  ],
+  "code" : 201,
+  "count" : 2
+}
+```
+
+<!--
 @EXAMPLES
 
 @verbinclude api-cursor-create-for-limit-return-single
+-->
 
 !SUBSECTION Using a Cursor
 
 If the result set contains more documents than should be transferred in a single
-roundtrip (i.e. as set via the `batchSize` attribute), the server will return
+roundtrip (i.e. as set via the *batchSize* attribute), the server will return
 the first few documents and create a temporary cursor. The cursor identifier
 will also be returned to the client. The server will put the cursor identifier
-in the `id` attribute of the response object. Furthermore, the `hasMore`
-attribute of the response object will be set to `true`. This is an indication
+in the *id* attribute of the response object. Furthermore, the *hasMore*
+attribute of the response object will be set to *true*. This is an indication
 for the client that there are additional results to fetch from the server.
 
+*Examples*
+
+Create and extract first batch:
+
+```
+> curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
+{ "query" : "FOR u IN users LIMIT 5 RETURN u", "count" : true, "batchSize" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json
+
+{
+  "hasMore" : true,
+  "error" : false,
+  "id" : "26011191",
+  "result" : [
+    {
+      "name" : "user1",
+      "_rev" : "258801191",
+      "_key" : "258801191",
+      "_id" : "users/258801191"
+    },
+    {
+      "name" : "user2",
+      "_rev" : "258801192",
+      "_key" : "258801192",
+      "_id" : "users/258801192"
+    }
+  ],
+  "code" : 201,
+  "count" : 5
+}
+```
+
+Extract next batch, still have more:
+
+```
+> curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "hasMore" : true,
+  "error" : false,
+  "id" : "26011191",
+  "result": [
+    {
+      "name" : "user3",
+      "_rev" : "258801193",
+      "_key" : "258801193",
+      "_id" : "users/258801193"
+    },
+    {
+      "name" : "user4",
+      "_rev" : "258801194",
+      "_key" : "258801194",
+      "_id" : "users/258801194"
+    }
+  ],
+  "code" : 200,
+  "count" : 5
+}
+```
+
+Extract next batch, done:
+
+```
+> curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "hasMore" : false,
+  "error" : false,
+  "result" : [
+    {
+      "name" : "user5",
+      "_rev" : "258801195",
+      "_key" : "258801195",
+      "_id" : "users/258801195"
+    }
+  ],
+  "code" : 200,
+  "count" : 5
+}
+```
+
+Do not do this:
+
+```
+> curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
+
+HTTP/1.1 404 Not Found
+content-type: application/json
+
+{
+  "errorNum": 1600,
+  "errorMessage": "cursor not found: disposed or unknown cursor",
+  "error": true,
+  "code": 404
+}
+```
+
+<!--
 @EXAMPLES
 
 Create and extract first batch:
@@ -51,3 +188,4 @@ Extract next batch, done:
 Do not do this:
 
 @verbinclude api-cursor-create-for-limit-return-cont3
+-->

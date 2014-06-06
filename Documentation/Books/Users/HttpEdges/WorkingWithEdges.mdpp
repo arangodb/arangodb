@@ -1,5 +1,253 @@
 !CHAPTER Working with Edges using REST 
 
+`GET /_api/edge`*(reads an edge)*
+
+*GET /_api/edge/document-handle*
+
+See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+
+`POST /_api/edge`*(creates an edge)*
+
+!SUBSECTION Body parameters
+
+`edge-document (json,required)`
+
+A JSON representation of the edge document must be passed as the body of the POST request. This JSON object may contain the edge's document key in the _key attribute if needed.
+Query parameters
+
+`collection (string,required)`
+
+Creates a new edge in the collection identified by collection name.
+
+`createCollection (boolean,optional)`
+
+If this parameter has a value of true or yes, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed.
+*Note*: this flag is not supported in a cluster. Using it will result in an error.
+
+`waitForSync (boolean,optional)`
+
+Wait until the edge document has been synced to disk.
+
+`from (string,required)`
+
+The document handle of the start point must be passed in from handle.
+
+`to (string,required)`
+
+The document handle of the end point must be passed in to handle.
+
+!SUBSECTION Description
+
+Creates a new edge document in the collection named collection. A JSON representation of the document must be passed as the body of the POST request.
+The from and to handles are immutable once the edge has been created.
+
+In all other respects the method works like POST /document, see HTTP Interface for Documents for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the edge was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the edge was created successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of an edge, or if the collection specified is not an edge collection. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Create an edge and read it back:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2
+{"name":"Emil"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "287040481"
+location: /_db/_system/_api/document/edges/287040481
+
+{ 
+  "error" : false, 
+  "_id" : "edges/287040481", 
+  "_rev" : "287040481", 
+  "_key" : "287040481" 
+}
+
+unix> curl --dump - http://localhost:8529/_api/edge/edges/287040481
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "287040481"
+
+{ 
+  "name" : "Emil", 
+  "_id" : "edges/287040481", 
+  "_rev" : "287040481", 
+  "_key" : "287040481", 
+  "_from" : "vertices/1", 
+  "_to" : "vertices/2" 
+}
+```
+
+`PUT /_api/edge`*(updates an edge)*
+
+`PUT /_api/edge/document-handle`
+
+See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+
+
+`PATCH /_api/edge`*(partially updates an edge)*
+
+*PATCH /_api/edge/document-handle*
+
+See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+
+
+`DELETE /_api/edge`*(deletes an edge)*
+
+`DELETE /_api/edge/document-handle`
+
+See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+
+
+`HEAD /_api/edge`*(reads an edge header)*
+
+`HEAD /_api/edge/document-handle`
+
+See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+
+
+`GET /_api/edges/{collection-id}`*(reads in- or outbound edges)*
+
+!SUBSECTION URL parameters
+
+`collection-id (string,required)`
+
+The id of the collection.
+
+!SUBSECTION Query parameters
+
+`vertex (string,required)`
+
+The id of the start vertex.
+
+`direction (string,optional)`
+
+Selects in or out direction for edges. If not set, any edges are returned.
+
+!SUBSECTION Description
+
+Returns the list of edges starting or ending in the vertex identified by vertex-handle.
+
+*Examples*
+
+Any direction
+
+```
+unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "edges" : [ 
+    { 
+      "_id" : "edges/6", 
+      "_rev" : "92660705", 
+      "_key" : "6", 
+      "_from" : "vertices/2", 
+      "_to" : "vertices/1", 
+      "$label" : "v2 -> v1" 
+    }, 
+    { 
+      "_id" : "edges/7", 
+      "_rev" : "93119457", 
+      "_key" : "7", 
+      "_from" : "vertices/4", 
+      "_to" : "vertices/1", 
+      "$label" : "v4 -> v1" 
+    }, 
+    { 
+      "_id" : "edges/5", 
+      "_rev" : "92201953", 
+      "_key" : "5", 
+      "_from" : "vertices/1", 
+      "_to" : "vertices/3", 
+      "$label" : "v1 -> v3" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+In edges
+
+```
+unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=in
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "edges" : [ 
+    { 
+      "_id" : "edges/6", 
+      "_rev" : "97182689", 
+      "_key" : "6", 
+      "_from" : "vertices/2", 
+      "_to" : "vertices/1", 
+      "$label" : "v2 -> v1" 
+    }, 
+    { 
+      "_id" : "edges/7", 
+      "_rev" : "97641441", 
+      "_key" : "7", 
+      "_from" : "vertices/4", 
+      "_to" : "vertices/1", 
+      "$label" : "v4 -> v1" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Out edges
+
+```
+unix> curl --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=out
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "edges" : [ 
+    { 
+      "_id" : "edges/5", 
+      "_rev" : "101245921", 
+      "_key" : "5", 
+      "_from" : "vertices/1", 
+      "_to" : "vertices/3", 
+      "$label" : "v1 -> v3" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+
+
+<!--
 @anchor RestEdgeRead
 @RESTHEADER{GET /_api/edge,reads an edge}
 
@@ -40,4 +288,4 @@ See @ref RestDocument for details.
 
 @anchor RestEdgeEdges
 @copydetails JSF_get_edges
-
+-->

@@ -7,9 +7,208 @@ valid AQL query.
 Both functionalities do not actually execute the supplied AQL query, but only
 inspect it and return meta information about it.
 
+`POST /_api/explain`*(explains a query)*
+
+!SUBSECTION Body parameters
+
+`body (json,required)`
+
+The query string needs to be passed in the attribute query of a JSON object as the body of the POST request. If the query references any bind variables, these must also be passed in the attribute bindVars.
+Description
+
+To explain how an AQL query would be executed on the server, the query string can be sent to the server via an HTTP POST request. The server will then validate the query and create an execution plan for it, but will not execute it.
+
+The execution plan that is returned by the server can be used to estimate the probable performance of an AQL query. Though the actual performance will depend on many different factors, the execution plan normally can give some good hint on the amount of work the server needs to do in order to actually run the query.
+
+The top-level statements will appear in the result in the same order in which they have been used in the original query. Each result element has at most the following attributes:
+
+* id: the row number of the top-level statement, starting at 1
+* type: the type of the top-level statement (e.g. for, return ...)
+* loopLevel: the nesting level of the top-level statement, starting at 1 Depending on the type of top-level statement, there might be other attributes providing additional information, for example, if and which indexed will be used. Many top-level statements will provide an expression attribute that contains data about the expression they operate on. This is true for FOR, FILTER, SORT, COLLECT, and RETURN statements. The expression attribute has the following sub-attributes:
+* type: the type of the expression. Some possible values are:
+* collection: an iteration over documents from a collection. The value attribute will then contain the collection name. The extra attribute will contain information about if and which index is used when accessing the documents from the collection. If no index is used, the accessType sub-attribute of the extra attribute will have the value all, otherwise it will be index.
+* list: a list of dynamic values. The value attribute will contain the list elements.
+* const list: a list of constant values. The value attribute will contain the list elements.
+* reference: a reference to another variable. The value attribute will contain the name of the variable that is referenced.
+
+Please note that the structure of the explain result data might change in future versions of ArangoDB without further notice and without maintaining backwards compatibility.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the query is valid, the server will respond with HTTP 200 and return a list of the individual query execution steps in the "plan" attribute of the response.
+
+`HTTP 400`
+
+The server will respond with HTTP 400 in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object. Omitting bind variables if the query references any will result also result in an HTTP 400 error.
+
+`HTTP 404`
+
+The server will respond with HTTP 404 in case a non-existing collection is accessed in the query.
+
+*Examples*
+
+Valid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{ "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name", "bindVars": { "id" : 3 } }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plan" : [ 
+    { 
+      "id" : 1, 
+      "loopLevel" : 1, 
+      "type" : "for", 
+      "resultVariable" : "p", 
+      "limit" : true, 
+      "expression" : { 
+        "type" : "collection", 
+        "value" : "products", 
+        "extra" : { 
+          "accessType" : "all" 
+        } 
+      } 
+    }, 
+    { 
+      "id" : 2, 
+      "loopLevel" : 1, 
+      "type" : "filter", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "p.id == 3" 
+      } 
+    }, 
+    { 
+      "id" : 3, 
+      "loopLevel" : 1, 
+      "type" : "return", 
+      "expression" : { 
+        "type" : "expression", 
+        "value" : "p.name" 
+      } 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Invalid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{ "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1551, 
+  "errorMessage" : "no value specified for declared bind parameter 'id'" 
+}
+```
+
+The data returned in the plan attribute of the result contains one element per AQL top-level statement (i.e. FOR, RETURN, FILTER etc.). If the query optimizer removed some unnecessary statements, the result might also contain less elements than there were top-level statements in the AQL query. The following example shows a query with a non-sensible filter condition that the optimizer has removed so that there are less top-level statements:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{ "query" : "FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plan" : [ 
+    { 
+      "id" : 1, 
+      "loopLevel" : 0, 
+      "type" : "return (empty)", 
+      "expression" : { 
+        "type" : "const list", 
+        "value" : "[  ]" 
+      } 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`POST /_api/query`*(parses a query)*
+
+!SUBSECTION Body parameters
+
+`query (json,required)`
+
+!SUBSECTION Description
+
+To validate a query string without executing it, the query string can be passed to the server via an HTTP POST request.
+
+These query string needs to be passed in the attribute query of a JSON object as the body of the POST request.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the query is valid, the server will respond with HTTP 200 and return the names of the bind parameters it found in the query (if any) in the "bindVars" attribute of the response.
+
+`HTTP 400`
+
+The server will respond with HTTP 400 in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object.
+
+*Examples*
+
+Valid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "bindVars" : [ 
+    "name" 
+  ], 
+  "collections" : [ 
+    "products" 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Invalid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1501, 
+  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at positio..." 
+}
+```
+
+
+<!--
 @anchor HttpExplainPost
 @copydetails JSF_post_api_explain
 
 @CLEARPAGE
 @anchor HttpQueryPost
 @copydetails JSF_post_api_query
+-->

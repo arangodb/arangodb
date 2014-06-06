@@ -1,5 +1,426 @@
 !CHAPTER Accessing Cursors via HTTP 
 
+`POST /_api/cursor`*(creates a cursor)*
+
+!SUBSECTION Body parameters
+
+`query (json,required)`
+
+A JSON object describing the query and query parameters.
+!SUBSECTION Description
+
+The query details include the query string plus optional query options and bind parameters. These values need to be passed in a JSON representation in the body of the POST request.
+The following attributes can be used inside the JSON object:
+
+* query: contains the query string to be executed (mandatory)
+* count: boolean flag that indicates whether the number of documents in the result set should be returned in the "count" attribute of the result (optional). Calculating the "count" attribute might in the future have a performance impact for some queries so this option is turned off by default, and "count" is only returned when requested.
+* batchSize: maximum number of result documents to be transferred from the server to the client in one roundtrip (optional). If this attribute is not set, a server-controlled default value will be used.
+* bindVars: key/value list of bind parameters (optional).
+* options: key/value list of extra options for the query (optional).
+
+The following options are supported at the moment:
+
+* fullCount: if set to true and the query contains a LIMIT clause, then the result will contain an extra attribute extra with a sub-attribute fullCount. This sub-attribute will contain the number of documents in the result before the last LIMIT in the query was applied. It can be used to count the number of documents that match certain filter criteria, but only return a subset of them, in one go. It is thus similar to MySQL's SQL_CALC_FOUND_ROWS hint. Note that setting the option will disable a few LIMIT optimizations and may lead to more documents being processed, and thus make queries run longer. Note that the fullCount sub-attribute will only be present in the result if the query has a LIMIT clause and the LIMIT clause is actually used in the query.
+
+If the result set can be created by the server, the server will respond with HTTP 201. The body of the response will contain a JSON object with the result set.
+
+The returned JSON object has the following properties:
+
+* error: boolean flag to indicate that an error occurred (false in this case)
+* code: the HTTP status code
+* result: an array of result documents (might be empty if query has no results)
+* hasMore: a boolean indicator whether there are more results available for the cursor on the server
+* count: the total number of result documents available (only available if the query was executed with the count attribute set)
+* id: id of temporary cursor created on the server (optional, see above)
+* extra: an optional JSON object with extra information about the query result
+
+If the JSON representation is malformed or the query specification is missing from the request, the server will respond with HTTP 400.
+
+The body of the response will contain a JSON object with additional error details. The object has the following attributes:
+
+* error: boolean flag to indicate that an error occurred (true in this case)
+* code: the HTTP status code
+* errorNum: the server error number
+* errorMessage: a descriptive error message
+
+If the query specification is complete, the server will process the query. If an error occurs during query processing, the server will respond with HTTP 400. Again, the body of the response will contain details about the error.
+
+A list of query errors can be found Error codes and meanings here.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the result set can be created by the server.
+
+`HTTP 400`
+
+is returned if the JSON representation is malformed or the query specification is missing from the request.
+
+`HTTP 404`
+
+The server will respond with HTTP 404 in case a non-existing collection is accessed in the query.
+
+`HTTP 405`
+
+The server will respond with HTTP 405 if an unsupported HTTP method is used.
+
+*Examples*
+
+Executes a query and extract the result in a single go:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products LIMIT 2 RETURN p","count":true,"batchSize":2}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/44950497", 
+      "_rev" : "44950497", 
+      "_key" : "44950497", 
+      "hello1" : "world1" 
+    }, 
+    { 
+      "_id" : "products/45278177", 
+      "_rev" : "45278177", 
+      "_key" : "45278177", 
+      "hello2" : "world1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Executes a query and extracts part of the result:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/46130145", 
+      "_rev" : "46130145", 
+      "_key" : "46130145", 
+      "hello2" : "world1" 
+    }, 
+    { 
+      "_id" : "products/45802465", 
+      "_rev" : "45802465", 
+      "_key" : "45802465", 
+      "hello1" : "world1" 
+    } 
+  ], 
+  "hasMore" : true, 
+  "id" : "47309793", 
+  "count" : 5, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Using a query option:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i","count":true,"options":{"fullCount":true}}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    501, 
+    502, 
+    503, 
+    504, 
+    505, 
+    506, 
+    507, 
+    508, 
+    509, 
+    510 
+  ], 
+  "hasMore" : false, 
+  "count" : 10, 
+  "extra" : { 
+    "fullCount" : 500 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Bad queries:
+
+Missing body:
+
+```
+unix> curl -X POST --dump - http://localhost:8529/_api/cursor
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1502, 
+  "errorMessage" : "query is empty" 
+}
+```
+
+Unknown collection:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR u IN unknowncoll LIMIT 2 RETURN u","count":true,"batchSize":2}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1203, 
+  "errorMessage" : "cannot execute query: collection not found: 'unknowncoll'" 
+}
+```
+
+`POST /_api/query`*(parses a query)*
+
+!SUBSECTION Body parameters
+
+`query (json,required)`
+
+!SUBSECTION Description
+
+To validate a query string without executing it, the query string can be passed to the server via an HTTP POST request.
+
+These query string needs to be passed in the attribute query of a JSON object as the body of the POST request.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the query is valid, the server will respond with HTTP 200 and return the names of the bind parameters it found in the query (if any) in the "bindVars" attribute of the response.
+
+`HTTP 400`
+
+The server will respond with HTTP 400 in case of a malformed request, or if the query contains a parse error. The body of the response will contain the error details embedded in a JSON object.
+
+*Examples*
+
+Valid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "bindVars" : [ 
+    "name" 
+  ], 
+  "collections" : [ 
+    "products" 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Invalid query:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1501, 
+  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at positio..." 
+}
+```
+
+`PUT /_api/cursor/cursor-identifier`*(reads next batch from a cursor)*
+
+!SUBSECTION URL parameters
+
+`cursor-identifier (string,required)`
+
+The name of the cursor
+
+!SUBSECTION Description
+
+If the cursor is still alive, returns an object with the following attributes.
+
+* id: the cursor-identifier
+* result: a list of documents for the current batch
+* hasMore: false if this was the last batch
+* count: if present the total number of elements
+
+*Note*: Even if hasMore returns true, the next call might still return no documents. If, however, hasMore is false, then the cursor is exhausted. Once the hasMore attribute has a value of false, the client can stop.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+The server will respond with HTTP 200 in case of success.
+
+`HTTP 400`
+
+If the cursor identifier is ommitted, the server will respond with HTTP 404.
+
+`HTTP 404`
+
+If no cursor with the specified identifier can be found, the server will respond with HTTP 404.
+
+*Examples*
+
+Valid request for next batch:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
+
+unix> curl -X PUT --dump - http://localhost:8529/_api/cursor/49275873
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/48096225", 
+      "_rev" : "48096225", 
+      "_key" : "48096225", 
+      "hello2" : "world1" 
+    }, 
+    { 
+      "_id" : "products/47768545", 
+      "_rev" : "47768545", 
+      "_key" : "47768545", 
+      "hello1" : "world1" 
+    } 
+  ], 
+  "hasMore" : true, 
+  "id" : "49275873", 
+  "count" : 5, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Missing identifier
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/cursor
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 400, 
+  "errorMessage" : "bad parameter" 
+}
+```
+
+Unknown identifier
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/cursor/123123
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1600, 
+  "errorMessage" : "cursor not found" 
+}
+```
+
+`DELETE /_api/cursor/cursor-identifier`*(deletes a cursor)*
+
+!SUBSECTION URL parameters
+
+`cursor-identifier (string,required)`
+
+The name of the cursor
+
+!SUBSECTION Description
+
+Deletes the cursor and frees the resources associated with it.
+The cursor will automatically be destroyed on the server when the client has retrieved all documents from it. The client can also explicitly destroy the cursor at any earlier time using an HTTP DELETE request. The cursor id must be included as part of the URL.
+
+*Note*: The server will also destroy abandoned cursors automatically after a certain server-controlled timeout to avoid resource leakage.
+
+!SUBSECTION Return codes
+
+`HTTP 202`
+
+is returned if the server is aware of the cursor.
+
+`HTTP 404`
+
+is returned if the server is not aware of the cursor. It is also returned if a cursor is used after it has been destroyed.
+
+*Examples*
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/49996769", 
+      "_rev" : "49996769", 
+      "_key" : "49996769", 
+      "hello2" : "world1" 
+    }, 
+    { 
+      "_id" : "products/50652129", 
+      "_rev" : "50652129", 
+      "_key" : "50652129", 
+      "hello4" : "world1" 
+    } 
+  ], 
+  "hasMore" : true, 
+  "id" : "51176417", 
+  "count" : 5, 
+  "error" : false, 
+  "code" : 201 
+}
+
+unix> curl -X DELETE --dump - http://localhost:8529/_api/cursor/51176417
+```
+
+
+<!--
 @anchor HttpCursorPost
 @copydetails JSF_post_api_cursor
 
@@ -14,3 +435,4 @@
 @CLEARPAGE
 @anchor HttpCursorDelete
 @copydetails JSF_delete_api_cursor
+-->

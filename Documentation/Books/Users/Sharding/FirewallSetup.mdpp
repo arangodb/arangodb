@@ -20,7 +20,7 @@ to them are completely unauthorized. Leaving their ports exposed to
 the outside world, endangers all data in the cluster, because everybody
 on the internet could make the cluster believe that, for example, you wanted 
 your databases dropped! This weakness will be alleviated in future versions,
-because we will replace `etcd` by our own specialized agency
+because we will replace *etcd* by our own specialized agency
 implementation, which will allow for authentication.
 
 A further comment applies to the dispatchers. Usually you will open the
@@ -38,5 +38,5 @@ the dispatcher runs!
 
 Therefore we recommend to use SSL endpoints with user/password 
 authentication on the dispatchers *and* to block access to them in
-the firewall. You then have to launch the cluster using an `arangosh`
+the firewall. You then have to launch the cluster using an *arangosh*
 or browser running within the cluster.
