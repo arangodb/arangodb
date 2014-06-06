@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
 
 var console = require("console");
 var fs = require("fs");
@@ -1454,7 +1455,10 @@ exports.fetchFromGithub = function (url, name, version) {
 
   if (fs.exists(path)) {
     fs.remove(realFile);
-    throw "destination path '" + path + "' already exists";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_APP_ALREADY_EXISTS.code;
+    err.errorMessage = arangodb.errors.ERROR_APP_ALREADY_EXISTS.message;
+    throw err;
   }
 
   fs.makeDirectoryRecursive(path);
