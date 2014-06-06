@@ -267,11 +267,19 @@ namespace triagens {
                              OperationsType const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief transfer markers into a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int executeTransferMarkers (TRI_document_collection_t*, 
+                                    CollectorCache*,
+                                    OperationsType const&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the collect operations into a per-collection queue
 ////////////////////////////////////////////////////////////////////////////////
 
         int queueOperations (triagens::wal::Logfile*, 
-                             CollectorCache*);
+                             CollectorCache*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a collection's datafile information
