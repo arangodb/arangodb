@@ -9947,7 +9947,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
-  if (acc == 0 || acc->_resultSid == 0) {
+  if (acc == 0 || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
