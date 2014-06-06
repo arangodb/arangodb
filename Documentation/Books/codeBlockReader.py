@@ -1,4 +1,5 @@
 import os
+import re
 import inspect
 
 
@@ -23,6 +24,17 @@ def file_content(filepath):
 
     return comments
 
+def example_content(filepath, fh):
+  """ Fetches an example file and inserts it using code
+  """
+
+  fh.write("\n```\n")
+
+  filelines = tuple(open(filepath, 'r'))
+  for line in enumerate(filelines):
+    fh.write("%s" % line[1])
+
+  fh.write("```\n")
 
 def fetch_comments(dirpath):
     """ Fetches comments from files and writes to a file in required format.
@@ -30,6 +42,7 @@ def fetch_comments(dirpath):
 
     comments_filename = "allComments.txt"
     fh = open(comments_filename, "a")
+    shouldIgnoreLine = False;
 
     for root, directories, files in os.walk(dirpath):
         for filename in files:
@@ -43,11 +56,22 @@ def fetch_comments(dirpath):
                         _text = _text.replace("\n", "<br />")    
                     _text = _text.strip()
                     if _text:
+                      if not shouldIgnoreLine:
                         if ("@startDocuBlock" in _text) or \
                            ("@endDocuBlock" in _text):
-                            fh.write("<!-- %s -->\n" % _text)
+                            fh.write("<!-- %s -->\n\n" % _text)
+                        elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                          shouldIgnoreLine = True
+                          _filename = re.search("{(.*)}", _text).group(1)
+                          dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
+                          if os.path.isfile(dirpath):
+                            example_content(dirpath, fh)
+                          else:
+                            print "Could not find code for " + _filename
                         else:
                             fh.write("%s\n" % _text)
+                      elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                        shouldIgnoreLine = False
 
     fh.close()
 
