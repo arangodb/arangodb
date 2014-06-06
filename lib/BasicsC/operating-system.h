@@ -103,6 +103,9 @@
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
 
+#define TRI_srandom                         srandom
+#define TRI_random                          random
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,6 +259,9 @@
 #define TRI_HAVE_SETUID                     1
 #define TRI_HAVE_STRTOLL                    1
 #define TRI_HAVE_STRTOULL                   1
+
+#define TRI_srandom                         srand
+#define TRI_random                          rand
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
@@ -430,6 +436,9 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP             1
 
+#define TRI_srandom                         srand
+#define TRI_random                          rand
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief alignment and limits
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,9 +558,20 @@
 
 #define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
+#define TRI_srandom                         srand
+#define TRI_random                          rand
+
 #define strcasecmp                      _stricmp
 #define strncasecmp                     _strnicmp
 #define snprintf                        _snprintf
+
+#define usleep                          TRI_usleep
+#define sleep                           TRI_sleep
+#define fsync                           _commit
+#define isatty                          _isatty
+#define fileno                          _fileno
+#define putenv                          _putenv
+#define tzset                           _tzset
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
@@ -585,15 +605,6 @@
 // usleep in POSIX is for microseconds - not milliseconds
 // has been redefined in win-utils.h
 // ..............................................................
-
-#define usleep                          TRI_usleep
-#define sleep                           TRI_sleep
-#define srandom                         srand
-#define fsync                           _commit
-#define isatty                          _isatty
-#define fileno                          _fileno
-#define putenv                          _putenv
-#define tzset                           _tzset
 
 typedef int ssize_t;
 
