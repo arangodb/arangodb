@@ -28,6 +28,7 @@
 #include "AllocatorThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Utils/Exception.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -84,7 +85,7 @@ void AllocatorThread::stop () {
   _condition.signal();
 
   while (_stop != 2) {
-    usleep(1000);
+    usleep(10000);
   }
 }
 
@@ -132,19 +133,28 @@ void AllocatorThread::run () {
       _requestedSize = 0;
     }
 
-    if (requestedSize == 0 && ! _logfileManager->hasReserveLogfiles()) {
-      if (createReserveLogfile(0)) {
-        continue;
-      }
+    try {
+      if (requestedSize == 0 && ! _logfileManager->hasReserveLogfiles()) {
+        if (createReserveLogfile(0)) {
+          continue;
+        }
 
-      LOG_ERROR("unable to create new wal reserve logfile");
-    }
-    else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
-      if (createReserveLogfile(requestedSize)) {
-        continue;
+        LOG_ERROR("unable to create new wal reserve logfile");
       }
+      else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
+        if (createReserveLogfile(requestedSize)) {
+          continue;
+        }
       
-      LOG_ERROR("unable to create new wal reserve logfile");
+        LOG_ERROR("unable to create new wal reserve logfile");
+      }
+    }
+    catch (triagens::arango::Exception const& ex) {
+      int res = ex.code();
+      LOG_ERROR("got unexpected error in allocatorThread: %s", TRI_errno_string(res));
+    }
+    catch (...) {
+      LOG_ERROR("got unspecific error in allocatorThread");
     }
     
     {  
