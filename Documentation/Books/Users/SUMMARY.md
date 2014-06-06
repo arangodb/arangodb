@@ -67,26 +67,15 @@
 	* [Joins](AqlExamples/Join.md)
 	* [Grouping](AqlExamples/Grouping.md)
 <!-- 13 -->
-* [Blueprint-Graphs](Blueprint-Graphs/README.md)
+* [Graphs](Blueprint-Graphs/README.md)
 	* [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
 	* [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
-	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
-<!-- 14 -->
-* [General-Graphs](General-Graphs/README.md)
-	* [Graph Functions](General-Graphs/GeneralGraphFunctions.md)
-	* [Fluent AQL Interface](General-Graphs/FluentAQLInterface.md)
+	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)  
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
 	* [Starting from Scratch](Traversals/StartingFromScratch.md)	
 	* [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
 	* [Example Data](Traversals/ExampleData.md)
-<!-- 16 -->
-* [Transactions](Transactions/README.md)
-	* [Transaction invocation](Transactions/TransactionInvocation.md)
-	* [Passing parameters](Transactions/Passing.md)
-	* [Locking and isolation](Transactions/LockingAndIsolation.md)
-	* [Durability](Transactions/Durability.md)
-	* [Limitations](Transactions/Limitations.md)
 <!-- 17 -->
 * [Foxx](Foxx/README.md)
 	* [Handling Request](Foxx/HandlingRequest.md)
