@@ -296,7 +296,7 @@ void CollectorThread::stop () {
   _condition.signal();
 
   while (_stop != 2) {
-    usleep(1000);
+    usleep(10000);
   }
 }
 
@@ -318,21 +318,34 @@ void CollectorThread::signal () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectorThread::run () {
-  while (_stop == 0) {
-    // collect a logfile if any qualifies
-    bool worked = this->collectLogfiles();
+  while (true) {
+    int stop = (int) _stop;
+    bool worked = false;
 
-    // update master pointers
+    // step 1: collect a logfile if any qualifies
+    if (stop == 0) {
+      // don't collect additional logfiles in case we want to shut down
+      worked |= this->collectLogfiles();
+    }
+
+    // step 2: update master pointers
     worked |= this->processQueuedOperations();
 
-    // delete a logfile if any qualifies
+    // step 3: delete a logfile if any qualifies
     worked |= this->removeLogfiles();
-    
-    CONDITION_LOCKER(guard, _condition);
-    if (! worked) {
+
+    if (stop == 0 && ! worked) {
       // sleep only if there was nothing to do
+      CONDITION_LOCKER(guard, _condition);
+
       guard.wait(Interval);
     }
+    else if (stop == 1 && ! hasQueuedOperations()) {
+      // no operations left to execute, we can exit
+      break;
+    }
+
+    // next iteration
   }
 
   _stop = 2;
@@ -378,6 +391,11 @@ bool CollectorThread::collectLogfiles () {
 bool CollectorThread::processQueuedOperations () {
   MUTEX_LOCKER(_operationsQueueLock);
 
+  if (_operationsQueue.empty()) {
+    // nothing to do
+    return false;
+  }
+
   // process operations for each collection
   for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); ++it) {
     auto& operations = (*it).second;
@@ -408,7 +426,17 @@ bool CollectorThread::processQueuedOperations () {
   }
 
   // TODO: report an error?
-  return TRI_ERROR_NO_ERROR;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether there are queued operations left
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::hasQueuedOperations () {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return ! _operationsQueue.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
