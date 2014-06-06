@@ -472,6 +472,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: dont fail but recover from this state
       LOG_FATAL_AND_EXIT("cannot write compactor file: %s", TRI_last_error());
     }
 
@@ -520,6 +521,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: dont fail but recover from this state
       LOG_FATAL_AND_EXIT("cannot write document marker to compactor file: %s", TRI_last_error());
     }
 
@@ -533,6 +535,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: dont fail but recover from this state
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
@@ -552,6 +555,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     res = CopyMarker(document, context->_compactor, marker, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      // TODO: dont fail but recover from this state
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
     
@@ -570,15 +574,8 @@ static bool Compactifier (TRI_df_marker_t const* marker,
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    // write to compactor files
-    res = CopyMarker(document, context->_compactor, marker, &result);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("cannot write transaction marker to compactor file: %s", TRI_last_error());
-    }
-    
-    context->_dfi._numberTransaction++;
-    context->_dfi._sizeTransaction += (int64_t) marker->_size;
+    // these markers are ignored from ArangoDB 2.2 onwards
+    // do not copy these markers anymore
   }
 
   return true;
@@ -718,7 +715,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    context->_targetSize += alignedSize;
+    // these markers are ignored from ArangoDB 2.2 onwards
   }
 
   return true;
@@ -865,7 +862,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   if (context._dfi._numberAlive == 0 &&
       context._dfi._numberDead == 0 &&
       context._dfi._numberDeletion == 0 &&
-      context._dfi._numberTransaction == 0 &&
       context._dfi._numberShapes == 0 &&
       context._dfi._numberAttributes == 0) {
     if (n > 1) {
@@ -1059,21 +1055,18 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     }
     
     LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
-              "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, numberTransaction: %llu, "
+              "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, "
               "numberShapes: %llu, numberAttributes: %llu, "
-              "sizeDead: %llu, sizeAlive: %llu, sizeTransaction: %llu, "
-              "sizeShapes %llu, sizeAttributes: %llu",
+              "sizeDead: %llu, sizeAlive: %llu, sizeShapes %llu, sizeAttributes: %llu",
               (unsigned long long) df->_fid,
               (unsigned long long) df->_maximalSize,
               (unsigned long long) dfi->_numberDead,
               (unsigned long long) dfi->_numberAlive,
               (unsigned long long) dfi->_numberDeletion,
-              (unsigned long long) dfi->_numberTransaction,
               (unsigned long long) dfi->_numberShapes,
               (unsigned long long) dfi->_numberAttributes,
               (unsigned long long) dfi->_sizeDead,
               (unsigned long long) dfi->_sizeAlive,
-              (unsigned long long) dfi->_sizeTransaction,
               (unsigned long long) dfi->_sizeShapes,
               (unsigned long long) dfi->_sizeAttributes);
     

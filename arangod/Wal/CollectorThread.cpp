@@ -512,7 +512,9 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         // somebody inserted a new revision of the document
         auto& dfi = createDfi(cache, fid);  
         dfi._numberDead++;
-        dfi._sizeDead += (int64_t) marker->_size;
+        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+        dfi._numberAlive--;
+        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
       }
       else {
         // we can safely update the master pointer's dataptr value
@@ -529,7 +531,9 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         // somebody inserted a new revision of the document
         auto& dfi = createDfi(cache, fid);  
         dfi._numberDead++;
-        dfi._sizeDead += (int64_t) marker->_size;
+        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+        dfi._numberAlive--;
+        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
       }
       else {
         // we can safely update the master pointer's dataptr value
@@ -546,7 +550,10 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         // somebody re-created the document with a newer revision
         auto& dfi = createDfi(cache, fid);  
         dfi._numberDead++;
-        dfi._sizeDead += (int64_t) marker->_size;
+        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+        dfi._numberAlive--;
+        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+
       }
     }
     else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
