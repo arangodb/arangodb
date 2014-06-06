@@ -51,7 +51,6 @@ struct TRI_cap_constraint_s;
 struct TRI_df_marker_s;
 struct TRI_doc_deletion_key_marker_s;
 struct TRI_doc_document_key_marker_s;
-struct TRI_doc_update_policy_s;
 struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_s;
@@ -414,8 +413,8 @@ typedef struct TRI_document_collection_s {
 
   
   // WAL-based CRUD methods
-  int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*, struct TRI_doc_update_policy_s const*, bool, bool);
-  int (*removeDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, struct TRI_doc_update_policy_s const*, bool, bool);
+  int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*, TRI_doc_update_policy_t const*, bool, bool);
+  int (*removeDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_update_policy_t const*, bool, bool);
   int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, struct TRI_document_edge_s const*, bool, bool, bool);
   int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_copy_t*, bool);
 
@@ -904,7 +903,7 @@ std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
-                                          struct TRI_doc_update_policy_s const*,
+                                          TRI_doc_update_policy_t const*,
                                           TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////

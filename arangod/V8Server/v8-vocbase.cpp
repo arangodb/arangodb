@@ -122,9 +122,9 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define FREE_STRING(zone, what)                                           \
-  if (what != 0) {                                                        \
+  if (what != nullptr) {                                                  \
     TRI_Free(zone, what);                                                 \
-    what = 0;                                                             \
+    what = nullptr;                                                       \
   }
 
 // -----------------------------------------------------------------------------
@@ -411,19 +411,14 @@ static inline bool ExtractForceSync (v8::Arguments const& argv,
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
 }
 
-TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
-  TRI_doc_update_policy_e policy ;
-
+static inline TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
   if (overwrite) {
     // overwrite!
-    policy = TRI_DOC_UPDATE_LAST_WRITE;
+    return TRI_DOC_UPDATE_LAST_WRITE;
   }
-  else {
-    policy = TRI_DOC_UPDATE_CONFLICT;
-  }
-
-  return policy;
+  return TRI_DOC_UPDATE_ERROR;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
@@ -2184,7 +2179,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ReplaceOptions {
-  bool overwrite = true;
+  bool overwrite   = false;
   bool waitForSync = false;
 };
 
@@ -2218,11 +2213,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
       if (optionsObject->Has(v8::String::New("waitForSync"))) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
       } 
-    } else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
-      if (argv.Length() > 2 ) {
-        options.overwrite = TRI_ObjectToBoolean(argv[2]);
-        policy = ExtractUpdatePolicy(options.overwrite);
-      }
+    } 
+    else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
+      options.overwrite = TRI_ObjectToBoolean(argv[2]);
+      policy = ExtractUpdatePolicy(options.overwrite);
       if (argv.Length() > 3 ) {
         options.waitForSync = TRI_ObjectToBoolean(argv[3]);
       }
@@ -2572,8 +2566,8 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UpdateOptions {
-  bool overwrite = true;
-  bool keepNull = true;
+  bool overwrite   = false;
+  bool keepNull    = true;
   bool waitForSync = false;
 };
 
@@ -2605,15 +2599,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       if (optionsObject->Has(v8::String::New("waitForSync"))) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
       } 
-    } else { // old variant update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)
-      if (argv.Length() > 2 ) {
-        options.overwrite = TRI_ObjectToBoolean(argv[2]);
-        policy = ExtractUpdatePolicy(options.overwrite);
-      }
-      if (argv.Length() > 3 ) {
+    } 
+    else { // old variant update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)
+      options.overwrite = TRI_ObjectToBoolean(argv[2]);
+      policy = ExtractUpdatePolicy(options.overwrite);
+      if (argv.Length() > 3) {
         options.keepNull = TRI_ObjectToBoolean(argv[3]);
       }
-      if (argv.Length() > 4 ) {
+      if (argv.Length() > 4) {
         options.waitForSync = TRI_ObjectToBoolean(argv[4]);
       }
     }
@@ -2846,7 +2839,7 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
 ////////////////////////////////////////////////////////////////////////////////
 
 struct RemoveOptions {
-  bool overwrite = true;
+  bool overwrite   = false;
   bool waitForSync = false;
 };
 
@@ -2861,11 +2854,13 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
-  if (argv.Length() < 1 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
+  uint32_t const argLength = argv.Length();
+
+  if (argLength < 1 || argLength > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "remove(<document>, <options>)");
   }
 
-  if (argv.Length() > 1) {
+  if (argLength > 1) {
     if (argv[1]->IsObject()) {
       v8::Handle<v8::Object> optionsObject = argv[1].As<v8::Object>();
       if (optionsObject->Has(v8::String::New("overwrite"))) {
@@ -2875,18 +2870,17 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
       if (optionsObject->Has(v8::String::New("waitForSync"))) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
       } 
-    } else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
-      if (argv.Length() > 1 ) {
-        options.overwrite = TRI_ObjectToBoolean(argv[1]);
-        policy = ExtractUpdatePolicy(options.overwrite);
-      }
-      if (argv.Length() > 2 ) {
+    } 
+    else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
+      options.overwrite = TRI_ObjectToBoolean(argv[1]);
+      policy = ExtractUpdatePolicy(options.overwrite);
+      if (argLength > 2) {
         options.waitForSync = TRI_ObjectToBoolean(argv[2]);
       }
     }
   }
 
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
   TRI_vocbase_t* vocbase;

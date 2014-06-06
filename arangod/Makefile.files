@@ -109,7 +109,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
 	arangod/VocBase/transaction.cpp \
-	arangod/VocBase/update-policy.cpp \
 	arangod/VocBase/voc-shaper.cpp \
 	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \

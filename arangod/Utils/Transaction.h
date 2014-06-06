@@ -911,13 +911,12 @@ namespace triagens {
                            TRI_voc_rid_t rid,
                            TRI_doc_mptr_copy_t* mptr,
                            TRI_shaped_json_t* const shaped,
-                           const TRI_doc_update_policy_e policy,
+                           TRI_doc_update_policy_e policy,
                            const TRI_voc_rid_t expectedRevision,
                            TRI_voc_rid_t* actualRevision,
                            const bool forceSync) {
 
-          TRI_doc_update_policy_t updatePolicy;
-          TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
+          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
           TRI_document_collection_t* document = documentCollection(trxCollection);
           
@@ -940,13 +939,12 @@ namespace triagens {
         int remove (TRI_transaction_collection_t* trxCollection,
                     const string& key,
                     TRI_voc_rid_t rid,
-                    const TRI_doc_update_policy_e policy,
+                    TRI_doc_update_policy_e policy,
                     const TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
                     const bool forceSync) {
           
-          TRI_doc_update_policy_t updatePolicy;
-          TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
+          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
