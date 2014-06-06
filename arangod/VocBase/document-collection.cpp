@@ -700,34 +700,8 @@ static int CreateHeader (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RotateJournal (TRI_document_collection_t* document) {
-  TRI_collection_t* base;
-  int res;
-
-  base = &document->base;
-  res = TRI_ERROR_ARANGO_NO_JOURNAL;
-
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  if (base->_state == TRI_COL_STATE_WRITE) {
-    size_t n;
-
-    n = base->_journals._length;
-
-    if (n > 0) {
-      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(base->_journals._buffer[0]);
-      datafile->_full = true;
-
-      // TODO: this will probably never be triggered after
-      // the introduction of WAL    
-      TRI_WAIT_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-      res = TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-  return res;
+  // TODO: re-create this functionality
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 // -----------------------------------------------------------------------------
