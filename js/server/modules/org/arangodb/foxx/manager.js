@@ -29,9 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
 
 var console = require("console");
 var fs = require("fs");
+var utils = require("org/arangodb/foxx/manager-utils");
 
 var _ = require("underscore");
 
@@ -1414,6 +1416,56 @@ exports.mountedApp = function (path) {
   }
 
   return {};
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a github repository URL
+////////////////////////////////////////////////////////////////////////////////
+
+function buildGithubUrl (repository, version) {
+  'use strict';
+
+  if (typeof version === "undefined") {
+    version = "master";
+  }
+
+  return 'https://github.com/' + repository + '/archive/' + version + '.zip';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetches a foxx app from a remote repository
+////////////////////////////////////////////////////////////////////////////////
+
+exports.fetchFromGithub = function (url, name, version) {
+
+  var source = {
+    location: url,
+    name: name,
+    version: version
+  };
+  utils.processGithubRepository(source);
+  var realFile = source.filename;
+
+  var appPath = module.appPath();
+  if (appPath === undefined) {
+    fs.remove(realFile);
+    throw "javascript.app-path not set, rejecting app loading";
+  }
+  var path = fs.join(appPath, source.name + "-" + source.version);
+
+  if (fs.exists(path)) {
+    fs.remove(realFile);
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_APP_ALREADY_EXISTS.code;
+    err.errorMessage = arangodb.errors.ERROR_APP_ALREADY_EXISTS.message;
+    throw err;
+  }
+
+  fs.makeDirectoryRecursive(path);
+  fs.unzipFile(realFile, path, false, true);
+
+  this.scanAppDirectory();
+  return "app:" + source.name + ":" + source.version;
 };
 
 // -----------------------------------------------------------------------------

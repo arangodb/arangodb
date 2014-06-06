@@ -290,9 +290,9 @@ static bool EqualElementShape (TRI_associative_synced_t* array,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a shape
-/// if the function returns non-NULL, the return value is a pointer to an
+/// if the function returns non-nullptr, the return value is a pointer to an
 /// already existing shape and the value must not be freed
-/// if the function returns NULL, it has not found the shape and was not able
+/// if the function returns nullptr, it has not found the shape and was not able
 /// to create it. The value must then be freed by the caller
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -798,22 +798,14 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
     return false;
   }
 
-  if (sid != 0 && sid != accessor->_resultSid) {
-    LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
-              (unsigned long) sid,
-              (unsigned long) pid,
-              (unsigned long) accessor->_resultSid);
-
-    return false;
-  }
-
-  if (accessor->_resultSid == 0) {
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
     LOG_TRACE("expecting any object for path %lu, got nothing",
               (unsigned long) pid);
 
-    return false;
-  }
+    *shape = nullptr;
 
+    return sid == TRI_SHAPE_ILLEGAL;
+  }
 
   *shape = shaper->lookupShapeId(shaper, accessor->_resultSid);
 
@@ -822,7 +814,17 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
               (unsigned long) pid,
               (unsigned long) accessor->_resultSid);
 
-    return sid == 0;
+    *shape = nullptr;
+
+    return sid == TRI_SHAPE_ILLEGAL;
+  }
+
+  if (sid != 0 && sid != accessor->_resultSid) {
+    LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
+              (unsigned long) sid,
+              (unsigned long) pid,
+              (unsigned long) accessor->_resultSid);
+
     return false;
   }
 
@@ -1086,7 +1088,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     } // end of case TRI_SHAPE_ILLEGAL
 
     // .............................................................................
-    // NULL
+    // nullptr
     // .............................................................................
 
     case TRI_SHAPE_NULL: {

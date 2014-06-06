@@ -33,4 +33,4 @@ exit. This option is useful only when used in conjunction with the option
 scheduler.backend. An integer is returned (which is platform dependent) which
 indicates available backends on your platform. See libev for further details and
 for the meaning of the integer returned. This describes the allowed integers for
-`scheduler.backend`, see [here](#command-line-options-for-communication) for details.
+*scheduler.backend*, see [here](#command-line-options-for-communication) for details.

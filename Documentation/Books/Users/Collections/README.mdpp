@@ -23,8 +23,8 @@ from the user perspective, the collection name should be used, i.e.:
 
 A collection is created by a ["db._create"](../Collections/DatabaseMethods.md) call.
 
-For example: Assume that the collection identifier is `7254820` and the name is
-`demo`, then the collection can be accessed as:
+For example: Assume that the collection identifier is *7254820* and the name is
+*demo*, then the collection can be accessed as:
 
     db._collection("demo")
 

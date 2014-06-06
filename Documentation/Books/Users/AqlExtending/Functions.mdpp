@@ -1,6 +1,6 @@
 !CHAPTER Registering and Unregistering User Functions
 
-AQL user functions can be registered using the `aqlfunctions` object as
+AQL user functions can be registered using the *aqlfunctions* object as
 follows:
 
     var aqlfunctions = require("org/arangodb/aql/functions");
