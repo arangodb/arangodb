@@ -219,7 +219,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_resultSid = 0;
+      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
       accessor->_code = NULL;
 
       return true;
@@ -227,7 +227,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     else {
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_resultSid = 0;
+      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
       accessor->_code = NULL;
 
       return true;
@@ -271,7 +271,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   TRI_shape_size_t* offsetsV;
   void* const* ops;
 
-  if (accessor->_resultSid == 0) {
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
     return false;
   }
 
@@ -413,7 +413,7 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
          (unsigned long) accessor->_sid,
          (unsigned long) accessor->_pid);
 
-  if (accessor->_resultSid == 0) {
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
     printf("  result shape: -\n");
     return;
   }

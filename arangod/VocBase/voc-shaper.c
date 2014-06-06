@@ -752,7 +752,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
   f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l, false);
   assert(f == NULL);
-  
+
   f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l, false);
   assert(f == NULL);
 
@@ -1522,31 +1522,29 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
     return false;
   }
 
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
+    LOG_TRACE("expecting any object for path %lu, got nothing",
+              (unsigned long) pid);
+
+    return sid == TRI_SHAPE_ILLEGAL;
+  }
+
+  *shape = shaper->lookupShapeId(shaper, accessor->_resultSid);
+
+  if (*shape == NULL) {
+    LOG_TRACE("expecting any object for path %lu, got unknown shape id %lu",
+              (unsigned long) pid,
+              (unsigned long) accessor->_resultSid);
+
+    return sid == TRI_SHAPE_ILLEGAL;
+  }
+
   if (sid != 0 && sid != accessor->_resultSid) {
     LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
               (unsigned long) sid,
               (unsigned long) pid,
               (unsigned long) accessor->_resultSid);
 
-    return false;
-  }
-
-  if (accessor->_resultSid == 0) {
-    LOG_TRACE("expecting any object for path %lu, got nothing",
-              (unsigned long) pid);
-
-    return false;
-  }
-
-
-  *shape = shaper->lookupShapeId(shaper, accessor->_resultSid);
-
-  if (*shape == nullptr) {
-    LOG_TRACE("expecting any object for path %lu, got unknown shape id %lu",
-              (unsigned long) pid,
-              (unsigned long) accessor->_resultSid);
-
-    return sid == 0;
     return false;
   }
 
