@@ -1070,7 +1070,8 @@ void CollectorThread::finishMarker (char* mem,
                                     TRI_voc_tick_t tick,
                                     CollectorCache* cache) {
   TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(mem);
-  
+
+  // re-use the original WAL marker's tick  
   marker->_tick = tick;
 
   // calculate the CRC
