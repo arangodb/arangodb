@@ -4590,6 +4590,46 @@ function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
   return Infinity;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_SHORTEST_PATH_VISITOR (config, result, vertex, path) {
+  "use strict";
+
+  if (config.endVertex && config.endVertex === vertex._id) {
+    result.push(CLONE({ vertex: vertex, path: path , startVertex : config.startVertex}));
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
+  "use strict";
+
+  if (config.endVertex && config.endVertex === vertex._id) {
+    var dist = 0;
+    if (config.weight) {
+      path.edges.forEach(function (e) {
+        if (typeof e[config.weight] === "number") {
+          dist = dist + e[config.weight];
+        } else if (config.defaultWeight) {
+          dist = dist + config.defaultWeight;
+        }
+      });
+    } else {
+      dist = path.edges.length;
+    }
+    result.push(
+      CLONE({ vertex: vertex, distance: dist , path: path , startVertex : config.startVertex})
+    );
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine parameters for SHORTEST_PATH and
@@ -4647,6 +4687,235 @@ function GRAPH_SHORTEST_PATH (vertexCollection,
 /// @brief shortest path algorithm
 ////////////////////////////////////////////////////////////////////////////////
 
+function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
+  "use strict";
+
+  var graph = graphData, result = [];
+
+
+
+  graph.fromVerticesIDs = {};
+  graph.fromVertices.forEach(function (a) {
+    graph.fromVerticesIDs[a._id] = a;
+  });
+  graph.toVerticesIDs = {};
+  graph.toVertices.forEach(function (a) {
+    graph.toVerticesIDs[a._id] = a;
+  });
+
+  var paths = {};
+
+  var vertices = {};
+  graph.edges.forEach(function(e) {
+    if (options.direction === "outbound") {
+      if (!paths[e._from]) {
+        paths[e._from] = {};
+      }
+      paths[e._from][e._to] =  {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+    } else if (options.direction === "inbound") {
+      if (!paths[e._to]) {
+        paths[e._to] = {};
+      }
+      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
+        options.defaultWeight)
+        , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+    } else {
+      if (!paths[e._from]) {
+        paths[e._from] = {};
+      }
+      if (!paths[e._to]) {
+        paths[e._to] = {};
+      }
+
+      if (paths[e._from][e._to]) {
+        paths[e._from][e._to].distance =
+          Math.min(paths[e._from][e._to].distance, DETERMINE_WEIGHT(e, options.weight,
+            options.defaultWeight));
+      } else {
+        paths[e._from][e._to] = {distance : DETERMINE_WEIGHT(e, options.weight,
+          options.defaultWeight)
+          , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+      }
+      if (paths[e._to][e._from]) {
+        paths[e._to][e._from].distance =
+          Math.min(paths[e._to][e._from].distance, DETERMINE_WEIGHT(e, options.weight,
+          options.defaultWeight));
+      } else {
+        paths[e._to][e._from] = {distance : DETERMINE_WEIGHT(e, options.weight,
+          options.defaultWeight)
+          , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+      }
+    }
+    vertices[e._to] = 1;
+    vertices[e._from] = 1;
+  });
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+  Object.keys(graph.fromVerticesIDs).forEach(function (v) {
+      vertices[v] = 1;
+  });
+
+
+  var allVertices = Object.keys(vertices);
+  allVertices.forEach(function (k) {
+    allVertices.forEach(function (i) {
+      allVertices.forEach(function (j) {
+          if (i === j ) {
+            if (!paths[i]) {
+              paths[i] = {};
+            }
+            paths[i][j] = null;
+            return;
+          }
+          if (paths[i] && paths[i][k] && paths[i][k].distance >=0
+            && paths[i][k].distance < Infinity &&
+            paths[k] && paths[k][j] && paths[k][j].distance >=0
+            && paths[k][j].distance < Infinity &&
+            ( !paths[i][j] ||
+              paths[i][k].distance + paths[k][j].distance  <= paths[i][j].distance
+             )
+          ) {
+          if (!paths[i][j]) {
+            paths[i][j] = {paths : [], distance : paths[i][k].distance + paths[k][j].distance};
+          }
+          if (paths[i][k].distance + paths[k][j].distance  < paths[i][j].distance) {
+            paths[i][j].distance = paths[i][k].distance+paths[k][j].distance;
+            paths[i][j].paths = [];
+          }
+
+          paths[i][k].paths.forEach(function (p1) {
+            paths[k][j].paths.forEach(function (p2) {
+              paths[i][j].paths.push({
+                edges : p1.edges.concat(p2.edges),
+                vertices:  p1.vertices.concat(p2.vertices).filter(removeDuplicates)
+              });
+            });
+          });
+        }
+
+      });
+
+    });
+  });
+  Object.keys(paths).forEach(function (from) {
+    if (!graph.fromVerticesIDs[from]) {
+      return;
+    }
+    Object.keys(paths[from]).forEach(function (to) {
+      if (!graph.toVerticesIDs[to]) {
+        return;
+      }
+      if (from === to) {
+        result.push({
+          startVertex : from,
+          vertex : graph.toVerticesIDs[to],
+          paths : [{edges : [], vertices : []}],
+          distance : 0
+        });
+        return;
+      }
+      result.push({
+        startVertex : from,
+        vertex : graph.toVerticesIDs[to],
+        paths : paths[from][to].paths,
+        distance : paths[from][to].distance
+      });
+    });
+  });
+  return result;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine parameters for TRAVERSAL and
+/// GRAPH_TRAVERSAL
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_PARAMS (params) {
+  "use strict";
+
+  if (params === undefined) {
+    params = { };
+  }
+
+  params.visitor  = TRAVERSAL_VISITOR;
+  return params;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge list of edges with list of examples
+////////////////////////////////////////////////////////////////////////////////
+
+function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
+  var result = [],filter;
+  if (examples.length === 0) {
+    return edges;
+  }
+  edges.forEach(function(edge) {
+    examples.forEach(function(example) {
+      filter = CLONE(example);
+      if (!(filter._id || filter._key)) {
+        filter._id = edge._id;
+      }
+      result.push(filter);
+    });
+  });
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calculate shortest paths by dijkstra
+////////////////////////////////////////////////////////////////////////////////
+function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options) {
+
+  var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+  params.paths = true;
+  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graphData.edges);
+  params.weight = options.weight;
+  params.defaultWeight = options.defaultWeight;
+  params = SHORTEST_PATH_PARAMS(params);
+  params.visitor =  TRAVERSAL_DISTANCE_VISITOR;
+  var result = [];
+  graphData.fromVertices.forEach(function (v) {
+    graphData.toVertices.forEach(function (t) {
+      var e = TRAVERSAL_FUNC("GENERAL_GRAPH_SHORTEST_PATH",
+        factory,
+        TO_ID(v),
+        TO_ID(t),
+        options.direction,
+        params);
+      result = result.concat(e);
+    });
+  });
+  result.forEach(function (r) {
+    r.paths = [r.path];
+  });
+  return result;
+
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an example is set
+////////////////////////////////////////////////////////////////////////////////
+function IS_EXAMPLE_SET (example) {
+  return (
+      example && (
+        (Array.isArray(example) && example.length > 0) ||
+        (typeof example === "object" && Object.keys(example) > 0)
+        )
+    );
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortest path algorithm
+////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
                                       startVertexExample,
                                       endVertexExample,
@@ -4662,137 +4931,23 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     options.direction =  'any';
   }
 
-  var result = [];
   options.edgeExamples = options.edgeExamples || [];
+
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
-  graph.fromVerticesIDs = {};
-  graph.fromVertices.forEach(function (a) {
-    graph.fromVerticesIDs[a._id] = a;
-  });
-  graph.toVerticesIDs = {};
-  graph.toVertices.forEach(function (a) {
-    graph.toVerticesIDs[a._id] = a;
-  });
-
-  var paths = {};
-
-
-  var fromVertices = [];
-  var toVertices = [];
-  graph.edges.forEach(function(e) {
-    if (options.direction === "outbound") {
-      if (!paths[e._from]) {
-        paths[e._from] = {};
-      }
-      paths[e._from][e._to] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , edges : [e], vertices : [e._from, e._to]};
-      fromVertices.push(e._from);
-      toVertices.push(e._to);
-    } else if (options.direction === "inbound") {
-      if (!paths[e.to]) {
-        paths[e._to] = {};
-      }
-      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , edges : [e], vertices : [e._from, e._to]};
-      fromVertices.push(e._to);
-      toVertices.push(e._from);
-    } else {
-      if (!paths[e._from]) {
-        paths[e._from] = {};
-      }
-      if (!paths[e._to]) {
-        paths[e._to] = {};
-      }
-      paths[e._from][e._to] = {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , edges : [e], vertices : [e._from, e._to]};
-      paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , edges : [e], vertices : [e._from, e._to]};
-      fromVertices.push(e._to);
-      toVertices.push(e._from);
-      fromVertices.push(e._from);
-      toVertices.push(e._to);
-
+  if (!options.algorithm) {
+    if (!IS_EXAMPLE_SET(startVertexExample) && !IS_EXAMPLE_SET(endVertexExample)) {
+      options.algorithm = "Floyd-Warshall";
     }
-  });
-
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-
-  fromVertices.filter(removeDuplicates);
-  toVertices.filter(removeDuplicates);
-
-  var allVertices = fromVertices.concat(toVertices).filter(removeDuplicates);
-  allVertices.forEach(function (k) {
-    allVertices.forEach(function (i) {
-      allVertices.forEach(function (j) {
-          if (i === j ) {
-            if (!paths[i]) {
-              paths[i] = {};
-            }
-            paths[i] [j] = null;
-            return;
-          }
-          if (paths[i] && paths[i][k] && paths[i][k].distance < Infinity &&
-            paths[k] && paths[k][j] && paths[k][j].distance < Infinity &&
-            ( !paths[i][j] ||
-              paths[i][k].distance + paths[k][j].distance  < paths[i][j].distance
-             )
-          ) {
-          if (!paths[i][j]) {
-            paths[i][j] = {};
-          }
-          paths[i][j].distance = paths[i][k].distance+paths[k][j].distance;
-          paths[i][j].edges = paths[i][k].edges.concat(paths[k][j].edges);
-          paths[i][j].vertices =
-            paths[i][k].vertices.concat(paths[k][j].vertices).filter(removeDuplicates);
-        }
-
-      });
-
-    });
-
-  });
-  Object.keys(paths).forEach(function (from) {
-    if (!graph.fromVerticesIDs[from]) {
-      return;
-    }
-    Object.keys(paths[from]).forEach(function (to) {
-      if (!graph.toVerticesIDs[to]) {
-        return;
-      }
-      if (from === to) {
-        result.push({
-          startVertex : from,
-          vertex : graph.toVerticesIDs[to],
-          path : {
-            edges : [],
-            vertices : []
-          },
-          distance : 0
-        });
-        return;
-      }
-      result.push({
-        startVertex : from,
-        vertex : graph.toVerticesIDs[to],
-        path : {
-          edges : paths[from][to].edges,
-          vertices : paths[from][to].vertices
-        },
-        distance : paths[from][to].distance
-      });
-    });
-  });
-  return result;
+  }
+  if (options.algorithm === "Floyd-Warshall") {
+    return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
+  }
+  return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(
+    graphName, graph , options
+  );
 
 }
-
 
 
 
@@ -4815,22 +4970,6 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to determine parameters for TRAVERSAL and
-/// GRAPH_TRAVERSAL
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_PARAMS (params) {
-  "use strict";
-  
-  if (params === undefined) {
-    params = { };
-  }
-
-  params.visitor  = TRAVERSAL_VISITOR;
-  return params;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
@@ -5038,26 +5177,6 @@ function GRAPH_NEIGHBORS (vertexCollection,
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge list of edges with list of examples
-////////////////////////////////////////////////////////////////////////////////
-
-function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
-  var result = [],filter;
-  if (examples.length === 0) {
-    return edges;
-  }
-  edges.forEach(function(edge) {
-    examples.forEach(function(example) {
-      filter = CLONE(example);
-      if (!(filter._id || filter._key)) {
-        filter._id = edge._id;
-      }
-      result.push(filter);
-    });
-  });
-  return result;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return connected neighbors
@@ -5238,6 +5357,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
     options = { };
   }
   options.fromVertexExample = vertex1Examples;
+  options.toVertexExample = vertex2Examples;
   options.direction =  'any';
   options.ignoreProperties = TO_LIST(options.ignoreProperties, true);
 
@@ -5246,58 +5366,64 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
-
+  var c = 0 ;
+  var t = {};
   g.fromVertices.forEach(function (n1) {
-    options.fromVertexExample = vertex2Examples;
-    vertex2Examples = TO_LIST(vertex2Examples);
-    var searchOptions = [];
     Object.keys(n1).forEach(function (key) {
-        if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
+      if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
+        return;
+      }
+      if (!t[key + "|" + JSON.stringify(n1[key])]) {
+        t[key + "|" + JSON.stringify(n1[key])] = {from : [], to : []};
+      }
+      t[key + "|" + JSON.stringify(n1[key])].from.push(n1);
+    });
+  });
+
+  g.toVertices.forEach(function (n1) {
+    Object.keys(n1).forEach(function (key) {
+      if (key.indexOf("_") === 0) {
+        return;
+      }
+      if (!t[key + "|" + JSON.stringify(n1[key])]) {
+        return;
+      }
+      t[key + "|" + JSON.stringify(n1[key])].to.push(n1);
+    });
+  });
+
+  var tmp = {};
+  Object.keys(t).forEach(function (r) {
+    t[r].from.forEach(function (f) {
+      if (!tmp[f._id]) {
+        tmp[f._id] = [];
+      }
+      t[r].to.forEach(function (t) {
+        if (t._id === f._id) {
           return;
         }
-        if (vertex2Examples.length === 0) {
-          var con = {};
-          con[key] = n1[key];
-          searchOptions.push(con);
-        }
-      vertex2Examples.forEach(function (example) {
-        var con = CLONE(example);
-        con[key] = n1[key];
-        searchOptions.push(con);
+        tmp[f._id].push(t);
       });
     });
-    if (searchOptions.length > 0) {
-      options.fromVertexExample = searchOptions;
-      var commons = DOCUMENTS_BY_EXAMPLE(
-        g.fromCollections.filter(removeDuplicates), options.fromVertexExample
-      );
-      result[n1._id] = [];
-      commons.forEach(function (c) {
-        if (c._id !== n1._id) {
-          result[n1._id].push(c);
-        }
-      });
-      if (result[n1._id].length === 0) {
-        delete result[n1._id];
-      }
-    }
   });
-  Object.keys(result).forEach(function (r) {
-    var tmp = {};
-    tmp[r] = result[r];
-    if (Object.keys(result[r]).length > 0) {
-      res.push(tmp);
+  Object.keys(tmp).forEach(function (r) {
+    if (tmp[r].length === 0) {
+      return;
     }
+    var a = {};
+    a[r] = tmp[r];
+    res.push(a);
+
   });
+
 
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the eccentricity of all vertices in the graph
+/// @brief return the absolute eccentricity of vertices in the graph
 ////////////////////////////////////////////////////////////////////////////////
-function VERTICES_ECCENTRICITY (graphName, options) {
+function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
   "use strict";
 
@@ -5308,7 +5434,8 @@ function VERTICES_ECCENTRICITY (graphName, options) {
     options.direction =  'any';
   }
 
-  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options), result = {}, max = 0;
+  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(
+    graphName, vertexExample , {}, options), result = {}, max = 0;
   distanceMap.forEach(function(d) {
     if (!result[d.startVertex]) {
       result[d.startVertex] = d.distance;
@@ -5317,8 +5444,9 @@ function VERTICES_ECCENTRICITY (graphName, options) {
     }
   });
   return result;
-}
 
+
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5331,18 +5459,49 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
   if (! options) {
     options = {  };
   }
-  if (! options.direction) {
-    options.direction =  'any';
+  if (! options.algorithm) {
+    options.algorithm = "Floyd-Warshall";
   }
-  var result = VERTICES_ECCENTRICITY(graphName, options), max = 0;
+
+  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
-    result[r] = 1 / result[r];
+    result[r] = result[r] === 0 ? 0 : 1 / result[r];
     if (result[r] > max) {
       max = result[r];
     }
   });
   Object.keys(result).forEach(function (r) {
     result[r] = result[r] / max;
+  });
+  return result;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the eccentricity of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+
+  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
+  distanceMap.forEach(function(d) {
+    if (options.direction !==  'any' && options.calcNormalized) {
+      d.distance = d.distance === 0 ?  0 : 1 / d.distance;
+    }
+    if (!result[d.startVertex]) {
+      result[d.startVertex] = d.distance;
+    } else {
+      result[d.startVertex] = d.distance + result[d.startVertex];
+    }
   });
   return result;
 }
@@ -5357,24 +5516,16 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
   if (! options) {
     options = {  };
   }
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options), result = {}, max = 0;
-  distanceMap.forEach(function(d) {
-    if (options.direction !==  'any') {
-      d.distance = d.distance === 0 ?  0 : 1 / d.distance;
-    }
-    if (!result[d.startVertex]) {
-      result[d.startVertex] = d.distance;
-    } else {
-      result[d.startVertex] = d.distance + result[d.startVertex];
-    }
-  });
+  options.calcNormalized = true;
 
+  if (! options.algorithm) {
+    options.algorithm = "Floyd-Warshall";
+  }
+
+  var result = GENERAL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
     if (options.direction ===  'any') {
-      result[r] = 1 / result[r];
+      result[r] = result[r]  === 0 ? 0 : 1 / result[r];
     }
     if (result[r] > max) {
       max = result[r];
@@ -5385,6 +5536,56 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
   });
   return result;
 
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the betweeness of all vertices in the graph
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
+
+  "use strict";
+
+  if (! options) {
+    options = {  };
+  }
+  if (! options.direction) {
+    options.direction =  'any';
+  }
+  options.algorithm = "Floyd-Warshall";
+
+  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options),
+    result = {};
+  distanceMap.forEach(function(d) {
+    var tmp = {};
+    if (!result[d.startVertex]) {
+      result[d.startVertex] = 0;
+    }
+    if (!result[d.vertex._id]) {
+      result[d.vertex._id] = 0;
+    }
+    d.paths.forEach(function (p) {
+      p.vertices.forEach(function (v) {
+        if (v === d.startVertex ||  v === d.vertex._id) {
+          return;
+        }
+        if (!tmp[v]) {
+          tmp[v] = 1;
+        } else {
+          tmp[v]++;
+        }
+      });
+    });
+    Object.keys(tmp).forEach(function (t) {
+      if (!result[t]) {
+        result[t] = 0;
+      }
+      result[t] =  result[t]  + tmp[t] / d.paths.length;
+    });
+  });
+
+  return result;
 }
 
 
@@ -5398,37 +5599,8 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
   if (! options) {
     options = {  };
   }
-  if (! options.direction) {
-    options.direction =  'any';
-  }
-  var distanceMap = GENERAL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
-    result = {}, max = 0, hits = {};
-  distanceMap.forEach(function(d) {
-    if (hits[d.startVertex + d.vertex._id] ||
-        hits[d.vertex._id + d.startVertex]
-      ) {
-      return;
-    }
-    hits[d.startVertex + d.vertex._id] = true;
-    hits[d.vertex._id + d.startVertex] = true;
 
-    d.path.vertices.forEach(function (v) {
-      if (v === d.vertex._id || v === d.startVertex) {
-        if (!result[d.vertex._id]) {
-          result[d.vertex._id] = 0;
-        }
-        if (!result[d.startVertex]) {
-          result[d.startVertex] = 0;
-        }
-        return;
-      }
-      if (!result[v]) {
-        result[v] = 1;
-      } else {
-        result[v] = result[v] + 1;
-      }
-    });
-  });
+  var result = GENERAL_GRAPH_ABSOLUTE_BETWEENNESS(graphName, options),  max = 0;
   Object.keys(result).forEach(function (r) {
     if (result[r] > max) {
       max = result[r];
@@ -5440,6 +5612,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
   return result;
 
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5455,8 +5628,15 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
   if (! options.direction) {
     options.direction =  'any';
   }
-  var result = VERTICES_ECCENTRICITY(graphName, options), min = Infinity;
+  if (! options.algorithm) {
+    options.algorithm = "Floyd-Warshall";
+  }
+
+  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), min = Infinity;
   Object.keys(result).forEach(function (r) {
+    if (result[r] === 0) {
+      return;
+    }
     if (result[r] < min) {
       min = result[r];
     }
@@ -5480,7 +5660,11 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
   if (! options.direction) {
     options.direction =  'any';
   }
-  var result = VERTICES_ECCENTRICITY(graphName, options), max = 0;
+  if (! options.algorithm) {
+    options.algorithm = "Floyd-Warshall";
+  }
+
+  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
     if (result[r] > max) {
       max = result[r];
@@ -5614,6 +5798,9 @@ exports.GENERAL_GRAPH_COMMON_PROPERTIES = GENERAL_GRAPH_COMMON_PROPERTIES;
 exports.GENERAL_GRAPH_ECCENTRICITY = GENERAL_GRAPH_ECCENTRICITY;
 exports.GENERAL_GRAPH_BETWEENNESS = GENERAL_GRAPH_BETWEENNESS;
 exports.GENERAL_GRAPH_CLOSENESS = GENERAL_GRAPH_CLOSENESS;
+exports.GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY;
+exports.GENERAL_GRAPH_ABSOLUTE_BETWEENNESS = GENERAL_GRAPH_ABSOLUTE_BETWEENNESS;
+exports.GENERAL_GRAPH_ABSOLUTE_CLOSENESS = GENERAL_GRAPH_ABSOLUTE_CLOSENESS;
 exports.GENERAL_GRAPH_DIAMETER = GENERAL_GRAPH_DIAMETER;
 exports.GENERAL_GRAPH_RADIUS = GENERAL_GRAPH_RADIUS;
 exports.NOT_NULL = NOT_NULL;

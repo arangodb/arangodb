@@ -14,13 +14,13 @@ application instead. In this case use
 (note: _aardvark_ is the web interface's internal name).
 
 If no database name is specified in the URL, you will in most cases get
-routed to the web interface for the `_system` database. To access the web 
+routed to the web interface for the *_system* database. To access the web 
 interface for any other ArangoDB database, put the database name into the
 request URI path as follows:
   
   http://localhost:8529/_db/mydb/
 
-The above will load the web interface for the database `mydb`.
+The above will load the web interface for the database *mydb*.
 
 To restrict access to the web interface, use 
 [ArangoDB's authentication feature](../GeneralHttp/README.html#Authentication).
