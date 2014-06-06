@@ -1499,6 +1499,26 @@ static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update dead counter and size values for an obsolete marker
+////////////////////////////////////////////////////////////////////////////////
+
+static void TrackDeadMarker (TRI_df_marker_t const* marker,
+                             TRI_datafile_t const* datafile,
+                             open_iterator_state_t* state) {
+  if (state->_fid != datafile->_fid) {
+    TRI_document_collection_t* document = state->_document; 
+
+    state->_fid = datafile->_fid;
+    state->_dfi = TRI_FindDatafileInfoPrimaryCollection(document, datafile->_fid, true);
+  }
+
+  if (state->_dfi != nullptr) {
+    state->_dfi->_numberDead++;
+    state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply an insert/update operation when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2038,6 +2058,7 @@ static int OpenIteratorHandleBeginMarker (TRI_df_marker_t const* marker,
   }
 
   OpenIteratorStartTransaction(state, m->_tid, (uint32_t) m->_numCollections);
+  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2065,6 +2086,7 @@ static int OpenIteratorHandleCommitMarker (TRI_df_marker_t const* marker,
   else {
     OpenIteratorCommitTransaction(state);
   }
+  TrackDeadMarker(marker, datafile, state);
 
   // reset transaction id
   state->_tid = 0;
@@ -2095,6 +2117,7 @@ static int OpenIteratorHandlePrepareMarker (TRI_df_marker_t const* marker,
   else {
     OpenIteratorPrepareTransaction(state);
   }
+  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2119,6 +2142,7 @@ static int OpenIteratorHandleAbortMarker (TRI_df_marker_t const* marker,
   }
 
   OpenIteratorAbortTransaction(state);
+  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2275,14 +2299,12 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
     if (d != nullptr) {
       info->_numberAlive        += d->_numberAlive;
       info->_numberDead         += d->_numberDead;
-      info->_numberTransaction  += d->_numberTransaction; // not used here (only in compaction)
       info->_numberDeletion     += d->_numberDeletion;
       info->_numberShapes       += d->_numberShapes;
       info->_numberAttributes   += d->_numberAttributes;
 
       info->_sizeAlive          += d->_sizeAlive;
       info->_sizeDead           += d->_sizeDead;
-      info->_sizeTransaction    += d->_sizeTransaction; // not used here (only in compaction)
       info->_sizeShapes         += d->_sizeShapes;
       info->_sizeAttributes     += d->_sizeAttributes;
     }
