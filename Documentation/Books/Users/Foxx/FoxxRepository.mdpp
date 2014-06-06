@@ -3,7 +3,7 @@
 A repository is a gateway to the database. It gets data from the
 database, updates it or saves new data. It uses the given model when it 
 returns a model and expects instances of the model for methods like save. 
-In your repository file, export the repository as `repository`.
+In your repository file, export the repository as *repository*.
 
     Foxx = require("org/arangodb/foxx");
     
@@ -125,30 +125,31 @@ Returns a model that matches the given example.
 
 @copydetails JSF_foxx_repository_firstExample
 -->
+
 !SECTION The Manifest File
 
-In the `manifest.json` you define the components of your application. 
+In the *manifest.json* you define the components of your application. 
 The content is a JSON object with the following attributes (not all 
 attributes are required though):
 
-* `assets`: Deliver pre-processed files
-* `author`: The author name
-* `contributors`: An array containing objects, each represents a contributor (with `name` and optional `email`)
-* `controllers`: Map routes to FoxxControllers
-* `defaultDocument`: The default document when the applicated root (`/`) is called (defaults to `index.html`)
-* `description`: A short description of the application (Meta information)
-* `engines`: Should be an object with `arangodb` set to the ArangoDB version your Foxx app is compatible with.
-* `files`: Deliver files
-* `isSystem`: Mark an application as a system application
-* `keywords`: An array of keywords to help people find your Foxx app
-* `lib`: Base path for all required modules
-* `license`: Short form of the license (MIT, GPL...)
-* `name`: Name of the application (Meta information)
-* `repository`: An object with information about where you can find the repository: `type` and `url`
-* `setup`: Path to a setup script
-* `teardown`: Path to a teardown script
-* `thumbnail`: Path to a thumbnail that represents the application (Meta information)
-* `version`: Current version of the application (Meta information)
+* *assets*: Deliver pre-processed files
+* *author*: The author name
+* *contributors*: An array containing objects, each represents a contributor (with *name* and optional *email*)
+* *controllers*: Map routes to FoxxControllers
+* *defaultDocument*: The default document when the applicated root (*/*) is called (defaults to *index.html*)
+* *description*: A short description of the application (Meta information)
+* *engines*: Should be an object with *arangodb* set to the ArangoDB version your Foxx app is compatible with.
+* *files*: Deliver files
+* *isSystem*: Mark an application as a system application
+* *keywords*: An array of keywords to help people find your Foxx app
+* *lib*: Base path for all required modules
+* *license*: Short form of the license (MIT, GPL...)
+* *name*: Name of the application (Meta information)
+* *repository*: An object with information about where you can find the repository: *type* and *url*
+* *setup*: Path to a setup script
+* *teardown*: Path to a teardown script
+* *thumbnail*: Path to a thumbnail that represents the application (Meta information)
+* *version*: Current version of the application (Meta information)
 
 If you install an application using the Foxx manager or are using the
 development mode, your manifest will be checked for completeness and common errors.
@@ -191,9 +192,9 @@ A more complete example for a Manifest file:
 
 You can provide a path to a JavaScript file that prepares ArangoDB for your
 application (or respectively removes it entirely). These scripts have access to
-`appCollection` and `appCollectionName`. Use the `setup` script to create all
+*appCollection* and *appCollectionName*. Use the *setup* script to create all
 collections your application needs and fill them with initial data if you want
-to. Use the `teardown` script to remove all collections you have created.
+to. Use the *teardown* script to remove all collections you have created.
 
 Note: the setup script is called on each request in the development mode.
 If your application needs to set up specific collections, you should always 
@@ -206,10 +207,10 @@ data even after removing an application. It's up to you to decide what to do.
 
 !SUBSECTION controllers is an object that matches routes to files
 
-* The `key` is the route you want to mount at
+* The *key* is the route you want to mount at
 
-* The `value` is the path to the JavaScript file containing the
-  `FoxxController` you want to mount
+* The *value* is the path to the JavaScript file containing the
+  *FoxxController* you want to mount
 
 You can add multiple controllers in one manifest this way.
 
@@ -236,21 +237,21 @@ to the files they are composed of. Let's take the following example:
     }
   }
 
-If a request is made to `/application.js` (in development mode), the file 
+If a request is made to */application.js* (in development mode), the file 
 array provided will be processed one element at a time. The elements are 
 paths to files (with the option to use wildcards). The files will be 
 concatenated and delivered as a single file.
 
 The content-type (or mime type) of the HTTP response when requesting 
-`application.js` is automatically determined by looking at the filename 
-extension in the asset name (`application.js` in the above example). 
+*application.js* is automatically determined by looking at the filename 
+extension in the asset name (*application.js* in the above example). 
 If the asset does not have a filename extension, the content-type is 
 determined by looking at the filename extension of the first file in the 
-`files` list. If no file extension can be determined, the asset will be
-delived with a content-type of `text/plain`.
+*files* list. If no file extension can be determined, the asset will be
+deliverd with a content-type of *text/plain*.
 
 It is possible to explicitly override the content-type for an asset by
-setting the optional `contentType` attribute of an asset as follows:
+setting the optional *contentType* attribute of an asset as follows:
 
   "assets": {
     "myincludes": {
@@ -264,7 +265,7 @@ setting the optional `contentType` attribute of an asset as follows:
 
 !SUBSECTION Development Mode
 
-If you start ArangoDB with the option `--javascript.dev-app-path` followed by 
+If you start ArangoDB with the option *--javascript.dev-app-path* followed by 
 the path to a directory containing a manifest file and the path to the 
 database, you are starting ArangoDB in development mode with the application 
 loaded. This means that on every request:
@@ -273,7 +274,7 @@ loaded. This means that on every request:
 2. All module caches are flushed
 3. Your manifest file is read
 4. All files in your lib folder are loaded
-5. An app in DIRNAME is mounted at `/dev/DIRNAME`
+5. An app in DIRNAME is mounted at */dev/DIRNAME*
 6. The request will be processed
 
 This means that you do not have to restart ArangoDB if you change anything 
@@ -283,7 +284,7 @@ makes the app relatively slow.
 !SUBSECTION Production Mode
 
 To run a Foxx app in production first copy your app code to the directory given in 
-the config variable `--javascript.app-path`. After that use Foxx manager to mount the app.
+the config variable *--javascript.app-path*. After that use Foxx manager to mount the app.
 You can also use Foxx manager to find out your current app-path.
 
 !SUBSECTION Controlling Access to Foxx Applications
@@ -299,11 +300,11 @@ via the configuration option @ref CommandLineArangoDisableAuthentication
 "server.disable-authentication".
 
 If global HTTP authentication is turned on, requests to Foxx applications will 
-require HTTP authentication too, and only valid users present in the `_users`
+require HTTP authentication too, and only valid users present in the *_users*
 system collection are allowed to use the applications.
 
 Since ArangoDB 1.4, there is an extra option to restrict the authentication to 
-just system API calls, such as `/_api/...` and `/_admin/...`. This option can be 
+just system API calls, such as */_api/...* and */_admin/...*. This option can be 
 turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
 "server.authenticate-system-only" configuration option. If it is turned on, 
 then only system API requests need authentication whereas all requests to Foxx 
@@ -341,7 +342,7 @@ this works.
 
 To use the application-specific authentication in your own app, first activate it in your controller:
 
-`FoxxController::activateAuthentication(opts)`
+*FoxxController::activateAuthentication(opts)*
 
 To activate authentication for this authentication, first call this function. Provide the following arguments:
 
@@ -361,7 +362,7 @@ sessionLifetime: An integer. Lifetime of sessions in seconds.
 
 !SUBSUBSECTION Adding a login route
 
-`FoxxController::login(path, opts)`
+*FoxxController::login(path, opts)*
 
 Add a route for the login. You can provide further customizations via the the options:
 
@@ -377,7 +378,7 @@ usernameField and passwordField can be used to adjust the expected attributes in
 
 !SUBSUBSECTION Adding a logout route
 
-`FoxxController::logout(path, opts)`
+*FoxxController::logout(path, opts)*
 
 This works pretty similar to the logout function and adds a path to your app for the logout functionality. You can customize it with a custom onSuccess and onError function: onSuccess is a function that you can define to do something if the logout was successful. This includes sending a response to the user. This defaults to a function that returns a JSON with message set to "logged out". onError is a function that you can define to do something if the logout did not work. This includes sending a response to the user. This defaults to a function that sets the response to 401 and returns a JSON with error set to "No session was found". Both onSuccess and onError should take request and result as arguments.
 
@@ -391,11 +392,11 @@ This works pretty similar to the logout function and adds a path to your app for
 
 !SUBSUBSECTION Adding a register route
 
-`FoxxController::register(path, opts)`
+*FoxxController::register(path, opts)*
 
 This works pretty similar to the logout function and adds a path to your app for the register functionality. You can customize it with a custom onSuccess and onError function: onSuccess is a function that you can define to do something if the registration was successful. This includes sending a response to the user. This defaults to a function that returns a JSON with user set to the created user document. onError is a function that you can define to do something if the registration did not work. This includes sending a response to the user. This defaults to a function that sets the response to 401 and returns a JSON with error set to "Registration failed". Both onSuccess and onError should take request and result as arguments. You can also set the fields containing the username and password via usernameField (defaults to username) and passwordField (defaults to password). If you want to accept additional attributes for the user document, use the option acceptedAttributes and set it to an array containing strings with the names of the additional attributes you want to accept. All other attributes in the request will be ignored. If you want default attributes for the accepted attributes or set additional fields (for example admin) use the option defaultAttributes which should be a hash mapping attribute names to default values.
 
-`Examples`
+*Examples*
 
 	app.register('/logout', {
 		acceptedAttributes: ['name'],
@@ -406,7 +407,7 @@ This works pretty similar to the logout function and adds a path to your app for
 
 !SUBSUBSECTION Adding a change password route
 
-`FoxxController::changePassword(route, opts)`
+*FoxxController::changePassword(route, opts)*
 
 Add a route for the logged in user to change the password. You can provide further customizations via the the options:
 
@@ -451,14 +452,14 @@ To use this plugin, please require it first:
 
   FormatMiddleware = require("org/arangodb/foxx/template_middleware").FormatMiddleware;
 
-This Middleware gives you Rails-like format handling via the `extension` of 
-the URL or the accept header. Say you request an URL like `/people.json`:
+This Middleware gives you Rails-like format handling via the *extension* of 
+the URL or the accept header. Say you request an URL like */people.json*:
 
-The `FormatMiddleware` will set the format of the request to JSON and then 
-delete the `.json` from the request. You can therefore write handlers that 
-do not take an `extension` into consideration and instead handle the 
+The *FormatMiddleware* will set the format of the request to JSON and then 
+delete the *.json* from the request. You can therefore write handlers that 
+do not take an *extension* into consideration and instead handle the 
 format via a simple string. To determine the format of the request it 
-checks the URL and then the `accept` header. If one of them gives a format 
+checks the URL and then the *accept* header. If one of them gives a format 
 or both give the same, the format is set. If the formats are not the same, 
 an error is raised.
 
@@ -468,7 +469,7 @@ Use it by calling:
     app.before(FormatMiddleware.new(['json']));
 
 In both forms you can give a default format as a second parameter, if no 
-format could be determined. If you give no `defaultFormat` this case will be 
+format could be determined. If you give no *defaultFormat* this case will be 
 handled as an error.
 
 !SUBSECTION Optional Functionality: TemplateMiddleware
@@ -477,7 +478,7 @@ To use this plugin, please require it first:
 
   TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
 
-The `TemplateMiddleware` can be used to give a Foxx.Controller the capability 
+The *TemplateMiddleware* can be used to give a Foxx.Controller the capability 
 of using templates. Currently you can only use Underscore Templates.  It 
 expects documents in the following form in this collection:
 
@@ -488,12 +489,12 @@ expects documents in the following form in this collection:
       templateLanguage: "underscore"
     }
 
-The `content` is the string that will be rendered by the template processor. 
-The `contentType` is the type of content that results from this call. And with 
-the `templateLanguage` you can choose your template processor. There is only 
-one choice now: `underscore`.  Which would set the body of the response to 
-`hello Controller` with the template defined above. It will also set the 
-`contentType` to `text/plain` in this case.  In addition to the attributes 
+The *content* is the string that will be rendered by the template processor. 
+The *contentType* is the type of content that results from this call. And with 
+the *templateLanguage* you can choose your template processor. There is only 
+one choice now: *underscore*.  Which would set the body of the response to 
+*hello Controller* with the template defined above. It will also set the 
+*contentType* to *text/plain* in this case.  In addition to the attributes 
 you provided, you also have access to all your view helpers.
 
 !SUBSUBSECTION Initialize

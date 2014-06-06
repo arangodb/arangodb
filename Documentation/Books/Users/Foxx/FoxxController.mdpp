@@ -82,6 +82,7 @@ This handles requests from the HTTP verb patch. See above for the arguments you 
 This handles requests from the HTTP verb delete. See above for the arguments you can give.
 
 **Warning**
+
 Do not forget that delete is a reserved word in JavaScript and therefore needs to be called as app['delete']. There is also an alias del for this very reason.
 
 
@@ -113,11 +114,12 @@ Do not forget that delete is a reserved word in JavaScript and therefore needs t
 @copydetails JSF_foxx_controller_delete
 
 -->
+
 !SUBSECTION Documenting and constraining a specific route
 
 If you now want to document your route, you can use JSDoc style comments (a 
-multiline comment block with the first line starting with `/**` instead 
-of `/*`) above your routes to do that:
+multiline comment block with the first line starting with */*** instead 
+of */**) above your routes to do that:
 
 	/** Get all foxxes
 	  * 
@@ -265,11 +267,12 @@ Please activate authentification for this app if you want to use this function. 
 
 @copydetails JSF_foxx_RequestContext_onlyIfAuthenticated
 -->
+  
 !SUBSECTION Documenting and constraining all routes of a controller
 
 In addition to documenting a specific route, you can also
 do the same for all routes of a controller. For this purpose
-use the `allRoutes` object of the according controller.
+use the *allRoutes* object of the according controller.
 The following methods are available:
 
 *Error Response*
@@ -322,6 +325,7 @@ Defines an onlyIfAuthenticated for all routes of this controller. For details on
 
 @copydetails JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 -->
+  
 !SUBSECTION Before and After Hooks
 
 You can use the following two functions to do something before or respectively 
@@ -369,49 +373,49 @@ When you have created your FoxxController you can now define routes on it.
 You provide each with a function that will handle the request. It gets two 
 arguments (four, to be honest. But the other two are not relevant for now):
 
-* The `request` object
-* The `response` object
+* The *request* object
+* The *response* object
 
 These objects are provided by the underlying ArangoDB actions and enhanced 
-by the `BaseMiddleware` provided by Foxx.
+by the *BaseMiddleware* provided by Foxx.
 
 !SUBSECTION The Request Object
 
 
-The `request` object inherits several attributes from the underlying Actions:
+The *request* object inherits several attributes from the underlying Actions:
 
-* `compatibility`: an integer specifying the compatibility version sent by the
-  client (in request header `x-arango-version`). If the client does not send this
+* *compatibility*: an integer specifying the compatibility version sent by the
+  client (in request header *x-arango-version*). If the client does not send this
   header, ArangoDB will set this to the minimum compatible version number. The 
-  value is 10000 * major + 100 * minor (e.g. `10400` for ArangoDB version 1.4).
+  value is 10000 * major + 100 * minor (e.g. *10400* for ArangoDB version 1.4).
 
-* `user`: the name of the current ArangoDB user. This will be populated only
-  if authentication is turned on, and will be `null` otherwise.
+* *user*: the name of the current ArangoDB user. This will be populated only
+  if authentication is turned on, and will be *null* otherwise.
 
-* `database`: the name of the current database (e.g. `_system`)
+* *database*: the name of the current database (e.g. *_system*)
 
-* `protocol`: `http` or `https`
+* *protocol*: *http* or *https*
     
-* `server`: a JSON object with sub-attributes `address` (containing server 
-  host name or IP address) and `port` (server port).
+* *server*: a JSON object with sub-attributes *address* (containing server 
+  host name or IP address) and *port* (server port).
 
-* `path`: request URI path, with potential database name stripped off.
+* *path*: request URI path, with potential database name stripped off.
 
-* `url`: request URI path + query string, with potential database name 
+* *url*: request URI path + query string, with potential database name 
    stripped off
 
-* `headers`: a JSON object with the request headers as key/value pairs
+* *headers*: a JSON object with the request headers as key/value pairs
     
-* `cookies`: a JSON object with the request cookies as key/value pairs
+* *cookies*: a JSON object with the request cookies as key/value pairs
 
-* `requestType`: the request method (e.g. "GET", "POST", "PUT", ...)
+* *requestType*: the request method (e.g. "GET", "POST", "PUT", ...)
 
-* `requestBody`: the complete body of the request as a string
+* *requestBody*: the complete body of the request as a string
 
-* `parameters`: a JSON object with all parameters set in the URL as key/value
+* *parameters*: a JSON object with all parameters set in the URL as key/value
   pairs
 
-* `urlParameters`: a JSON object with all named parameters defined for the
+* *urlParameters*: a JSON object with all named parameters defined for the
   route as key/value pairs.
 
 In addition to these attributes, a Foxx request objects provides the following

@@ -35,30 +35,30 @@
     var edgeDefinition = [];
     edgeDefinition.push(Graph._undirectedRelationDefinition("relation", ["female", "male"]));
     var g = Graph._create("social", edgeDefinition);
-    var a = g.female.save({name: "Alice"});
-    var b = g.male.save({name: "Bob"});
-    var c = g.male.save({name: "Charly"});
-    var d = g.female.save({name: "Diana"});
-    g.relation.save(a._id, b._id, {type: "married"});
-    g.relation.save(a._id, c._id, {type: "friend"});
-    g.relation.save(c._id, d._id, {type: "married"});
-    g.relation.save(b._id, d._id, {type: "friend"});
+    var a = g.female.save({name: "Alice", _key: "alice"});
+    var b = g.male.save({name: "Bob", _key: "bob"});
+    var c = g.male.save({name: "Charly", _key: "charly"});
+    var d = g.female.save({name: "Diana", _key: "diana"});
+    g.relation.save(a._id, b._id, {type: "married", _key: "aliceAndBob"});
+    g.relation.save(a._id, c._id, {type: "friend", _key: "aliceAndCharly"});
+    g.relation.save(c._id, d._id, {type: "married", _key: "charlyAndDiana"});
+    g.relation.save(b._id, d._id, {type: "friend", _key: "bobAndDiana"});
     return g;
+  };
+
+  var dropGraph = function(name) {
+    return Graph._drop(name);
   };
 
   var loadGraph = function(name) {
     if (Graph._exists(name)) {
-      return Graph._graph(name);
+      dropGraph(name);
     }
     switch (name) {
       case "social":
         return createSocialGraph();
     }
 
-  };
-
-  var dropGraph = function(name) {
-    return Graph._drop(name);
   };
 
   exports.loadGraph = loadGraph;

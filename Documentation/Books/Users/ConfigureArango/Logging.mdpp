@@ -59,6 +59,7 @@ The value of arg depends on your syslog configuration. In general it will be use
 @anchor CommandLineLoggingLogSyslog
 @copydetails triagens::rest::ApplicationServer::_logSyslog
 -->
+
 !SUBSECTION Human Readable Logging
 
 `--log.level level`

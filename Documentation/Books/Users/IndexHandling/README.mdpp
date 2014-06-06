@@ -5,10 +5,10 @@
 This is an introduction to ArangoDB's interface for indexes in general.  
 There are special sections for 
 
-- [cap constraints](../IndexCap/README.md) 
-- [geo-spatial indexes](../IndexGeo/README.md)
-- [hash indexes](../IndexHash/README.md)
-- [skip-lists](../IndexSkiplist/README.md)
+- [cap constraints](../IndexHandling/Cap.md) 
+- [geo-spatial indexes](../IndexHandling/Geo.md)
+- [hash indexes](../IndexHandling/Hash.md)
+- [skip-lists](../IndexHandling/Skiplist.md)
 
 !SUBSUBSECTION Index
 
@@ -53,8 +53,8 @@ of a collection as:
 
     db.collection.index(index-handle)
 
-For example: Assume that the index handle, which is stored in the `_id`
-attribute of the index, is `demo/362549736` and the index lives in a collection
+For example: Assume that the index handle, which is stored in the *_id*
+attribute of the index, is *demo/362549736* and the index lives in a collection
 named *demo*, then that index can be accessed as:
 
     db.demo.index("demo/362549736")
@@ -66,12 +66,12 @@ Because the index handle is unique within the database, you can leave out the
 
 !SECTION Which Index type to use when
 
-ArangoDB automatically indexes the `_key` attribute in each collection. There
+ArangoDB automatically indexes the *_key* attribute in each collection. There
 is no need to index this attribute separately. Please note that a document's
-`_id` attribute is derived from the `_key` attribute, and is thus implicitly
+*_id* attribute is derived from the *_key* attribute, and is thus implicitly
 indexed, too.
 
-ArangoDB will also automatically create an index on `_from` and `_to` in any
+ArangoDB will also automatically create an index on *_from* and *_to* in any
 edge collection, meaning incoming and outgoing connections can be determined
 efficiently.
 
@@ -87,10 +87,10 @@ different usage scenarios:
   attribute(s) are equality comparisons, and if the attribute selectivity is
   high. That means the number of distinct attribute values in relation to the 
   total number of documents should be high. This is the case for indexes
-  declared `unique`. 
+  declared *unique*. 
 
   The hash index should not be used if duplicate index values are allowed 
-  (i.e. if the hash index is not declared `unique`) and it cannot be avoided
+  (i.e. if the hash index is not declared *unique*) and it cannot be avoided
   that there will be many duplicate index values. For example, it should be
   avoided to use a hash index on an attribute with just 10 distinct values in a 
   collection with a million documents.

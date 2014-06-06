@@ -7,7 +7,7 @@ The implementation follows the CommonJS specification
 
 `console.assert(expression, format, argument1, ...)`
 
-Tests that an expression is `true`. If not, logs a message and throws
+Tests that an expression is *true*. If not, logs a message and throws
 an exception.
 
 Example usage:
@@ -21,15 +21,15 @@ Example usage:
 
 Formats the arguments according to *format* and logs the result as
 debug message. Note that debug messages will only be logged if the
-server is started with log levels `debug` or `trace`. Please refer to
+server is started with log levels *debug* or *trace*. Please refer to
 @ref CommandLineLoggingHuman for details.
 
 String substitution patterns, which can be used in *format*.
 
-- `%%s` string
-- `%%d`, `%%i` integer
-- `%%f` floating point number
-- `%%o` object hyperlink
+* *%%s* string
+* *%%d*, *%%i* integer
+* *%%f* floating point number
+* *%%o* object hyperlink
 
 Example usage:
 
@@ -54,10 +54,10 @@ error message.
 
 String substitution patterns, which can be used in *format*.
 
-- `%%s` string
-- `%%d`, `%%i` integer
-- `%%f` floating point number
-- `%%o` object hyperlink
+* *%%s* string
+* *%%d*, *%%i* integer
+* *%%f* floating point number
+* *%%o* object hyperlink
 
 Example usage:
 
@@ -90,7 +90,7 @@ Example usage:
 
 `console.groupCollapsed(format, argument1, ...)`
 
-Same as `console.group`, but with the group initially collapsed.
+Same as *console.group*, but with the group initially collapsed.
 
 !SUBSECTION console.groupEnd
 
@@ -107,10 +107,10 @@ info message.
 
 String substitution patterns, which can be used in *format*.
 
-- `%%s` string
-- `%%d`, `%%i` integer
-- `%%f` floating point number
-- `%%o` object hyperlink
+* *%%s* string
+* *%%d*, *%%i* integer
+* *%%f* floating point number
+* *%%o* object hyperlink
 
 Example usage:
 
@@ -121,7 +121,7 @@ Example usage:
 `console.log(format, argument1, ...)`
 
 Formats the arguments according to *format* and logs the result as
-log message. This is an alias for `console.info`.
+log message. This is an alias for *console.info*.
 
 !SUBSECTION console.time
 
@@ -158,7 +158,8 @@ warn message.
 
 String substitution patterns, which can be used in *format*.
 
-- `%%s` string
-- `%%d`, `%%i` integer
-- `%%f` floating point number
-- `%%o` object hyperlink
+* *%%s* string
+* *%%d*, *%%i* integer
+* *%%f* floating point number
+* *%%o* object hyperlink
+

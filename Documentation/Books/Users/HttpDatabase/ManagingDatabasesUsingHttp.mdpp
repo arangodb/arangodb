@@ -1,5 +1,249 @@
 !CHAPTER Managing Databases using HTTP 
 
+`GET /_api/database/current`*(retrieves information about the current database)*
+
+!SUBSECTION Description
+
+Retrieves information about the current database
+The response is a JSON object with the following attributes:
+
+* name: the name of the current database
+* id: the id of the current database
+* path: the filesystem path of the current database
+* isSystem: whether or not the current database is the _system database
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the information was retrieved successfully.
+
+`HTTP 400`
+
+is returned if the request is invalid.
+
+`HTTP 404`
+
+is returned if the database could not be found.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/database/current
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "name" : "_system", 
+    "id" : "123873", 
+    "path" : "/tmp/vocdir.1653/databases/database-123873", 
+    "isSystem" : true 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`GET /_api/database/user`*(retrieves a list of all databases the current user can access)*
+
+!SUBSECTION Description
+
+Retrieves the list of all databases the current user can access without specifying a different username or password.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the list of database was compiled successfully.
+
+`HTTP 400`
+
+is returned if the request is invalid.
+
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/database/user
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    "_system" 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`GET /_api/database`*(retrieves a list of all existing databases)*
+
+!SUBSECTION Description
+
+Retrieves the list of all existing databases
+Note: retrieving the list of databases is only possible from within the _system database.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the list of database was compiled successfully.
+
+`HTTP 400`
+
+is returned if the request is invalid.
+
+`HTTP 403`
+
+is returned if the request was not executed in the _system database.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/database
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    "_system" 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`POST /_api/database`*(creates a new database)*
+
+!SUBSECTION Body parameters
+
+`body (json,required)`
+
+The body with the name of the database.
+
+!SUBSECTION Description
+
+Creates a new database
+The request body must be a JSON object with the attribute name. name must contain a valid [database name](../NamingConventions/DatabaseNames.md).
+
+The request body can optionally contain an attribute users, which then must be a list of user objects to initially create for the new database. Each user object can contain the following attributes:
+
+* username: the user name as a string. This attribute is mandatory.
+* passwd: the user password as a string. If not specified, then it defaults to the empty string.
+* active: a boolean flag indicating whether the user account should be active or not. The default value is true.
+* extra: an optional JSON object with extra user information. The data contained in extra will be stored for the user but not be interpreted further by ArangoDB.
+
+If users is not specified or does not contain any users, a default user root will be created with an empty string password. This ensures that the new database will be accessible after it is created.
+
+The response is a JSON object with the attribute result set to true.
+
+*Note*: creating a new database is only possible from within the _system database.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the database was created successfully.
+
+`HTTP 400`
+
+is returned if the request parameters are invalid or if a database with the specified name already exists.
+
+`HTTP 403`
+
+is returned if the request was not executed in the _system database.
+
+`HTTP 409`
+
+is returned if a database with the specified name already exists.
+
+*Examples*
+
+Creating a database named example.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database
+{"name":"example"}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Creating a database named mydb with two users.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database
+{"name":"mydb","users":[{"username":"admin","passwd":"secret","active":true},{"username":"tester","passwd":"test001","active":false}]}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`DELETE /_api/database/database-name`*(drops an existing database)*
+
+!SUBSECTION URL parameters
+
+`database-name (string,required)`
+
+The name of the database
+
+!SUBSECTION Description
+
+Deletes the database along with all data stored in it.
+Note: dropping a database is only possible from within the _system database. The _system database itself cannot be dropped.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the database was dropped successfully.
+
+`HTTP 400`
+
+is returned if the request is malformed.
+
+`HTTP 403`
+
+is returned if the request was not executed in the _system database.
+
+`HTTP 404`
+
+is returned if the database could not be found.
+
+*Examples*
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/database/example
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+
+<!--
 @anchor HttpDatabaseCurrent
 @copydetails JSF_get_api_database_current
 
@@ -20,3 +264,4 @@
 @copydetails JSF_delete_api_database
 
 @CLEARPAGE
+-->

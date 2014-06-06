@@ -1,23 +1,23 @@
 !CHAPTER Handling Requests
 
 In development mode all available applications from the application directory 
-`/home/user/apps/databases/<database name>/` are visible under 
-`http://localhost:8529/dev/<directory name>` where `<database name>` is the 
-name of the current database and `<directory name>` is the directory name of your 
+*/home/user/apps/databases/<database name>/* are visible under 
+*http://localhost:8529/dev/<directory name>* where *<database name>* is the 
+name of the current database and *<directory name>* is the directory name of your 
 application.
 
-In our example, `<directory name>` was `my_app` and as we didn't specify a 
-database, `<database name>` defaulted to `_system`.
+In our example, *<directory name>* was *my_app* and as we didn't specify a 
+database, *<database name>* defaulted to *_system*.
 
-When applications are installed in production mode, you can change the `/dev` 
+When applications are installed in production mode, you can change the */dev* 
 prefix to whatever you like, see [Foxx Manager](../FoxxManager/README.md).  
 
 If you do not redefine it, all requests that go to the root of your 
-application (i.e. `/`) will be redirected to `index.html`.
+application (i.e. */*) will be redirected to *index.html*.
 
-This means that if your application does not provide a file `index.html`, 
+This means that if your application does not provide a file *index.html*, 
 calling the application root URL may result in a 404 error.
-In our example, the application root URL is `http://localhost:8529/dev/my_app/hello/`.
+In our example, the application root URL is *http://localhost:8529/dev/my_app/hello/*.
 Call it, and you should something like this in return:
 
     {
@@ -42,7 +42,7 @@ The adjusted manifest now looks like this:
 
 Note: browsers tend to cache results of redirections. To see the new default 
 document in effect, first clear your browser's cache and point your browser
-to `http://localhost:8529/dev/my_app/`.
+to *http://localhost:8529/dev/my_app/*.
 
 !SUBSECTION Accessing collections from Foxx
 
@@ -107,15 +107,15 @@ functionality.
 !SUBSECTION Application Context
 
 JavaScript modules within a Foxx application can access the application using 
-the variable `applicationContext`. The applicationContext provides the following
+the variable *applicationContext*. The applicationContext provides the following
 methods:
 
-`applicationContext.collectionName(name)` returns the collection name
-with the application.
+`applicationContext.collectionName(name)` 
 
-`applicationContext.foxxFilename(filename)` returns the path to a
-file within the Foxx directory.
+This returns the collection name with the application.
+
+`applicationContext.foxxFilename(filename)` returns the path to a file within the Foxx directory.
 
 `require(name)` will first look into the Foxx directory for a module
-named `name`. If no such module can be found, the global module paths
+named *name*. If no such module can be found, the global module paths
 are consulted.
