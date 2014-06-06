@@ -61,7 +61,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 
   int res;
 
-  assert(*mmHandle == NULL);
+  TRI_ASSERT(*mmHandle == NULL);
 
   res = msync(startingAddress, numOfBytesToFlush, flags);
 
@@ -128,7 +128,7 @@ int TRI_UNMMFile (void* memoryAddress,
                   void** mmHandle) {
   int result;
 
-  assert(*mmHandle == NULL);
+  TRI_ASSERT(*mmHandle == NULL);
 
   result = munmap(memoryAddress, numOfBytesToUnMap);
 
@@ -154,7 +154,7 @@ int TRI_ProtectMMFile (void* memoryAddress,
                        void** mmHandle) {
   int result;
 
-  assert(*mmHandle == NULL);
+  TRI_ASSERT(*mmHandle == NULL);
 
   result = mprotect(memoryAddress, numOfBytesToProtect, flags);
 

@@ -504,7 +504,7 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
                            TRI_json_t const* json) {
   size_t i, n;
 
-  assert(TRI_IsListJson(json));
+  TRI_ASSERT(TRI_IsListJson(json));
   n = json->_value._objects._length;
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
@@ -617,7 +617,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
   size_t len;
   size_t sha256Len;
 
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);

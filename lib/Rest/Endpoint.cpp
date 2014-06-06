@@ -208,7 +208,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
 
   if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
     // backlog is only allowed for server endpoints
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   if (listenBacklog == 0 && type == ENDPOINT_SERVER) {

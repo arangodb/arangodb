@@ -462,14 +462,14 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///     var response = logCurlRequest('PUT', url, "");
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStart () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
 
@@ -527,14 +527,14 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ///
 ///     var response = logCurlRequest('PUT', url, "");
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStop () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
 
@@ -620,7 +620,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -636,14 +636,14 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///     var response = logCurlRequest('GET', url);
 ///     re.logger.stop();
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_json_t* json = TRI_JsonReplicationLogger(_vocbase->_replicationLogger);
 
@@ -698,13 +698,13 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ///     var url = "/_api/replication/logger-config";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_replication_logger_configuration_t config;
 
@@ -786,7 +786,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -803,13 +803,13 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerSetConfig () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_replication_logger_configuration_t config;
 
@@ -977,7 +977,7 @@ void RestReplicationHandler::handleCommandBatch () {
   vector<string> const& suffix = _request->suffix();
   const size_t len = suffix.size();
 
-  assert(len >= 1);
+  TRI_ASSERT(len >= 1);
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
     // create a new blocker
@@ -1286,7 +1286,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     assert(response.code === 204);
+///     TRI_ASSERT(response.code === 204);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1311,7 +1311,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1336,7 +1336,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1526,7 +1526,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///     var url = "/_api/replication/inventory";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1549,7 +1549,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///     var url = "/_api/replication/inventory";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 ///
 ///     db._flushCache();
@@ -1559,7 +1559,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandInventory () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -1580,7 +1580,7 @@ void RestReplicationHandler::handleCommandInventory () {
     return;
   }
 
-  assert(JsonHelper::isList(collections));
+  TRI_ASSERT(JsonHelper::isList(collections));
 
   // sort collections by type, then name
   const size_t n = collections->_value._objects._length;
@@ -2338,7 +2338,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
       break;
     }
     else {
-      assert(idx != 0);
+      TRI_ASSERT(idx != 0);
 
       res = TRI_SaveIndex(document, idx, remoteServerId);
 
@@ -2450,7 +2450,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
   if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
@@ -3130,7 +3130,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///     var url = "/_api/replication/dump?collection=" + c.name();
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 204);
+///     TRI_ASSERT(response.code === 204);
 ///     logRawResponse(response);
 ///
 ///     c.drop();
@@ -3151,7 +3151,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///     var url = "/_api/replication/dump?collection=" + c.name();
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logRawResponse(response);
 ///
 ///     c.drop();
@@ -3486,7 +3486,7 @@ void RestReplicationHandler::handleCommandSync () {
 ///     var url = "/_api/replication/server-id";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -3560,13 +3560,13 @@ void RestReplicationHandler::handleCommandServerId () {
 ///     var url = "/_api/replication/applier-config";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
@@ -3678,13 +3678,13 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
@@ -3826,13 +3826,13 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///     var response = logCurlRequest('PUT', url, "");
 ///     re.applier.stop();
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   bool found;
   const char* value = _request->value("from", found);
@@ -3899,13 +3899,13 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ///     var response = logCurlRequest('PUT', url, "");
 ///     re.applier.stop();
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
 
@@ -4012,7 +4012,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     var url = "/_api/replication/applier-state";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -4027,13 +4027,13 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     var response = logCurlRequest('GET', url);
 ///     re.applier.stop();
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
 
@@ -4051,7 +4051,7 @@ void RestReplicationHandler::handleCommandApplierGetState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierDeleteState () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
 

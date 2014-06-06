@@ -74,7 +74,7 @@ static const char* GetNameDatafile (const TRI_datafile_t* const datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CloseDatafile (TRI_datafile_t* const datafile) {
-  assert(datafile->_state != TRI_DF_STATE_CLOSED);
+  TRI_ASSERT(datafile->_state != TRI_DF_STATE_CLOSED);
 
   if (datafile->isPhysical(datafile)) {
     TRI_CLOSE(datafile->_fd);
@@ -108,7 +108,7 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
     return true;
   }
 
-  assert(datafile->_fd >= 0);
+  TRI_ASSERT(datafile->_fd >= 0);
 
   if (begin == end) {
     // no need to sync
@@ -202,10 +202,10 @@ static void InitDatafile (TRI_datafile_t* datafile,
   // filename is a string for physical datafiles, and NULL for anonymous regions
   // fd is a positive value for physical datafiles, and -1 for anonymous regions
   if (filename == NULL) {
-    assert(fd == -1);
+    TRI_ASSERT(fd == -1);
   }
   else {
-    assert(fd >= 0);
+    TRI_ASSERT(fd >= 0);
   }
 
   datafile->_state       = TRI_DF_STATE_READ;
@@ -263,7 +263,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   void* mmHandle;
     
   // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
+  TRI_ASSERT(datafile->isPhysical(datafile));
 
   // use multiples of page-size
   maximalSize = ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
@@ -410,7 +410,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
   char* ptr;
 
   // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
+  TRI_ASSERT(datafile->isPhysical(datafile));
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;
@@ -516,7 +516,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
   char* ptr;
 
   // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
+  TRI_ASSERT(datafile->isPhysical(datafile));
 
   ptr = datafile->_data;
   end = datafile->_data + datafile->_currentSize;
@@ -674,7 +674,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   void* mmHandle;
 
   // this function must not be called for non-physical datafiles
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   fid = GetNumericFilenamePart(filename);
 
@@ -814,7 +814,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
                                     bool withInitialMarkers) {
   TRI_datafile_t* datafile;
 
-  assert(PageSize >= 256);
+  TRI_ASSERT(PageSize >= 256);
 
   // use multiples of page-size
   maximalSize = (TRI_voc_size_t) (((maximalSize + PageSize - 1) / PageSize) * PageSize);
@@ -959,7 +959,7 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
   void* data;
   void* mmHandle;
 
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   fd = CreateSparseFile(filename, maximalSize);
 
@@ -1327,7 +1327,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
   TRI_voc_tick_t tick       = marker->_tick;
   TRI_df_marker_type_e type = (TRI_df_marker_type_e) (int) marker->_type;
    
-  assert(tick > 0);
+  TRI_ASSERT(tick > 0);
 
   if (type != TRI_DF_MARKER_HEADER && 
       type != TRI_DF_MARKER_FOOTER &&
@@ -1344,7 +1344,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
           (int) marker->_type,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMin);
-      assert(false);
+      TRI_ASSERT(false);
     }
 
     if (tick <= datafile->_tickMax) {
@@ -1354,7 +1354,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
           (int) marker->_type,
           datafile->getName(datafile),
           (unsigned long long) datafile->_tickMax);
-      assert(false);
+      TRI_ASSERT(false);
     }
 #endif
 
@@ -1384,7 +1384,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     }
   }
    
-  assert(markerSize > 0);
+  TRI_ASSERT(markerSize > 0);
 
   if (markerSize != marker->_size) {
     LOG_ERROR("marker size is %lu, but size is %lu",
@@ -1522,7 +1522,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
   bool ok;
 
   // this function must not be called for non-physical datafiles
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   datafile = OpenDatafile(filename, false);
 
@@ -1562,7 +1562,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
   bool ok;
 
   // this function must not be called for non-physical datafiles
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   datafile = OpenDatafile(filename, true);
 
@@ -1632,8 +1632,8 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
   int res;
 
   // this function must not be called for non-physical datafiles
-  assert(datafile->isPhysical(datafile));
-  assert(filename != NULL);
+  TRI_ASSERT(datafile->isPhysical(datafile));
+  TRI_ASSERT(filename != NULL);
 
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
@@ -1767,7 +1767,7 @@ int TRI_TruncateDatafile (char const* path,
   int res;
 
   // this function must not be called for non-physical datafiles
-  assert(path != NULL);
+  TRI_ASSERT(path != NULL);
 
   datafile = OpenDatafile(path, true);
 
@@ -1791,7 +1791,7 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
   TRI_datafile_t* datafile;
 
   // this function must not be called for non-physical datafiles
-  assert(path != NULL);
+  TRI_ASSERT(path != NULL);
 
   datafile = OpenDatafile(path, true);
 

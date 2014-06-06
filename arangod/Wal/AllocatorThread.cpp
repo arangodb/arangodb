@@ -93,7 +93,7 @@ void AllocatorThread::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AllocatorThread::signal (uint32_t size) {
-  assert(size > 0);
+  TRI_ASSERT(size > 0);
   
   CONDITION_LOCKER(guard, _condition);
 

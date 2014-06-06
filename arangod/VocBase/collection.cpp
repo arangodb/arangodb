@@ -367,7 +367,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
                             TRI_collection_t* collection,
                             char* directory,
                             const TRI_col_info_t* const info) {
-  assert(collection);
+  TRI_ASSERT(collection);
 
   memset(collection, 0, sizeof(TRI_collection_t));
 
@@ -676,7 +676,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           filename = TRI_Concatenate2File(collection->_directory, file);
         }
 
-        assert(filename != NULL);
+        TRI_ASSERT(filename != NULL);
         datafile = TRI_OpenDatafile(filename);
 
         if (datafile == NULL) {
@@ -846,7 +846,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
   size_t i;
   size_t n;
 
-  assert(vector);
+  TRI_ASSERT(vector);
 
   n = vector->_length;
   for (i = 0; i < n ; ++i) {
@@ -854,7 +854,7 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 
     LOG_TRACE("freeing collection datafile");
 
-    assert(datafile != NULL);
+    TRI_ASSERT(datafile != NULL);
     TRI_FreeDatafile(datafile);
   }
 
@@ -904,7 +904,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
   for (i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(files->_buffer[i]);
 
-    assert(datafile);
+    TRI_ASSERT(datafile);
 
     result &= TRI_CloseDatafile(datafile);
   }
@@ -955,7 +955,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
                              TRI_col_type_e type,
                              TRI_voc_size_t maximalSize,
                              TRI_json_t* keyOptions) {
-  assert(parameter);
+  TRI_ASSERT(parameter);
   memset(parameter, 0, sizeof(TRI_col_info_t));
 
   parameter->_version       = TRI_COL_VERSION;
@@ -988,7 +988,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const src) {
-  assert(dst);
+  TRI_ASSERT(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
   dst->_version       = src->_version;
@@ -1040,8 +1040,8 @@ char* TRI_GetDirectoryCollection (char const* path,
   char* tmp1;
   char* tmp2;
 
-  assert(path != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(path != NULL);
+  TRI_ASSERT(name != NULL);
 
   tmp1 = TRI_StringUInt64(cid);
 
@@ -1171,7 +1171,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCollection (TRI_collection_t* collection) {
-  assert(collection);
+  TRI_ASSERT(collection);
 
   TRI_FreeCollectionInfoOptions(&collection->_info);
 
@@ -1188,7 +1188,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollection (TRI_collection_t* collection) {
-  assert(collection);
+  TRI_ASSERT(collection);
   TRI_DestroyCollection(collection);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
@@ -2003,7 +2003,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
                 void* buffer;
                 ssize_t w;
                 
-                assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+                TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
                        marker->_type == TRI_DOC_MARKER_KEY_EDGE);
 
                 tick = TRI_NewTickServer();
@@ -2406,7 +2406,7 @@ char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
       return "unknown";
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "unknown";
 }
 

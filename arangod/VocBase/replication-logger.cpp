@@ -286,15 +286,15 @@ static bool AppendCollection (TRI_replication_logger_t* logger,
 ////////////////////////////////////////////////////////////////////////////////
     
 static void FreeCap (TRI_replication_logger_t* logger) {
-  assert(logger != NULL);
+  TRI_ASSERT(logger != NULL);
 
   if (logger->_cap != NULL) {
   
-    assert(logger->_trxCollection != NULL);
-    assert(logger->_trxCollection->_collection != NULL);
+    TRI_ASSERT(logger->_trxCollection != NULL);
+    TRI_ASSERT(logger->_trxCollection->_collection != NULL);
 
     TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
-    assert(document != NULL);
+    TRI_ASSERT(document != NULL);
 
     TRI_DropIndex2DocumentCollection(document,
                                      logger->_cap->_iid,
@@ -320,9 +320,9 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
   }
 
   TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
-  assert(document != NULL);
+  TRI_ASSERT(document != NULL);
 
-  assert(logger->_configuration._maxEvents > 0ULL ||
+  TRI_ASSERT(logger->_configuration._maxEvents > 0ULL ||
          logger->_configuration._maxEventsSize > 0ULL);
 
   LOG_TRACE("creating cap constraint for replication logger. maxEvents: %llu, maxEventsSize: %llu",
@@ -368,7 +368,7 @@ static bool CreateCap (TRI_replication_logger_t* logger) {
 static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   size_t n;
    
-  assert(logger != NULL);
+  TRI_ASSERT(logger != NULL);
   TRI_string_buffer_t* buffer = NULL;
 
   // locked section
@@ -385,7 +385,7 @@ static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
   // ---------------------------------------
   // locked section end
 
-  assert(buffer != NULL);
+  TRI_ASSERT(buffer != NULL);
 
   return buffer;
 }
@@ -396,8 +396,8 @@ static TRI_string_buffer_t* GetBuffer (TRI_replication_logger_t* logger) {
 
 static void ReturnBuffer (TRI_replication_logger_t* logger,
                           TRI_string_buffer_t* buffer) {
-  assert(logger != NULL);
-  assert(buffer != NULL);
+  TRI_ASSERT(logger != NULL);
+  TRI_ASSERT(buffer != NULL);
 
   // make the buffer usable again
   if (buffer->_buffer == NULL) {
@@ -412,7 +412,7 @@ static void ReturnBuffer (TRI_replication_logger_t* logger,
   TRI_LockSpin(&logger->_bufferLock);
 
   TRI_PushBackVectorPointer(&logger->_buffers, buffer);
-  assert(logger->_buffers._length <= NumBuffers);
+  TRI_ASSERT(logger->_buffers._length <= NumBuffers);
   
   TRI_UnlockSpin(&logger->_bufferLock);
   // ---------------------------------------
@@ -439,8 +439,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
   bool withTid;
   bool lock;
 
-  assert(logger != NULL);
-  assert(buffer != NULL);
+  TRI_ASSERT(logger != NULL);
+  TRI_ASSERT(buffer != NULL);
 
   len = TRI_LengthStringBuffer(buffer);
 
@@ -535,8 +535,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
     return res;
   }
 
-  // assert the write was successful
-  assert(mptr.getDataPtr() != NULL);  // PROTECTED by trx in logger
+  // TRI_ASSERT the write was successful
+  TRI_ASSERT(mptr.getDataPtr() != NULL);  // PROTECTED by trx in logger
   
   // update the last tick that we've logged
   TRI_LockSpin(&logger->_idLock);
@@ -898,7 +898,7 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
 
 static int GetStateReplicationLogger (TRI_replication_logger_t* logger,
                                       TRI_replication_logger_state_t* dst) {
-  assert(logger->_state._active);
+  TRI_ASSERT(logger->_state._active);
 
   TRI_LockSpin(&logger->_idLock);
   memcpy(dst, &logger->_state, sizeof(TRI_replication_logger_state_t));
@@ -925,9 +925,9 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
     return TRI_ERROR_INTERNAL;
   }
 
-  assert(logger->_trx == NULL);
-  assert(logger->_trxCollection == NULL);
-  assert(logger->_state._lastLogTick == 0);
+  TRI_ASSERT(logger->_trx == NULL);
+  TRI_ASSERT(logger->_trxCollection == NULL);
+  TRI_ASSERT(logger->_state._lastLogTick == 0);
 
   vocbase = logger->_vocbase;
   collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
@@ -990,12 +990,12 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   logger->_trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
   logger->_trx = trx;
 
-  assert(logger->_trxCollection != NULL);
-  assert(logger->_trxCollection->_collection != NULL);
-  assert(logger->_trxCollection->_collection->_collection != NULL);
-  assert(logger->_state._active == false);
+  TRI_ASSERT(logger->_trxCollection != NULL);
+  TRI_ASSERT(logger->_trxCollection->_collection != NULL);
+  TRI_ASSERT(logger->_trxCollection->_collection->_collection != NULL);
+  TRI_ASSERT(logger->_state._active == false);
 
-  assert(logger->_cap == NULL);
+  TRI_ASSERT(logger->_cap == NULL);
   // create cap constraint? 
   if (logger->_configuration._maxEvents > 0ULL || 
       logger->_configuration._maxEventsSize > 0ULL) { 
@@ -1041,8 +1041,8 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
   lastTick = logger->_state._lastLogTick;
   TRI_UnlockSpin(&logger->_idLock);
 
-  assert(logger->_trx != NULL);
-  assert(logger->_trxCollection != NULL);
+  TRI_ASSERT(logger->_trx != NULL);
+  TRI_ASSERT(logger->_trxCollection != NULL);
 
   buffer = GetBuffer(logger);
   
@@ -1130,7 +1130,7 @@ static void FreeBuffers (TRI_replication_logger_t* logger) {
   for (i = 0; i < n; ++i) {
     TRI_string_buffer_t* buffer = (TRI_string_buffer_t*) TRI_AtVectorPointer(&logger->_buffers, i);
 
-    assert(buffer != NULL);
+    TRI_ASSERT(buffer != NULL);
     TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, buffer);
   }
 
@@ -1145,7 +1145,7 @@ static int InitBuffers (TRI_replication_logger_t* logger) {
   size_t i;
   int res;
 
-  assert(NumBuffers > 0);
+  TRI_ASSERT(NumBuffers > 0);
   
   LOG_TRACE("initialising buffers");
 
@@ -1167,7 +1167,7 @@ static int InitBuffers (TRI_replication_logger_t* logger) {
     TRI_PushBackVectorPointer(&logger->_buffers, buffer);
   }
 
-  assert(logger->_buffers._length == NumBuffers);
+  TRI_ASSERT(logger->_buffers._length == NumBuffers);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1183,7 +1183,7 @@ static bool HasRelevantOperations (TRI_transaction_t const* trx) {
 
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    assert(trxCollection != nullptr);
+    TRI_ASSERT(trxCollection != nullptr);
 
     if (trxCollection->_operations == nullptr ||
         trxCollection->_operations->size() == 0) {
@@ -1232,7 +1232,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
 
   // write the individual operations
   n = trx->_collections._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
@@ -1250,7 +1250,7 @@ static int HandleTransaction (TRI_replication_logger_t* logger,
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     size_t k = trxCollection->_operations->size();
 
-    assert(k > 0);
+    TRI_ASSERT(k > 0);
 
     for (size_t j = 0; j < k; ++j) {
       TRI_replication_operation_e type;
@@ -1414,7 +1414,7 @@ TRI_replication_logger_t* TRI_CreateReplicationLogger (TRI_vocbase_t* vocbase) {
   logger->_localServerId                   = TRI_GetIdServer();
   logger->_databaseName                    = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
 
-  assert(logger->_databaseName != NULL);
+  TRI_ASSERT(logger->_databaseName != NULL);
   
   // check if there is a configuration file to load
   char* filename = GetConfigurationFilename(vocbase);
@@ -1589,7 +1589,7 @@ int TRI_ConfigureReplicationLogger (TRI_replication_logger_t* logger,
     logger->_configuration._maxEvents     = config->_maxEvents;
     logger->_configuration._maxEventsSize = config->_maxEventsSize;
 
-    assert(logger->_cap == NULL);
+    TRI_ASSERT(logger->_cap == NULL);
 
     if (logger->_state._active) {
       CreateCap(logger);
@@ -1706,7 +1706,7 @@ void TRI_UpdateClientReplicationLogger (TRI_replication_logger_t* logger,
   }
 
   found = TRI_InsertKeyAssociativePointer(&logger->_clients, &client->_serverId, (void*) client, false);
-  assert(found == NULL);
+  TRI_ASSERT(found == NULL);
 
   TRI_WriteUnlockReadWriteLock(&logger->_clientsLock);
 }
@@ -1883,8 +1883,8 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
   TRI_replication_logger_t* logger;
   int res;
   
-  assert(trx->_replicate);
-  assert(trx->_hasOperations);
+  TRI_ASSERT(trx->_replicate);
+  TRI_ASSERT(trx->_hasOperations);
   
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_NO_ERROR;
@@ -1901,7 +1901,7 @@ int TRI_LogTransactionReplication (TRI_vocbase_t* vocbase,
   if (HasRelevantOperations(trx)) {
     TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
 
-    assert(document != nullptr);
+    TRI_ASSERT(document != nullptr);
 
     // set a lock around all individual operations
     // so a transaction is logged as an uninterrupted sequence

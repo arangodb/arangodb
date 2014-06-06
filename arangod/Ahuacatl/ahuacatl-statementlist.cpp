@@ -84,7 +84,7 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
   size_t i, n;
   size_t scopes;
 
-  assert(list);
+  TRI_ASSERT(list);
   n = list->_statements._length;
   i = position;
   scopes = 0;
@@ -94,7 +94,7 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
     TRI_aql_node_type_e type = node->_type;
     
     if (i == position) {
-      assert(type == TRI_AQL_NODE_SCOPE_START);
+      TRI_ASSERT(type == TRI_AQL_NODE_SCOPE_START);
       list->_statements._buffer[i] = DummyReturnEmptyNode;
     }
     else {
@@ -106,7 +106,7 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
       ++scopes;
     }
     else if (type == TRI_AQL_NODE_SCOPE_END) {
-      assert(scopes > 0);
+      TRI_ASSERT(scopes > 0);
       --scopes;
 
       if (scopes == 0) {
@@ -227,7 +227,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
   size_t moveStart = 0;
   bool watch = false;
 
-  assert(list);
+  TRI_ASSERT(list);
 
   i = 0;
   n = list->_statements._length;
@@ -304,8 +304,8 @@ bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
                                  const size_t position) {
   int res;
 
-  assert(list != NULL);
-  assert(node != NULL);
+  TRI_ASSERT(list != NULL);
+  TRI_ASSERT(node != NULL);
 
   res = TRI_InsertVectorPointer(&list->_statements, node, position);
 
@@ -321,17 +321,17 @@ bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
   TRI_aql_node_type_e type;
   int res;
 
-  assert(list != NULL);
-  assert(node != NULL);
+  TRI_ASSERT(list != NULL);
+  TRI_ASSERT(node != NULL);
 
   type = node->_type;
-  assert(TRI_IsTopLevelTypeAql(type));
+  TRI_ASSERT(TRI_IsTopLevelTypeAql(type));
 
   if (type == TRI_AQL_NODE_SCOPE_START) {
     ++list->_currentLevel;
   }
   else if (type == TRI_AQL_NODE_SCOPE_END) {
-    assert(list->_currentLevel > 0);
+    TRI_ASSERT(list->_currentLevel > 0);
     --list->_currentLevel;
   }
 
@@ -347,7 +347,7 @@ bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
 void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
   size_t i, j, n;
 
-  assert(list);
+  TRI_ASSERT(list);
 
   i = 0;
   j = 0;
@@ -373,7 +373,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
 
     /* should not happen anymore
     if (node->_type == TRI_AQL_NODE_RETURN_EMPTY) {
-      assert(false);
+      TRI_ASSERT(false);
     }
     */
 

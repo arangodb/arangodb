@@ -69,7 +69,7 @@ void TRI_InitIndex (TRI_index_t* idx,
                     TRI_idx_type_e type, 
                     TRI_document_collection_t* document,
                     bool unique) {
-  assert(idx != nullptr);
+  TRI_ASSERT(idx != nullptr);
 
   if (iid > 0) {
     // use iid if specified
@@ -124,7 +124,7 @@ bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
   }
 
   // unknown type...
-  assert(false);
+  TRI_ASSERT(false);
   return false;
 }
 
@@ -268,7 +268,7 @@ bool TRI_ValidateIndexIdIndex (char const* key,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeIndex (TRI_index_t* idx) {
-  assert(idx);
+  TRI_ASSERT(idx);
 
   LOG_TRACE("freeing index");
 
@@ -857,7 +857,7 @@ static int SizeHintEdge (TRI_index_t* idx,
 
   // we assume this is called when setting up the index and the index 
   // is still empty
-  assert(edgesIndex->_nrUsed == 0);
+  TRI_ASSERT(edgesIndex->_nrUsed == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
@@ -871,7 +871,7 @@ static int SizeHintEdge (TRI_index_t* idx,
 
   // we assume this is called when setting up the index and the index 
   // is still empty
-  assert(edgesIndex->_nrUsed == 0);
+  TRI_ASSERT(edgesIndex->_nrUsed == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
@@ -1106,8 +1106,8 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   // be retrieved later.
   // ..........................................................................
     
-  assert(document != NULL); 
-  assert(document->getDataPtr() != NULL);   // ONLY IN INDEX
+  TRI_ASSERT(document != NULL); 
+  TRI_ASSERT(document->getDataPtr() != NULL);   // ONLY IN INDEX
     
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
@@ -2572,7 +2572,7 @@ void TRI_FreeBitarrayIndex (TRI_index_t* idx) {
 bool IndexComparator (TRI_json_t const* lhs,
                       TRI_json_t const* rhs) {
   TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
-  assert(TRI_IsStringJson(typeJson));
+  TRI_ASSERT(TRI_IsStringJson(typeJson));
 
   // type must be identical
   if (! TRI_CheckSameValueJson(typeJson, TRI_LookupArrayJson(rhs, "type"))) {

@@ -59,8 +59,8 @@ VocbaseContext::VocbaseContext (HttpRequest* request,
   _server(server),
   _vocbase(vocbase) {
 
-  assert(_server != 0);
-  assert(_vocbase != 0);
+  TRI_ASSERT(_server != nullptr);
+  TRI_ASSERT(_vocbase != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +99,7 @@ bool VocbaseContext::useClusterAuthentication () const {
 ////////////////////////////////////////////////////////////////////////////////
         
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
-  assert(_vocbase != 0);
+  TRI_ASSERT(_vocbase != 0);
 
   if (! _vocbase->_settings.requireAuthentication) {
     // no authentication required at all

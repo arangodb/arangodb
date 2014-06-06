@@ -270,27 +270,27 @@ namespace triagens {
         switch (status) {
           case StatusType::UNKNOWN:
           case StatusType::EMPTY:
-            assert(false);
+            TRI_ASSERT(false);
             break;
 
           case StatusType::OPEN:
-            assert(_status == StatusType::EMPTY);
+            TRI_ASSERT(_status == StatusType::EMPTY);
             break;
 
           case StatusType::SEAL_REQUESTED:
-            assert(_status == StatusType::OPEN);
+            TRI_ASSERT(_status == StatusType::OPEN);
             break;
 
           case StatusType::SEALED:
-            assert(_status == StatusType::SEAL_REQUESTED);
+            TRI_ASSERT(_status == StatusType::SEAL_REQUESTED);
             break;
 
           case StatusType::COLLECTION_REQUESTED:
-            assert(_status == StatusType::SEALED);
+            TRI_ASSERT(_status == StatusType::SEALED);
             break;
 
           case StatusType::COLLECTED:
-            assert(_status == StatusType::COLLECTION_REQUESTED);
+            TRI_ASSERT(_status == StatusType::COLLECTION_REQUESTED);
             break;
         }
 

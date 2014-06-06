@@ -152,7 +152,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
     rc = request->getRequestContext();
   }
 
-  assert(rc != 0);
+  TRI_ASSERT(rc != 0);
 
   return rc->authenticate();
 }

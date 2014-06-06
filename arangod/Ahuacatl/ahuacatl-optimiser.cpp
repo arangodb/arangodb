@@ -128,7 +128,7 @@ static aql_optimiser_t* CreateOptimiser (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeOptimiser (aql_optimiser_t* const optimiser) {
-  assert(optimiser);
+  TRI_ASSERT(optimiser);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, optimiser);
 }
@@ -232,7 +232,7 @@ static bool CanAvoidSort (TRI_aql_statement_walker_t* const walker,
   bool result;
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope != NULL);
+  TRI_ASSERT(scope != NULL);
 
   if (scope->_type == TRI_AQL_SCOPE_MAIN) {
     // will not optimise main scope
@@ -279,7 +279,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
   char* collectionName;
 
   collectionName = TRI_AQL_NODE_STRING(nameNode);
-  assert(collectionName);
+  TRI_ASSERT(collectionName);
 
   hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
@@ -338,8 +338,8 @@ static void AttachSort (TRI_aql_scope_t* const scope,
   size_t offset;
   size_t i;
 
-  assert(hint);
-  assert(scope);
+  TRI_ASSERT(hint);
+  TRI_ASSERT(scope);
 
   if (scope->_type == TRI_AQL_SCOPE_MAIN) {
     // will not optimise sort in main scope
@@ -434,7 +434,7 @@ static TRI_aql_node_t* AnnotateNode (TRI_aql_statement_walker_t* const walker,
     hint = (TRI_aql_collection_hint_t*) TRI_AQL_NODE_DATA(node);
 
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope != NULL);
+    TRI_ASSERT(scope != NULL);
 
     // check if an index is to be used
     if (hint != NULL) {
@@ -474,7 +474,7 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     TRI_aql_scope_t* scope;
 
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope != NULL);
+    TRI_ASSERT(scope != NULL);
 
     // check if we can apply a scope limit and push it into the for loop
     if (scope->_limit._status == TRI_AQL_LIMIT_USE) {
@@ -528,7 +528,7 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
     // we must now free the sort criteria we collected for the scope
     // otherwise we would get potentially invalid SORT results
     scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-    assert(scope != NULL);
+    TRI_ASSERT(scope != NULL);
 
     while (scope->_sorts._length > 0) {
       char* criterion = static_cast<char*>
@@ -669,7 +669,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   int res;
 
   function = (TRI_aql_function_t*) TRI_AQL_NODE_DATA(node);
-  assert(function);
+  TRI_ASSERT(function);
 
   // check if function is deterministic
   if (! function->_isDeterministic) {
@@ -824,10 +824,10 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
   aql_optimiser_t* optimiser = (aql_optimiser_t*) walker->_data;
   int64_t limitValue;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope != NULL);
+  TRI_ASSERT(scope != NULL);
 
   limit = TRI_AQL_NODE_MEMBER(node, 1);
 
@@ -954,7 +954,7 @@ static TRI_aql_node_t* OptimiseFilter (TRI_aql_statement_walker_t* const walker,
 
   // in case we got here, the filter was not optimised away completely
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope != NULL);
+  TRI_ASSERT(scope != NULL);
 
   // mark in the scope that we found a filter
   scope->_limit._hasFilter = true;
@@ -979,7 +979,7 @@ static TRI_aql_node_t* OptimiseReference (TRI_aql_statement_walker_t* const walk
   char* variableName = (char*) TRI_AQL_NODE_STRING(node);
   size_t scopeCount; // ignored
 
-  assert(variableName);
+  TRI_ASSERT(variableName);
   variable = TRI_GetVariableStatementWalkerAql(walker, variableName, &scopeCount);
 
   if (variable == NULL) {
@@ -1014,7 +1014,7 @@ static TRI_aql_node_t* OptimiseUnaryArithmeticOperation (TRI_aql_context_t* cons
                                                          TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
 
-  assert(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_PLUS ||
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_PLUS ||
          node->_type == TRI_AQL_NODE_OPERATOR_UNARY_MINUS);
 
   if (! operand || ! TRI_IsConstantValueNodeAql(operand)) {
@@ -1069,7 +1069,7 @@ static TRI_aql_node_t* OptimiseUnaryLogicalOperation (TRI_aql_context_t* const c
                                                       TRI_aql_node_t* node) {
   TRI_aql_node_t* operand = TRI_AQL_NODE_MEMBER(node, 0);
 
-  assert(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT);
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT);
 
   if (! operand || ! TRI_IsConstantValueNodeAql(operand)) {
     // node is not a constant value
@@ -1131,7 +1131,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
 
   lhsValue = TRI_GetBooleanNodeValueAql(lhs);
 
-  assert(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND ||
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_AND ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_OR);
 
   LOG_TRACE("optimised away binary logical operation");
@@ -1155,7 +1155,7 @@ static TRI_aql_node_t* OptimiseBinaryLogicalOperation (TRI_aql_context_t* const 
     return rhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
 
   return node;
 }
@@ -1305,7 +1305,7 @@ static TRI_aql_node_t* OptimiseBinaryArithmeticOperation (TRI_aql_context_t* con
     return node;
   }
 
-  assert(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_PLUS ||
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_OPERATOR_BINARY_PLUS ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_MINUS ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_TIMES ||
          node->_type == TRI_AQL_NODE_OPERATOR_BINARY_DIV ||
@@ -1379,7 +1379,7 @@ static TRI_aql_node_t* OptimiseTernaryOperation (TRI_aql_context_t* const contex
   TRI_aql_node_t* truePart = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_node_t* falsePart = TRI_AQL_NODE_MEMBER(node, 2);
 
-  assert(node->_type == TRI_AQL_NODE_OPERATOR_TERNARY);
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_OPERATOR_TERNARY);
 
   if (! condition || ! TRI_IsConstantValueNodeAql(condition)) {
     // node is not a constant value
@@ -1421,7 +1421,7 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   TRI_aql_context_t* context = ((aql_optimiser_t*) walker->_data)->_context;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   // node optimisations
   switch (node->_type) {
@@ -1467,8 +1467,8 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker,
 
 static TRI_aql_node_t* OptimiseStatement (TRI_aql_statement_walker_t* const walker,
                                           TRI_aql_node_t* node) {
-  assert(walker);
-  assert(node);
+  TRI_ASSERT(walker);
+  TRI_ASSERT(node);
 
   // node optimisations
   switch (node->_type) {
@@ -1514,9 +1514,9 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     bool isReference;
 
     fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(ranges, i);
-    assert(fieldAccess);
-    assert(fieldAccess->_fullName);
-    assert(fieldAccess->_variableNameLength > 0);
+    TRI_ASSERT(fieldAccess);
+    TRI_ASSERT(fieldAccess->_fullName);
+    TRI_ASSERT(fieldAccess->_variableNameLength > 0);
 
     variableName = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, fieldAccess->_fullName, fieldAccess->_variableNameLength);
 
@@ -1546,7 +1546,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
     // get the node that defines the variable
     definingNode = variable->_definingNode;
 
-    assert(definingNode != NULL);
+    TRI_ASSERT(definingNode != NULL);
 
     expressionNode = NULL;
     switch (definingNode->_type) {
@@ -1646,7 +1646,7 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
   }
 
   scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
-  assert(scope != NULL);
+  TRI_ASSERT(scope != NULL);
 
   if (scope->_type != TRI_AQL_SCOPE_MAIN) {
     // will not optimise limit in main scope, e.g. "LIMIT 5, 0 RETURN 1"

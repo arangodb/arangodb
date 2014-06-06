@@ -94,9 +94,9 @@ static TRI_aql_node_t* CreateNodeInternalFcall (TRI_aql_context_t* const context
     TRI_aql_function_t* function;
     TRI_associative_pointer_t* functions;
     
-    assert(context->_vocbase);
+    TRI_ASSERT(context->_vocbase);
     functions = context->_vocbase->_functions;
-    assert(functions);
+    TRI_ASSERT(functions);
 
     function = TRI_GetByExternalNameFunctionAql(functions, internalName);
 
@@ -1066,7 +1066,7 @@ bool TRI_PushListAql (TRI_aql_context_t* const context,
   TRI_aql_node_t* node 
       = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
 
-  assert(node);
+  TRI_ASSERT(node);
   
   if (value == NULL ||
       TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&node->_members, (void*) value)) {
@@ -1088,7 +1088,7 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
       = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
   TRI_aql_node_t* element;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   element = TRI_CreateNodeArrayElementAql(context, name, value);
 
@@ -1106,8 +1106,8 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
-  assert(node);
-  assert(node->_type == TRI_AQL_NODE_VALUE);
+  TRI_ASSERT(node);
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_VALUE);
 
   return TRI_AQL_NODE_BOOL(node);
 }
@@ -1117,8 +1117,8 @@ bool TRI_GetBooleanNodeValueAql (const TRI_aql_node_t* const node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_GetNumericNodeValueAql (const TRI_aql_node_t* const node) {
-  assert(node);
-  assert(node->_type == TRI_AQL_NODE_VALUE);
+  TRI_ASSERT(node);
+  TRI_ASSERT(node->_type == TRI_AQL_NODE_VALUE);
 
   if (node->_value._type == TRI_AQL_TYPE_INT) {
     return (double) TRI_AQL_NODE_INT(node);
@@ -1152,7 +1152,7 @@ TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e 
       return source;
     case TRI_AQL_NODE_OPERATOR_BINARY_IN:
     default: {
-      assert(false);
+      TRI_ASSERT(false);
       return TRI_AQL_NODE_NOP;
     }
   }

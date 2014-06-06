@@ -91,7 +91,7 @@ Slots::~Slots () {
 
 void Slots::setLastAssignedTick (Slot::TickType tick) {
   MUTEX_LOCKER(_lock);
-  assert(_lastAssignedTick == 0);
+  TRI_ASSERT(_lastAssignedTick == 0);
   
   _lastAssignedTick = tick;
 }
@@ -133,12 +133,12 @@ SlotInfo Slots::nextUnused (uint32_t size) {
       }
 
       Slot* slot = _slots[_handoutIndex];
-      assert(slot != nullptr);
+      TRI_ASSERT(slot != nullptr);
 
       if (slot->isUnused()) {
         if (hasWaited) {
           CONDITION_LOCKER(guard, _condition);
-          assert(_waiting > 0);
+          TRI_ASSERT(_waiting > 0);
           --_waiting;
           hasWaited = false;
         }
@@ -183,7 +183,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
             slot = _slots[_handoutIndex];
           }
           else {
-            assert(status == Logfile::StatusType::OPEN);
+            TRI_ASSERT(status == Logfile::StatusType::OPEN);
           }
         }
 
@@ -226,7 +226,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
 void Slots::returnUsed (SlotInfo& slotInfo,
                         bool waitForSync) {
-  assert(slotInfo.slot != nullptr);
+  TRI_ASSERT(slotInfo.slot != nullptr);
   Slot::TickType tick = slotInfo.slot->tick();
 
   {
@@ -263,7 +263,7 @@ SyncRegion Slots::getSyncRegion () {
    
   while (true) {
     Slot* slot = _slots[slotIndex];
-    assert(slot != nullptr);
+    TRI_ASSERT(slot != nullptr);
 
     if (! slot->isReturned()) {
       break;
@@ -310,7 +310,7 @@ SyncRegion Slots::getSyncRegion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Slots::returnSyncRegion (SyncRegion const& region) {
-  assert(region.logfileId != 0);
+  TRI_ASSERT(region.logfileId != 0);
     
   size_t slotIndex = region.firstSlotIndex;
 
@@ -319,11 +319,11 @@ void Slots::returnSyncRegion (SyncRegion const& region) {
 
     while (true) {
       Slot* slot = _slots[slotIndex];
-      assert(slot != nullptr);
+      TRI_ASSERT(slot != nullptr);
       
       // note last tick        
       Slot::TickType tick = slot->tick();
-      assert(tick >= _lastCommittedTick);
+      TRI_ASSERT(tick >= _lastCommittedTick);
       _lastCommittedTick = tick;
 
       slot->setUnused();
@@ -365,7 +365,7 @@ int Slots::writeHeader (Slot* slot) {
   size_t const size = header.base._size;
   
   TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
-  assert(mem != nullptr);
+  TRI_ASSERT(mem != nullptr);
 
   slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&header.base, size);
@@ -383,7 +383,7 @@ int Slots::writeFooter (Slot* slot) {
   size_t const size = footer.base._size;
   
   TRI_df_marker_t* mem = (TRI_df_marker_t*) _logfile->reserve(size);
-  assert(mem != nullptr);
+  TRI_ASSERT(mem != nullptr);
 
   slot->setUsed(static_cast<void*>(mem), static_cast<uint32_t>(size), _logfile->id(), handout());
   slot->fill(&footer.base, size);
@@ -397,7 +397,7 @@ int Slots::writeFooter (Slot* slot) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Slot::TickType Slots::handout () { 
-  assert(_freeSlots > 0);
+  TRI_ASSERT(_freeSlots > 0);
   _freeSlots--;
 
   if (++_handoutIndex ==_numberOfSlots) {

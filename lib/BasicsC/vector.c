@@ -357,7 +357,7 @@ int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t n) {
       newSize = n + 1;
     }
     
-    assert(newSize > n);
+    TRI_ASSERT(newSize > n);
 
     newBuffer = (char*) TRI_Allocate(vector->_memoryZone, newSize * vector->_elementSize, false);
 
@@ -702,7 +702,7 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
       newSize = n + 1;
     }
 
-    assert(newSize > n);
+    TRI_ASSERT(newSize > n);
 
     newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(void*));
 
@@ -722,7 +722,7 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
             sizeof(void*) * (vector->_length - n));
   }
 
-  assert(vector->_capacity >= vector->_length);
+  TRI_ASSERT(vector->_capacity >= vector->_length);
 
   vector->_buffer[n] = element;
 
@@ -1096,7 +1096,7 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
       newSize = n + 1;
     }
     
-    assert(newSize > n);
+    TRI_ASSERT(newSize > n);
 
     newBuffer = (char**) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(char*));
 
@@ -1114,7 +1114,7 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
             sizeof(char**) * (vector->_length - n));
   }
   
-  assert(vector->_capacity >= vector->_length);
+  TRI_ASSERT(vector->_capacity >= vector->_length);
 
   vector->_length++;
   vector->_buffer[n] = element;

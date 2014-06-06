@@ -155,14 +155,14 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// 
 ///     var response = logCurlRequest("POST", url, { "name": "Emil" });
 /// 
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var edge_id = JSON.parse(body)._id;
 ///     var response2 = logCurlRequest("GET", "/_api/edge/" + edge_id);
 /// 
-///     assert(response2.code === 200);
+///     TRI_ASSERT(response2.code === 200);
 ///
 ///     logJsonResponse(response2);
 ///     db._drop("edges");
@@ -326,7 +326,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  assert(document.getDataPtr() != nullptr);    // PROTECTED by trx here
+  TRI_ASSERT(document.getDataPtr() != nullptr);    // PROTECTED by trx here
 
   // generate result
   if (wasSynchronous) {

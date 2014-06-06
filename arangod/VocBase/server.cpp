@@ -210,7 +210,7 @@ static int ReadServerId (char const* filename) {
   TRI_json_t* idString;
   TRI_server_id_t foundId;
 
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   if (! TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
@@ -260,7 +260,7 @@ static int WriteServerId (char const* filename) {
   struct tm tb;
   bool ok;
 
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   // create a json object
   json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -271,7 +271,7 @@ static int WriteServerId (char const* filename) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  assert(ServerId != 0);
+  TRI_ASSERT(ServerId != 0);
 
   idString = TRI_StringUInt64((uint64_t) ServerId);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString));
@@ -354,7 +354,7 @@ static int ReadShutdownInfo (char const* filename) {
   TRI_json_t* tickString;
   uint64_t foundTick;
 
-  assert(filename != NULL);
+  TRI_ASSERT(filename != NULL);
 
   if (! TRI_ExistsFile(filename)) {
     return TRI_ERROR_FILE_NOT_FOUND;
@@ -647,7 +647,7 @@ static int OpenDatabases (TRI_server_t* server,
     void const* found;
 
     name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     // .............................................................................
     // construct and validate path
@@ -857,7 +857,7 @@ static int OpenDatabases (TRI_server_t* server,
     }
 
     // should never have a duplicate database name
-    assert(found == NULL);
+    TRI_ASSERT(found == NULL);
 
     LOG_INFO("loaded database '%s' from '%s'",
              vocbase->_name,
@@ -882,7 +882,7 @@ static int CloseDatabases (TRI_server_t* server) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != nullptr) {
-      assert(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
       
       TRI_DestroyVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
@@ -898,7 +898,7 @@ static int CloseDatabases (TRI_server_t* server) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != nullptr) {
-      assert(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
       
       TRI_DestroyInitialVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
@@ -923,7 +923,7 @@ static int GetDatabases (TRI_server_t* server,
   int res;
   size_t i, n;
 
-  assert(server != NULL);
+  TRI_ASSERT(server != NULL);
 
   res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -942,7 +942,7 @@ static int GetDatabases (TRI_server_t* server,
     char* dname;
 
     name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // found some other file
@@ -1020,7 +1020,7 @@ static bool HasOldCollections (TRI_server_t* server) {
   bool found;
   size_t i, n;
 
-  assert(server != NULL);
+  TRI_ASSERT(server != NULL);
 
   if (regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -1034,7 +1034,7 @@ static bool HasOldCollections (TRI_server_t* server) {
 
   for (i = 0;  i < n;  ++i) {
     char const* name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // found "collection-xxxx". we can ignore the rest
@@ -1062,8 +1062,8 @@ static int MoveOldCollections (TRI_server_t* server,
   int res;
   size_t i, n;
 
-  assert(server != NULL);
-  assert(systemName != NULL);
+  TRI_ASSERT(server != NULL);
+  TRI_ASSERT(systemName != NULL);
 
   // first move the VERSION file
   MoveVersionFile(server, systemName);
@@ -1086,7 +1086,7 @@ static int MoveOldCollections (TRI_server_t* server,
     char* targetName;
 
     name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // found something else than "collection-xxxx". we can ignore these files/directories
@@ -1153,9 +1153,9 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   TRI_json_t* json;
   // TRI_json_t* properties;
 
-  assert(id > 0);
-  assert(name != NULL);
-  assert(directory != NULL);
+  TRI_ASSERT(id > 0);
+  TRI_ASSERT(name != NULL);
+  TRI_ASSERT(directory != NULL);
 
   file = TRI_Concatenate2File(directory, TRI_VOC_PARAMETER_FILE);
 
@@ -1231,8 +1231,8 @@ static int CreateDatabaseDirectory (TRI_server_t* server,
   char* file;
   int res;
 
-  assert(server != NULL);
-  assert(databaseName != NULL);
+  TRI_ASSERT(server != NULL);
+  TRI_ASSERT(databaseName != NULL);
 
   tickString = TRI_StringUInt64(tick);
 
@@ -1289,7 +1289,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
   int res;
   size_t i, n;
 
-  assert(server != NULL);
+  TRI_ASSERT(server != NULL);
 
   res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -1312,7 +1312,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
     TRI_voc_tick_t tick;
 
     name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // found "database-xxxx". this is the desired format already
@@ -1398,7 +1398,7 @@ static int InitDatabases (TRI_server_t* server,
   TRI_vector_string_t names;
   int res;
 
-  assert(server != NULL);
+  TRI_ASSERT(server != NULL);
 
   TRI_InitVectorString(&names, TRI_CORE_MEM_ZONE);
 
@@ -1429,7 +1429,7 @@ static int InitDatabases (TRI_server_t* server,
     if (res == TRI_ERROR_NO_ERROR && isUpgrade) {
       char const* systemName;
 
-      assert(names._length > 0);
+      TRI_ASSERT(names._length > 0);
 
       systemName = names._buffer[0];
 
@@ -1590,8 +1590,8 @@ int TRI_InitServer (TRI_server_t* server,
                     bool disableLoggers,
                     bool disableAppliers) {
 
-  assert(server != NULL);
-  assert(basePath != NULL);
+  TRI_ASSERT(server != NULL);
+  TRI_ASSERT(basePath != NULL);
 
   // c++ object, may be null in console mode
   server->_applicationEndpointServer = applicationEndpointServer;
@@ -2093,7 +2093,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
     return res;
   }
   
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   vocbase->_replicationLogger  = TRI_CreateReplicationLogger(vocbase);
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
@@ -2197,7 +2197,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     return res;
   }
 
-  assert(vocbase != nullptr);
+  TRI_ASSERT(vocbase != nullptr);
 
   // create application directories
   CreateApplicationDirectory(vocbase->_name, server->_appPath);
@@ -2322,7 +2322,7 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
   }
   else {
     // mark as deleted
-    assert(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
 
     if (TRI_DropVocBase(vocbase)) {
       LOG_INFO("dropping coordinator database '%s'",
@@ -2367,7 +2367,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   }
   else {
     // mark as deleted
-    assert(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
     if (TRI_DropVocBase(vocbase)) {
       LOG_INFO("dropping database '%s', directory '%s'",
@@ -2406,10 +2406,10 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
     if (vocbase != nullptr && vocbase->_id == id) {
-      bool result = TRI_UseVocBase(vocbase);
+      bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
 
       // if we got here, no one else can have deleted the database
-      assert(result == true);
+      TRI_ASSERT(result == true);
       return vocbase;
     }
   }
@@ -2429,10 +2429,10 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_coordinatorDatabases, name));
 
   if (vocbase != nullptr) {
-    bool result = TRI_UseVocBase(vocbase);
+    bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
 
     // if we got here, no one else can have deleted the database
-    assert(result == true);
+    TRI_ASSERT(result == true);
   }
   
   return vocbase;
@@ -2450,10 +2450,10 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_LookupByKeyAssociativePointer(&server->_databases, name));
 
   if (vocbase != nullptr) {
-    bool result = TRI_UseVocBase(vocbase);
+    bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
 
     // if we got here, no one else can have deleted the database
-    assert(result == true);
+    TRI_ASSERT(result == true);
   }
   
   return vocbase;
@@ -2473,10 +2473,10 @@ TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 
     if (vocbase != nullptr && vocbase->_id == id) {
-      bool result = TRI_UseVocBase(vocbase);
+      bool result TRI_UNUSED = TRI_UseVocBase(vocbase);
 
       // if we got here, no one else can have deleted the database
-      assert(result == true);
+      TRI_ASSERT(result == true);
       return vocbase;
     }
   }
@@ -2516,7 +2516,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
       if (vocbase != nullptr) {
         char* copy;
 
-        assert(vocbase->_name != nullptr);
+        TRI_ASSERT(vocbase->_name != nullptr);
 
         if (! CanUseDatabase(vocbase, username, password)) {
           // user cannot see database
@@ -2564,7 +2564,7 @@ int TRI_GetDatabaseNamesServer (TRI_server_t* server,
       if (vocbase != nullptr) {
         char* copy;
 
-        assert(vocbase->_name != nullptr);
+        TRI_ASSERT(vocbase->_name != nullptr);
 
         copy = TRI_DuplicateStringZ(names->_memoryZone, vocbase->_name);
 

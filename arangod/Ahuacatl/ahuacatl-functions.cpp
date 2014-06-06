@@ -285,7 +285,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
   bool foundArg = false;
   bool parse = true;
 
-  assert(function);
+  TRI_ASSERT(function);
 
   pattern = function->_argPattern;
   while (parse) {
@@ -302,7 +302,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
         parse = false;
         break;
       case '|':
-        assert(!inOptional);
+        TRI_ASSERT(!inOptional);
         if (foundArg) {
           ++minArgs;
           ++maxArgs;
@@ -311,7 +311,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
         foundArg = false;
         break;
       case ',':
-        assert(foundArg);
+        TRI_ASSERT(foundArg);
         if (!inOptional) {
           ++minArgs;
         }
@@ -319,7 +319,7 @@ static void SetArgumentCount (TRI_aql_function_t* const function) {
         foundArg = false;
         break;
       case '+':
-        assert(inOptional);
+        TRI_ASSERT(inOptional);
         maxArgs = 256;
         parse = false;
         break;
@@ -382,8 +382,8 @@ static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess,
                                   const size_t n) {
   size_t len;
 
-  assert(fieldAccess);
-  assert(lookFor);
+  TRI_ASSERT(fieldAccess);
+  TRI_ASSERT(lookFor);
 
   len = strlen(lookFor);
   if (len == 0) {
@@ -437,10 +437,10 @@ static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
   edgeCollection = TRI_AQL_NODE_MEMBER(args, 1);
   direction = TRI_AQL_NODE_MEMBER(args, 2);
 
-  assert(vertexCollection);
-  assert(edgeCollection);
-  assert(direction);
-  assert(fieldAccess);
+  TRI_ASSERT(vertexCollection);
+  TRI_ASSERT(edgeCollection);
+  TRI_ASSERT(direction);
+  TRI_ASSERT(fieldAccess);
 
   n = strlen(fieldAccess->_fullName);
   name = fieldAccess->_fullName + fieldAccess->_variableNameLength;
@@ -799,8 +799,8 @@ TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*
   TRI_aql_function_t* function;
   char* upperName;
 
-  assert(functions);
-  assert(externalName);
+  TRI_ASSERT(functions);
+  TRI_ASSERT(externalName);
 
   // normalize the name by upper-casing it
   upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, externalName);
@@ -897,7 +897,7 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
   size_t i;
   bool foundArg = false;
 
-  assert(function != NULL);
+  TRI_ASSERT(function != NULL);
 
   i = 0;
   pattern = function->_argPattern;
@@ -939,9 +939,9 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   bool eof = false;
   bool repeat = false;
 
-  assert(function);
-  assert(parameters);
-  assert(parameters->_type == TRI_AQL_NODE_LIST);
+  TRI_ASSERT(function);
+  TRI_ASSERT(parameters);
+  TRI_ASSERT(parameters->_type == TRI_AQL_NODE_LIST);
 
   n = parameters->_members._length;
 
@@ -993,7 +993,7 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
             }
             break;
           case ',': // next argument
-            assert(foundArg);
+            TRI_ASSERT(foundArg);
             parse = false;
             ARG_CHECK
             break;

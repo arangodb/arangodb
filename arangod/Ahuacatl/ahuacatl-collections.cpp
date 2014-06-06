@@ -113,7 +113,7 @@ static int CollectionNameComparator (const void* l, const void* r) {
 static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
   TRI_aql_collection_t* collection;
 
-  assert(name);
+  TRI_ASSERT(name);
 
   collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
 
@@ -309,7 +309,7 @@ TRI_aql_collection_hint_t* TRI_CreateCollectionHintAql (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionHintAql (TRI_aql_collection_hint_t* const hint) {
-  assert(hint);
+  TRI_ASSERT(hint);
 
   if (hint->_ranges != NULL) {
     TRI_FreeAccessesAql(hint->_ranges);
@@ -343,7 +343,7 @@ TRI_aql_collection_t* TRI_GetCollectionAql (const TRI_aql_context_t* context,
                                             const char* collectionName) {
   size_t i, n;
 
-  assert(context != NULL);
+  TRI_ASSERT(context != NULL);
 
   n = context->_collections._length;
   for (i = 0; i < n; ++i) {
@@ -391,11 +391,11 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
     TRI_document_collection_t* primaryCollection;
 
-    assert(collection != NULL);
-    assert(collection->_name != NULL);
-    assert(collection->_collection != NULL);
-    assert(collection->_collection->_collection != NULL);
-    assert(collection->_barrier == NULL);
+    TRI_ASSERT(collection != NULL);
+    TRI_ASSERT(collection->_name != NULL);
+    TRI_ASSERT(collection->_collection != NULL);
+    TRI_ASSERT(collection->_collection->_collection != NULL);
+    TRI_ASSERT(collection->_barrier == NULL);
 
     primaryCollection = collection->_collection->_collection;
 
@@ -434,16 +434,16 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* context) {
   while (i--) {
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
 
-    assert(collection != NULL);
-    assert(collection->_name != NULL);
+    TRI_ASSERT(collection != NULL);
+    TRI_ASSERT(collection->_name != NULL);
 
     if (collection->_collection == NULL || collection->_barrier == NULL) {
       // don't process collections we weren't able to lock at all
       continue;
     }
 
-    assert(collection->_barrier != NULL);
-    assert(collection->_collection->_collection != NULL);
+    TRI_ASSERT(collection->_barrier != NULL);
+    TRI_ASSERT(collection->_collection->_collection != NULL);
 
     LOG_TRACE("removing barrier for collection '%s'", collection->_name);
 
@@ -458,8 +458,8 @@ void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* context) {
 
 bool TRI_AddCollectionAql (TRI_aql_context_t* context, 
                            const char* name) {
-  assert(context != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(context != NULL);
+  TRI_ASSERT(name != NULL);
 
   // duplicates are not a problem here, we simply ignore them
   TRI_InsertKeyAssociativePointer(&context->_collectionNames, name, (void*) name, false);

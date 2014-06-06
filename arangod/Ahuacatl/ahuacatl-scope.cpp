@@ -48,13 +48,13 @@ static inline TRI_aql_scope_t* CurrentScope (TRI_aql_context_t* const context) {
   TRI_aql_scope_t* scope;
   size_t n;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   n = context->_currentScopes._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_currentScopes, n - 1);
-  assert(scope);
+  TRI_ASSERT(scope);
 
   return scope;
 }
@@ -102,7 +102,7 @@ static TRI_aql_scope_t* CreateScope (TRI_aql_context_t* const context,
   TRI_aql_scope_t* scope;
   int res;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   scope = (TRI_aql_scope_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_scope_t), false);
 
@@ -203,7 +203,7 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
 TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context) {
   TRI_aql_for_hint_t* hint;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   hint = (TRI_aql_for_hint_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_for_hint_t), false);
   if (hint == NULL) {
@@ -225,7 +225,7 @@ TRI_aql_for_hint_t* TRI_CreateForHintScopeAql (TRI_aql_context_t* const context)
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeForHintScopeAql (TRI_aql_for_hint_t* const hint) {
-  assert(hint);
+  TRI_ASSERT(hint);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, hint);
 }
@@ -258,7 +258,7 @@ const char* TRI_TypeNameScopeAql (const TRI_aql_scope_e type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitScopesAql (TRI_aql_context_t* const context) {
-  assert(context);
+  TRI_ASSERT(context);
 
   TRI_InitVectorPointer(&context->_memory._scopes, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&context->_currentScopes, TRI_UNKNOWN_MEM_ZONE);
@@ -271,7 +271,7 @@ void TRI_InitScopesAql (TRI_aql_context_t* const context) {
 void TRI_FreeScopesAql (TRI_aql_context_t* const context) {
   size_t i, n;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   n = context->_memory._scopes._length;
 
@@ -293,7 +293,7 @@ bool TRI_StartScopeAql (TRI_aql_context_t* const context, const TRI_aql_scope_e 
   TRI_aql_scope_t* scope;
   TRI_aql_node_t* node;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   scope = CreateScope(context, type);
 
@@ -336,10 +336,10 @@ bool TRI_EndScopeAql (TRI_aql_context_t* const context) {
   TRI_aql_node_t* node;
   size_t n;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   n = context->_currentScopes._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   scope = static_cast<TRI_aql_scope_t*>
                      (TRI_RemoveVectorPointer(&context->_currentScopes, --n));
@@ -365,7 +365,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
   TRI_aql_scope_e type;
   size_t n;
 
-  assert(context);
+  TRI_ASSERT(context);
   type = CurrentType(context);
 
   if (type == TRI_AQL_SCOPE_MAIN || type == TRI_AQL_SCOPE_SUBQUERY) {
@@ -373,14 +373,14 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
   }
 
   n = context->_currentScopes._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   while (n > 0) {
     TRI_aql_scope_t* scope;
     TRI_aql_node_t* node;
 
     scope = (TRI_aql_scope_t*) TRI_RemoveVectorPointer(&context->_currentScopes, --n);
-    assert(scope);
+    TRI_ASSERT(scope);
 
     LOG_TRACE("closing scope of type %s", TRI_TypeNameScopeAql(scope->_type));
 
@@ -416,11 +416,11 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
   }
 
   n = context->_currentScopes._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   while (n > 0) {
     TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_currentScopes, --n);
-    assert(scope);
+    TRI_ASSERT(scope);
 
     if (TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name)) {
       // duplicate variable
@@ -447,8 +447,8 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   TRI_aql_scope_t* scope;
   void* result;
 
-  assert(context);
-  assert(name);
+  TRI_ASSERT(context);
+  TRI_ASSERT(name);
 
   if (TRI_VariableExistsScopeAql(context, name)) {
     return false;
@@ -462,7 +462,7 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   scope = CurrentScope(context);
 
   result = TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false);
-  assert(result == NULL);
+  TRI_ASSERT(result == NULL);
 
   return true;
 }

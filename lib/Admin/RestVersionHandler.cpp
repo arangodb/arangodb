@@ -115,7 +115,7 @@ string const& RestVersionHandler::queue () const {
 /// @EXAMPLE_ARANGOSH_RUN{RestVersion}
 ///     var response = logCurlRequest('GET', '/_api/version');
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -125,7 +125,7 @@ string const& RestVersionHandler::queue () const {
 /// @EXAMPLE_ARANGOSH_RUN{RestVersionDetails}
 ///     var response = logCurlRequest('GET', '/_api/version?details=true');
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

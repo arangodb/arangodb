@@ -333,7 +333,7 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  assert(false);
+  TRI_ASSERT(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,7 +361,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  assert(false);
+  TRI_ASSERT(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -43,7 +43,7 @@
 static void FreeData (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
-  assert(json);
+  TRI_ASSERT(json);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
@@ -56,7 +56,7 @@ static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t const* result
                                        const TRI_general_cursor_length_t n) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
-  assert(json);
+  TRI_ASSERT(json);
 
   return (TRI_general_cursor_row_t*) TRI_AtVector(&json->_value._objects, (size_t) n);
 }
@@ -68,7 +68,7 @@ static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t const* result
 static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t const* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
-  assert(json);
+  TRI_ASSERT(json);
 
   return (TRI_general_cursor_length_t) json->_value._objects._length;
 }

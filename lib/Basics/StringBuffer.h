@@ -189,7 +189,7 @@ namespace triagens {
               strm.next_out  = (unsigned char*) buffer;
 
               res = ::inflate(&strm, Z_NO_FLUSH);
-              assert(res != Z_STREAM_ERROR);  
+              TRI_ASSERT(res != Z_STREAM_ERROR);  
 
               switch (res) {
                 case Z_NEED_DICT: 
@@ -259,7 +259,7 @@ namespace triagens {
               strm.next_out  = (unsigned char*) buffer;
 
               res = ::inflate(&strm, Z_NO_FLUSH);
-              assert(res != Z_STREAM_ERROR);  
+              TRI_ASSERT(res != Z_STREAM_ERROR);  
 
               switch (res) {
                 case Z_NEED_DICT: 

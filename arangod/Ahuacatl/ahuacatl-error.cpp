@@ -54,7 +54,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetErrorCodeAql (const TRI_aql_error_t* const error) {
-  assert(error);
+  TRI_ASSERT(error);
 
   return error->_code;
 }
@@ -68,7 +68,7 @@ char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
   char buffer[256];
   int code;
 
-  assert(error);
+  TRI_ASSERT(error);
 
   code = TRI_GetErrorCodeAql(error);
 
@@ -96,7 +96,7 @@ char* TRI_GetErrorMessageAql (const TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitErrorAql (TRI_aql_error_t* const error) {
-  assert(error);
+  TRI_ASSERT(error);
 
   error->_code = TRI_ERROR_NO_ERROR;
   error->_data = NULL;
@@ -107,7 +107,7 @@ void TRI_InitErrorAql (TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyErrorAql (TRI_aql_error_t* const error) {
-  assert(error);
+  TRI_ASSERT(error);
 
   if (error->_data) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, error->_data);
@@ -119,7 +119,7 @@ void TRI_DestroyErrorAql (TRI_aql_error_t* const error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
-  assert(error);
+  TRI_ASSERT(error);
 
   TRI_DestroyErrorAql(error);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, error);
@@ -142,7 +142,7 @@ char* TRI_GetContextErrorAql (const char* const query,
   size_t currentLine = 1;
   size_t currentColumn = 0;
 
-  assert(query);
+  TRI_ASSERT(query);
 
   p = query;
   while ((c = *p)) {
@@ -171,7 +171,7 @@ char* TRI_GetContextErrorAql (const char* const query,
   }
 
   // p is pointing at the position in the query the parse error occurred at
-  assert(p >= query);
+  TRI_ASSERT(p >= query);
 
   offset = (size_t) (p - query);
 

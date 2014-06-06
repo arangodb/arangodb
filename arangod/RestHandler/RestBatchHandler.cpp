@@ -155,7 +155,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     var response = logCurlRequestRaw('POST', '/_api/batch', body, headers);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -175,8 +175,8 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     var response = logCurlRequestRaw('POST', '/_api/batch', body);
 ///
-///     assert(response.code === 200);
-///     assert(response.headers['x-arango-errors'] == 2);
+///     TRI_ASSERT(response.code === 200);
+///     TRI_ASSERT(response.headers['x-arango-errors'] == 2);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -471,7 +471,7 @@ bool RestBatchHandler::getBoundaryHeader (string* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundary (string* result) {
-  assert(_request);
+  TRI_ASSERT(_request);
 
   // try peeking at header first
   if (getBoundaryHeader(result)) {
@@ -487,7 +487,7 @@ bool RestBatchHandler::getBoundary (string* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::extractPart (SearchHelper* helper) {
-  assert(helper->searchStart != NULL);
+  TRI_ASSERT(helper->searchStart != NULL);
 
   // init the response
   helper->foundStart = NULL;

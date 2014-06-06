@@ -128,7 +128,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
                         TRI_datafile_t* datafile) { 
   CollectorState* state = reinterpret_cast<CollectorState*>(data);
 
-  assert(marker != nullptr);
+  TRI_ASSERT(marker != nullptr);
 
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE: {
@@ -381,7 +381,7 @@ bool CollectorThread::processQueuedOperations () {
   // process operations for each collection
   for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); ++it) {
     auto& operations = (*it).second;
-    assert(! operations.empty());
+    TRI_ASSERT(! operations.empty());
 
     for (auto it2 = operations.begin(); it2 != operations.end(); /* no hoisting */ ) {
       Logfile* logfile = (*it2)->logfile;
@@ -514,7 +514,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   LOG_TRACE("updating datafile statistics for collection '%s'", document->base._info._name);
   updateDatafileStatistics(document, cache);
 
-  assert(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+  TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
   document->_uncollectedLogfileEntries -= cache->totalOperationsCount; 
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
@@ -552,7 +552,7 @@ int CollectorThread::collect (Logfile* logfile) {
 
   TRI_datafile_t* df = logfile->df();
 
-  assert(df != nullptr);
+  TRI_ASSERT(df != nullptr);
 
   // create a state for the collector, beginning with the list of failed transactions 
   CollectorState state;
@@ -638,7 +638,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
                                       OperationsType const& operations) {
 
   // GENERAL TODO: remove TRI_SetLastCollectedDocumentOperation or remove the lock for the collection
-  assert(! operations.empty());
+  TRI_ASSERT(! operations.empty());
 
   triagens::arango::DatabaseGuard guard(_server, databaseId);
 
@@ -662,7 +662,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
 
 
   TRI_document_collection_t* document = collection->_collection;
-  assert(document != nullptr);
+  TRI_ASSERT(document != nullptr);
 
   TRI_voc_tick_t minTransferTick = document->base._tickMax; 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -1002,7 +1002,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
       // found a datafile with enough space left
       if (res == TRI_ERROR_NO_ERROR) {
         dst = reinterpret_cast<char*>(position);
-        assert(dst != nullptr);
+        TRI_ASSERT(dst != nullptr);
         goto leave;
       }
 
@@ -1032,7 +1032,7 @@ leave:
   if (dst != nullptr) {
     initMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
         
-    assert(datafile != nullptr);
+    TRI_ASSERT(datafile != nullptr);
 
     if (datafile->_fid != cache->lastFid) {
       // datafile has changed
@@ -1053,7 +1053,7 @@ leave:
 void CollectorThread::initMarker (TRI_df_marker_t* marker,
                                   TRI_df_marker_type_e type,
                                   TRI_voc_size_t size) {
-  assert(marker != nullptr);
+  TRI_ASSERT(marker != nullptr);
 
   marker->_size = size; 
   marker->_type = (TRI_df_marker_type_t) type;
@@ -1078,7 +1078,7 @@ void CollectorThread::finishMarker (char* mem,
   crc = TRI_BlockCrc32(crc, const_cast<char*>(mem), marker->_size);
   marker->_crc = TRI_FinalCrc32(crc);
 
-  assert(document->base._tickMax < tick);
+  TRI_ASSERT(document->base._tickMax < tick);
   document->base._tickMax = tick;
 
   cache->operations->emplace_back(CollectorOperation(mem, cache->lastFid));

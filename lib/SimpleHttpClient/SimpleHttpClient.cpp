@@ -103,7 +103,7 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
-      assert(_result == 0);
+      TRI_ASSERT(_result == 0);
 
       _result = new SimpleHttpResult;
       _errorMessage = "";
@@ -111,7 +111,7 @@ namespace triagens {
       // set body 
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
-      assert(_state == IN_CONNECT || _state == IN_WRITE);
+      TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
 
       double endTime = now() + _requestTimeout;
@@ -386,7 +386,7 @@ namespace triagens {
         _state = IN_CONNECT;
       }
 
-      assert(_state == IN_CONNECT ||_state == IN_WRITE);
+      TRI_ASSERT(_state == IN_CONNECT ||_state == IN_WRITE);
     }
 
 
@@ -399,7 +399,7 @@ namespace triagens {
 
       while (pos) {
         // size_t is unsigned, should never get < 0
-        assert(pos >= _readBuffer.c_str());
+        TRI_ASSERT(pos >= _readBuffer.c_str());
 
         size_t len = pos - _readBuffer.c_str();
         string line(_readBuffer.c_str(), len);

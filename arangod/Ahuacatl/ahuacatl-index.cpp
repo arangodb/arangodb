@@ -109,8 +109,8 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
                                    TRI_vector_pointer_t* fieldAccesses) {
   bool isBetter = false;
 
-  assert(idx);
-  assert(fieldAccesses);
+  TRI_ASSERT(idx);
+  TRI_ASSERT(fieldAccesses);
 
   if (pickedIndex == NULL) {
     pickedIndex = static_cast<TRI_aql_index_t*>
@@ -301,7 +301,7 @@ static bool CanUseIndex (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeIndexAql (TRI_aql_index_t* const idx) {
-  assert(idx);
+  TRI_ASSERT(idx);
 
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, idx->_fieldAccesses);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
@@ -321,9 +321,9 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
-  assert(context);
-  assert(collectionName);
-  assert(candidates);
+  TRI_ASSERT(context);
+  TRI_ASSERT(collectionName);
+  TRI_ASSERT(candidates);
 
   n = availableIndexes->_length;
 

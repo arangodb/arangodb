@@ -1526,7 +1526,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   }
 
   cwdLength = strlen(cwd);
-  assert(cwdLength > 0);
+  TRI_ASSERT(cwdLength > 0);
 
   result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + strlen(file) + 2) * sizeof(char), false);
   if (result != NULL) {

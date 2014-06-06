@@ -407,7 +407,7 @@ static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
 
 static inline bool ExtractForceSync (v8::Arguments const& argv,
                                      int index) {
-  assert(index > 0);
+  TRI_ASSERT(index > 0);
 
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
 }
@@ -458,7 +458,7 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 static inline TRI_vocbase_t* GetContextVocBase () {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  assert(v8g->_vocbase != nullptr);
+  TRI_ASSERT(v8g->_vocbase != nullptr);
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(v8g->_vocbase);
 
   return vocbase;
@@ -471,7 +471,7 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
                                  string& collectionName,
                                  TRI_voc_key_t& key) {
-  assert(collectionName == "");
+  TRI_ASSERT(collectionName == "");
 
   if (! arg->IsString()) {
     return false;
@@ -622,7 +622,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
                                                             v8::Handle<v8::Value> const val) {
   v8::HandleScope scope;
 
-  assert(key == nullptr);
+  TRI_ASSERT(key == nullptr);
 
   // reset the collection identifier and the revision
   string collectionName = "";
@@ -636,7 +636,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   }
 
   // we have at least a key, we also might have a collection name
-  assert(key != nullptr);
+  TRI_ASSERT(key != nullptr);
 
 
   if (collectionName == "") {
@@ -662,7 +662,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     }
   }
 
-  assert(collectionName != "");
+  TRI_ASSERT(collectionName != "");
 
   if (collection == 0) {
     // no collection object was passed, now check the user-supplied collection name
@@ -693,7 +693,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     collection = col;
   }
 
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
@@ -707,8 +707,8 @@ static bool IsIndexHandle (v8::Handle<v8::Value> const arg,
                            string& collectionName,
                            TRI_idx_iid_t& iid) {
 
-  assert(collectionName == "");
-  assert(iid == 0);
+  TRI_ASSERT(collectionName == "");
+  TRI_ASSERT(iid == 0);
 
   if (arg->IsNumber()) {
     // numeric index id
@@ -861,7 +861,7 @@ static v8::Handle<v8::Value> IndexRep (string const& collectionName,
                                        TRI_json_t const* idx) {
   v8::HandleScope scope;
 
-  assert(idx != 0);
+  TRI_ASSERT(idx != 0);
 
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
@@ -1321,8 +1321,8 @@ static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* co
                                                      bool create) {
   v8::HandleScope scope;
 
-  assert(collection != 0);
-  assert(json != 0);
+  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(json != 0);
 
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
@@ -1368,12 +1368,12 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                bool create) {
   v8::HandleScope scope;
 
-  assert(collection != 0);
-  assert(json != 0);
+  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(json != 0);
   
   // extract type
   TRI_json_t* value = TRI_LookupArrayJson(json, "type");
-  assert(TRI_IsStringJson(value));
+  TRI_ASSERT(TRI_IsStringJson(value));
 
   TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
  
@@ -1428,7 +1428,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
       for (size_t i = 0; i < value->_value._objects._length; ++i) {
         TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
 
-        assert(TRI_IsStringJson(v));
+        TRI_ASSERT(TRI_IsStringJson(v));
         TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
       }
     }
@@ -1461,7 +1461,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_GEO1_INDEX: {
-      assert(attributes._length == 1);
+      TRI_ASSERT(attributes._length == 1);
       
       bool ignoreNull = false;
       TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
@@ -1496,7 +1496,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_GEO2_INDEX: {
-      assert(attributes._length == 2);
+      TRI_ASSERT(attributes._length == 2);
       
       bool ignoreNull = false;
       TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
@@ -1525,7 +1525,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_HASH_INDEX: {
-      assert(attributes._length > 0);
+      TRI_ASSERT(attributes._length > 0);
 
       if (create) {
         idx = TRI_EnsureHashIndexDocumentCollection(document,
@@ -1545,7 +1545,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      assert(attributes._length > 0);
+      TRI_ASSERT(attributes._length > 0);
 
       if (create) {
         idx = TRI_EnsureSkiplistIndexDocumentCollection(document, 
@@ -1564,7 +1564,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
       
     case TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      assert(attributes._length == 1);
+      TRI_ASSERT(attributes._length == 1);
 
       int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
       TRI_json_t* value = TRI_LookupArrayJson(json, "minLength");
@@ -1591,7 +1591,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_BITARRAY_INDEX: {
-      assert(attributes._length > 0);
+      TRI_ASSERT(attributes._length > 0);
 
       bool supportUndefined = false;
       TRI_json_t* value = TRI_LookupArrayJson(json, "undefined");
@@ -1769,7 +1769,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(json != 0);
+  TRI_ASSERT(json != 0);
   
   v8::Handle<v8::Value> ret;
 
@@ -1935,8 +1935,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
   
-  assert(col != 0);
-  assert(key != 0);
+  TRI_ASSERT(col != 0);
+  TRI_ASSERT(key != 0);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
@@ -1959,7 +1959,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  assert(barrier != 0);
+  TRI_ASSERT(barrier != 0);
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_t document;
@@ -2058,8 +2058,8 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  assert(col != 0);
-  assert(key != 0);
+  TRI_ASSERT(col != 0);
+  TRI_ASSERT(key != 0);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
@@ -2115,7 +2115,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
 
   // First get the initial data:
   string const dbname(collection->_dbName);
@@ -2270,8 +2270,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  assert(col != nullptr);
-  assert(key != nullptr);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
@@ -2359,7 +2359,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -2434,7 +2434,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2555,7 +2555,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
@@ -2662,8 +2662,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
   
-  assert(col != 0);
-  assert(key != 0);
+  TRI_ASSERT(col != 0);
+  TRI_ASSERT(key != 0);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col, 
@@ -2759,7 +2759,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  assert(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -2929,8 +2929,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  assert(col != 0);
-  assert(key != 0);
+  TRI_ASSERT(col != 0);
+  TRI_ASSERT(key != 0);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
@@ -3384,7 +3384,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
     return scope.Close(v8::ThrowException(errorObject));
   }
 
-  assert(codeLength > 0);
+  TRI_ASSERT(codeLength > 0);
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), 
                                                              v8::String::New(code, (int) codeLength), 
@@ -3480,7 +3480,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  assert(cursor != 0);
+  TRI_ASSERT(cursor != 0);
 
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
 
@@ -3532,7 +3532,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
-  assert(cursor != 0);
+  TRI_ASSERT(cursor != 0);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
@@ -4017,7 +4017,7 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
                                json);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
     result = TRI_PopulateAuthInfo(vocbase, json);
   }
@@ -4942,7 +4942,7 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
       }
     }
 
-    assert(config._database != 0);
+    TRI_ASSERT(config._database != 0);
     
     if (object->Has(TRI_V8_SYMBOL("username"))) {
       if (object->Get(TRI_V8_SYMBOL("username"))->IsString()) {
@@ -5398,7 +5398,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   trx.finish(TRI_ERROR_NO_ERROR);
 
-  assert(explain);
+  TRI_ASSERT(explain);
 
   v8::Handle<v8::Value> result;
   result = TRI_ObjectJson(explain);
@@ -6484,7 +6484,7 @@ static v8::Handle<v8::Value> JS_ExistsVocbaseCol (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* collection) {
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
   
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
@@ -6506,7 +6506,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
   
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -6602,7 +6602,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_errno());
   }
 
-  assert(info != 0);
+  TRI_ASSERT(info != 0);
 
   if (info == NULL) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -7356,7 +7356,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
 static int GetRevision (TRI_vocbase_col_t* collection,
                         TRI_voc_rid_t& rid) {
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
 
   CollectionNameResolver resolver(collection->_vocbase);
   ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
@@ -7382,7 +7382,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
 
 static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
                                    TRI_voc_rid_t& rid) {
-  assert(collection != 0);
+  TRI_ASSERT(collection != 0);
   
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
@@ -9032,7 +9032,7 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
   if (vocbase != 0) {
     // switch databases
     void* orig = v8g->_vocbase;
-    assert(orig != 0);
+    TRI_ASSERT(orig != 0);
 
     v8g->_vocbase = vocbase;
 
@@ -9400,7 +9400,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  assert(database != 0);
+  TRI_ASSERT(database != 0);
 
   // copy users into context
   if (argv.Length() >= 3 && argv[2]->IsArray()) {
@@ -9971,7 +9971,7 @@ int TRI_ParseVertex (CollectionNameResolver const& resolver,
 
   v8::HandleScope scope;
 
-  assert(key == 0);
+  TRI_ASSERT(key == 0);
 
   // reset everything
   string collectionName = "";
@@ -9983,7 +9983,7 @@ int TRI_ParseVertex (CollectionNameResolver const& resolver,
   }
 
   // we have at least a key, we also might have a collection name
-  assert(key != 0);
+  TRI_ASSERT(key != 0);
 
   if (collectionName == "") {
     // we do not know the collection
@@ -10022,8 +10022,8 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
   TRI_idx_iid_t iid = 0;
 
   // assume we are already loaded
-  assert(collection != 0);
-  assert(collection->_collection != 0);
+  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(collection->_collection != 0);
 
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
@@ -10126,7 +10126,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  assert(barrier != 0);
+  TRI_ASSERT(barrier != 0);
   
   bool doCopy = trx.mustCopyShapedJson();
   
@@ -10218,7 +10218,7 @@ int32_t TRI_GetVocBaseColType () {
 bool TRI_V8RunVersionCheck (void* vocbase, 
                             JSLoader* startupLoader,
                             v8::Handle<v8::Context> context) {
-  assert(startupLoader != 0);
+  TRI_ASSERT(startupLoader != 0);
   
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -10244,7 +10244,7 @@ bool TRI_V8RunVersionCheck (void* vocbase,
 int TRI_V8RunUpgradeCheck (void* vocbase, 
                            JSLoader* startupLoader,
                            v8::Handle<v8::Context> context) {
-  assert(startupLoader != 0);
+  TRI_ASSERT(startupLoader != 0);
   
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();

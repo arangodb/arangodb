@@ -322,7 +322,7 @@ static int WeightShapeType (TRI_shape_type_t type) {
 
   LOG_ERROR("invalid shape type: %d\n", (int) type);
 
-  assert(false);
+  TRI_ASSERT(false);
   return 0;
 }
 
@@ -491,7 +491,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_LIST);
+  TRI_ASSERT(json->_type == TRI_JSON_LIST);
 
   // check for special case "empty list"
   n = json->_value._objects._length;
@@ -598,7 +598,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
-    assert(found != NULL);
+    TRI_ASSERT(found != NULL);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;
@@ -665,7 +665,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
-    assert(found != NULL);
+    TRI_ASSERT(found != NULL);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;
@@ -797,8 +797,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_ARRAY);
-  assert(json->_value._objects._length % 2 == 0);
+  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json->_value._objects._length % 2 == 0);
 
   // number of attributes
   n = json->_value._objects._length / 2;
@@ -820,8 +820,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i));
     TRI_json_t* val = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i + 1));
 
-    assert(key != NULL);
-    assert(val != NULL);
+    TRI_ASSERT(key != NULL);
+    TRI_ASSERT(val != NULL);
 
     if (key->_value._string.data == NULL ||
         key->_value._string.length == 1 ||

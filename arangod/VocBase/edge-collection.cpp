@@ -111,7 +111,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
                                         entry);
   }
   else {
-    assert(false);   // TRI_EDGE_ANY not supported here
+    TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
   }
 
   if (found._length > 0) {

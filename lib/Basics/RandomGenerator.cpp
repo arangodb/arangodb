@@ -257,7 +257,7 @@ namespace RandomHelper {
   class RandomDeviceWin32 : public RandomDevice {
 #ifndef _WIN32
     public:
-      RandomDeviceWin32 () { assert(false); }
+      RandomDeviceWin32 () { TRI_ASSERT(false); }
       ~RandomDeviceWin32 () {}
       uint32_t random () { return 0;}
 #else
@@ -396,7 +396,7 @@ namespace RandomHelper {
         int count = 0;
         static int const MAX_COUNT = 20;
 
-        assert(g > 0);
+        TRI_ASSERT(g > 0);
 
         while (r >= g) {
           if (++count >= MAX_COUNT) {
@@ -446,7 +446,7 @@ namespace triagens {
 
         int32_t random (int32_t left, int32_t right) {
           const int64_t range = (int64_t) right - (int64_t) left + 1LL;
-          assert(range > 0);
+          TRI_ASSERT(range > 0);
 
           uint32_t result = engine();
           result = (int32_t) (abs((int64_t) result % range) + (int64_t) left);

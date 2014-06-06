@@ -147,11 +147,11 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
   // append line to buffer
   if (line != NULL) {
-    assert(parser->_begin <= parser->_start);
-    assert(parser->_start <= parser->_written);
-    assert(parser->_written <= parser->_current);
-    assert(parser->_current <= parser->_stop);
-    assert(parser->_stop <= parser->_end);
+    TRI_ASSERT(parser->_begin <= parser->_start);
+    TRI_ASSERT(parser->_start <= parser->_written);
+    TRI_ASSERT(parser->_written <= parser->_current);
+    TRI_ASSERT(parser->_current <= parser->_stop);
+    TRI_ASSERT(parser->_stop <= parser->_end);
 
     // there is enough room between STOP and END
     if (parser->_stop + length <= parser->_end) {
@@ -353,7 +353,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
           break;
 
         case TRI_CSV_PARSER_WITHIN_QUOTED_FIELD:
-          assert(parser->_useQuote);
+          TRI_ASSERT(parser->_useQuote);
           while (ptr < parser->_stop && *ptr != parser->_quote) {
             *qtr++ = *ptr++;
           }

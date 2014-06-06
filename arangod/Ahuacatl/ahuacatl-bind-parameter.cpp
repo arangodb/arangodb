@@ -60,9 +60,9 @@ static TRI_aql_node_t* FixAttributeAccess (TRI_aql_statement_walker_t* const wal
 
   // we found a bound attribute access
   context = (TRI_aql_context_t*) walker->_data;
-  assert(context);
+  TRI_ASSERT(context);
 
-  assert(node->_members._length == 2);
+  TRI_ASSERT(node->_members._length == 2);
   valueNode = TRI_AQL_NODE_MEMBER(node, 1);
 
   if (valueNode == NULL) {
@@ -112,13 +112,13 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
 
   // we found a parameter node
   context = (TRI_aql_context_t*) walker->_data;
-  assert(context);
+  TRI_ASSERT(context);
 
   bindValues = (TRI_associative_pointer_t*) &context->_parameters._values;
-  assert(bindValues);
+  TRI_ASSERT(bindValues);
 
   name = TRI_AQL_NODE_STRING(node);
-  assert(name);
+  TRI_ASSERT(name);
 
   bind = (TRI_aql_bind_parameter_t*) TRI_LookupByKeyAssociativePointer(bindValues, name);
 
@@ -159,8 +159,8 @@ static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
                                                   const TRI_json_t* const value) {
   TRI_aql_bind_parameter_t* parameter;
 
-  assert(name);
-  assert(value);
+  TRI_ASSERT(name);
+  TRI_ASSERT(value);
 
   parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
 
@@ -243,8 +243,8 @@ void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
       continue;
     }
 
-    assert(parameter->_name);
-    assert(parameter->_value);
+    TRI_ASSERT(parameter->_name);
+    TRI_ASSERT(parameter->_value);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_value);
@@ -261,7 +261,7 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
   size_t i;
   size_t n;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   if (parameters == NULL) {
     // no bind parameters, direclty return
@@ -288,8 +288,8 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
                                               i + 1));
     TRI_aql_bind_parameter_t* parameter;
 
-    assert(TRI_IsStringJson(name));
-    assert(value);
+    TRI_ASSERT(TRI_IsStringJson(name));
+    TRI_ASSERT(value);
 
     parameter = CreateParameter(name->_value._string.data, 
                                 name->_value._string.length - 1,
@@ -341,7 +341,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
       continue;
     }
 
-    assert(parameter->_name);
+    TRI_ASSERT(parameter->_name);
 
     if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._names, parameter->_name)) {
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
@@ -359,7 +359,7 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
 bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
   TRI_aql_statement_walker_t* walker;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   if (TRI_GetLengthAssociativePointer(&context->_parameters._names) == 0) {
     // no bind parameters used in query, instantly return

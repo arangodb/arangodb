@@ -114,7 +114,7 @@ static inline void Indent (TRI_aql_dump_t* const state) {
 
 static inline void Outdent (TRI_aql_dump_t* const state) {
 
-  assert(state->_indent > 0);
+  TRI_ASSERT(state->_indent > 0);
   --state->_indent;
 }
 
@@ -130,7 +130,7 @@ static TRI_aql_node_t* DumpNode (TRI_aql_statement_walker_t* const walker,
     return node;
   }
 
-  assert(state);
+  TRI_ASSERT(state);
 
   PrintType(state, node->_type);
   Indent(state);
@@ -181,7 +181,7 @@ static TRI_aql_node_t* DumpStatementStart (TRI_aql_statement_walker_t* const wal
     return node;
   }
 
-  assert(walker);
+  TRI_ASSERT(walker);
   Indent((TRI_aql_dump_t*) walker->_data);
 
   return DumpNode(walker, node);
@@ -197,7 +197,7 @@ static TRI_aql_node_t* DumpStatementEnd (TRI_aql_statement_walker_t* const walke
     return node;
   }
 
-  assert(walker);
+  TRI_ASSERT(walker);
   Outdent((TRI_aql_dump_t*) walker->_data);
 
   return node;

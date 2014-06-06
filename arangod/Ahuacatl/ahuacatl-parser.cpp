@@ -46,7 +46,7 @@ TRI_aql_parser_t* TRI_CreateParserAql (const char* const query,
   TRI_aql_parser_t* parser;
   int res;
 
-  assert(query);
+  TRI_ASSERT(query);
 
   parser = (TRI_aql_parser_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_parser_t), false);
 

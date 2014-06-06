@@ -26,7 +26,7 @@ namespace triagens {
           handled(false),
           hasReachedIndexes(false) {
 
-        assert(marker != nullptr);
+        TRI_ASSERT(marker != nullptr);
       }
 
       ~DocumentOperation () {
@@ -62,15 +62,15 @@ namespace triagens {
       void init () {
         if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // copy the old header into a safe area
-          assert(header != nullptr);
+          TRI_ASSERT(header != nullptr);
 
           oldHeader = *header;
         }
       }
 
       void handle () {
-        assert(header != nullptr);
-        assert(! handled);
+        TRI_ASSERT(header != nullptr);
+        TRI_ASSERT(! handled);
 
         hasReachedIndexes = true;
           
