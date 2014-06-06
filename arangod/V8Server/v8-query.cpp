@@ -1729,7 +1729,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   bool usedBarrier = false;
   
   if (n > 0) {
-    TRI_ASSERT_MAINTAINER(barrier != 0);
+    TRI_ASSERT(barrier != 0);
   }
 
   // setup result
@@ -1814,7 +1814,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   bool usedBarrier = false;
   
   if (n > 0) {
-    TRI_ASSERT_MAINTAINER(barrier != 0);
+    TRI_ASSERT(barrier != 0);
   }
 
   // setup result

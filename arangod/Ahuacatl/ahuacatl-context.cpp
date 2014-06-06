@@ -168,8 +168,8 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   TRI_aql_context_t* context;
   int res;
 
-  TRI_ASSERT_MAINTAINER(vocbase != NULL);
-  TRI_ASSERT_MAINTAINER(query != NULL);
+  TRI_ASSERT(vocbase != NULL);
+  TRI_ASSERT(query != NULL);
 
   LOG_TRACE("creating context");
 
@@ -278,7 +278,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeContextAql (TRI_aql_context_t* const context) {
-  TRI_ASSERT_MAINTAINER(context != NULL);
+  TRI_ASSERT(context != NULL);
 
   LOG_TRACE("freeing context");
 
@@ -418,8 +418,8 @@ bool TRI_SetupCollectionsContextAql (TRI_aql_context_t* const context) {
 
 bool TRI_RegisterNodeContextAql (TRI_aql_context_t* const context,
                                  void* const node) {
-  TRI_ASSERT_MAINTAINER(context != NULL);
-  TRI_ASSERT_MAINTAINER(node != NULL);
+  TRI_ASSERT(context != NULL);
+  TRI_ASSERT(node != NULL);
 
   TRI_PushBackVectorPointer(&context->_memory._nodes, node);
 
@@ -518,8 +518,8 @@ void TRI_SetErrorContextAql (const char* file,
                              const int code,
                              const char* const data) {
 
-  TRI_ASSERT_MAINTAINER(context != NULL);
-  TRI_ASSERT_MAINTAINER(code > 0);
+  TRI_ASSERT(context != NULL);
+  TRI_ASSERT(code > 0);
 
   if (context->_error._code == 0) {
     // do not overwrite previous error

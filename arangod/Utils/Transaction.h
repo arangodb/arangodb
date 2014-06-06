@@ -104,7 +104,7 @@ namespace triagens {
           _generatingServer(generatingServer),
           _resolver(resolver) {
 
-          TRI_ASSERT_MAINTAINER(_vocbase != 0);
+          TRI_ASSERT(_vocbase != 0);
 
           if (ServerState::instance()->isCoordinator()) {
             _isReal = false;
@@ -294,10 +294,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
          
          TRI_document_collection_t* primaryCollection (TRI_transaction_collection_t const* trxCollection) const {
-           TRI_ASSERT_MAINTAINER(_trx != 0);
-           TRI_ASSERT_MAINTAINER(getStatus() == TRI_TRANSACTION_RUNNING);
-           TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
-           TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+           TRI_ASSERT(_trx != 0);
+           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT(trxCollection->_collection != 0);
+           TRI_ASSERT(trxCollection->_collection->_collection != 0);
 
            return trxCollection->_collection->_collection;
          }
@@ -307,10 +307,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
          
          TRI_shaper_t* shaper (TRI_transaction_collection_t const* trxCollection) const {
-           TRI_ASSERT_MAINTAINER(_trx != 0);
-           TRI_ASSERT_MAINTAINER(getStatus() == TRI_TRANSACTION_RUNNING);
-           TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
-           TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+           TRI_ASSERT(_trx != 0);
+           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT(trxCollection->_collection != 0);
+           TRI_ASSERT(trxCollection->_collection->_collection != 0);
 
            return trxCollection->_collection->_collection->_shaper;
          }
@@ -1026,13 +1026,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int registerError (int errorNum) {
-          TRI_ASSERT_MAINTAINER(errorNum != TRI_ERROR_NO_ERROR);
+          TRI_ASSERT(errorNum != TRI_ERROR_NO_ERROR);
 
           if (_setupState == TRI_ERROR_NO_ERROR) {
             _setupState = errorNum;
           }
 
-          TRI_ASSERT_MAINTAINER(_setupState != TRI_ERROR_NO_ERROR);
+          TRI_ASSERT(_setupState != TRI_ERROR_NO_ERROR);
 
           return errorNum;
         }
@@ -1043,7 +1043,7 @@ namespace triagens {
 
         int addCollectionEmbedded (TRI_voc_cid_t cid, 
                                    TRI_transaction_type_e type) {
-          TRI_ASSERT_MAINTAINER(_trx != 0);
+          TRI_ASSERT(_trx != 0);
 
           int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
 
@@ -1060,7 +1060,7 @@ namespace triagens {
 
         int addCollectionToplevel (TRI_voc_cid_t cid, 
                                    TRI_transaction_type_e type) {
-          TRI_ASSERT_MAINTAINER(_trx != 0);
+          TRI_ASSERT(_trx != 0);
           
           int res;
 
@@ -1107,7 +1107,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int setupEmbedded () {
-          TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
+          TRI_ASSERT(_nestingLevel == 0);
 
           _nestingLevel = ++_trx->_nestingLevel;
             
@@ -1126,7 +1126,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int setupToplevel () {
-          TRI_ASSERT_MAINTAINER(_nestingLevel == 0);
+          TRI_ASSERT(_nestingLevel == 0);
 
           // we are not embedded. now start our own transaction 
           _trx = TRI_CreateTransaction(_vocbase,
@@ -1148,7 +1148,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int freeTransaction () {
-          TRI_ASSERT_MAINTAINER(! isEmbeddedTransaction());
+          TRI_ASSERT(! isEmbeddedTransaction());
 
           if (_trx != 0) {
             this->unregisterTransaction();

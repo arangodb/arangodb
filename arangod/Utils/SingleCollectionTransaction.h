@@ -109,11 +109,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_collection_t* trxCollection () {
-          TRI_ASSERT_MAINTAINER(_cid > 0);
+          TRI_ASSERT(_cid > 0);
 
           TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
 
-          TRI_ASSERT_MAINTAINER(trxCollection != 0);
+          TRI_ASSERT(trxCollection != 0);
           return trxCollection;
         }
 
@@ -124,9 +124,9 @@ namespace triagens {
         inline TRI_document_collection_t* primaryCollection () {
           TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
-          TRI_ASSERT_MAINTAINER(trxCollection != 0);
-          TRI_ASSERT_MAINTAINER(trxCollection->_collection != 0);
-          TRI_ASSERT_MAINTAINER(trxCollection->_collection->_collection != 0);
+          TRI_ASSERT(trxCollection != 0);
+          TRI_ASSERT(trxCollection->_collection != 0);
+          TRI_ASSERT(trxCollection->_collection->_collection != 0);
           
           return trxCollection->_collection->_collection;
         }

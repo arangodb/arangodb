@@ -1809,7 +1809,7 @@ int TRI_UpgradeCollection13 (TRI_vocbase_t* vocbase,
   size_t i, n;
   int res;
   
-  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION_13);
+  TRI_ASSERT(info->_version < TRI_COL_VERSION_13);
   
   if (regcomp(&re, "^.*\\.new$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -2121,7 +2121,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t* vocbase,
   int fdout;
   int res;
   
-  TRI_ASSERT_MAINTAINER(info->_version < TRI_COL_VERSION_15);
+  TRI_ASSERT(info->_version < TRI_COL_VERSION_15);
  
   if (regcomp(&re, "^journal|datafile-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
