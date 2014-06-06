@@ -37,7 +37,7 @@
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
-#include "Utils/Transaction.h"
+#include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/edge-collection.h"
