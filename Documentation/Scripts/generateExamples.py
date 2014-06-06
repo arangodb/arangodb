@@ -109,9 +109,8 @@ state = STATE_BEGIN
 ################################################################################
 
 r1 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
-r2 = re.compile(r'^(/// )?@END_EXAMPLE_ARANGOSH_OUTPUT')
-r3 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
-r4 = re.compile(r'^(/// )?@END_EXAMPLE_ARANGOSH_RUN')
+r2 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
+r3 = re.compile(r'^@END_EXAMPLE_')
 
 name = ""
 
@@ -121,6 +120,9 @@ OPTION_OUTPUT_DIR = 2
 
 fstate = OPTION_NORMAL
 strip = None
+
+partialCmd = ""
+partialLine = ""
 
 for filename in argv:
     if filename == "--arangosh-setup":
@@ -145,6 +147,8 @@ for filename in argv:
 
             line = line.rstrip('\n')
 
+            # read the start line and remember the prefix which must be skipped
+
             if state == STATE_BEGIN:
                 m = r1.match(line)
 
@@ -160,7 +164,7 @@ for filename in argv:
                     state = STATE_ARANGOSH_OUTPUT
                     continue
 
-                m = r3.match(line)
+                m = r2.match(line)
 
                 if m:
                     strip = m.group(1)
@@ -175,28 +179,55 @@ for filename in argv:
                     state = STATE_ARANGOSH_RUN
                     continue
 
-            elif state == STATE_ARANGOSH_OUTPUT:
-                m = r2.match(line)
+                continue
 
-                if m:
-                    name = ""
-                    state = STATE_BEGIN
+            # we are within a example handle any continued line magic
+            line = line[len(strip):]
+            m = r3.match(line)
+            showCmd = True
+
+            if m:
+                name = ""
+                partialLine = ""
+                partialCmd = ""
+                state = STATE_BEGIN
+                continue
+
+            cmd = line.replace("\\", "\\\\").replace("'", "\\'")
+
+            if line != "":
+                if line[0] == "|":
+                    partialLine = partialLine + line[1:] + "\n"
+                    cmd = cmd[1:]
+
+                    if partialCmd == "":
+                        partialCmd = "arangosh> " + cmd + "\\n"
+                    else:
+                        partialCmd = partialCmd + "........> " + cmd + "\\n"
+
                     continue
 
-                line = line[len(strip):]
+                if line[0] == "~":
+                    line = line[1:]
+                    showCmd = False
 
-                ArangoshOutput[name].append(line)
+            line = partialLine + line
+            partialLine = ""
+
+            if showCmd:
+                if partialCmd == "":
+                    cmd = "arangosh> " + cmd
+                else:
+                    cmd = partialCmd + "........> " + cmd
+                    
+                partialCmd = ""
+            else:
+                cmd = None
+
+            if state == STATE_ARANGOSH_OUTPUT:
+                ArangoshOutput[name].append([line, cmd])
 
             elif state == STATE_ARANGOSH_RUN:
-                m = r4.match(line)
-
-                if m:
-                    name = ""
-                    state = STATE_BEGIN
-                    continue
-
-                line = line[len(strip):]
-
                 ArangoshRun[name] += line + "\n"
 
         f.close()
@@ -227,7 +258,7 @@ for filename in argv:
 ### @brief generate arangosh example
 ################################################################################
 
-gr1 = re.compile(r'^[ \n]*var ')
+gr1 = re.compile(r'^[ \n]*(while|if|var) ')
 
 def generateArangoshOutput():
     print "var internal = require('internal');"
@@ -254,14 +285,15 @@ def generateArangoshOutput():
         print "  var XXX;"
 
         for l in value:
-            m = gr1.match(l)
+            m = gr1.match(l[0])
 
-            print "print('arangosh> %s');" % l.replace("\\", "\\\\").replace("'", "\\'")
+            if l[1]:
+                print "print('%s');" % l[1]
 
             if m:
-                print "%s" % l
+                print "%s" % l[0]
             else:
-                print "XXX = %s" % l
+                print "XXX = %s" % l[0]
                 print "print(XXX);"
 
         print "} catch (err) { print(err); }"
