@@ -164,6 +164,7 @@ compaction_info_t;
 static inline int64_t AlignedSize (TRI_df_marker_t const* marker) {
   return static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size));
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compactor file, based on a datafile
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,9 +204,7 @@ static int CopyMarker (TRI_document_collection_t* document,
                        TRI_datafile_t* compactor,
                        TRI_df_marker_t const* marker,
                        TRI_df_marker_t** result) {
-  int res;
-
-  res = TRI_ReserveElementDatafile(compactor, marker->_size, result, 0);
+  int res = TRI_ReserveElementDatafile(compactor, marker->_size, result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->base._lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
@@ -672,7 +671,7 @@ static int RemoveDatafile (TRI_document_collection_t* document,
   // update dfi
   dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, false);
 
-  if (dfi != NULL) {
+  if (dfi != nullptr) {
     TRI_RemoveDatafileInfoDocumentCollection(document, df->_fid);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, dfi);
   }

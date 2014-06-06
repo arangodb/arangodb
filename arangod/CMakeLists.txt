@@ -128,7 +128,6 @@ add_executable(
     VocBase/replication-master.cpp
     VocBase/server.cpp
     VocBase/transaction.cpp
-    VocBase/update-policy.cpp
     VocBase/voc-shaper.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp

@@ -88,7 +88,7 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _vocbase(vocbase),
   _configuration(),
   _masterInfo(),
-  _policy(),
+  _policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr),
   _endpoint(0),
   _connection(0),
   _client(0) {
@@ -106,9 +106,6 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _localServerId       = TRI_GetIdServer();
   _localServerIdString = StringUtils::itoa(_localServerId);
  
-  // init the update policy
-  TRI_InitUpdatePolicy(&_policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0); 
-
   TRI_InitConfigurationReplicationApplier(&_configuration);
   TRI_CopyConfigurationReplicationApplier(configuration, &_configuration);
  

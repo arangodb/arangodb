@@ -892,8 +892,8 @@ static int LookupDocument (TRI_document_collection_t* document,
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
  
-  if (policy != nullptr) { 
-    return TRI_CheckUpdatePolicy(policy, header->_rid);
+  if (policy != nullptr) {
+    return policy->check(header->_rid); 
   }
 
   return TRI_ERROR_NO_ERROR;

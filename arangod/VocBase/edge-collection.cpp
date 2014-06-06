@@ -48,25 +48,21 @@
 
 static TRI_edge_index_t* FindEdgesIndex (
                          TRI_document_collection_t* const document) {
-  size_t i, n;
+  if (document->base._info._type == TRI_COL_TYPE_EDGE) {
+    size_t const n = document->_allIndexes._length;
 
-  if (document->base._info._type != TRI_COL_TYPE_EDGE) {
-    // collection is not an edge collection... caller must handle that
-    return NULL;
-  }
+    for (size_t i = 0; i < n; ++i) {
+      TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_AtVectorPointer(&document->_allIndexes, i));
 
-  n = document->_allIndexes._length;
-  for (i = 0; i < n; ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_AtVectorPointer(&document->_allIndexes, i));
-
-    if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
-      return edgesIndex;
+      if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+        TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
+        return edgesIndex;
+      }
     }
   }
 
   // collection does not have an edges index... caller must handle that
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,8 +73,8 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
   TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
   if (edge->_toCid == edge->_fromCid) {
-    char* fromKey = (char*) edge + edge->_offsetFromKey;
-    char* toKey = (char*) edge + edge->_offsetToKey;
+    char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
+    char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
 
     return strcmp(fromKey, toKey) == 0;
   }
@@ -177,19 +173,18 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
                                         TRI_edge_direction_e direction,
                                         TRI_voc_cid_t cid,
                                         TRI_voc_key_t key) {
-  TRI_vector_pointer_t result;
-  TRI_edge_header_t entry;
-  TRI_edge_index_t* edgesIndex;
-
   // search criteria
+  TRI_edge_header_t entry;
   entry._cid = cid;
   entry._key = key;
 
   // initialise the result vector
+  TRI_vector_pointer_t result;
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
 
-  edgesIndex = FindEdgesIndex(document);
-  if (edgesIndex == NULL) {
+  TRI_edge_index_t* edgesIndex = FindEdgesIndex(document);
+
+  if (edgesIndex == nullptr) {
     LOG_ERROR("collection does not have an edges index");
     return result;
   }

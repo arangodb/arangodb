@@ -2506,8 +2506,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         // update
 
         // init the update policy
-        TRI_doc_update_policy_t policy;
-        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
+        TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
         res = document->updateDocument(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
 
@@ -2525,8 +2524,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
   else if (type == MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     // init the update policy
-    TRI_doc_update_policy_t policy;
-    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
+    TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     int res = document->removeDocument(trxCollection, key, rid, &policy, false, false);
