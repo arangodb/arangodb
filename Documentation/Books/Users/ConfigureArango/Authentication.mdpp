@@ -43,7 +43,7 @@ The default value is false.
 !SECTION Introduction to User Management
 
 ArangoDB provides basic functionality to add, modify and remove database users
-programmatically. The following functionality is provided by the `users` module
+programmatically. The following functionality is provided by the *users* module
 and can be used from inside arangosh and arangod.
 
 Please note that this functionality is not available from within the web
@@ -56,10 +56,10 @@ This will create a new ArangoDB user. The username must be specified in
 
 The password must be given as a string, too, but can be left empty if required.
 
-If the *active* attribute is not specified, it defaults to `true`. The
+If the *active* attribute is not specified, it defaults to *true*. The
 *extra* attribute can be used to save custom data with the user.
 
-If the *changePassword* attribute is not specified, it defaults to `false`.
+If the *changePassword* attribute is not specified, it defaults to *false*.
 The *changePassword* attribute can be used to indicate that the user must
 change has password before logging in.
 
@@ -95,10 +95,10 @@ must already exist in the database.
 
 The password must be given as a string, too, but can be left empty if required.
 
-If the *active* attribute is not specified, it defaults to `true`.  The
+If the *active* attribute is not specified, it defaults to *true*.  The
 *extra* attribute can be used to save custom data with the user.
 
-If the *changePassword* attribute is not specified, it defaults to `false`.
+If the *changePassword* attribute is not specified, it defaults to *false*.
 The *changePassword* attribute can be used to indicate that the user must
 change has password before logging in.
 
@@ -139,7 +139,7 @@ Note: this function will not work from within the web interface
 
 Removes an existing ArangoDB user from the database.
 
-The username must be specified in @FA{user} and the specified user must exist in
+The username must be specified in *User* and the specified user must exist in
 the database.
 
 This method will fail if the user cannot be found in the database.

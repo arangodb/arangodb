@@ -5,7 +5,7 @@
 A Graph consists of vertices and edges. The vertex collection contains the
 documents forming the vertices. The edge collection contains the documents
 forming the edges. Together both collections form a graph. Assume that the
-vertex collection is called `vertices` and the edges collection `edges`, then
+vertex collection is called *vertices* and the edges collection *edges*, then
 you can build a graph using the *Graph* constructor.
 
 	arango> var Graph = require("org/arangodb/graph").Graph;

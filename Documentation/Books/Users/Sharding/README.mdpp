@@ -17,7 +17,7 @@ right DBservers.
 
 As a central highly available service to hold the cluster configuration
 and to synchronize reconfiguration and fail-over operations we currently
-use a an external program called `etcd` (see [github
+use a an external program called *etcd* (see [github
 page](https://github.com/coreos/etcd)). It provides a hierarchical
 key value store with strong consistency and reliability promises.
 This is called the "agency" and its processes are called "agents".
@@ -40,9 +40,9 @@ every machine that will take part in your cluster. No special
 configuration whatsoever is needed and you can organize authentication
 exactly as you would in a normal ArangoDB instance. You only have
 to activate the dispatcher functionality in the configuration file
-(see options `cluster.disable-dispatcher-kickstarter` and
-`cluster.disable-dispatcher-interface`, which are both initially
-set to `true` in the standard setup we ship).
+(see options *cluster.disable-dispatcher-kickstarter* and
+*cluster.disable-dispatcher-interface*, which are both initially
+set to *true* in the standard setup we ship).
 
 However, you can use any of these dispatchers to plan and start your
 cluster. In the planning phase, you have to tell the planner about all

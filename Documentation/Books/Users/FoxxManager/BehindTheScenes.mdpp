@@ -5,11 +5,11 @@ We now go into more details.
 
 There are five steps when installing or uninstalling applications.
 
-* `fetch` the application from a source
-* `mount` the application at a mount path
-* `setup` the application, creating the necessary collections
-* `teardown` the application, removing the application-specific collections
-* `unmount` the application
+* *fetch* the application from a source
+* *mount* the application at a mount path
+* *setup* the application, creating the necessary collections
+* *teardown* the application, removing the application-specific collections
+* *unmount* the application
 
 When installing an application, the steps "fetch", "mount", and "setup" are 
 executed automatically. When uninstalling an application, the steps "teardown" 
@@ -17,7 +17,7 @@ and "unmount" are executed automatically.
 
 !SUBSECTION Installing an application manually
 
-We are now going to install the hello world application manually. You can use `search` 
+We are now going to install the hello world application manually. You can use *search* 
 to find application in your local copy of the central repository.
 
 So, first we update our local copy to get the newest versions from the central repository.
@@ -53,7 +53,7 @@ If you execute
 
     unix> foxx-manager fetch github "fceller/hello-foxx" "v1.2.1"
 
-then the version 1.2.1 of the application will be downloaded. The command `fetched` lists all fetched applications.
+then the version 1.2.1 of the application will be downloaded. The command *fetched* lists all fetched applications.
 
     unix> foxx-manager fetched
     Name          Author          Description                      AppID                   Version    Path             
@@ -63,9 +63,9 @@ then the version 1.2.1 of the application will be downloaded. The command `fetch
     -----------   -------------   ------------------------------   ---------------------   --------   -----------------
     2 application(s) found
 
-We have now two versions of the hello world application. The current version fetched when installing the application using `install` and the one fetched now.
+We have now two versions of the hello world application. The current version fetched when installing the application using *install* and the one fetched now.
 
-Let's now mount the application in version 1.2.1 under `/hello`.
+Let's now mount the application in version 1.2.1 under */hello*.
 
     unix> foxx-manager mount app:hello-foxx:1.2.1 /hello
     unix> foxx-manager installed
@@ -79,7 +79,7 @@ Let's now mount the application in version 1.2.1 under `/hello`.
 
 The application is mounted but not yet initialized. If you check the 
 available collections, you will see that there is no collection 
-called `hello_texts`.
+called *hello_texts*.
 
     arangosh> db._collections()
     [ 
@@ -88,8 +88,8 @@ called `hello_texts`.
       ...
     ]
 
-A collection `example_texts` exists. This belongs to the mounted application 
-at `/example`. If we set-up the application, then the setup script will 
+A collection *example_texts* exists. This belongs to the mounted application 
+at */example*. If we set-up the application, then the setup script will 
 create the missing collection.
 
     unix> foxx-manager setup /hello
@@ -122,11 +122,11 @@ applications, they are completely independent from each other.
 !SUBSECTION Uninstalling an application manually
 
 Now let us uninstall the application again. First we have to call the 
-teardown script, which will remove the collection `hello_texts`.
+teardown script, which will remove the collection *hello_texts*.
 
     unix> foxx-manager teardown /hello
 
-This will drop the collection `hello_exists`. The application is, 
+This will drop the collection *hello_exists*. The application is, 
 however, still reachable. We still need to unmount it.
 
     unix> foxx-manager unmount /hello
@@ -146,27 +146,27 @@ application directory, code and configured. Use with care!
 There are two options for deploying local changes to an existing application:
 
 - the easiest way is to start the server in development mode. This will make 
-  all available foxx applications be available in under the `/dev/` URL prefix.
+  all available foxx applications be available in under the */dev/* URL prefix.
   All changes to the application code will become live instantly because all
-  applications are reloaded on each request to a URL starting with `/dev/`.
+  applications are reloaded on each request to a URL starting with */dev/*.
   NOte that the constant reloading in the development mode has a performance 
   impact so it shouldn't be used in product.
 
-- if the development mode is not an option, you can use the `replace` command
+- if the development mode is not an option, you can use the *replace* command
   from foxx-manager. It provides an easy mechanism to re-deploy the code for
   an already installed application. It can be used as follows:
 
       unix> foxx-manager replace hello-foxx /hello
 
-  The above will re-deploy the code for the application `hello-foxx` which has
-  to be already installed under the `/hello` mount point. The application's
-  setup function will be called when invoking `replace` but not `teardown`.
+  The above will re-deploy the code for the application *hello-foxx* which has
+  to be already installed under the */hello* mount point. The application's
+  setup function will be called when invoking *replace* but not *teardown*.
 
 !SUBSECTION Installing an application from your own Github repository
 
 So far we have installed Foxx applications from the central Github repository 
 "arangodb/foxx-apps". It is also possible to install an application from another
-repository. This can achieved by using the `fetch` and `mount` commands as 
+repository. This can achieved by using the *fetch* and *mount* commands as 
 follows:
       
     unix> foxx-manager fetch github <username>/<repository>
@@ -180,7 +180,7 @@ Example:
 !SUBSECTION Installing an application from a local directory
 
 You may also install Foxx applications which are already located in the 
-filesystem. Again, you can use the `fetch` command, but with the `directory`
+filesystem. Again, you can use the *fetch* command, but with the *directory*
 type. Note that the directory location must be a directory accessible by
 the foxx-manager.
 
@@ -192,11 +192,11 @@ Example:
 !SUBSECTION Installing an application from a zip file
 
 It is also possible to install an application contained in a zip file.
-You can use the `fetch` command again, with the `zip` type. Note that 
+You can use the *fetch* command again, with the *zip* type. Note that 
 the zip file must be accessible by the foxx-manager.
 
 Let's first fetch a zip file. We'll be downloading the fugu application
-from Github and store it in file `fugu.zip` locally:
+from Github and store it in file *fugu.zip* locally:
 
     unix> wget -O fugu.zip "https://github.com/arangodb/fugu/archive/master.zip"
 

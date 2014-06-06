@@ -1,8 +1,508 @@
 !CHAPTER Error codes and meanings
 
-@NAVIGATE_ImplementorManualArangoErrors
-@EMBEDTOC{ImplementorManualArangoErrorsTOC}
+The following errors might be raised when running ArangoDB:
 
-@copydetails ArangoErrors
-
-@BNAVIGATE_ImplementorManualArangoErrors
+- 0: *no error*0: no error No error has occurred.
+  No error has occurred.1: failed Will be raised when a general error occurred.
+- 1: *failed*2: system error Will be raised when operating system error occurred.
+  Will be raised when a general error occurred.3: out of memory Will be raised when there is a memory shortage.
+- 2: *system error*4: internal error Will be raised when an internal error occurred.
+  Will be raised when operating system error occurred.5: illegal number Will be raised when an illegal representation of a number was given.
+- 3: *out of memory*6: numeric overflow Will be raised when a numeric overflow occurred.
+  Will be raised when there is a memory shortage.7: illegal option Will be raised when an unknown option was supplied by the user.
+- 4: *internal error*8: dead process identifier Will be raised when a PID without a living process was found.
+  Will be raised when an internal error occurred.9: not implemented Will be raised when hitting an unimplemented feature.
+- 5: *illegal number*10: bad parameter Will be raised when the parameter does not fulfill the requirements.
+  Will be raised when an illegal representation of a number was given.11: forbidden Will be raised when you are missing permission for the operation.
+- 6: *numeric overflow*12: out of memory in mmap Will be raised when there is a memory shortage.
+  Will be raised when a numeric overflow occurred.13: csv is corrupt Will be raised when encountering a corrupt csv line.
+- 7: *illegal option*14: file not found Will be raised when a file is not found.
+  Will be raised when an unknown option was supplied by the user.15: cannot write file Will be raised when a file cannot be written.
+- 8: *dead process identifier*16: cannot overwrite file Will be raised when an attempt is made to overwrite an existing file.
+  Will be raised when a PID without a living process was found.17: type error Will be raised when a type error is unencountered.
+- 9: *not implemented*18: lock timeout Will be raised when there's a timeout waiting for a lock.
+  Will be raised when hitting an unimplemented feature.19: cannot create directory Will be raised when an attempt to create a directory fails.
+- 10: *bad parameter*20: cannot create temporary file Will be raised when an attempt to create a temporary file fails.
+  Will be raised when the parameter does not fulfill the requirements.21: canceled request Will be raised when a request is canceled by the user.
+- 11: *forbidden*22: intentional debug error Will be raised intentionally during debugging.
+  Will be raised when you are missing permission for the operation.400: bad parameter Will be raised when the HTTP request does not fulfill the requirements.
+- 12: *out of memory in mmap*401: unauthorized Will be raised when authorisation is required but the user is not authorised.
+  Will be raised when there is a memory shortage.403: forbidden Will be raised when the operation is forbidden.
+- 13: *csv is corrupt*404: not found Will be raised when an URI is unknown.
+  Will be raised when encountering a corrupt csv line.405: method not supported Will be raised when an unsupported HTTP method is used for an operation.
+- 14: *file not found*412: precondition failed Will be raised when a precondition for an HTTP request is not met.
+  Will be raised when a file is not found.500: internal server error Will be raised when an internal server is encountered.
+- 15: *cannot write file*600: invalid JSON object Will be raised when a string representation of a JSON object is corrupt.
+  Will be raised when a file cannot be written.601: superfluous URL suffices Will be raised when the URL contains superfluous suffices.
+- 16: *cannot overwrite file*1000: illegal state Internal error that will be raised when the datafile is not in the required state.
+  Will be raised when an attempt is made to overwrite an existing file.1001: could not shape document Internal error that will be raised when the shaper encountered a problem.
+- 17: *type error*1002: datafile sealed Internal error that will be raised when trying to write to a datafile.
+  Will be raised when a type error is unencountered.1003: unknown type Internal error that will be raised when an unknown collection type is encountered.
+- 18: *lock timeout*1004: read only Internal error that will be raised when trying to write to a read-only datafile or collection.
+  Will be raised when there's a timeout waiting for a lock.1005: duplicate identifier Internal error that will be raised when a identifier duplicate is detected.
+- 19: *cannot create directory*1006: datafile unreadable Internal error that will be raised when a datafile is unreadable.
+  Will be raised when an attempt to create a directory fails.1007: datafile empty Internal error that will be raised when a datafile is empty.
+- 20: *cannot create temporary file*1100: corrupted datafile Will be raised when a corruption is detected in a datafile.
+  Will be raised when an attempt to create a temporary file fails.1101: illegal parameter file Will be raised if a parameter file is corrupted.
+- 21: *canceled request*1102: corrupted collection Will be raised when a collection contains one or more corrupted datafiles.
+  Will be raised when a request is canceled by the user.1103: mmap failed Will be raised when the system call mmap failed.
+- 22: *intentional debug error*1104: filesystem full Will be raised when the filesystem is full.
+  Will be raised intentionally during debugging.1105: no journal Will be raised when a journal cannot be created.
+- 23: *internal error with attribute ID in shaper*1106: cannot create/rename datafile because it already exists Will be raised when the datafile cannot be created or renamed because a file of the same name already exists.
+  Will be raised if an attribute ID is not found in the shaper but should1107: database directory is locked Will be raised when the database directory is locked by a different process.
+  have been.1108: cannot create/rename collection because directory already exists Will be raised when the collection cannot be created because a directory of the same name already exists.
+- 24: *internal error if a legend could not be created*1109: msync failed Will be raised when the system call msync failed.
+  Will be raised if the legend generator was only given access to the shape1110: cannot lock database directory Will be raised when the server cannot lock the database directory on startup.
+  and some sids are in the data object (inhomogeneous lists).1200: conflict Will be raised when updating or deleting a document and a conflict has been detected.
+- 400: *bad parameter*1201: invalid database directory Will be raised when a non-existing database directory was specified when starting the database.
+  Will be raised when the HTTP request does not fulfill the requirements.1202: document not found Will be raised when a document with a given identifier or handle is unknown.
+- 401: *unauthorized*1203: collection not found Will be raised when a collection with a given identifier or name is unknown.
+  Will be raised when authorization is required but the user is not1204: parameter 'collection' not found Will be raised when the collection parameter is missing.
+  authorised. 1205: illegal document handle Will be raised when a document handle is corrupt.
+- 403: *forbidden*1206: maximal size of journal too small Will be raised when the maximal size of the journal is too small.
+  Will be raised when the operation is forbidden.1207: duplicate name Will be raised when a name duplicate is detected.
+- 404: *not found*1208: illegal name Will be raised when an illegal name is detected.
+  Will be raised when an URI is unknown.1209: no suitable index known Will be raised when no suitable index for the query is known.
+- 405: *method not supported*1210: unique constraint violated Will be raised when there is a unique constraint violation.
+  Will be raised when an unsupported HTTP method is used for an operation.1211: geo index violated Will be raised when an illegal coordinate is used.
+- 412: *precondition failed*1212: index not found Will be raised when an index with a given identifier is unknown.
+  Will be raised when a precondition for an HTTP request is not met.1213: cross collection request not allowed Will be raised when a cross-collection is requested.
+- 500: *internal server error*1214: illegal index handle Will be raised when a index handle is corrupt.
+  Will be raised when an internal server is encountered.1215: cap constraint already defined Will be raised when a cap constraint was already defined.
+- 600: *invalid JSON object*1216: document too large Will be raised when the document cannot fit into any datafile because of it is too large.
+  Will be raised when a string representation of a JSON object is corrupt.1217: collection must be unloaded Will be raised when a collection should be unloaded, but has a different status.
+- 601: *superfluous URL suffices*1218: collection type invalid Will be raised when an invalid collection type is used in a request.
+  Will be raised when the URL contains superfluous suffices.1219: validator failed Will be raised when the validation of an attribute of a structure failed.
+- 1000: *illegal state*1220: parser failed Will be raised when the parsing of an attribute of a structure failed.
+  Internal error that will be raised when the datafile is not in the1221: illegal document key Will be raised when a document key is corrupt.
+  required state.1222: unexpected document key Will be raised when a user-defined document key is supplied for collections with auto key generation.
+- 1001: *could not shape document*1224: server database directory not writable Will be raised when the server's database directory is not writable for the current user.
+  Internal error that will be raised when the shaper encountered a problem.1225: out of keys Will be raised when a key generator runs out of keys.
+- 1002: *datafile sealed*1226: missing document key Will be raised when a document key is missing.
+  Internal error that will be raised when trying to write to a datafile.1227: invalid document type Will be raised when there is an attempt to create a document with an invalid type.
+- 1003: *unknown type*1228: database not found Will be raised when a non-existing database is accessed.
+  Internal error that will be raised when an unknown collection type is1229: database name invalid Will be raised when an invalid database name is used.
+  encountered.1230: operation only allowed in system database Will be raised when an operation is requested in a database other than the system database.
+- 1004: *read only*1231: endpoint not found Will be raised when there is an attempt to delete a non-existing endpoint.
+  Internal error that will be raised when trying to write to a read-only1232: invalid key generator Will be raised when an invalid key generator description is used.
+  datafile or collection.1233: edge attribute missing will be raised when the _from or _to values of an edge are undefined or contain an invalid value.
+- 1005: *duplicate identifier*1234: index insertion warning - attribute missing in document Will be raised when an attempt to insert a document into an index is caused by in the document not having one or more attributes which the index is built on.
+  Internal error that will be raised when a identifier duplicate is1235: index creation failed Will be raised when an attempt to create an index has failed.
+  detected.1300: datafile full Will be raised when the datafile reaches its limit.
+- 1006: *datafile unreadable*1400: no response Will be raised when the replication applier does not receive any or an incomplete response from the master.
+  Internal error that will be raised when a datafile is unreadable.1401: invalid response Will be raised when the replication applier receives an invalid response from the master.
+- 1007: *datafile empty*1402: master error Will be raised when the replication applier receives a server error from the master.
+  Internal error that will be raised when a datafile is empty.1403: master incompatible Will be raised when the replication applier connects to a master that has an incompatible version.
+- 1100: *corrupted datafile*1404: master change Will be raised when the replication applier connects to a different master than before.
+  Will be raised when a corruption is detected in a datafile.1405: loop detected Will be raised when the replication applier is asked to connect to itself for replication.
+- 1101: *illegal parameter file*1406: unexpected marker Will be raised when an unexpected marker is found in the replication log stream.
+  Will be raised if a parameter file is corrupted.1407: invalid applier state Will be raised when an invalid replication applier state file is found.
+- 1102: *corrupted collection*1408: invalid transaction Will be raised when an unexpected transaction id is found.
+  Will be raised when a collection contains one or more corrupted datafiles.1409: invalid replication logger configuration Will be raised when the configuration for the replication logger is invalid.
+- 1103: *mmap failed*1410: invalid replication applier configuration Will be raised when the configuration for the replication applier is invalid.
+  Will be raised when the system call mmap failed.1411: cannot change applier configuration while running Will be raised when there is an attempt to change the configuration for the replication applier while it is running.
+- 1104: *filesystem full*1412: replication stopped Special error code used to indicate the replication applier was stopped by a user.
+  Will be raised when the filesystem is full.1413: no start tick Will be raised when the replication error is started without a known start tick value.
+- 1105: *no journal*1450: could not connect to agency Will be raised when none of the agency servers can be connected to.
+  Will be raised when a journal cannot be created.1451: missing coordinator header Will be raised when a DB server in a cluster receives a HTTP request without a coordinator header.
+- 1106: *cannot create/rename datafile because it already exists*1452: could not lock plan in agency Will be raised when a coordinator in a cluster cannot lock the Plan hierarchy in the agency.
+  Will be raised when the datafile cannot be created or renamed because a1453: collection ID already exists Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists.
+  file of the same name already exists.1454: could not create collection in plan Will be raised when a coordinator in a cluster cannot create an entry for a new collection in the Plan hierarchy in the agency.
+- 1107: *database directory is locked*1455: could not read version in current in agency Will be raised when a coordinator in a cluster cannot read the Version entry in the Current hierarchy in the agency.
+  Will be raised when the database directory is locked by a different1456: could not create collection Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating shards for a new collection.
+  process.1457: timeout in cluster operation Will be raised when a coordinator in a cluster runs into a timeout for some cluster wide operation.
+- 1108: *cannot create/rename collection because directory already exists1458: could not remove collection from plan Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Plan hierarchy in the agency.
+  Will be raised when the collection cannot be created because a directory1459: could not remove collection from current Will be raised when a coordinator in a cluster cannot remove an entry for a collection in the Current hierarchy in the agency.
+  of the same name already exists.1460: could not create database in plan Will be raised when a coordinator in a cluster cannot create an entry for a new database in the Plan hierarchy in the agency.
+- 1109: *msync failed*1461: could not create database Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating databases for a new cluster wide database.
+  Will be raised when the system call msync failed.1462: could not remove database from plan Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Plan hierarchy in the agency.
+- 1110: *cannot lock database directory*1463: could not remove database from current Will be raised when a coordinator in a cluster cannot remove an entry for a database in the Current hierarchy in the agency.
+  Will be raised when the server cannot lock the database directory on1464: no responsible shard found Will be raised when a coordinator in a cluster cannot determine the shard that is responsible for a given document.
+  startup.1465: cluster internal HTTP connection broken Will be raised when a coordinator in a cluster loses an HTTP connection to a DBserver in the cluster whilst transferring data.
+- 1200: *conflict*1466: must not specify _key for this collection Will be raised when a coordinator in a cluster finds that the _key attribute was specified in a sharded collection the uses not only _key as sharding attribute.
+  Will be raised when updating or deleting a document and a conflict has1467: got contradicting answers from different shards Will be raised if a coordinator in a cluster gets conflicting results from different shards, which should never happen.
+  been detected.1468: not all sharding attributes given Will be raised if a coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified.
+- 1201: *invalid database directory*1469: must not change the value of a shardkey attribute Will be raised if there is an attempt to update the value of a shard attribute.
+  Will be raised when a non-existing database directory was specified when1470: unsupported operation or parameter Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection.
+  starting the database.1471: this operation is only valid on a coordinator in a cluster Will be raised if there is an attempt to run a coordinator-only operation on a different type of node.
+- 1202: *document not found*1472: error reading Plan in agency Will be raised if a coordinator or DBserver cannot read the Plan in the agency.
+  Will be raised when a document with a given identifier or handle is1473: could not truncate collection Will be raised if a coordinator cannot truncate all shards of a cluster collection.
+  unknown.1500: query killed Will be raised when a running query is killed by an explicit admin command.
+- 1203: *collection not found*1501: %s Will be raised when query is parsed and is found to be syntactially invalid.
+  Will be raised when a collection with a given identifier or name is1502: query is empty Will be raised when an empty query is specified.
+  unknown.1503: runtime error '%s' Will be raised when a runtime error is caused by the query.
+- 1204: *parameter 'collection' not found*1504: number out of range Will be raised when a number is outside the expected range.
+  Will be raised when the collection parameter is missing.1510: variable name '%s' has an invalid format Will be raised when an invalid variable name is used.
+- 1205: *illegal document handle*1511: variable '%s' is assigned multiple times Will be raised when a variable gets re-assigned in a query.
+  Will be raised when a document handle is corrupt.1512: unknown variable '%s' Will be raised when an unknown variable is used or the variable is undefined the context it is used.
+- 1206: *maixmal size of journal too small*1521: unable to read-lock collection %s Will be raised when a read lock on the collection cannot be acquired.
+  Will be raised when the maximal size of the journal is too small.1522: too many collections Will be raised when the number of collections in a query is beyond the allowed value.
+- 1207: *duplicate name*1530: document attribute '%s' is assigned multiple times Will be raised when a document attribute is re-assigned.
+  Will be raised when a name duplicate is detected.1540: usage of unknown function '%s()' Will be raised when an undefined function is called.
+- 1208: *illegal name*1541: invalid number of arguments for function '%s()' Will be raised when the number of arguments used in a function call does not match the expected number of arguments for the function.
+  Will be raised when an illegal name is detected.1542: invalid argument type used in call to function '%s()' Will be raised when the type of an argument used in a function call does not match the expected argument type.
+- 1209: *no suitable index known*1543: invalid regex argument value used in call to function '%s()' Will be raised when an invalid regex argument value is used in a call to a function that expects a regex.
+  Will be raised when no suitable index for the query is known.1550: invalid structure of bind parameters Will be raised when the structure of bind parameters passed has an unexpected format.
+- 1210: *unique constraint violated*1551: no value specified for declared bind parameter '%s' Will be raised when a bind parameter was declared in the query but the query is being executed with no value for that parameter.
+  Will be raised when there is a unique constraint violation.1552: bind parameter '%s' was not declared in the query Will be raised when a value gets specified for an undeclared bind parameter.
+- 1211: *geo index violated*1553: bind parameter '%s' has an invalid value or type Will be raised when a bind parameter has an invalid value or type.
+  Will be raised when an illegal coordinate is used.1560: invalid logical value Will be raised when a non-boolean value is used in a logical operation.
+- 1212: *index not found*1561: invalid arithmetic value Will be raised when a non-numeric value is used in an arithmetic operation.
+  Will be raised when an index with a given identifier is unknown.1562: division by zero Will be raised when there is an attempt to divide by zero.
+- 1213: *cross collection request not allowed*1563: list expected Will be raised when a non-list operand is used for an operation that expects a list argument operand.
+  Will be raised when a cross-collection is requested.1569: FAIL(%s) called Will be raised when the function FAIL() is called from inside a query.
+- 1214: *illegal index handle*1570: no suitable geo index found for geo restriction on '%s' Will be raised when a geo restriction was specified but no suitable geo index is found to resolve it.
+  Will be raised when a index handle is corrupt.1571: no suitable fulltext index found for fulltext query on '%s' Will be raised when a fulltext query is performed on a collection without a suitable fulltext index.
+- 1215: *cap constraint already defined*1572: invalid date value Will be raised when a value cannot be converted to a date.
+  Will be raised when a cap constraint was already defined.1580: invalid user function name Will be raised when a user function with an invalid name is registered.
+- 1216: *document too large*1581: invalid user function code Will be raised when a user function is registered with invalid code.
+  Will be raised when the document cannot fit into any datafile because of1582: user function '%s()' not found Will be raised when a user function is accessed but not found.
+  it is too large.1600: cursor not found Will be raised when a cursor is requested via its id but a cursor with that id cannot be found.
+- 1217: *collection must be unloaded*1650: internal transaction error Will be raised when a wrong usage of transactions is detected. this is an internal error and indicates a bug in ArangoDB.
+  Will be raised when a collection should be unloaded, but has a different1651: nested transactions detected Will be raised when transactions are nested.
+  status.1652: unregistered collection used in transaction Will be raised when a collection is used in the middle of a transaction but was not registered at transaction start.
+- 1218: *collection type invalid*1653: disallowed operation inside transaction Will be raised when a disallowed operation is carried out in a transaction.
+  Will be raised when an invalid collection type is used in a request.1700: invalid user name Will be raised when an invalid user name is used.
+- 1219: *validator failed*1701: invalid password Will be raised when an invalid password is used.
+  Will be raised when the validation of an attribute of a structure failed.1702: duplicate user Will be raised when a user name already exists.
+- 1220: *parser failed*1703: user not found Will be raised when a user name is updated that does not exist.
+  Will be raised when the parsing of an attribute of a structure failed.1704: user must change his password Will be raised when the user must change his password.
+- 1221: *illegal document key*1750: invalid application name Will be raised when an invalid application name is specified.
+  Will be raised when a document key is corrupt.1751: invalid mount Will be raised when an invalid mount is specified.
+- 1222: *unexpected document key*1752: application download failed Will be raised when an application download from the central repository failed.
+  Will be raised when a user-defined document key is supplied for1753: application upload failed Will be raised when an application upload from the client to the ArangoDB server failed.
+  collections with auto key generation.1800: invalid key declaration Will be raised when an invalid key specification is passed to the server
+- 1224: *server database directory not writable*1801: key already exists Will be raised when a key is to be created that already exists
+  Will be raised when the server's database directory is not writable for1802: key not found Will be raised when the specified key is not found
+  the current user.1803: key is not unique Will be raised when the specified key is not unique
+- 1225: *out of keys*1804: key value not changed Will be raised when updating the value for a key does not work
+  Will be raised when a key generator runs out of keys.1805: key value not removed Will be raised when deleting a key/value pair does not work
+- 1226: *missing document key*1806: missing value Will be raised when the value is missing
+  Will be raised when a document key is missing.1850: invalid task id Will be raised when a task is created with an invalid id.
+- 1227: *invalid document type*1851: duplicate task id Will be raised when a task id is created with a duplicate id.
+  Will be raised when there is an attempt to create a document with an1852: task not found Will be raised when a task with the specified id could not be found.
+  invalid type.1901: invalid graph Will be raised when an invalid name is passed to the server.
+- 1228: *database not found*1902: could not create graph Will be raised when an invalid name, vertices or edges is passed to the server.
+  Will be raised when a non-existing database is accessed.1903: invalid vertex Will be raised when an invalid vertex id is passed to the server.
+- 1229: *database name invalid*1904: could not create vertex Will be raised when the vertex could not be created.
+  Will be raised when an invalid database name is used.1905: could not change vertex Will be raised when the vertex could not be changed.
+- 1230: *operation only allowed in system database*1906: invalid edge Will be raised when an invalid edge id is passed to the server.
+  Will be raised when an operation is requested in a database other than1907: could not create edge Will be raised when the edge could not be created.
+  the system database.1908: could not change edge Will be raised when the edge could not be changed.
+- 1231: *endpoint not found*1909: too many iterations Will be raised when too many iterations are done in a graph traversal.
+  Will be raised when there is an attempt to delete a non-existing endpoint.1910: invalid filter result Will be raised when an invalid filter result is returned in a graph traversal.
+- 1232: *invalid key generator*1950: unknown session Will be raised when an invalid/unknown session id is passed to the server.
+  Will be raised when an invalid key generator description is used.1951: session expired Will be raised when a session is expired.
+- 1233: *edge attribute missing*2000: unknown client error This error should not happen.
+  will be raised when the _from or _to values of an edge are undefined or2001: could not connect to server Will be raised when the client could not connect to the server.
+  contain an invalid value.2002: could not write to server Will be raised when the client could not write data.
+- 1234: *index insertion warning - attribute missing in document*2003: could not read from server Will be raised when the client could not read data.
+  Will be raised when an attempt to insert a document into an index is3402: bitarray index update warning - attribute missing in revised document Will be raised when an attempt to update a document results in the revised document not having one or more attributes which are required by the bitarray index.
+  caused by in the document not having one or more attributes which the3411: bitarray index remove failure - item missing in index Will be raised when an attempt to remove a document from a bitarray index fails when document can not be located within that index.
+  index is built on.3413: bitarray index insert failure - document attribute value unsupported in index Will be raised when an attempt to insert a document into a bitarray index fails due to the fact that one or more values for an index attribute is not supported within that index.
+- 1235: *index creation failed*3415: bitarray index creation failure - one or more index attributes are duplicated. Will be raised when an attempt to create an index with two or more index attributes repeated.
+  Will be raised when an attempt to create an index has failed.3417: bitarray index creation failure - one or more index attribute values are duplicated. Will be raised when an attempt to create an index with two or more index attribute values repeated.
+- 1300: *datafile full*10000: element not inserted into structure, because key already exists Will be returned if the element was not insert because the key already exists.
+  Will be raised when the datafile reaches its limit.10001: element not inserted into structure, because it already exists Will be returned if the element was not insert because it already exists.
+- 1400: *no response*10002: key not found in structure Will be returned if the key was not found in the structure.
+  Will be raised when the replication applier does not receive any or an10003: element not found in structure Will be returned if the element was not found in the structure.
+  incomplete response from the master.
+- 1401: *invalid response*
+  Will be raised when the replication applier receives an invalid response<!--
+  from the master.@NAVIGATE_ImplementorManualArangoErrors
+- 1402: *master error*@EMBEDTOC{ImplementorManualArangoErrorsTOC*
+  Will be raised when the replication applier receives a server error from
+  the master.@copydetails ArangoErrors
+- 1403: *master incompatible*
+  Will be raised when the replication applier connects to a master that has@BNAVIGATE_ImplementorManualArangoErrors
+  an incompatible version.-->
+- 1404: *master change*
+  Will be raised when the replication applier connects to a different
+  master than before.
+- 1405: *loop detected*
+  Will be raised when the replication applier is asked to connect to itself
+  for replication.
+- 1406: *unexpected marker*
+  Will be raised when an unexpected marker is found in the replication log
+  stream.
+- 1407: *invalid applier state*
+  Will be raised when an invalid replication applier state file is found.
+- 1408: *invalid transaction*
+  Will be raised when an unexpected transaction id is found.
+- 1409: *invalid replication logger configuration*
+  Will be raised when the configuration for the replication logger is
+  invalid.
+- 1410: *invalid replication applier configuration*
+  Will be raised when the configuration for the replication applier is
+  invalid.
+- 1411: *cannot change applier configuration while running*
+  Will be raised when there is an attempt to change the configuration for
+  the replication applier while it is running.
+- 1412: *replication stopped*
+  Special error code used to indicate the replication applier was stopped
+  by a user.
+- 1413: *no start tick*
+  Will be raised when the replication error is started without a known
+  start tick value.
+- 1450: *could not connect to agency*
+  Will be raised when none of the agency servers can be connected to.
+- 1451: *missing coordinator header*
+  Will be raised when a DB server in a cluster receives a HTTP request
+  without a coordinator header.
+- 1452: *could not lock plan in agency*
+  Will be raised when a coordinator in a cluster cannot lock the Plan
+  hierarchy in the agency.
+- 1453: *collection ID already exists*
+  Will be raised when a coordinator in a cluster tries to create a
+  collection and the collection ID already exists.
+- 1454: *could not create collection in plan*
+  Will be raised when a coordinator in a cluster cannot create an entry for
+  a new collection in the Plan hierarchy in the agency.
+- 1455: *could not read version in current in agency*
+  Will be raised when a coordinator in a cluster cannot read the Version
+  entry in the Current hierarchy in the agency.
+- 1456: *could not create collection*
+  Will be raised when a coordinator in a cluster notices that some
+  DBServers report problems when creating shards for a new collection.
+- 1457: *timeout in cluster operation*
+  Will be raised when a coordinator in a cluster runs into a timeout for
+  some cluster wide operation.
+- 1458: *could not remove collection from plan*
+  Will be raised when a coordinator in a cluster cannot remove an entry for
+  a collection in the Plan hierarchy in the agency.
+- 1459: *could not remove collection from current*
+  Will be raised when a coordinator in a cluster cannot remove an entry for
+  a collection in the Current hierarchy in the agency.
+- 1460: *could not create database in plan*
+  Will be raised when a coordinator in a cluster cannot create an entry for
+  a new database in the Plan hierarchy in the agency.
+- 1461: *could not create database*
+  Will be raised when a coordinator in a cluster notices that some
+  DBServers report problems when creating databases for a new cluster wide
+  database.
+- 1462: *could not remove database from plan*
+  Will be raised when a coordinator in a cluster cannot remove an entry for
+  a database in the Plan hierarchy in the agency.
+- 1463: *could not remove database from current*
+  Will be raised when a coordinator in a cluster cannot remove an entry for
+  a database in the Current hierarchy in the agency.
+- 1464: *no responsible shard found*
+  Will be raised when a coordinator in a cluster cannot determine the shard
+  that is responsible for a given document.
+- 1465: *cluster internal HTTP connection broken*
+  Will be raised when a coordinator in a cluster loses an HTTP connection
+  to a DBserver in the cluster whilst transferring data.
+- 1466: *must not specify _key for this collection*
+  Will be raised when a coordinator in a cluster finds that the _key
+  attribute was specified in a sharded collection the uses not only _key as
+  sharding attribute.
+- 1467: *got contradicting answers from different shards*
+  Will be raised if a coordinator in a cluster gets conflicting results
+  from different shards, which should never happen.
+- 1468: *not all sharding attributes given*
+  Will be raised if a coordinator tries to find out which shard is
+  responsible for a partial document, but cannot do this because not all
+  sharding attributes are specified.
+- 1469: *must not change the value of a shardkey attribute*
+  Will be raised if there is an attempt to update the value of a shard
+  attribute.
+- 1470: *unsupported operation or parameter*
+  Will be raised when there is an attempt to carry out an operation that is
+  not supported in the context of a sharded collection.
+- 1471: *this operation is only valid on a coordinator in a cluster*
+  Will be raised if there is an attempt to run a coordinator-only operation
+  on a different type of node.
+- 1472: *error reading Plan in agency*
+  Will be raised if a coordinator or DBserver cannot read the Plan in the
+  agency.
+- 1473: *could not truncate collection*
+  Will be raised if a coordinator cannot truncate all shards of a cluster
+  collection.
+- 1500: *query killed*
+  Will be raised when a running query is killed by an explicit admin
+  command.
+- 1501: *\%s*
+  Will be raised when query is parsed and is found to be syntactially
+  invalid.
+- 1502: *query is empty*
+  Will be raised when an empty query is specified.
+- 1503: *runtime error '\%s'*
+  Will be raised when a runtime error is caused by the query.
+- 1504: *number out of range*
+  Will be raised when a number is outside the expected range.
+- 1510: *variable name '\%s' has an invalid format*
+  Will be raised when an invalid variable name is used.
+- 1511: *variable '\%s' is assigned multiple times*
+  Will be raised when a variable gets re-assigned in a query.
+- 1512: *unknown variable '\%s'*
+  Will be raised when an unknown variable is used or the variable is
+  undefined the context it is used.
+- 1521: *unable to read-lock collection \%s*
+  Will be raised when a read lock on the collection cannot be acquired.
+- 1522: *too many collections*
+  Will be raised when the number of collections in a query is beyond the
+  allowed value.
+- 1530: *document attribute '\%s' is assigned multiple times*
+  Will be raised when a document attribute is re-assigned.
+- 1540: *usage of unknown function '\%s()'*
+  Will be raised when an undefined function is called.
+- 1541: *invalid number of arguments for function '\%s()'*
+  Will be raised when the number of arguments used in a function call does
+  not match the expected number of arguments for the function.
+- 1542: *invalid argument type used in call to function '\%s()'*
+  Will be raised when the type of an argument used in a function call does
+  not match the expected argument type.
+- 1543: *invalid regex argument value used in call to function '\%s()'*
+  Will be raised when an invalid regex argument value is used in a call to
+  a function that expects a regex.
+- 1550: *invalid structure of bind parameters*
+  Will be raised when the structure of bind parameters passed has an
+  unexpected format.
+- 1551: *no value specified for declared bind parameter '\%s'*
+  Will be raised when a bind parameter was declared in the query but the
+  query is being executed with no value for that parameter.
+- 1552: *bind parameter '\%s' was not declared in the query*
+  Will be raised when a value gets specified for an undeclared bind
+  parameter.
+- 1553: *bind parameter '\%s' has an invalid value or type*
+  Will be raised when a bind parameter has an invalid value or type.
+- 1560: *invalid logical value*
+  Will be raised when a non-boolean value is used in a logical operation.
+- 1561: *invalid arithmetic value*
+  Will be raised when a non-numeric value is used in an arithmetic
+  operation.
+- 1562: *division by zero*
+  Will be raised when there is an attempt to divide by zero.
+- 1563: *list expected*
+  Will be raised when a non-list operand is used for an operation that
+  expects a list argument operand.
+- 1569: *FAIL(\%s) called*
+  Will be raised when the function FAIL() is called from inside a query.
+- 1570: *no suitable geo index found for geo restriction on '\%s'*
+  Will be raised when a geo restriction was specified but no suitable geo
+  index is found to resolve it.
+- 1571: *no suitable fulltext index found for fulltext query on '\%s'*
+  Will be raised when a fulltext query is performed on a collection without
+  a suitable fulltext index.
+- 1572: *invalid date value*
+  Will be raised when a value cannot be converted to a date.
+- 1580: *invalid user function name*
+  Will be raised when a user function with an invalid name is registered.
+- 1581: *invalid user function code*
+  Will be raised when a user function is registered with invalid code.
+- 1582: *user function '\%s()' not found*
+  Will be raised when a user function is accessed but not found.
+- 1600: *cursor not found*
+  Will be raised when a cursor is requested via its id but a cursor with
+  that id cannot be found.
+- 1650: *internal transaction error*
+  Will be raised when a wrong usage of transactions is detected. this is an
+  internal error and indicates a bug in ArangoDB.
+- 1651: *nested transactions detected*
+  Will be raised when transactions are nested.
+- 1652: *unregistered collection used in transaction*
+  Will be raised when a collection is used in the middle of a transaction
+  but was not registered at transaction start.
+- 1653: *disallowed operation inside transaction*
+  Will be raised when a disallowed operation is carried out in a
+  transaction.
+- 1700: *invalid user name*
+  Will be raised when an invalid user name is used.
+- 1701: *invalid password*
+  Will be raised when an invalid password is used.
+- 1702: *duplicate user*
+  Will be raised when a user name already exists.
+- 1703: *user not found*
+  Will be raised when a user name is updated that does not exist.
+- 1704: *user must change his password*
+  Will be raised when the user must change his password.
+- 1750: *invalid application name*
+  Will be raised when an invalid application name is specified.
+- 1751: *invalid mount*
+  Will be raised when an invalid mount is specified.
+- 1752: *application download failed*
+  Will be raised when an application download from the central repository
+  failed.
+- 1753: *application upload failed*
+  Will be raised when an application upload from the client to the ArangoDB
+  server failed.
+- 1800: *invalid key declaration*
+  Will be raised when an invalid key specification is passed to the server
+- 1801: *key already exists*
+  Will be raised when a key is to be created that already exists
+- 1802: *key not found*
+  Will be raised when the specified key is not found
+- 1803: *key is not unique*
+  Will be raised when the specified key is not unique
+- 1804: *key value not changed*
+  Will be raised when updating the value for a key does not work
+- 1805: *key value not removed*
+  Will be raised when deleting a key/value pair does not work
+- 1806: *missing value*
+  Will be raised when the value is missing
+- 1850: *invalid task id*
+  Will be raised when a task is created with an invalid id.
+- 1851: *duplicate task id*
+  Will be raised when a task id is created with a duplicate id.
+- 1852: *task not found*
+  Will be raised when a task with the specified id could not be found.
+- 1901: *invalid graph*
+  Will be raised when an invalid name is passed to the server.
+- 1902: *could not create graph*
+  Will be raised when an invalid name, vertices or edges is passed to the
+  server.
+- 1903: *invalid vertex*
+  Will be raised when an invalid vertex id is passed to the server.
+- 1904: *could not create vertex*
+  Will be raised when the vertex could not be created.
+- 1905: *could not change vertex*
+  Will be raised when the vertex could not be changed.
+- 1906: *invalid edge*
+  Will be raised when an invalid edge id is passed to the server.
+- 1907: *could not create edge*
+  Will be raised when the edge could not be created.
+- 1908: *could not change edge*
+  Will be raised when the edge could not be changed.
+- 1909: *too many iterations*
+  Will be raised when too many iterations are done in a graph traversal.
+- 1910: *invalid filter result*
+  Will be raised when an invalid filter result is returned in a graph
+  traversal.
+- 1950: *unknown session*
+  Will be raised when an invalid/unknown session id is passed to the server.
+- 1951: *session expired*
+  Will be raised when a session is expired.
+- 2000: *unknown client error*
+  This error should not happen.
+- 2001: *could not connect to server*
+  Will be raised when the client could not connect to the server.
+- 2002: *could not write to server*
+  Will be raised when the client could not write data.
+- 2003: *could not read from server*
+  Will be raised when the client could not read data.
+- 3402: *bitarray index update warning - attribute missing in revised doc
+  Will be raised when an attempt to update a document results in the
+  revised document not having one or more attributes which are required by
+  the bitarray index.
+- 3411: *bitarray index remove failure - item missing in index*
+  Will be raised when an attempt to remove a document from a bitarray index
+  fails when document can not be located within that index.
+- 3413: *bitarray index insert failure - document attribute value unsuppo
+  Will be raised when an attempt to insert a document into a bitarray index
+  fails due to the fact that one or more values for an index attribute is
+  not supported within that index.
+- 3415: *bitarray index creation failure - one or more index attributes a
+  Will be raised when an attempt to create an index with two or more index
+  attributes repeated.
+- 3417: *bitarray index creation failure - one or more index attribute va
+  Will be raised when an attempt to create an index with two or more index
+  attribute values repeated.
+- 10000: *element not inserted into structure, because key already exists
+  Will be returned if the element was not insert because the key already
+  exists.
+- 10001: *element not inserted into structure, because it already exists*
+  Will be returned if the element was not insert because it already exists.
+- 10002: *key not found in structure*
+  Will be returned if the key was not found in the structure.
+- 10003: *element not found in structure*
+  Will be returned if the element was not found in the structure.
