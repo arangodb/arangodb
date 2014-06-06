@@ -1,0 +1,401 @@
+!CHAPTER Graph Module
+
+The graph module provides functions dealing with graph structures.
+
+!SECTION First Steps with Graphs
+
+A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
+collections*. A vertex can be a document of a *document collection* or of an edge
+collection (so edges can be used as vertices). Wich collections are used within
+a graph is defined via *edge definitions*. A graph can contain more than one edge
+definition, at least one is needed.
+
+!SUBSECTION Create a graph
+
+The creation of a graph requires the name of the graph and a definition of its edges.
+
+For every type of edge definition a convenience method exists that can be used to create a graph.
+
+```js
+> var graph = require("org/arangodb/graph");
+
+> var g = graph._create(graphName, edgeDefinitions);
+```
+
+There are different types of edge defintions:
+
+!SUBSECTION Edge Definitions
+
+The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
+The edge definitons array is initialised with the following call:
+
+```js
+> var edgeDefinitions = graph._edgeDefinitions(edgeDefinition1,......edgeDefinitionN);
+```
+
+To add further edge definitions to the array one must call:
+
+```js
+> graph._extendEdgeDefinitions(edgeDefinitions, edgeDefinition1,......edgeDefinitionN);
+```
+
+
+!SUBSUBSECTION Undirected Relation
+
+```js
+graph._undirectedRelationDefinition(relationName, vertexCollections);
+```
+
+Define an undirected relation.
+The *relationName* defines the name of this relation and references to the underlying edge collection.
+The *vertexCollections* is an Array of document collections holding the vertices.
+Relations are allowed in both directions among all collections in *vertexCollections*.
+
+Example Call:
+```js
+> graph._undirectedRelationDefinition("eats", ["Human", "Animal"]);
+{
+  collection: "eats",
+  from: ["Human", "Animal"],
+  to: ["Human", "Animal"]
+}
+```
+
+!SUBSUBSECTION Directed Relation
+
+```js
+graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections);
+```
+
+Define a directed relation.
+The *relationName* defines the name of this relation and references to the underlying edge collection.
+The *fromVertexCollections* is an Array of document collections holding the start vertices.
+The *toVertexCollections* is an Array of document collections holding the target vertices.
+Relations are only allowed in the direction from any collection in *fromVertexCollections* to any collection in *toVertexCollections*.
+
+Example Call:
+```js
+> graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+{
+  collection: "has_bought",
+  from: ["Customer", "Company"],
+  to: ["Groceries", "Electronics"]
+}
+```
+
+
+!SUBSUBSECTION Complete Example to create a graph
+
+Example Call:
+
+```js
+> var graph = require("org/arangodb/graph");
+> var edgeDefinitions = graph._edgeDefinitions();
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelationDefinition("friend_of", ["Customer"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._create("myStore", edgeDefinitions);
+{
+  _id: "_graphs/123",
+  _rev: "123",
+  _key: "123"
+}
+```
+
+alternative call:
+
+```js
+> var graph = require("org/arangodb/graph");
+> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelationDefinition("friend_of", ["Customer"]), graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._create("myStore", edgeDefinitions);
+{
+  _id: "_graphs/123",
+  _rev: "123",
+  _key: "123"
+};
+```
+
+
+!SUBSECTION Read a graph
+
+```js
+> var graph = require("org/arangodb/graph");
+
+> var g = graph._graph("myStore");
+```
+
+- - -
+
+!SUBSECTION Remove a graph
+
+
+Removes a graph from the collection *\_graphs*.
+
+```js
+> graph._drop(graphId, dropCollections);
+true
+```
+
+graphId: string - id of the graph to be removed
+dropCollections: bool - optional. *true* all collections of the graph will be deleted.
+*false* no collection of the graph will be deleted. Default: *true*
+
+
+
+!SECTION Edge
+
+!SUBSECTION Save
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_save -->
+
+!SUBSECTION Replace
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_replace -->
+
+!SUBSECTION Update
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_update -->
+
+!SUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_remove -->
+
+!SECTION Edge
+
+!SUBSECTION Save
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_save -->
+
+!SUBSECTION Replace
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_replace -->
+
+!SUBSECTION Update
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_update -->
+
+!SUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_remove -->
+
+!SECTION Vertices
+
+!SUBSECTION Get vertex *from* of an edge
+
+<!-- @startDocuBlock JSF_general_graph_getFromVertex -->
+
+!SUBSECTION Get vertex *to* of an edge
+
+<!-- @startDocuBlock JSF_general_graph_getToVertex -->
+
+
+
+!SECTION Some Methods
+
+```javascript
+graph.listCommonNeighbors(vertex1, vertex2, options)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:
+* see getNeighbors
+
+```javascript
+graph.amountCommonNeighbors(vertex1, vertex2, options)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:
+* see getNeighbors
+
+
+
+```javascript
+graph.listCommonProperties((vertex1, vertex2)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+
+
+```javascript
+graph.amountCommonProperties((vertex1, vertex2)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+
+
+
+
+```javascript
+graph.pathTo(vertex1, vertex2, options)
+```
+
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:  see determinePredecessors
+
+
+```javascript
+graph.distanceTo(vertex1, vertex2, options)
+```
+
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options: see determinePredecessors
+
+
+```javascript
+graph.determinePredecessors(vertex1, source, options)
+```
+
+
+vertex1: string - vertex id
+source: ???
+options:
+* cached: Boolean -> If true a cached version will be used
+
+
+```javascript
+graph.pathesForTree(vertex1, tree, path_to_here)
+```
+
+vertex1: string - vertex id
+tree: ???
+path_to_here: Internal Array, should initially be undefined or an empty array
+
+
+```javascript
+graph.getNeighbors(vertex1, options)
+```
+
+vertex1: string - vertex id
+options:
+
+* direction:
+  "inbound" -> consider only inbound edges
+  "outbount" -> consider only outbound edges
+  "any"(default) -> consider both directions
+* weight: attribute-name -> use this attribute to determine edgeweight
+* weight_function: function -> use this function to calculate the weight
+* default-weight -> us this value if weight could not be calculated otherwise, default is Infinity
+* only: function -> will be invoked on any edge, neighbors will only be included if this returns true or is not defined.
+
+
+```javascript
+graph.measurement(vertex1, measurement)
+```
+
+vertex1: string - vertex id
+measurement: String
+*  "eccentricity": Calculates the eccentricity of the vertex
+*  "betweenness": Calculates the betweenness of the vertex
+*  "closeness": Calculates the closeness of the vertex
+
+!SECTION Using Graphs in AQL {#JSModuleGraphAQL}
+
+Complete Documentation can be copied from normal AQL documentation, with:
+
+* replace VertexCollection/EdgeCollection by Graph
+
+!SUBSECTION PATHS
+
+* **BUILD ON** `ahuacatl.js`: 4090 `GRAPH_PATHS` -> uses `COLLECTION` on second arg, has to use `COLLECTION` or `GRAPH` accordingly. Has to pass the graph to traverser
+
+Paths returns a handle for all paths included in the graph:
+
+`GRAPH_PATHS(graphname, direction, followcycles)`
+
+* `graphname` defines the graph
+* `direction` defines the direction
+* `followcycles` defines if cyclic paths should be followed
+
+Example calls:
+
+```javascript
+FOR p in PATHS(shop, "outbound")
+  FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
+  RETURN p.vertices[*].name
+```
+
+
+!SUBSECTION TRAVERSAL
+
+
+`GRAPH_TRAVERSAL(graphname, startVertex, direction, options)}`
+
+* **BUILD ON** `ahuacatl.js`: 4243 `TRAVERSAL_FUNC` -> uses `COLLECTION` on first and second arg, has to use `COLLECTION` or `GRAPH` accordingly. Has to pass the graph to traverser
+* **TO CHANGE** `common/modules/org/arangodb/graph/traversal.js`: 106 `collectionDatasourceFactory` should be able to work on Graphs
+
+Traverses the graph described by the `graphname`,
+starting at the vertex identified by id `startVertex`. Vertex connectivity is
+specified by the `direction` parameter:
+
+- `"outbound"`: Vertices are connected in `_from` to `_to` order
+- `"inbound"`: Vertices are connected in `_to` to `_from` order
+- `"any"`: Vertices are connected in both `_to` to `_from` and in
+  `_from` to `_to` order
+
+All this is defined already for TRAVERSAL, no changes should be applied here
+
+```javascript
+TRAVERSAL(shop, "products/arangodb", "outbound", {
+  strategy: "depthfirst",
+  order: "postorder",
+  itemOrder: "backward",
+  maxDepth: 6,
+  paths: true
+})
+```
+
+
+!SUBSECTION TRAVERSAL_TREES
+
+`GRAPH_TRAVERSAL_TREE(graphname, startVertex, direction, connectName, options)`
+
+* **BUILD ON** `ahuacatl.js`: 4243 `TRAVERSAL_FUNC` -> uses `COLLECTION` on first and second arg, has to use `COLLECTION` or `GRAPH` accordingly. Has to pass the graph to traverser
+* **TO CHANGE** `common/modules/org/arangodb/graph/traversal.js`: 106 `collectionDatasourceFactory` should be able to work on Graphs
+
+```javascript
+GRAPH_TRAVERSAL_TREE(shop, "products/arangodb", "inbound", "sold", {
+  itemOrder: "forward"
+})
+```
+
+Makes internal use of TRAVERSAL, modyfing that is sufficient.
+
+!SUBSECTION SHORTEST_PATHS
+
+
+* **BUILD ON** `ahuacatl.js`: 4243 `TRAVERSAL_FUNC` -> uses `COLLECTION` on first and second arg, has to use `COLLECTION` or `GRAPH` accordingly. Has to pass the graph to traverser
+* **TO CHANGE** `common/modules/org/arangodb/graph/traversal.js`: 106 `collectionDatasourceFactory` should be able to work on Graphs
+
+`GRAPH_SHORTEST_PATH(graphname, startVertex, endVertex, direction, options)`:
+
+Equal to functionality of `SHORTEST_PATH`.
+Makes internal use of TRAVERSAL, modyfing that is sufficient.
+
+
+!SUBSECTION EDGES
+
+
+* **BUILD ON** `ahuacatl.js`: 4479 `GRAPH_EDGES` -> uses `COLLECTION` on first argument, has to use `COLLECTION` or `GRAPH` accordingly.
+
+`GRAPH_EDGES(graphname, startvertex, direction, edgeexamples, collectionRestrictions)`
+
+Same as original, but with optional `collectionRestrictions`to define which edge collections have to be included. Default is all.
+
+
+!SUBSECTION NEIGHBORS
+
+
+* **BUILD ON** `ahuacatl.js`: 4508 `GRAPH_NEIGHBORS` -> uses `COLLECTION` on first, has to use `COLLECTION` or `GRAPH` accordingly.
+
+`GRAPH_NEIGHBORS(graphname, startvertex, direction, edgeexamples)`
+
+* Each of the graph functions in AQL (`PATHS`, `TRAVERSAL`, `TRAVERSAL_TREES`, `SHORTEST_PATHS`, `EDGES`, `NEIGHBORS`) will take the graph as its first argument (which parts of the other arguments will be pushed to be defined in FILTER and not in the signature of the function was discussed, but postponed because it is a detail).
+
