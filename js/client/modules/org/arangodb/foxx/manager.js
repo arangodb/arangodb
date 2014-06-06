@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 130, vars: true, white: true, plusplus: true, nonpropdel: true, continue: true, regexp: true */
+/*jslint indent: 2, nomen: true, maxlen: 130, vars: true, white: true, plusplus: true, continue: true, regexp: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +45,7 @@ var checkedFishBowl = false;
 
 var arango = require("internal").arango;
 var download = require("internal").download;
+var utils = require("org/arangodb/foxx/manager-utils");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -89,25 +90,12 @@ function getFishbowlStorage () {
 /// @brief returns the fishbow repository
 ////////////////////////////////////////////////////////////////////////////////
 
-function getFishbowlUrl (version) {
+function getFishbowlUrl () {
   'use strict';
 
   return "arangodb/foxx-apps";
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a github repository URL
-////////////////////////////////////////////////////////////////////////////////
-
-function buildGithubUrl (repository, version) {
-  'use strict';
-
-  if (typeof version === "undefined") {
-    version = "master";
-  }
-
-  return 'https://github.com/' + repository + '/archive/' + version + '.zip';
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
@@ -154,152 +142,6 @@ function validateMount (mnt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the name and version from a manifest file
-////////////////////////////////////////////////////////////////////////////////
-
-function extractNameAndVersionManifest (source, filename) {
-  'use strict';
-
-  var manifest = JSON.parse(fs.read(filename));
-
-  source.name = manifest.name;
-  source.version = manifest.version;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processes files in a directory
-////////////////////////////////////////////////////////////////////////////////
-
-function processDirectory (source) {
-  'use strict';
-
-  var location = source.location;
-
-  if (! fs.exists(location) || ! fs.isDirectory(location)) {
-    throwFileNotFound("'" + String(location) + "' is not a directory");
-  }
-  
-  // .............................................................................
-  // extract name and version from manifest
-  // .............................................................................
-
-  extractNameAndVersionManifest(source, fs.join(location, "manifest.json"));
-
-  // .............................................................................
-  // extract name and version from manifest
-  // .............................................................................
-
-  var tree = fs.listTree(location);
-  var files = [];
-  var i;
-
-  for (i = 0;  i < tree.length;  ++i) {
-    var filename = fs.join(location, tree[i]);
-
-    if (fs.isFile(filename)) {
-      files.push(tree[i]);
-    }
-  }
-
-  if (files.length === 0) {
-    throwFileNotFound("Directory '" + String(location) + "' is empty");
-  }
-
-  var tempFile = fs.getTempFile("downloads", false); 
-  source.filename = tempFile;
-  source.removeFile = true;
-    
-  fs.zipFile(tempFile, location, files);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the name and version from a zip
-////////////////////////////////////////////////////////////////////////////////
-
-function repackZipFile (source) {
-  'use strict';
-
-  var i;
-
-  var filename = source.filename;
-  var path = fs.getTempFile("zip", false); 
-
-  fs.unzipFile(filename, path, false, true);
-
-  // .............................................................................
-  // locate the manifest file
-  // .............................................................................
-
-  var tree = fs.listTree(path).sort(function(a,b) { 
-    return a.length - b.length; 
-  });
-  var found;
-  var mf = "manifest.json";
-  var re = /[\/\\\\]manifest\.json$/; // Windows!
-
-  for (i = 0;  i < tree.length && found === undefined;  ++i) {
-    var tf = tree[i];
-
-    if (re.test(tf) || tf === mf) {
-      found = tf;
-    }
-  }
-
-  if (typeof found === "undefined") {
-    throwFileNotFound("Cannot find manifest file in zip file '" + filename + "'");
-  }
-
-  var mp;
-
-  if (found === mf) {
-    mp = ".";
-  }
-  else {
-    mp = found.substr(0, found.length - mf.length - 1);
-  }
-
-  // .............................................................................
-  // throw away source file if necessary
-  // .............................................................................
-
-  if (source.removeFile && source.filename !== '') {
-    try {
-      fs.remove(source.filename);
-    }
-    catch (err1) {
-      arangodb.printf("Cannot remove temporary file '%s'\n", source.filename);
-    }
-  } 
-
-  delete source.filename;
-  delete source.removeFile;
-
-  // .............................................................................
-  // repack the zip file
-  // .............................................................................
-
-  var newSource = { location: fs.join(path, mp) };
-
-  processDirectory(newSource);
-
-  source.name = newSource.name;
-  source.version = newSource.version;
-  source.filename = newSource.filename;
-  source.removeFile = newSource.removeFile;
-
-  // .............................................................................
-  // cleanup temporary paths
-  // .............................................................................
-
-  try {
-    fs.removeDirectoryRecursive(path);
-  }
-  catch (err2) {
-    arangodb.printf("Cannot remove temporary directory '%s'\n", path);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief processes files in a zip file
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,39 +157,7 @@ function processZip (source) {
   source.filename = source.location;
   source.removeFile = false;
 
-  repackZipFile(source);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processes files from a github repository 
-////////////////////////////////////////////////////////////////////////////////
-
-function processGithubRepository (source) {
-  'use strict';
-
-  var url = buildGithubUrl(source.location, source.version);
-  var tempFile = fs.getTempFile("downloads", false); 
-
-  try {
-    var result = download(url, "", {
-      method: "get",
-      followRedirects: true,
-      timeout: 30
-    }, tempFile);
-
-    if (result.code >= 200 && result.code <= 299) {
-      source.filename = tempFile;
-      source.removeFile = true;
-    }
-    else {
-      throwDownloadError("Could not download from repository '" + url + "'");
-    }
-  }
-  catch (err) {
-    throwDownloadError("Could not download from repository '" + url + "': " + String(err));
-  }
-
-  repackZipFile(source);
+  utils.repackZipFile(source);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,10 +171,10 @@ function processSource (src) {
     processZip(src);
   }
   else if (src.type === "directory") {
-    processDirectory(src);
+    utils.processDirectory(src);
   }
   else if (src.type === "github") {
-    processGithubRepository(src);
+    utils.processGithubRepository(src);
   }
   else {
     throwBadParameter("Unknown application type '" + src.type + "'. " + 
@@ -415,7 +225,7 @@ function updateFishbowlFromZip (filename) {
         try {
           fs.remove(fs.join(root, file));
         }
-        catch (err3) {
+        catch (ignore) {
         }
       }
     });
@@ -487,7 +297,7 @@ function updateFishbowlFromZip (filename) {
       try {
         fs.removeDirectoryRecursive(tempPath);
       }
-      catch (err2) {
+      catch (ignore) {
       }
     }
 
@@ -502,7 +312,7 @@ function updateFishbowlFromZip (filename) {
 function updateFishbowl () {
   'use strict';
 
-  var url = buildGithubUrl(getFishbowlUrl());
+  var url = utils.buildGithubUrl(getFishbowlUrl());
   var filename = fs.getTempFile("downloads", false); 
   var path = fs.getTempFile("zip", false); 
 
@@ -529,7 +339,7 @@ function updateFishbowl () {
     try {
       fs.removeDirectoryRecursive(path);
     } 
-    catch (err2) {
+    catch (ignore) {
     }
 
     throw err;

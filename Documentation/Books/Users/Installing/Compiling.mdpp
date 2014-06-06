@@ -67,8 +67,8 @@ Download the latest source using GIT:
     git clone git://github.com/triAGENS/ArangoDB.git
 
 Note: if you only plan to compile ArangoDB locally and do not want to modify or push
-any changes, you can speed up cloning substantially by using the `--single-branch` and 
-`--depth` parameters for the clone command as follws:
+any changes, you can speed up cloning substantially by using the *--single-branch* and 
+*--depth* parameters for the clone command as follws:
     
     git clone --single-branch --depth 1 git://github.com/triAGENS/ArangoDB.git
 
@@ -152,7 +152,7 @@ The ArangoShell will be installed in
     /usr/local/bin/arangosh
 
 When upgrading from a previous version of ArangoDB, please make sure you inspect ArangoDB's
-log file after an upgrade. It may also be necessary to start ArangoDB with the `--upgrade`
+log file after an upgrade. It may also be necessary to start ArangoDB with the *--upgrade*
 parameter once to perform required upgrade or initialisation tasks.
 
 !SECTION Devel Version
@@ -161,25 +161,25 @@ parameter once to perform required upgrade or initialisation tasks.
 
 Verify that your system contains
 
-- the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
-  compiler and library support for C++11. To be on the safe side with gcc/g++, you will
-  need version number 4.8 or higher. For "clang" and "clang++", you will need at least
-  version 3.4.
-- the GNU autotools (autoconf, automake)
-- the GNU make
-- the GNU scanner generator FLEX, at least version 2.3.35
-- the GNU parser generator BISON, at least version 2.4
-- Python, version 2 or 3
-- Go, version 1.2 or higher
+* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
+* compiler and library support for C++11. To be on the safe side with gcc/g++, you will
+* need version number 4.8 or higher. For "clang" and "clang++", you will need at least
+* version 3.4.
+* the GNU autotools (autoconf, automake)
+* the GNU make
+* the GNU scanner generator FLEX, at least version 2.3.35
+* the GNU parser generator BISON, at least version 2.4
+* Python, version 2 or 3
+* Go, version 1.2 or higher
 
 In addition you will need the following libraries
 
-- libev in version 3 or 4 (only when configured with `--disable-all-in-one-libev`)
-- Google's V8 engine (only when configured with `--disable-all-in-one-v8`)
-- the ICU library (only when not configured with `--enable-all-in-one-icu`)
-- the GNU readline library
-- the OpenSSL library
-- the Boost test framework library (boost_unit_test_framework)
+* libev in version 3 or 4 (only when configured with `--disable-all-in-one-libev`)
+* Google's V8 engine (only when configured with `--disable-all-in-one-v8`)
+* the ICU library (only when not configured with `--enable-all-in-one-icu`)
+* the GNU readline library
+* the OpenSSL library
+* the Boost test framework library (boost_unit_test_framework)
 
 To compile Google V8 yourself, you will also need Python 2 and SCons.
 
@@ -246,47 +246,69 @@ correct versions on your system.
 
 The following configuration options exist:
 
-`--enable-relative` will make relative paths be used in the compiled binaries and
+`--enable-relative` 
+
+This will make relative paths be used in the compiled binaries and
 scripts. It allows to run ArangoDB from the compile directory directly, without the
-need for a `make install` command and specifying much configuration parameters. 
+need for a *make install* command and specifying much configuration parameters. 
 When used, you can start ArangoDB using this command:
 
     bin/arangod /tmp/database-dir
 
-ArangoDB will then automatically use the configuration from file `etc/relative/arangod.conf`.
+ArangoDB will then automatically use the configuration from file *etc/relative/arangod.conf*.
 
-`--enable-all-in-one-libev` tells the build system to use the bundled version
+`--enable-all-in-one-libev` 
+
+This tells the build system to use the bundled version
 of libev instead of using the system version.
 
-`--disable-all-in-one-libev` tells the build system to use the installed
+`--disable-all-in-one-libev` 
+
+This tells the build system to use the installed
 system version of libev instead of compiling the supplied version from the
 3rdParty directory in the make run.
 
-`--enable-all-in-one-v8` tells the build system to use the bundled version of
+`--enable-all-in-one-v8` 
+
+This tells the build system to use the bundled version of
 V8 instead of using the system version.
 
-`--disable-all-in-one-v8` tells the build system to use the installed system
+`--disable-all-in-one-v8` 
+
+This tells the build system to use the installed system
 version of V8 instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
-`--enable-all-in-one-icu` tells the build system to use the bundled version of
+`--enable-all-in-one-icu` 
+
+This tells the build system to use the bundled version of
 ICU instead of using the system version.
 
-`--disable-all-in-one-icu` tells the build system to use the installed system
+`--disable-all-in-one-icu` 
+
+This tells the build system to use the installed system
 version of ICU instead of compiling the supplied version from the 3rdParty
 directory in the make run.
 
-`--enable-all-in-one-boost` tells the build system to use the bundled version of
+`--enable-all-in-one-boost` 
+
+This tells the build system to use the bundled version of
 Boost header files. This is the default and recommended.
 
-`--enable-all-in-one-etcd` tells the build system to use the bundled version 
+`--enable-all-in-one-etcd` 
+
+This tells the build system to use the bundled version 
 of ETCD. This is the default and recommended.
 
-`--enable-internal-go` tells the build system to use Go binaries located in the
+`--enable-internal-go` 
+
+This tells the build system to use Go binaries located in the
 3rdParty directory. Note that ArangoDB does not ship with Go binaries, and that
 the Go binaries must be copied into this directory manually.
 
-`--enable-maintainer-mode` tells the build system to use BISON and FLEX to
+`--enable-maintainer-mode` 
+
+This tells the build system to use BISON and FLEX to
 regenerate the parser and scanner files. If disabled, the supplied files will be
 used so you cannot make changes to the parser and scanner files.  You need at
 least BISON 2.4.1 and FLEX 2.5.35.  This option also allows you to make changes

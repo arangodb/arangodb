@@ -1,6 +1,7 @@
 import os
 import inspect
-    
+
+
 def file_content(filepath):
     """ Fetches and formats file's content to perform the required operation.
     """
@@ -28,7 +29,7 @@ def fetch_comments(dirpath):
     """
 
     comments_filename = "allComments.txt"
-    fh = open(comments_filename, "w")
+    fh = open(comments_filename, "a")
 
     for root, directories, files in os.walk(dirpath):
         for filename in files:
@@ -37,7 +38,7 @@ def fetch_comments(dirpath):
             for comment in file_comments:
                 fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
-                    _text = _com.replace("/", "")
+                    _text = _com.replace("///", "")
                     if len(_text.strip()) == 0:
                         _text = _text.replace("\n", "<br />")    
                     _text = _text.strip()
@@ -51,5 +52,15 @@ def fetch_comments(dirpath):
     fh.close()
 
 if __name__ == "__main__":
-    dirpath = "/Users/Thomas/code/ArangoDB"
-    fetch_comments(dirpath)
+    open("allComments.txt", "w").close()  
+    path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server",
+            "lib/Admin","lib/HttpServer",
+            "js/actions","js/client","js/apps","js/common","js/server"]
+    for i in path:
+      dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))
+      fetch_comments(dirpath)
+      print dirpath
+      
+      
+      os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'templates'))
+    

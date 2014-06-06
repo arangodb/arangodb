@@ -2201,7 +2201,7 @@ actions.defineHttp({
           if (typeof options === "undefined") {
             var waitForSync = body.waitForSync || undefined;
             limit = body.limit || undefined;
-            options = {waitForSync: waitForSync, limit: limit};
+            options = {waitForSync: waitForSync, keepNull: keepNull, limit: limit};
           }
           var result = collection.updateByExample(example, 
                                                   newValue, 

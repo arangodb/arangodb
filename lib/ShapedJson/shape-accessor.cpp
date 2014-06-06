@@ -70,6 +70,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   paids = (TRI_shape_aid_t*) (((char const*) path) + sizeof(TRI_shape_path_t));
 
   // collect the bytecode
+
   // we need at least 2 entries in the vector to store an accessor
   TRI_InitVectorPointer2(&ops, shaper->_memoryZone, 2);
 
@@ -214,7 +215,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_shape = NULL;
+      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
       accessor->_code = NULL;
 
       return true;
@@ -222,7 +223,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     else {
       TRI_DestroyVectorPointer(&ops);
 
-      accessor->_shape = NULL;
+      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
       accessor->_code = NULL;
 
       return true;
@@ -238,7 +239,8 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
     return false;
   }
 
-  accessor->_shape = shape;
+  // remember resulting sid
+  accessor->_resultSid = shape->_sid;
 
   // steal buffer from ops vector so we don't need to copy it
   accessor->_code = const_cast<void const**>(ops._buffer);
@@ -262,7 +264,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
   TRI_shape_size_t pos;
   TRI_shape_size_t* offsetsV;
 
-  if (accessor->_shape == NULL) {
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
     return false;
   }
 
@@ -364,7 +366,7 @@ bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
     return false;
   }
 
-  result->_sid         = accessor->_shape->_sid;
+  result->_sid         = accessor->_resultSid;
   result->_data.data   = (char*) begin;
   result->_data.length = (uint32_t) (((char const*) end) - ((char const*) begin));
 
@@ -384,12 +386,12 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
          (unsigned long) accessor->_sid,
          (unsigned long) accessor->_pid);
 
-  if (accessor->_shape == NULL) {
+  if (accessor->_resultSid == TRI_SHAPE_ILLEGAL) {
     printf("  result shape: -\n");
     return;
   }
 
-  printf("  result shape: %lu\n", (unsigned long) accessor->_shape->_sid);
+  printf("  result shape: %lu\n", (unsigned long) accessor->_resultSid);
 
   void const** ops = static_cast<void const**>(accessor->_code);
 
