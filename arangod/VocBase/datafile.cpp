@@ -52,7 +52,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsPhysicalDatafile (const TRI_datafile_t* const datafile) {
-  return datafile->_filename != NULL;
+  return datafile->_filename != nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ static bool IsPhysicalDatafile (const TRI_datafile_t* const datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static const char* GetNameDatafile (const TRI_datafile_t* const datafile) {
-  if (datafile->_filename == NULL) {
+  if (datafile->_filename == nullptr) {
     // anonymous regions do not have a filename
     return "anonymous region";
   }
@@ -88,7 +88,7 @@ static void CloseDatafile (TRI_datafile_t* const datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DestroyDatafile (TRI_datafile_t* const datafile) {
-  if (datafile->_filename != NULL) {
+  if (datafile->_filename != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, datafile->_filename);
   }
 }
@@ -101,9 +101,9 @@ static bool SyncDatafile (const TRI_datafile_t* const datafile,
                           char const* begin,
                           char const* end) {
   // TODO: remove
-  void** mmHandle = NULL;
+  void** mmHandle = nullptr;
 
-  if (datafile->_filename == NULL) {
+  if (datafile->_filename == nullptr) {
     // anonymous regions do not need to be synced
     return true;
   }
@@ -130,6 +130,32 @@ static int TruncateDatafile (TRI_datafile_t* const datafile, const off_t length)
 
   // for anonymous regions, this is a non-op
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a CRC of a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
+  TRI_voc_size_t zero = 0;
+  off_t o = offsetof(TRI_df_marker_t, _crc);
+  size_t n = sizeof(TRI_voc_crc_t);
+
+  char const* ptr = (char const*) marker;
+
+  if (marker->_size < sizeof(TRI_df_marker_t)) {
+    return false;
+  }
+
+  TRI_voc_crc_t crc = TRI_InitialCrc32();
+
+  crc = TRI_BlockCrc32(crc, ptr, o);
+  crc = TRI_BlockCrc32(crc, (char*) &zero, n);
+  crc = TRI_BlockCrc32(crc, ptr + o + n, marker->_size - o - n);
+
+  crc = TRI_FinalCrc32(crc);
+
+  return marker->_crc == crc;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +508,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       return scan;
     }
 
-    ok = TRI_CheckCrcMarkerDatafile(marker);
+    ok = CheckCrcMarker(marker);
 
     if (! ok) {
       entry._status = 5;
@@ -593,7 +619,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     if (marker->_type != 0) {
       bool ok;
 
-      ok = TRI_CheckCrcMarkerDatafile(marker);
+      ok = CheckCrcMarker(marker);
 
       if (! ok) {
         datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
@@ -642,13 +668,13 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 
   pos1 = strrchr(filename, '.');
 
-  if (pos1 == NULL) {
+  if (pos1 == nullptr) {
     return 0;
   }
 
   pos2 = strrchr(filename, '-');
 
-  if (pos2 == NULL || pos2 > pos1) {
+  if (pos2 == nullptr || pos2 > pos1) {
     return 0;
   }
 
@@ -730,7 +756,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   }
 
   // check CRC
-  ok = TRI_CheckCrcMarkerDatafile(&header.base);
+  ok = CheckCrcMarker(&header.base);
 
   if (! ok) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
@@ -1180,38 +1206,6 @@ bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker) {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a CRC of a marker
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker) {
-  TRI_voc_size_t zero;
-  char const* ptr;
-  off_t o;
-  size_t n;
-  TRI_voc_crc_t crc;
-
-  zero = 0;
-  o = offsetof(TRI_df_marker_t, _crc);
-  n = sizeof(TRI_voc_crc_t);
-
-  ptr = (char const*) marker;
-
-  if (marker->_size < sizeof(TRI_df_marker_t)) {
-    return false;
-  }
-
-  crc = TRI_InitialCrc32();
-
-  crc = TRI_BlockCrc32(crc, ptr, o);
-  crc = TRI_BlockCrc32(crc, (char*) &zero, n);
-  crc = TRI_BlockCrc32(crc, ptr + o + n, marker->_size - o - n);
-
-  crc = TRI_FinalCrc32(crc);
-
-  return marker->_crc == crc;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
