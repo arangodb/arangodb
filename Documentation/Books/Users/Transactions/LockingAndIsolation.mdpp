@@ -1,6 +1,6 @@
 !CHAPTER Locking and Isolation 
 
-All collections specified in the `collections` attribute are locked in the
+All collections specified in the *collections* attribute are locked in the
 requested mode (read or write) at transaction start. Locking of multiple collections
 is performed in alphabetical order.
 When a transaction commits or rolls back, all locks are released in reverse order.
@@ -16,7 +16,7 @@ isolation. A transaction should never see uncommitted or rolled back modificatio
 other transactions. Additionally, reads inside a transaction are repeatable.
 
 Note that the above is true only for all collections that are declared in the 
-`collections` attribute of the transaction.
+*collections* attribute of the transaction.
 
 There might be situations when declaring all collections a priori is not possible,
 for example, because further collections are determined by a dynamic AQL query 
@@ -53,15 +53,15 @@ that try to acquire locks on the same collections lazily.
 
 To recover from a deadlock state, ArangoDB will give up waiting for a collection
 after a configurable amount of time. The wait time can be specified per transaction 
-using the optional`lockTimeout`attribute. If no value is specified, some default
+using the optional*lockTimeout*attribute. If no value is specified, some default
 value will be applied.
 
-If ArangoDB was waited at least `lockTimeout` seconds during lock acquisition, it
-will give up and rollback the transaction. Note that the `lockTimeout` is used per
+If ArangoDB was waited at least *lockTimeout* seconds during lock acquisition, it
+will give up and rollback the transaction. Note that the *lockTimeout* is used per
 lock acquisition in a transaction, and not just once per transaction. There will be 
 at least as many lock acquisition attempts as there are collections used in the 
 transaction. The total lock wait time may thus be much higher than the value of
-`lockTimeout`.
+*lockTimeout*.
 
 
 To avoid both deadlocks and non-repeatable reads, all collections used in a 

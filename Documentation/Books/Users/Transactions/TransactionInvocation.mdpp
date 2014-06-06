@@ -2,10 +2,10 @@
 
 ArangoDB transactions are different from transactions in SQL.
 
-In SQL, transactions are started with explicit `BEGIN` or `START TRANSACTION`
+In SQL, transactions are started with explicit *BEGIN* or *START TRANSACTION*
 command. Following any series of data retrieval or modification operations, an
-SQL transaction is finished with a `COMMIT` command, or rolled back with a
-`ROLLBACK` command. There may be client/server communication between the start
+SQL transaction is finished with a *COMMIT* command, or rolled back with a
+*ROLLBACK* command. There may be client/server communication between the start
 and the commit/rollback of an SQL transaction.
 
 In ArangoDB, a transaction is always a server-side operation, and is executed
@@ -13,9 +13,9 @@ on the server in one go, without any client interaction. All operations to be
 executed inside a transaction need to be known by the server when the transaction 
 is started.
 
-There are no individual `BEGIN`, `COMMIT` or `ROLLBACK` transaction commands 
+There are no individual *BEGIN*, *COMMIT* or *ROLLBACK* transaction commands 
 in ArangoDB. Instead, a transaction in ArangoDB is started by providing a 
-description of the transaction to the `db._executeTransaction` Javascript 
+description of the transaction to the *db._executeTransaction* Javascript 
 function:
 
     db._executeTransaction(description);
@@ -41,9 +41,9 @@ Contrary, using a collection in read-only mode will only allow performing
 read operations on a collection. Any attempt to write into a collection used
 in read-only mode will make the transaction fail.
 
-Collections for a transaction are declared by providing them in the `collections` 
-attribute of the object passed to the `_executeTransaction` function. The 
-`collections` attribute has the sub-attributes `read` and `write`:
+Collections for a transaction are declared by providing them in the *collections* 
+attribute of the object passed to the *_executeTransaction* function. The 
+*collections* attribute has the sub-attributes *read* and *write*:
 
     db._executeTransaction({
       collections: {
@@ -53,10 +53,10 @@ attribute of the object passed to the `_executeTransaction` function. The
       ...
     });
 
-`read` and `write` are optional attributes, and only need to be specified if 
+*read* and *write* are optional attributes, and only need to be specified if 
 the operations inside the transactions demand for it.
 
-The contents of `read` or `write` can each be lists with collection names or a 
+The contents of *read* or *write* can each be lists with collection names or a 
 single collection name (as a string):
     
     db._executeTransaction({
@@ -76,7 +76,7 @@ from within a transaction, but with relaxed isolation. Please refer to
 !SUBSECTION Declaration of data modification and retrieval operations
 
 All data modification and retrieval operations that are to be executed inside
-the transaction need to be specified in a Javascript function, using the `action`
+the transaction need to be specified in a Javascript function, using the *action*
 attribute:
 
     db._executeTransaction({
@@ -88,9 +88,9 @@ attribute:
       }
     });
 
-Any valid Javascript code is allowed inside `action` but the code may only
-access the collections declared in `collections`.
-`action` may be a Javascript function as shown above, or a string representation 
+Any valid Javascript code is allowed inside *action* but the code may only
+access the collections declared in *collections*.
+*action* may be a Javascript function as shown above, or a string representation 
 of a Javascript function:
 
     db._executeTransaction({
@@ -100,11 +100,11 @@ of a Javascript function:
       action: "function () { doSomething(); }"
     });
 
-Please note that any operations specified in `action` will be executed on the 
+Please note that any operations specified in *action* will be executed on the 
 server, in a separate scope. Variables will be bound late. Accessing any Javascript 
 variables defined on the client-side or in some other server context from inside
 a transaction may not work. 
-Instead, any variables used inside `action` should be defined inside `action` itself:
+Instead, any variables used inside *action* should be defined inside *action* itself:
 
     db._executeTransaction({
       collections: {
@@ -116,9 +116,9 @@ Instead, any variables used inside `action` should be defined inside `action` it
       }
     });
 
-When the code inside the `action` attribute is executed, the transaction is
+When the code inside the *action* attribute is executed, the transaction is
 already started and all required locks have been acquired. When the code inside 
-the `action` attribute finishes, the transaction will automatically commit.
+the *action* attribute finishes, the transaction will automatically commit.
 There is no explicit commit command. 
 
 To make a transaction abort and roll back all changes, an exception needs to
@@ -140,7 +140,7 @@ be thrown and not caught inside the transaction:
 There is no explicit abort or roll back command.
 
 As mentioned earlier, a transaction will commit automatically when the end of
-the `action` function is reached and no exception has been thrown. In this 
+the *action* function is reached and no exception has been thrown. In this 
 case, the user can return any legal Javascript value from the function:
 
     db._executeTransaction({
@@ -158,11 +158,11 @@ case, the user can return any legal Javascript value from the function:
 
 !SUBSECTION Examples
 
-The first example will write 3 documents into a collection named `c1`. 
-The `c1` collection needs to be declared in the `write` attribute of the 
-`collections` attribute passed to the `executeTransaction` function.
+The first example will write 3 documents into a collection named *c1*. 
+The *c1* collection needs to be declared in the *write* attribute of the 
+*collections* attribute passed to the *executeTransaction* function.
 
-The `action` attribute contains the actual transaction code to be executed.
+The *action* attribute contains the actual transaction code to be executed.
 This code contains all data modification operations (3 in this example).
 
     // setup
@@ -183,7 +183,7 @@ This code contains all data modification operations (3 in this example).
     db.c1.count(); // 3 
 
 
-Aborting the transaction by throwing an exception in the `action` function
+Aborting the transaction by throwing an exception in the *action* function
 will revert all changes, so as if the transaction never happened:
     
     // setup
@@ -271,7 +271,7 @@ start. The following example using a cap constraint should illustrate that:
 !SUBSECTION Cross-collection transactions
 
 There's also the possibility to run a transaction across multiple collections. 
-In this case, multiple collections need to be declared in the `collections`
+In this case, multiple collections need to be declared in the *collections*
 attribute, e.g.:
 
     // setup 
@@ -293,7 +293,7 @@ attribute, e.g.:
     db.c2.count(); // 1
 
 
-Again, throwing an exception from inside the `action` function will make the 
+Again, throwing an exception from inside the *action* function will make the 
 transaction abort and roll back all changes in all collections:
 
     // setup 

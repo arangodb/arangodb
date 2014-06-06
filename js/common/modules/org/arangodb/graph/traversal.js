@@ -1065,6 +1065,14 @@ function dijkstraSearch () {
           var weight = 1;
           if (config.distance) {
             weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
+          } else if (config.weight) {
+            if (typeof edge[config.weight] === "number") {
+              weight = edge[config.weight];
+            } else if (config.defaultWeight) {
+              weight = config.defaultWeight;
+            } else {
+              weight = Infinity;
+            }
           }
 
           var alt = dist + weight;

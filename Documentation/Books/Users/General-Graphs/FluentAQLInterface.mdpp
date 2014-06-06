@@ -1,15 +1,18 @@
 !CHAPTER Fluent AQL Interface
 
 This chapter describes a fluent interface to query your graph.
-The philosophy of this interface is to at first select a group of starting elements (vertices or edges) and from there on explore the graph with your query by selecting connected elements.
+The philosophy of this interface is to select a group of starting elements (vertices or edges) at first and from there on explore the graph with your query by selecting connected elements.
+
 As an example you can start with a set of vertices, select their direct neighbors and finally their outgoing edges.
+
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
 !SECTION Starting Points
 
 This section describes the entry points for the fluent interface.
-In the philosophy of this module you have to start with a specific subset of vertices or edges and from there on iterate over the graph.
+The philosophy of this module is to start with a specific subset of vertices or edges and from there on iterate over the graph.
+
 Therefore you get exactly this two entry points:
 
 * Select a set of edges
@@ -101,15 +104,13 @@ g._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 <!-- @endDocuBlock -->
 
-!SECTION Fluent query options
+!SECTION Working with the query cursor
 
-After the selection of the entry point you can now query your graph in
-a fluent way, meaning each of the functions on your query returns the query again.
-Hence it is possible to chain arbitrary many executions one after the other.
-The query object itself handles cursor creation and maintenance for you.
+The fluent query object handles cursor creation and maintenance for you.
 A cursor will be created as soon as you request the first result.
 If you are unhappy with the current result and want to refine it further you can execute a further step in the query which cleans up the cursor for you.
 In this interface you get the complete functionality available for general AQL cursors directly on your query.
+The cursor functionality is described in this section.
 
 !SUBSECTION ToArray
 
@@ -235,6 +236,13 @@ var query = g._vertices();
 query.count();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 <!-- @endDocuBlock -->
+
+!SECTION Fluent queries
+
+After the selection of the entry point you can now query your graph in
+a fluent way, meaning each of the functions on your query returns the query again.
+Hence it is possible to chain arbitrary many executions one after the other.
+In this section all available query statements are described.
 
 !SUBSECTION Edges
 

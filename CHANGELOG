@@ -3,6 +3,11 @@ v2.2.0 (XXXX-XX-XX)
 
 * added mountedApp function for foxx-manager
 
+* fixed issue #883: arango 2.1 - when starting multi-machine cluster, UI web 
+  does not change to cluster overview
+
+* fixed dfdb: should not start any other V8 threads
+
 * cleanup of version-check, added module org/arangodb/database-version,
   added --check-version option
 

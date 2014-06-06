@@ -908,21 +908,31 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
     return false;
   }
 
-  *shape = accessor->_shape;
-
-  if (accessor->_shape == NULL) {
-    LOG_TRACE("expecting any object for path %lu, got nothing",
-              (unsigned long) pid);
-
-    return sid == 0;
-  }
-
-  if (sid != 0 && sid != accessor->_shape->_sid) {
+  if (sid != 0 && sid != accessor->_resultSid) {
     LOG_TRACE("expecting sid %lu for path %lu, got sid %lu",
               (unsigned long) sid,
               (unsigned long) pid,
-              (unsigned long) accessor->_shape->_sid);
+              (unsigned long) accessor->_resultSid);
 
+    return false;
+  }
+
+  if (accessor->_resultSid == 0) {
+    LOG_TRACE("expecting any object for path %lu, got nothing",
+              (unsigned long) pid);
+
+    return false;
+  }
+
+
+  *shape = shaper->lookupShapeId(shaper, accessor->_resultSid);
+
+  if (*shape == nullptr) {
+    LOG_TRACE("expecting any object for path %lu, got unknown shape id %lu",
+              (unsigned long) pid,
+              (unsigned long) accessor->_resultSid);
+
+    return sid == 0;
     return false;
   }
 

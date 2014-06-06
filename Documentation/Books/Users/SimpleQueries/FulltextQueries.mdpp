@@ -39,30 +39,30 @@ documents will be returned that contain all search words. This default behavior
 can be changed by providing the extra control characters in the fulltext query,
 which are:
 
-- `+`: logical AND (intersection)
-- `|`: logical OR (union)
-- `-`: negation (exclusion)
+- *+*: logical AND (intersection)
+- *|*: logical OR (union)
+- *-*: negation (exclusion)
 
 *Examples:*
 
-- `"banana"`: searches for documents containing "banana"
-- `"banana,apple"`: searches for documents containing both "banana" AND "apple"
-- `"banana,|orange"`: searches for documents containing eihter "banana" OR "orange" 
+- *"banana"*: searches for documents containing "banana"
+- *"banana,apple"*: searches for documents containing both "banana" AND "apple"
+- *"banana,|orange"*: searches for documents containing either "banana" OR "orange" 
   (or both)
-- `"banana,-apple"`: searches for documents that contain "banana" but NOT "apple".
+- *"banana,-apple"*: searches for documents that contain "banana" but NOT "apple".
 
 Logical operators are evaluated from left to right.
 
-Each search word can optionally be prefixed with `complete:` or `prefix:`, with
-`complete:` being the default. This allows searching for complete words or for
+Each search word can optionally be prefixed with *complete*: or *prefix*:, with
+*complete*: being the default. This allows searching for complete words or for
 word prefixes. Suffix searches or any other forms are partial-word matching are
 currently not supported.
 
 Examples:
 
-- `"complete:banana"`: searches for documents containing the exact word "banana"
-- `"prefix:head"`: searches for documents with words that start with prefix "head"
-- `"prefix:head,banana"`: searches for documents contain words starting with prefix 
+- *"complete:banana"*: searches for documents containing the exact word "banana"
+- *"prefix:head"*: searches for documents with words that start with prefix "head"
+- *"prefix:head,banana"*: searches for documents contain words starting with prefix 
   "head" and that also contain the exact word "banana".
 
 Complete match and prefix search options can be combined with the logical
@@ -71,7 +71,7 @@ operators.
 Please note that only words with a minimum length will get indexed. This minimum
 length can be defined when creating the fulltext index. For words tokenisation,
 the libicu text boundary analysis is used, which takes into account the default
-as defined at server startup (`--server.default-language` startup
+as defined at server startup (*--server.default-language* startup
 option). Generally, the word boundary analysis will filter out punctuation but
 will not do much more.
 
