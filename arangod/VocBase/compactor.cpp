@@ -124,7 +124,7 @@ compaction_blocker_t;
 
 typedef struct compaction_intial_context_s {
   TRI_document_collection_t* _document;
-  TRI_voc_size_t             _targetSize;
+  int64_t                    _targetSize;
   TRI_voc_fid_t              _fid;
   bool                       _keepDeletions;
   bool                       _failed;
@@ -158,17 +158,21 @@ compaction_info_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a marker's size
+////////////////////////////////////////////////////////////////////////////////
+
+static inline int64_t AlignedSize (TRI_df_marker_t const* marker) {
+  return static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size));
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compactor file, based on a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
                                         TRI_voc_fid_t fid,
-                                        TRI_voc_size_t maximalSize) {
-  TRI_collection_t* collection;
-  TRI_datafile_t* compactor;
-  
-  collection = &document->base;
-  
+                                        int64_t maximalSize) {
+  TRI_collection_t* collection = &document->base;
+
   // reserve room for one additional entry
   if (TRI_ReserveVectorPointer(&collection->_compactors, 1) != TRI_ERROR_NO_ERROR) {
     // could not get memory, exit early
@@ -177,7 +181,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-  compactor = TRI_CreateCompactorDocumentCollection(document, fid, maximalSize);
+  TRI_datafile_t* compactor = TRI_CreateCompactorDocumentCollection(document, fid, static_cast<TRI_voc_size_t>(maximalSize));
 
   if (compactor != nullptr) {
     int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
@@ -482,7 +486,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     if (deleted) {
       context->_dfi._numberDead += 1;
-      context->_dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+      context->_dfi._sizeDead += AlignedSize(marker);
       
       LOG_DEBUG("found a stale document after copying: %s", key);
 
@@ -500,7 +504,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
-        dfi->_sizeDead += (int64_t) marker->_size;
+        dfi->_sizeDead += AlignedSize(marker);
       }
 
       found2->_fid = context->_compactor->_fid;
@@ -511,7 +515,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // update datafile info
     context->_dfi._numberAlive += 1;
-    context->_dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+    context->_dfi._sizeAlive += AlignedSize(marker);
   }
 
   // deletions
@@ -546,7 +550,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
     
     context->_dfi._numberShapes++;
-    context->_dfi._sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+    context->_dfi._sizeShapes += AlignedSize(marker);
   }
   
   // attributes
@@ -566,7 +570,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
     
     context->_dfi._numberAttributes++;
-    context->_dfi._sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+    context->_dfi._sizeAttributes += AlignedSize(marker);
   }
 
   // transaction markers
@@ -588,7 +592,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       }
 
       context->_dfi._numberTransactions++;
-      context->_dfi._sizeTransactions += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+      context->_dfi._sizeTransactions += AlignedSize(marker);
     }
     // otherwise don't copy
   }
@@ -688,8 +692,6 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
   compaction_initial_context_t* context  = static_cast<compaction_initial_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
     
-  TRI_voc_size_t alignedSize = TRI_DF_ALIGN_BLOCK(marker->_size);
-
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -710,19 +712,19 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
     }
     
     context->_keepDeletions = true;
-    context->_targetSize += alignedSize;
+    context->_targetSize += AlignedSize(marker);
   }
 
   // deletions
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION && 
            context->_keepDeletions) {
-    context->_targetSize += alignedSize;
+    context->_targetSize += AlignedSize(marker);
   }
   
   // shapes, attributes
   else if (marker->_type == TRI_DF_MARKER_SHAPE ||
            marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-    context->_targetSize += alignedSize;
+    context->_targetSize += AlignedSize(marker);
   }
   
   // transaction markers
@@ -732,7 +734,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
     if (document->_failedTransactions != nullptr) {
       // these markers only need to be copied if there are "old" failed transactions
-      context->_targetSize += alignedSize;
+      context->_targetSize += AlignedSize(marker);
     }
   }
 
