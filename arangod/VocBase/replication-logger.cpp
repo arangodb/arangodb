@@ -432,7 +432,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
   TRI_memory_zone_t* zone;
   TRI_shaped_json_t* shaped;
   TRI_json_t json;
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
   size_t len;
   int res;
   bool forceSync;

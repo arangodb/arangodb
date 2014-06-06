@@ -1962,14 +1962,14 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   TRI_ASSERT(barrier != 0);
 
   v8::Handle<v8::Value> result;
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t document;
   res = trx.read(&document, key);
+  res = trx.finish(res);
 
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson<ReadTransactionType >(trx, col->_cid, &document, barrier, usedBarrier);
   }
 
-  res = trx.finish(res);
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (! usedBarrier) {
@@ -2076,7 +2076,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   Barrier barrier(trx.primaryCollection());
 
   v8::Handle<v8::Value> result;
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t document;
   res = trx.read(&document, key);
   res = trx.finish(res);
   
@@ -2293,7 +2293,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_document_collection_t* document = trx.primaryCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
   Barrier barrier(document);
   
   // we must lock here, because below we are
@@ -2421,7 +2421,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
   Barrier barrier(document);
 
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
   res = trx->createDocument(key, &mptr, shaped, forceSync);
 
   res = trx->finish(res);
@@ -2540,7 +2540,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
   res = trx->createEdge(key, &mptr, shaped, forceSync, &edge);
 
   Barrier barrier(document);
@@ -2701,7 +2701,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   // otherwise the operation is not atomic
   trx.lockWrite();
 
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
   res = trx.read(&mptr, key);
 
   if (res != TRI_ERROR_NO_ERROR) {

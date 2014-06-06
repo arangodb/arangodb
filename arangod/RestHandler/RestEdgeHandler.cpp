@@ -308,7 +308,7 @@ bool RestEdgeHandler::createDocument () {
   Barrier barrier(primary);
 
   // will hold the result
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t document;
   res = trx.createEdge(&document, json, waitForSync, &edge);
   const bool wasSynchronous = trx.synchronous();
   res = trx.finish(res);
