@@ -186,9 +186,6 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
     TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
   }
     
-  // we still must wake up the other thread from time to time, otherwise we'll deadlock
-  TRI_BROADCAST_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   return compactor;
