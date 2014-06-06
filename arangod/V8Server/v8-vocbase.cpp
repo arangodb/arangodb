@@ -50,14 +50,8 @@
 #include "Utils/AhuacatlGuard.h"
 #include "Utils/AhuacatlTransaction.h"
 #include "Utils/Barrier.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
-#include "Utils/EmbeddableTransaction.h"
-#include "Utils/ExplicitTransaction.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
-#include "Utils/StandaloneTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/transactions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -101,12 +95,6 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for read-only transaction class type
-////////////////////////////////////////////////////////////////////////////////
-
-#define ReadTransactionType SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> >
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction
@@ -1429,7 +1417,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   }
   
   CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 
@@ -1936,7 +1924,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
 
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -1961,7 +1949,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   res = trx.finish(res);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<ReadTransactionType >(trx, col->_cid, &document, barrier, usedBarrier);
+    result = TRI_WrapShapedJson<V8ReadTransaction >(trx, col->_cid, &document, barrier, usedBarrier);
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -2059,7 +2047,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 
-  ReadTransactionType trx(vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(vocbase, resolver, col->_cid);
 
   int res = trx.begin();
 
@@ -6096,7 +6084,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 
@@ -6394,7 +6382,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(DropIndexCoordinator(resolver, collection, argv[0]));
   }
 
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -6499,7 +6487,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != 0);
   
   CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 
@@ -6722,7 +6710,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   }
 
   CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 
@@ -7349,7 +7337,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
   TRI_ASSERT(collection != 0);
 
   CollectionNameResolver resolver(collection->_vocbase);
-  ReadTransactionType trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
 
   int res = trx.begin();
 

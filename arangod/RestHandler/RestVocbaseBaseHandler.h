@@ -37,11 +37,7 @@
 #include "BasicsC/logging.h"
 
 #include "Rest/HttpResponse.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/RestTransactionContext.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
-#include "Utils/StandaloneTransaction.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

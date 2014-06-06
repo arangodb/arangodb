@@ -35,10 +35,7 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
-#include "Utils/StandaloneTransaction.h"
-#include "Utils/RestTransactionContext.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/CollectionNameResolver.h"
+#include "Utils/transactions.h"
 
 using namespace triagens::arango;
 

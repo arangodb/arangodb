@@ -43,10 +43,7 @@
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
 
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/RestTransactionContext.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/StandaloneTransaction.h"
+#include "Utils/transactions.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
