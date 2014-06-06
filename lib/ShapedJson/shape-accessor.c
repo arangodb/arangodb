@@ -408,6 +408,7 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t* accessor) {
   TRI_shape_size_t b;
   TRI_shape_size_t e;
   TRI_shape_size_t pos;
+  void* const* ops;
 
   printf("shape accessor for sid: %lu, pid: %lu\n",
          (unsigned long) accessor->_sid,
