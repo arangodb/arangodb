@@ -2,18 +2,18 @@
 
 In this text we assume that you are working with a standard installation
 of ArangoDB with at least a version number of 2.0. This means that everything
-is compiled for cluster operation, that `etcd` is compiled and
+is compiled for cluster operation, that *etcd* is compiled and
 the executable is installed in the location mentioned in the
 configuration file. The first step is to switch on the dispatcher
-functionality in your configuration of `arangod`. In order to do this, change
-the `cluster.disable-dispatcher-kickstarter` and
-`cluster.disable-dispatcher-interface` options in `arangod.conf` both
-to `false`.
+functionality in your configuration of *arangod*. In order to do this, change
+the *cluster.disable-dispatcher-kickstarter* and
+*cluster.disable-dispatcher-interface* options in *arangod.conf* both
+to *false*.
 
-Note that once you switch `cluster.disable-dispatcher-interface` to
-`false`, the usual web front end is automatically replaced with the
+Note that once you switch *cluster.disable-dispatcher-interface* to
+*false*, the usual web front end is automatically replaced with the
 web front end for cluster planning. Therefore you can simply point
-your browser to `http://localhost:8529` (if you are running on the
+your browser to *http://localhost:8529* (if you are running on the
 standard port) and you are guided through the planning and launching of
 a cluster with a graphical user interface. Alternatively, you can follow
 the instructions below to do the same on the command line interface.
@@ -22,7 +22,7 @@ We will first plan and launch a cluster, such that all your servers run
 on the local machine.
 
 Start up a regular ArangoDB, either in console mode or connect to it with 
-the Arango shell `arangosh`. Then you can ask it to plan a cluster for
+the Arango shell *arangosh*. Then you can ask it to plan a cluster for
 you:
 
     arangodb> var Planner = require("org/arangodb/cluster").Planner;
@@ -74,10 +74,10 @@ We will need the 8530 (or whatever appears on your machine) for the
 coordinators below.
 
 More interesting is that such a cluster plan document can be used to
-start up the cluster conveniently using a `Kickstarter` object. Please
-note that the `launch` method of the kickstarter shown below initialises
+start up the cluster conveniently using a *Kickstarter* object. Please
+note that the *launch* method of the kickstarter shown below initialises
 all data directories and log files, so if you have previously used the
-same cluster plan you will lose all your data. Use the `relaunch` method
+same cluster plan you will lose all your data. Use the *relaunch* method
 described below instead in that case.
 
     arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
@@ -129,15 +129,15 @@ method (in the ArangoDB console):
     arangodb> k.shutdown();
 
 If you want to start your cluster again without losing data you have
-previously stored in it, you can use the `relaunch` method in exactly the
-same way as you previously used the `launch` method:
+previously stored in it, you can use the *relaunch* method in exactly the
+same way as you previously used the *launch* method:
 
     arangodb> k.relaunch();
 
-Note that if you have destroyed the object `k` for example because you
+Note that if you have destroyed the object *k* for example because you
 have shutdown the ArangoDB instance in which you planned the cluster,
-then you can reproduce it for a `relaunch` operation, provided you have
-kept the cluster plan object provided by the `getPlan` method. If you
+then you can reproduce it for a *relaunch* operation, provided you have
+kept the cluster plan object provided by the *getPlan* method. If you
 had for example done:
 
     arangodb> var plan = p.getPlan();
@@ -169,8 +169,8 @@ it), do:
 
 We conclude this section with another example using two machines, which 
 will act as two dispatchers. We start from scratch using two machines,
-running on the network addresses `tcp://192.168.173.78:8529` and
-`tcp://192.168.173.13:6789`. Both need to have a regular ArangoDB
+running on the network addresses *tcp://192.168.173.78:8529* and
+*tcp://192.168.173.13:6789*. Both need to have a regular ArangoDB
 instance installed and running. Please make sure, that both bind to
 all network devices, so that they can talk to each other. Also enable
 the dispatcher functionality on both of them, as described above.
@@ -189,9 +189,9 @@ You can now launch this cluster exactly as explained earlier:
     arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 
-Likewise, the methods `shutdown`, `relaunch`, `isHealthy` and `cleanup`
+Likewise, the methods *shutdown*, *relaunch*, *isHealthy* and *cleanup*
 work exactly as in the single server case.
 
-See @ref JSModuleCluster "the corresponding chapter of the reference manual"
-for detailed information about the `Planner` and `Kickstarter` classes.
+See [the corresponding chapter of the reference manual](../ModulePlanner/README.md)
+for detailed information about the *Planner* and *Kickstarter* classes.
 

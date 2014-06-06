@@ -1,15 +1,16 @@
 !CHAPTER General Options
 
 `--help`
+
 `-h`
 
 Prints a list of the most common options available and then exits. In order to see all options use `--help-all`.
 
 `--version`
+
 `-v`
 
 Prints the version of the server and exits.
-
 
 `--upgrade`
 
@@ -25,6 +26,7 @@ Whether or not this option is specified, the server will always perform a versio
 
 
 `--configuration filename`
+
 `-c filename`
 
 Specifies the name of the configuration file to use.

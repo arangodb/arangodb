@@ -11,7 +11,7 @@ An agency endpoint the server can connect to. The option can be specified multip
 
 At least one endpoint must be specified or ArangoDB will refuse to start. It is recommended to specify at least two endpoints so ArangoDB has an alternative endpoint if one of them becomes unavailable.
 
-`Examples`
+*Examples*
 
 	--cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002
 

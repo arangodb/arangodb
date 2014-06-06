@@ -3,7 +3,7 @@
 
 Foxx is an easy way to create APIs and simple web applications from within 
 ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If 
-Foxx is Sinatra, [ArandoDB's Actions](../ArangoActions/README.md) are the corresponding `Rack`. 
+Foxx is Sinatra, [ArandoDB's Actions](../ArangoActions/README.md) are the corresponding *Rack*. 
 They provide all the HTTP goodness.
 
 If you just want to install an existing application, please use the 
@@ -21,7 +21,7 @@ other technologies. A Foxx app provides one or more URLs, which can either
 be accessed directly from the browser or from a backend application written e.g. in
 Ruby or C#. Other features include:
 
-* **Routing:** Define arbitrary routes namespaced via the `Controllers`
+* **Routing:** Define arbitrary routes namespaced via the *Controllers*
 * **Accesses data:** Direct access to all data in ArangoDB using simple queries, AQL, traversals and more
 * **Manipulates data:** Create new or manipulate existing entries
 * Deliver **static files** like HTML pages, CSS or images directly
@@ -50,33 +50,33 @@ methods.
 !SUBSECTION Your first Foxx app in 5 minutes
 
 Let's build an application that sends a plain-text response 
-"Hello YourName!" for all requests to `/dev/my_app/hello/YourName`. 
+"Hello YourName!" for all requests to */dev/my_app/hello/YourName*. 
 
-First, create a directory `apps` somewhere in your filesystem. This will be
+First, create a directory *apps* somewhere in your filesystem. This will be
 the Foxx application base directory for your database instance. Let's assume 
-from now on that the absolute path for this directory is `/home/user/apps`.
-When you have created the directory, create a sub-directory `databases` in it.
+from now on that the absolute path for this directory is */home/user/apps*.
+When you have created the directory, create a sub-directory *databases* in it.
 
-Foxx applications are database-specific, and the `databases` sub-directory is
+Foxx applications are database-specific, and the *databases* sub-directory is
 used to separate the Foxx applications of different databases running in the
 same ArangoDB instance.
 
-Let's assume for now that you are working in the default database (`_system`), that
+Let's assume for now that you are working in the default database (*_system*), that
 is used when no database name is specified otherwise. To use Foxx applications with
-the `_system` database, create a sub-directory `_system` inside the `databases` 
-subdirectory. All Foxx applications for the `_system` database will go into this 
-directory. Note: to add a Foxx application for a different databases than `_system`, 
-use the database's name as the directory name instead of `_system`.
+the *_system* database, create a sub-directory *_system* inside the *databases* 
+subdirectory. All Foxx applications for the *_system* database will go into this 
+directory. Note: to add a Foxx application for a different databases than *_system*, 
+use the database's name as the directory name instead of *_system*.
 
-Finally, we can add a sub-directory `my_app` in the `_system` directory and should
-end up with the following directory layout (starting at `/home/user` in our example):
+Finally, we can add a sub-directory *my_app* in the *_system* directory and should
+end up with the following directory layout (starting at */home/user* in our example):
 
     apps/
       databases/
         _system/
           my_app/
 
-In the `my_app` directory, create a file named `app.js` and save the following content
+In the *my_app* directory, create a file named *app.js* and save the following content
 in it:
 
     (function() {
@@ -92,8 +92,8 @@ in it:
     
     }());
 
-Beside the `app.js` we need a manifest file. In order to achieve that, we 
-create a file called `manifest.json` in our `my_app` directory with the 
+Beside the *app.js* we need a manifest file. In order to achieve that, we 
+create a file called *manifest.json* in our *my_app* directory with the 
 following content:
 
     {
@@ -109,7 +109,7 @@ You **must** specify a name and a version number for your application,
 otherwise it won't be loaded into ArangoDB.
 
 You should now have the following files and directories with your 
-application (starting at `/home/user` in our example):
+application (starting at */home/user* in our example):
 
     apps/
       databases/
@@ -126,18 +126,18 @@ Start ArangoDB as follows:
 
     $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
 
-If you chose a different directory name, you need to replace `/home/user/apps` 
-with the actual directory name of course. Replace `/tmp/fancy_db` with the
+If you chose a different directory name, you need to replace */home/user/apps* 
+with the actual directory name of course. Replace */tmp/fancy_db* with the
 directory your database data is located in.
 
 The command will start the ArangoDB server in a **development mode** using the
-directory `/home/user/apps` as the workspace and `/tmp/fancy_db` as your
+directory */home/user/apps* as the workspace and */tmp/fancy_db* as your
 database directory.  In development mode the server automatically reloads all
 application files on every request, so changes to the underlying files are
 visible instantly. 
 Note: if you use the development mode for the first time or choose a different
-directory for `dev-app-path`, it may be necessary to start ArangoDB with the
-`--upgrade` option once. This will initialize the specified application directory.
+directory for *dev-app-path*, it may be necessary to start ArangoDB with the
+*--upgrade* option once. This will initialize the specified application directory.
 
 Note: the development mode is convenient when developing applications but the
 permanent reloading has an impact on performance. Therefore permanent reloading is
@@ -145,13 +145,13 @@ only performed in development mode and not in production mode. Whenever you thin
 your application is ready for production, you can install it using the Foxx manager
 and avoid the overhead of reloading.
 
-Now point your browser to `http://localhost:8529/dev/my_app/hello/YourName` and you should 
+Now point your browser to *http://localhost:8529/dev/my_app/hello/YourName* and you should 
 see "Hello YourName". 
 
 Note: the above and all following examples assume that you are using the default 
-database (`_system`).If you use a different database than `_system`, URLs must be 
+database (*_system*).If you use a different database than *_system*, URLs must be 
 changed to include the database name, too. For example, if your database name is 
-`mydb`, the above URL changes to `http://localhost:8529/_db/mydb/dev/my_app/hello/YourName`. 
+*mydb*, the above URL changes to *http://localhost:8529/_db/mydb/dev/my_app/hello/YourName*. 
 For more information on how to access specific databases, please refer to 
 [Address of a Database](../HttpDatabase/README.md). 
 

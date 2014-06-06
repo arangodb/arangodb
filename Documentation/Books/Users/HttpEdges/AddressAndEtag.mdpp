@@ -10,8 +10,8 @@ format changes to:
 
     http://server:port/_api/edge/<document-handle>
 
-For example, assumed that the document handle, which is stored in the `_id`
-attribute of the edge, is `demo/362549736`, then the URL of that edge is:
+For example, assumed that the document handle, which is stored in the *_id*
+attribute of the edge, is *demo/362549736*, then the URL of that edge is:
 
     http://localhost:8529/_api/edge/demo/362549736
 
