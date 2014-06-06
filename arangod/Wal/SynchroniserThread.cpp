@@ -111,7 +111,8 @@ void SynchroniserThread::signalSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SynchroniserThread::run () {
-  while (_stop == 0) {
+  while (true) {
+    int stop = (int) _stop;
     uint32_t waiting = 0;
 
     {
@@ -120,6 +121,7 @@ void SynchroniserThread::run () {
     }
 
     // go on without the lock
+
     if (waiting > 0) {
       // get region to sync
       SyncRegion region = _logfileManager->slots()->getSyncRegion();
@@ -171,10 +173,17 @@ void SynchroniserThread::run () {
       _waiting -= waiting;
     }
 
-    if (_waiting == 0) {
+    if (_waiting == 0 && stop == 0) {
       // sleep if nothing to do
       guard.wait(Interval);
     }
+
+    if (stop > 0 && _waiting == 0) {
+      // stop requested and all synced, we can exit
+      break;
+    }
+
+    // next iteration
   }
 
   _stop = 2;
