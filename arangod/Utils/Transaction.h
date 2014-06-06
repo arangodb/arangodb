@@ -290,10 +290,10 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a collection's primary collection
+/// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
          
-         TRI_document_collection_t* primaryCollection (TRI_transaction_collection_t const* trxCollection) const {
+         TRI_document_collection_t* documentCollection (TRI_transaction_collection_t const* trxCollection) const {
            TRI_ASSERT(_trx != 0);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
            TRI_ASSERT(trxCollection->_collection != 0);
@@ -458,7 +458,7 @@ namespace triagens {
                      TRI_doc_mptr_copy_t* mptr,
                      TRI_barrier_t** barrier) {
 
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           *barrier = TRI_CreateBarrierElement(&document->_barrierList);
 
@@ -510,7 +510,7 @@ namespace triagens {
 
           TRI_ASSERT(mptr != nullptr);
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           int res = document->readDocument(trxCollection,
                                           (TRI_voc_key_t) key.c_str(), 
@@ -528,7 +528,7 @@ namespace triagens {
                      vector<string>& ids, 
                      bool lock) {
 
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           if (lock) {
             // READ-LOCK START
@@ -569,7 +569,7 @@ namespace triagens {
                          vector<TRI_doc_mptr_copy_t>& documents,
                          int64_t offset,
                          int64_t count) {
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -632,7 +632,7 @@ namespace triagens {
                        TRI_voc_size_t limit,
                        uint32_t* total) {
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           if (limit == 0) {
             // nothing to do
@@ -732,7 +732,7 @@ namespace triagens {
                              TRI_voc_ssize_t skip,
                              uint32_t* total) {
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -848,7 +848,7 @@ namespace triagens {
                            void const* data,
                            const bool forceSync) {
          
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
           int res = document->insertDocument(trxCollection,
@@ -919,7 +919,7 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
           
           int res = document->updateDocument(trxCollection, 
                                             (TRI_voc_key_t) key.c_str(),
@@ -948,7 +948,7 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy;
           TRI_InitUpdatePolicy(&updatePolicy, policy, expectedRevision, actualRevision);
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
 
           int res = document->removeDocument(trxCollection,
                                             (TRI_voc_key_t) key.c_str(), 
@@ -970,7 +970,7 @@ namespace triagens {
 
           vector<string> ids;
           
-          TRI_document_collection_t* document = primaryCollection(trxCollection);
+          TRI_document_collection_t* document = documentCollection(trxCollection);
           
           // WRITE-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);

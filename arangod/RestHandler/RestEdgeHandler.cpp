@@ -249,7 +249,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
  
-  TRI_document_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* primary = trx.documentCollection();
  
   if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection    

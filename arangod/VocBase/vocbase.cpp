@@ -1231,7 +1231,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
     return res;
   }
 
-  TRI_DocumentIteratorPrimaryCollection(&trx, trx.primaryCollection(), vocbase, &ScanTrxCallback);
+  TRI_DocumentIteratorDocumentCollection(&trx, trx.documentCollection(), vocbase, &ScanTrxCallback);
 
   trx.finish(res);
   return res;
