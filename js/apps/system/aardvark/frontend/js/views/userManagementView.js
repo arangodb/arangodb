@@ -124,7 +124,8 @@
       this.collection.create(options, {
         wait:true,
         error: function(data, err) {
-          self.handleError(err.status, err.statusText, name);
+          //Fix this. Function not available
+          //self.handleError(err.status, err.statusText, name);
         },
         success: function(data) {
           self.updateUserManagement();
