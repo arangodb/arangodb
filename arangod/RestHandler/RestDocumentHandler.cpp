@@ -343,7 +343,7 @@ bool RestDocumentHandler::createDocument () {
 
   Barrier barrier(trx.primaryCollection());
 
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t document;
   res = trx.createDocument(&document, json, waitForSync);
   bool const wasSynchronous = trx.synchronous();
   res = trx.finish(res);
@@ -570,7 +570,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
 
   res = trx.read(&mptr, key);
 
@@ -1317,7 +1317,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
                                      waitForSync, isPatch, json);
   }
 
-  TRI_doc_mptr_t mptr;
+  TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
   SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
@@ -1359,7 +1359,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     // read the existing document
-    TRI_doc_mptr_t oldDocument;
+    TRI_doc_mptr_copy_t oldDocument;
 
     // create a write lock that spans the initial read and the update
     // otherwise the update is not atomic
@@ -1430,7 +1430,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (ServerState::instance()->isDBserver()) {
       // compare attributes in shardKeys
       // read the existing document
-      TRI_doc_mptr_t oldDocument;
+      TRI_doc_mptr_copy_t oldDocument;
 
       // do not lock again
       trx.lockWrite();

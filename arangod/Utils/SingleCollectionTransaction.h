@@ -167,7 +167,7 @@ namespace triagens {
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int readRandom (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
+        inline int readRandom (TRI_doc_mptr_copy_t* mptr, TRI_barrier_t** barrier) {
           TRI_ASSERT(mptr != nullptr);
           return this->readAny(this->trxCollection(), mptr, barrier);
         }
@@ -176,7 +176,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int read (TRI_doc_mptr_t* mptr, const string& key) {
+        inline int read (TRI_doc_mptr_copy_t* mptr, const string& key) {
           TRI_ASSERT(mptr != nullptr);
           return this->readSingle(this->trxCollection(), mptr, key);
         }
@@ -193,7 +193,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readPositional (vector<TRI_doc_mptr_t const*>& documents,
+        int readPositional (vector<TRI_doc_mptr_copy_t>& documents,
                             int64_t offset,
                             int64_t count) {
           return this->readOrdered(this->trxCollection(), documents, offset, count);
@@ -203,7 +203,7 @@ namespace triagens {
 /// @brief read documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t>& docs,
+        int read (vector<TRI_doc_mptr_copy_t>& docs,
                   TRI_barrier_t** barrier,
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
@@ -218,7 +218,7 @@ namespace triagens {
 /// access to the documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readOffset (vector<TRI_doc_mptr_t>& docs,
+        int readOffset (vector<TRI_doc_mptr_copy_t>& docs,
                   TRI_barrier_t** barrier,
                   TRI_voc_size_t& internalSkip,
                   TRI_voc_size_t batchSize,
