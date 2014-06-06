@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief database usage guard
+/// @brief collection usage guard
 ///
 /// @file
 ///
@@ -25,23 +25,21 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_DATABASE_GUARD_H
-#define TRIAGENS_UTILS_DATABASE_GUARD_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_GUARD_H
+#define TRIAGENS_UTILS_COLLECTION_GUARD_H 1
 
 #include "Basics/Common.h"
 #include "Utils/Exception.h"
-#include "VocBase/server.h"
-
-struct TRI_vocbase_s;
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class DatabaseGuard
+// --SECTION--                                             class CollectionGuard
 // -----------------------------------------------------------------------------
 
-    class DatabaseGuard {
+    class CollectionGuard {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -49,48 +47,44 @@ namespace triagens {
 
       public:
          
-        DatabaseGuard (DatabaseGuard const&) = delete;
-        DatabaseGuard& operator= (DatabaseGuard const&) = delete;
+        CollectionGuard (CollectionGuard const&) = delete;
+        CollectionGuard& operator= (CollectionGuard const&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard, using a database id
+/// @brief create the guard, using a collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        DatabaseGuard (TRI_server_t* server,
-                       TRI_voc_tick_t id)
-          : _server(server),
-            _database(nullptr) {
+        CollectionGuard (TRI_vocbase_t* vocbase,
+                         TRI_voc_cid_t id)
+          : _vocbase(vocbase),
+            _collection(nullptr) {
+  
+          _collection = TRI_UseCollectionByIdVocBase(_vocbase, id);
 
-          _database = TRI_UseDatabaseByIdServer(server, id); 
-
-          if (_database == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          if (_collection == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard, using a database name
+/// @brief create the guard, using a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        DatabaseGuard (TRI_server_t* server,
-                       char const* name)
-          : _server(server),
-            _database(nullptr) {
+        CollectionGuard (TRI_vocbase_t* vocbase,
+                         char const* name)
+          : _vocbase(vocbase),
+            _collection(nullptr) {
 
-          _database = TRI_UseDatabaseServer(server, name); 
-
-          if (_database == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-          }
+          _collection = TRI_UseCollectionByNameVocBase(_vocbase, name);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~DatabaseGuard () {
-          if (_database != nullptr) {
-            TRI_ReleaseDatabaseServer(_server, _database);
+        ~CollectionGuard () {
+          if (_collection != nullptr) {
+            TRI_ReleaseCollectionVocBase(_vocbase, _collection);
           }
         }
 
@@ -101,11 +95,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database pointer
+/// @brief return the collection pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline struct TRI_vocbase_s* database () const {
-          return _database;
+        inline TRI_vocbase_col_t* collection () const {
+          return _collection;
         }
 
 // -----------------------------------------------------------------------------
@@ -115,16 +109,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server
+/// @brief pointer to vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_server_t* _server;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to database
+/// @brief pointer to collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _database;
+        TRI_vocbase_col_t* _collection;
 
     };
   }
