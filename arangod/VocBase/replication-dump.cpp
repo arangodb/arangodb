@@ -185,7 +185,7 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
                                   TRI_voc_cid_t cid,
                                   char** result) {
 
-  assert(cid > 0);
+  TRI_ASSERT(cid > 0);
   
   resolved_name_t* found = static_cast<resolved_name_t*>(TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid));
 
@@ -277,8 +277,8 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       continue;
     }
 
-    assert(df->_tickMin <= df->_tickMax);
-    assert(df->_dataMin <= df->_dataMax);
+    TRI_ASSERT(df->_tickMin <= df->_tickMax);
+    TRI_ASSERT(df->_dataMin <= df->_dataMax);
 
     if (dataMax < df->_dataMin) {
       // datafile is newer than requested range
@@ -555,7 +555,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
   TRI_shaper_t* shaper;
   TRI_shaped_json_t shaped;
   
-  assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
+  TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
   shaper = document->_shaper;
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
@@ -593,7 +593,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
 static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
   size_t n;
 
-  assert(list != NULL);
+  TRI_ASSERT(list != NULL);
 
   n = list->_length;
  
@@ -652,7 +652,7 @@ static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
   }
 
   // we should never get here
-  assert(false);
+  TRI_ASSERT(false);
   return false;
 }
 
@@ -716,7 +716,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
     }
     else {
-      assert(datafile->_isSealed);
+      TRI_ASSERT(datafile->_isSealed);
 
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
       
@@ -931,7 +931,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
-      assert(datafile->_isSealed);
+      TRI_ASSERT(datafile->_isSealed);
     }
     
     ptr = datafile->_data;
@@ -1061,8 +1061,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_barrier_t* b;
   int res;
 
-  assert(col != nullptr);
-  assert(col->_collection != nullptr);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(col->_collection != nullptr);
 
   TRI_document_collection_t* document = col->_collection;
 
@@ -1138,7 +1138,7 @@ int TRI_InitDumpReplication (TRI_replication_dump_t* dump,
                              size_t bufferSize) {
   int res;
 
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   dump->_vocbase       = vocbase;
   dump->_lastFoundTick = 0;

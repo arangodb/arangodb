@@ -344,7 +344,7 @@ bool SslClientConnection::checkSocket () {
   int so_error = -1;
   socklen_t len = sizeof so_error;
 
-  assert(TRI_isvalidsocket(_socket));
+  TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (char*)(&so_error), &len);
 

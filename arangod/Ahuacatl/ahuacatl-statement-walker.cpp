@@ -57,7 +57,7 @@ static void VisitStatement (TRI_aql_statement_walker_t* const walker,
   TRI_aql_node_t* modified;
 
   node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, position);
-  assert(node);
+  TRI_ASSERT(node);
 
   modified = func(walker, node);
   if (walker->_canModify && modified != node) {
@@ -77,7 +77,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
                           TRI_aql_node_t* const node) {
   size_t i, n;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   n = node->_members._length;
   for (i = 0; i < n; ++i) {
@@ -110,7 +110,7 @@ static void VisitMembers (TRI_aql_statement_walker_t* const walker,
 static void RunWalk (TRI_aql_statement_walker_t* const walker) {
   size_t i, n;
 
-  assert(walker);
+  TRI_ASSERT(walker);
   n = walker->_statements->_statements._length;
 
   for (i = 0; i < n; ++i) {
@@ -152,7 +152,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     if (nodeType == TRI_AQL_NODE_SCOPE_END) {
       size_t len = walker->_currentScopes._length;
 
-      assert(len > 0);
+      TRI_ASSERT(len > 0);
       TRI_RemoveVectorPointer(&walker->_currentScopes, len - 1);
     }
   }
@@ -181,7 +181,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
 void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
-  assert(scope);
+  TRI_ASSERT(scope);
   if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
     scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
     LOG_TRACE("setting limit status to ignorable");
@@ -197,7 +197,7 @@ void TRI_IgnoreCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const
 void TRI_RestrictCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
-  assert(scope);
+  TRI_ASSERT(scope);
   if (scope->_limit._hasFilter) {
     scope->_limit._status = TRI_AQL_LIMIT_IGNORE;
     LOG_TRACE("limit given up because of additional filter");
@@ -217,7 +217,7 @@ void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const wa
                                             const int64_t limit) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
-  assert(scope);
+  TRI_ASSERT(scope);
 
   if (scope->_limit._status == TRI_AQL_LIMIT_UNDEFINED) {
     // never overwrite a previously picked up limit
@@ -234,7 +234,7 @@ void TRI_SetCurrentLimitStatementWalkerAql (TRI_aql_statement_walker_t* const wa
 TRI_vector_pointer_t* TRI_GetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
-  assert(scope);
+  TRI_ASSERT(scope);
 
   return scope->_ranges;
 }
@@ -247,7 +247,7 @@ void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const w
                                              TRI_vector_pointer_t* ranges) {
   TRI_aql_scope_t* scope = TRI_GetCurrentScopeStatementWalkerAql(walker);
 
-  assert(scope);
+  TRI_ASSERT(scope);
 
   if (ranges != NULL) { // ranges may be NULL
     TRI_vector_pointer_t* oldRanges = scope->_ranges;
@@ -269,10 +269,10 @@ void TRI_SetCurrentRangesStatementWalkerAql (TRI_aql_statement_walker_t* const w
 TRI_aql_scope_t* TRI_GetCurrentScopeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
   size_t n;
 
-  assert(walker);
+  TRI_ASSERT(walker);
   n = walker->_currentScopes._length;
 
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   return (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, n - 1);
 }
@@ -321,7 +321,7 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
   // init scope counter to 0
   *scopeCount = 0;
 
-  assert(name != NULL);
+  TRI_ASSERT(name != NULL);
 
   n = walker->_currentScopes._length;
   while (n > 0) {
@@ -329,7 +329,7 @@ TRI_aql_variable_t* TRI_GetVariableStatementWalkerAql (TRI_aql_statement_walker_
     TRI_aql_variable_t* variable;
 
     scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, --n);
-    assert(scope);
+    TRI_ASSERT(scope);
 
     variable = static_cast<TRI_aql_variable_t*>
                           (TRI_LookupByKeyAssociativePointer(&scope->_variables,
@@ -399,7 +399,7 @@ TRI_aql_statement_walker_t* TRI_CreateStatementWalkerAql (void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
-  assert(walker);
+  TRI_ASSERT(walker);
 
   TRI_DestroyVectorPointer(&walker->_currentScopes);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, walker);
@@ -411,8 +411,8 @@ void TRI_FreeStatementWalkerAql (TRI_aql_statement_walker_t* const walker) {
 
 void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker,
                             TRI_aql_statement_list_t* list) {
-  assert(walker);
-  assert(list);
+  TRI_ASSERT(walker);
+  TRI_ASSERT(list);
 
   walker->_statements = list;
 

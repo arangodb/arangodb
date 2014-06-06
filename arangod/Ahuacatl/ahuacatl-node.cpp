@@ -192,7 +192,7 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "function call (user)";
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "undefined";
 }
 

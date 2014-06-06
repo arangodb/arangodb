@@ -74,8 +74,8 @@ Context::Context (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Context::~Context () {
-  assert(_workUnits.empty());
-  assert(_transaction == nullptr);
+  TRI_ASSERT(_workUnits.empty());
+  TRI_ASSERT(_transaction == nullptr);
 
   if (_globalContext != nullptr) {
     *_globalContext = nullptr;
@@ -123,7 +123,7 @@ void Context::increaseRefCount () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Context::decreaseRefCount () {
-  assert(_refCount > 0);
+  TRI_ASSERT(_refCount > 0);
 
   if (--_refCount == 0) {
     // last user has detached
@@ -165,13 +165,13 @@ Collection* Context::findCollection (TRI_voc_cid_t id) const {
 
 int Context::startWorkUnit (WorkUnit* workUnit) {
   if (_workUnits.empty()) {
-    assert(_transaction == nullptr);
+    TRI_ASSERT(_transaction == nullptr);
 
     _transaction = _manager->createTransaction(workUnit->isSingleOperation());
-    assert(_transaction != nullptr);
+    TRI_ASSERT(_transaction != nullptr);
   }
 
-  assert(_transaction != nullptr);
+  TRI_ASSERT(_transaction != nullptr);
 
   _workUnits.push_back(workUnit);
 
@@ -183,9 +183,9 @@ int Context::startWorkUnit (WorkUnit* workUnit) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Context::endWorkUnit (WorkUnit* workUnit) {
-  assert(! _workUnits.empty());
+  TRI_ASSERT(! _workUnits.empty());
 
-  assert(_workUnits.back() == workUnit);
+  TRI_ASSERT(_workUnits.back() == workUnit);
 
   // pop last work unit from stack
   _workUnits.pop_back();

@@ -170,7 +170,7 @@ static void StringifyFieldAccessReference (TRI_aql_context_t* const context,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, attributeName);
   }
   else {
-    assert(false);
+    TRI_ASSERT(false);
   }
 }
 
@@ -618,7 +618,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     return lhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -745,7 +745,7 @@ static TRI_aql_field_access_t* MergeAndList (TRI_aql_context_t* const context,
     return lhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1089,7 +1089,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     return lhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1157,7 +1157,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
     return lhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   /* this should never be called. let's see if this assumption is true or not */
 
   return lhs;
@@ -1188,7 +1188,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
     }
 
     // both references refer to the same variable, now compare their operators
-    assert(isSameAttribute);
+    TRI_ASSERT(isSameAttribute);
 
     if (lhsType == rhsType) {
       // same operator, i.e. the two references are absolutely identical
@@ -1270,7 +1270,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
     return lhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return lhs;
 }
 
@@ -1450,7 +1450,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     return rhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1666,7 +1666,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
     return rhs;
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   /* this should never be called. let's see if this assumption is true or not */
 
   return lhs;
@@ -1698,7 +1698,7 @@ static TRI_aql_field_access_t* MergeOrReference (TRI_aql_context_t* const contex
     }
 
     // both references refer to the same thing, now compare their operators
-    assert(isSameAttribute);
+    TRI_ASSERT(isSameAttribute);
 
     if (lhsType == rhsType) {
       // same operator, i.e. the two references are identical
@@ -1782,7 +1782,7 @@ static TRI_aql_field_access_t* MergeAttributeAccessAnd (TRI_aql_context_t* const
       return MergeAndAll(context, lhs, rhs);
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1825,7 +1825,7 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
       return MergeOrAll(context, lhs, rhs);
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1946,8 +1946,8 @@ static void MergeVector (TRI_aql_context_t* const context,
     for (j = 0; j < len; ++j) {
       TRI_aql_field_access_t* compareAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(result, j);
 
-      assert(compareAccess);
-      assert(compareAccess->_fullName);
+      TRI_ASSERT(compareAccess);
+      TRI_ASSERT(compareAccess->_fullName);
 
       // check if the current buffer element is the one we want to update
       if (TRI_EqualString(fieldAccess->_fullName, compareAccess->_fullName)) {
@@ -2223,7 +2223,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     return NULL;
   }
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   if (operatorarg == TRI_AQL_NODE_OPERATOR_BINARY_EQ) {
     // create an exact value access
@@ -2288,7 +2288,7 @@ static TRI_aql_field_access_t* CreateAccessForNode (TRI_aql_context_t* const con
     }
   }
   else {
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   return fieldAccess;
@@ -2397,8 +2397,8 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
      
 static bool IsSameAttributeAccess (const TRI_aql_node_t* const lhs,
                                    const TRI_aql_node_t* const rhs) {
-  assert(lhs != NULL);
-  assert(rhs != NULL);
+  TRI_ASSERT(lhs != NULL);
+  TRI_ASSERT(rhs != NULL);
 
   if (lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS &&
       rhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS) {
@@ -2938,7 +2938,7 @@ const char* TRI_RangeOperatorAql (const TRI_aql_range_e type) {
     case TRI_AQL_RANGE_UPPER_INCLUDED:
       return TRI_ComparisonOperatorAql(TRI_AQL_NODE_OPERATOR_BINARY_LE);
     default:
-      assert(false);
+      TRI_ASSERT(false);
   }
 
   return NULL;
@@ -2963,7 +2963,7 @@ const char* TRI_ComparisonOperatorAql (const TRI_aql_node_type_e type) {
     case TRI_AQL_NODE_OPERATOR_BINARY_GE:
       return ">=";
     default:
-      assert(false);
+      TRI_ASSERT(false);
   }
 
   return NULL;

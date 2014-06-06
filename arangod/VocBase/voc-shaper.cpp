@@ -144,7 +144,7 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 
 static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, 
                                               char const* name) {
-  assert(name != nullptr);
+  TRI_ASSERT(name != nullptr);
 
   voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
@@ -200,11 +200,11 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     }
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
-    assert(f == nullptr);
+    TRI_ASSERT(f == nullptr);
   
     // enter into the dictionaries
     f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
-    assert(f == nullptr);
+    TRI_ASSERT(f == nullptr);
   }
 
   return aid;
@@ -264,7 +264,7 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper,
 static uint64_t HashElementShape (TRI_associative_synced_t* array, 
                                   void const* element) {
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
-  assert(shape != nullptr);
+  TRI_ASSERT(shape != nullptr);
   char const* s = reinterpret_cast<char const*>(shape); 
 
   return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), shape->_size - sizeof(TRI_shape_sid_t));
@@ -352,10 +352,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     result = reinterpret_cast<TRI_shape_t const*>(m);
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
-    assert(f == nullptr);
+    TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
-    assert(f == nullptr);
+    TRI_ASSERT(f == nullptr);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
@@ -381,7 +381,7 @@ static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
 static uint64_t HashElementShapeId (TRI_associative_synced_t* array, 
                                     void const* element) {
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
-  assert(shape != nullptr);
+  TRI_ASSERT(shape != nullptr);
 
   return TRI_FnvHashPointer(&shape->_sid, sizeof(TRI_shape_sid_t));
 }
@@ -395,7 +395,7 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array,
                              void const* element) {
   TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
-  assert(shape != nullptr);
+  TRI_ASSERT(shape != nullptr);
 
   return *k == shape->_sid;
 }
@@ -594,7 +594,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
-  assert(shaper != nullptr);
+  TRI_ASSERT(shaper != nullptr);
 
   TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
@@ -652,12 +652,12 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // remove the old marker
     // and re-insert the marker with the new pointer
     void* f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
-    assert(f != nullptr);
+    TRI_ASSERT(f != nullptr);
   
     // same for the shape dictionary
     // delete and re-insert 
     f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, true);
-    assert(f != nullptr);
+    TRI_ASSERT(f != nullptr);
   }
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
@@ -669,12 +669,12 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // are identical in old and new marker) 
     // and re-insert same attribute with adjusted pointer
     void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
-    assert(f != nullptr);
+    TRI_ASSERT(f != nullptr);
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, true);
-    assert(f != nullptr);
+    TRI_ASSERT(f != nullptr);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -693,10 +693,10 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
   void* f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
-  assert(f == nullptr);
+  TRI_ASSERT(f == nullptr);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, false);
-  assert(f == nullptr);
+  TRI_ASSERT(f == nullptr);
 
   if (shaper->_nextSid <= l->_sid) {
     shaper->_nextSid = l->_sid + 1;
@@ -1050,7 +1050,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
 
   if (leftShape == nullptr || rightShape == nullptr) {
     LOG_ERROR("shape not found");
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   leftType   = leftShape->_type;
@@ -1421,7 +1421,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     } // end of case TRI_SHAPE_ARRAY
   } // end of switch (leftType)
   
-  assert(false);
+  TRI_ASSERT(false);
   return 0; //shut the vc++ up
 }
 

@@ -102,7 +102,7 @@ static const char* GetStringOperator (const TRI_aql_node_type_e type) {
     case TRI_AQL_NODE_OPERATOR_BINARY_IN:
       return " in ";
     default:
-      assert(false);
+      TRI_ASSERT(false);
       return NULL;
   }
 }
@@ -166,7 +166,7 @@ TRI_json_t* TRI_NodeJsonAql (TRI_aql_context_t* const context,
         case TRI_AQL_TYPE_STRING:
           return TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, node->_value._value._string);
       }
-      assert(false);
+      TRI_ASSERT(false);
       return NULL;
     }
     case TRI_AQL_NODE_LIST: {
@@ -293,7 +293,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
           // json_t containing the array element name
           nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
-          assert(TRI_IsStringJson(nameJson));
+          TRI_ASSERT(TRI_IsStringJson(nameJson));
           name = TRI_RegisterStringAql(context, 
                                        nameJson->_value._string.data, 
                                        nameJson->_value._string.length - 1, 
@@ -305,7 +305,7 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
 
           // json_t containing the array element value
           valueJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i + 1);
-          assert(valueJson);
+          TRI_ASSERT(valueJson);
 
           valueNode = TRI_JsonNodeAql(context, valueJson);
           if (! valueNode) {

@@ -350,7 +350,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
   simple_headers_t* headers = (simple_headers_t*) h;
   TRI_doc_mptr_t* header;
 
-  assert(size > 0);
+  TRI_ASSERT(size > 0);
   
   if (headers->_freelist == nullptr) {
     size_t blockSize = GetBlockSize(headers->_blocks._length);

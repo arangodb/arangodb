@@ -180,10 +180,10 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   compactor = TRI_CreateCompactorPrimaryCollection(document, fid, maximalSize);
 
   if (compactor != NULL) {
-    int res = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
+    int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
 
     // we have reserved space before, so we can be sure the push succeeds
-    assert(res == TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(res == TRI_ERROR_NO_ERROR);
   }
     
   // we still must wake up the other thread from time to time, otherwise we'll deadlock
@@ -344,7 +344,7 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
   TRI_document_collection_t* document = context->_document;
 
   ok = false;
-  assert(datafile->_fid == compactor->_fid);
+  TRI_ASSERT(datafile->_fid == compactor->_fid);
 
   if (datafile->isPhysical(datafile)) {
     char* number;
@@ -492,8 +492,8 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found); 
-    assert(found2->getDataPtr() != NULL);
-    assert(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);
+    TRI_ASSERT(found2->getDataPtr() != NULL);
+    TRI_ASSERT(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);
 
     // the fid might change
     if (found->_fid != context->_compactor->_fid) {
@@ -781,7 +781,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   size_t i, j, n;
   
   n = compactions->_length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   initial = InitCompaction(document, compactions);
 
@@ -1012,7 +1012,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   
     TRI_datafile_t* df = static_cast<TRI_datafile_t*>(document->base._datafiles._buffer[i]);
 
-    assert(df != NULL);
+    TRI_ASSERT(df != NULL);
 
     dfi = TRI_FindDatafileInfoPrimaryCollection(document, df->_fid, true);
 
@@ -1115,7 +1115,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
   // handle datafiles with dead objects
   n = vector._length;
-  assert(n >= 1);
+  TRI_ASSERT(n >= 1);
     
   CompactifyDatafiles(document, &vector); 
 
@@ -1373,7 +1373,7 @@ void TRI_CompactorVocBase (void* data) {
   int numCompacted = 0;
 
   vocbase = (TRI_vocbase_t*) data;
-  assert(vocbase->_state == 1);
+  TRI_ASSERT(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 

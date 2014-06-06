@@ -512,7 +512,7 @@ namespace triagens {
                         TRI_doc_mptr_t* mptr,
                         const string& key) {
 
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
           
           TRI_document_collection_t* document = primaryCollection(trxCollection);
 

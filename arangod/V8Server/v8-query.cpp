@@ -438,8 +438,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
   if (numEq) {
     // create equality operator if one is in queue
-    assert(lastOperator == 0);
-    assert(lastNonEq == 0);
+    TRI_ASSERT(lastOperator == 0);
+    TRI_ASSERT(lastNonEq == 0);
 
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
@@ -569,7 +569,7 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
     // Check and ensure we have a json object defined before we store it.
     // ......................................................................
 
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
     // ......................................................................
     // store it in an list json object -- eventually wil be stored as part
@@ -956,7 +956,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   for (size_t i = 0;  i < n;  ++i) {
     TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
 
-    assert(pid != 0);
+    TRI_ASSERT(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
@@ -2527,7 +2527,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
 
   const size_t n = documents.size();
 
-  assert(barrier != 0);
+  TRI_ASSERT(barrier != 0);
 
   if (n == 0) {
     TRI_FreeBarrier(barrier);
@@ -2801,7 +2801,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 
   const size_t n = documents.size();
 
-  assert(barrier != 0);
+  TRI_ASSERT(barrier != 0);
 
   if (n == 0) {
     TRI_FreeBarrier(barrier);
@@ -3103,7 +3103,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  assert(v8g != 0);
+  TRI_ASSERT(v8g != 0);
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template

@@ -202,7 +202,7 @@ static std::string TraditionalGenerateKey (TRI_key_generator_t* generator,
 static int TraditionalValidateKey (TRI_key_generator_t const* generator,
                                    std::string const& key) {
   traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   // user has specified a key
   if (! key.empty() && ! data->_allowUserKeys) {
@@ -234,7 +234,7 @@ static int TraditionalValidateKey (TRI_key_generator_t const* generator,
 
 static TRI_json_t* TraditionalToJson (TRI_key_generator_t const* generator) {
   traditional_keygen_t* data = static_cast<traditional_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
@@ -379,7 +379,7 @@ static uint64_t AutoIncrementNext (uint64_t lastValue,
 static std::string AutoIncrementGenerateKey (TRI_key_generator_t* generator,
                                              TRI_voc_tick_t revision) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
  
   uint64_t keyValue;
    
@@ -394,7 +394,7 @@ static std::string AutoIncrementGenerateKey (TRI_key_generator_t* generator,
       return "";
     }
 
-    assert(keyValue > data->_lastValue);
+    TRI_ASSERT(keyValue > data->_lastValue);
     // update our last value
     data->_lastValue = keyValue;
   }
@@ -409,7 +409,7 @@ static std::string AutoIncrementGenerateKey (TRI_key_generator_t* generator,
 static int AutoIncrementValidateKey (TRI_key_generator_t const* generator,
                                      std::string const& key) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   if (! key.empty() && ! data->_allowUserKeys) {
     // we do not allow user-generated keys
@@ -449,7 +449,7 @@ static int AutoIncrementValidateKey (TRI_key_generator_t const* generator,
 static void AutoIncrementTrack (TRI_key_generator_t* generator,
                                 TRI_voc_key_t key) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   // check the numeric key part
   uint64_t value = TRI_UInt64String(key);
@@ -466,7 +466,7 @@ static void AutoIncrementTrack (TRI_key_generator_t* generator,
 
 static TRI_json_t* AutoIncrementToJson (TRI_key_generator_t const* generator) {
   autoincrement_keygen_t* data = static_cast<autoincrement_keygen_t*>(generator->_data);
-  assert(data != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 

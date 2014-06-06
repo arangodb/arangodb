@@ -168,7 +168,7 @@ int BittarrayIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_
     }
 
     default : {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 
@@ -671,7 +671,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
       // ............................................................................
 
       if (relationOperator->_numFields != shapeList->_length) {
-        assert(false);
+        TRI_ASSERT(false);
       }
 
 
@@ -708,7 +708,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_NE_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -716,7 +716,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_LE_INDEX_OPERATOR: {
       // todo -- essentially (since finite number) take the union
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -724,7 +724,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_LT_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -732,7 +732,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_GE_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -740,13 +740,13 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_GT_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
     default: {
       result = TRI_ERROR_INTERNAL;
-      assert(0);
+      TRI_ASSERT(0);
     }
 
   } // end of switch statement
@@ -842,7 +842,7 @@ static bool isEqualJson(TRI_json_t const* left, TRI_json_t const* right) {
     }
 
     default: {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 
@@ -1226,7 +1226,7 @@ static int BitarrayIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* i
   if (baIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1236,7 +1236,7 @@ static TRI_index_iterator_t* BitarrayIndex_resultMethodCall(void* theIndex, TRI_
   if (baIndex == NULL || indexOperator == NULL) {
     return NULL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1245,7 +1245,7 @@ static int BitarrayIndex_freeMethodCall(void* theIndex, void* data) {
   if (baIndex == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 

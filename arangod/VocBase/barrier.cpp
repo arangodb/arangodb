@@ -50,7 +50,7 @@
 
 static void LinkBarrierElement (TRI_barrier_t* element, 
                                 TRI_barrier_list_t* container) {
-  assert(container != NULL);
+  TRI_ASSERT(container != NULL);
 
   element->_container = container;
 
@@ -359,9 +359,9 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 void TRI_FreeBarrier (TRI_barrier_t* element) {
   TRI_barrier_list_t* container;
 
-  assert(element != NULL);
+  TRI_ASSERT(element != NULL);
   container = element->_container;
-  assert(container != NULL);
+  TRI_ASSERT(container != NULL);
 
   TRI_LockSpin(&container->_lock);
 

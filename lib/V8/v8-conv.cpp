@@ -392,7 +392,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
       return TRI_ERROR_INTERNAL;
     }
 
-    assert(found != 0);
+    TRI_ASSERT(found != 0);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;
@@ -468,7 +468,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
       return TRI_ERROR_INTERNAL;
     }
 
-    assert(found != 0);
+    TRI_ASSERT(found != 0);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;

@@ -65,7 +65,7 @@ RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
                                     Dispatcher* data)
   : RestBaseHandler(request),
     _dispatcher(data) {
-  assert(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != 0);
 }
 
 // -----------------------------------------------------------------------------

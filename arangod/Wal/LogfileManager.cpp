@@ -128,7 +128,7 @@ LogfileManager::~LogfileManager () {
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager* LogfileManager::instance () {
-  assert(Instance != nullptr);
+  TRI_ASSERT(Instance != nullptr);
   return Instance;
 }
 
@@ -138,7 +138,7 @@ LogfileManager* LogfileManager::instance () {
 
 void LogfileManager::initialise (std::string* path, 
                                  TRI_server_t* server) {
-  assert(Instance == nullptr);
+  TRI_ASSERT(Instance == nullptr);
 
   Instance = new LogfileManager(server, path);
 }
@@ -339,7 +339,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
     WRITE_LOCKER(_logfilesLock);
 
     _transactions.insert(make_pair(id, make_pair(_lastCollectedId, _lastSealedId)));
-    assert(_lastCollectedId <= _lastSealedId);
+    TRI_ASSERT(_lastCollectedId <= _lastSealedId);
   }
 
   // LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
@@ -413,7 +413,7 @@ bool LogfileManager::logfileCreationAllowed (uint32_t size) {
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
   
-    assert(logfile != nullptr);
+    TRI_ASSERT(logfile != nullptr);
 
     if (logfile->status() == Logfile::StatusType::OPEN ||
         logfile->status() == Logfile::StatusType::SEAL_REQUESTED) { 
@@ -439,7 +439,7 @@ bool LogfileManager::hasReserveLogfiles () {
   for (auto it = _logfiles.rbegin(); it != _logfiles.rend(); ++it) {
     Logfile* logfile = (*it).second;
   
-    assert(logfile != nullptr);
+    TRI_ASSERT(logfile != nullptr);
 
     if (logfile->freeSize() > 0 && ! logfile->isSealed()) {
       if (++numberOfLogfiles >= reserveLogfiles()) {
@@ -501,7 +501,7 @@ SlotInfo LogfileManager::allocateAndWrite (void* src,
     return slotInfo;
   }
 
-  assert(slotInfo.slot != nullptr);
+  TRI_ASSERT(slotInfo.slot != nullptr);
 
   slotInfo.slot->fill(src, size);
 
@@ -591,7 +591,7 @@ void LogfileManager::removeLogfile (Logfile* logfile,
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setLogfileOpen (Logfile* logfile) {
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   WRITE_LOCKER(_logfilesLock);
   logfile->setStatus(Logfile::StatusType::OPEN);
@@ -602,7 +602,7 @@ void LogfileManager::setLogfileOpen (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setLogfileSealRequested (Logfile* logfile) {
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   WRITE_LOCKER(_logfilesLock);
   logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
@@ -614,7 +614,7 @@ void LogfileManager::setLogfileSealRequested (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setLogfileSealed (Logfile* logfile) {
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   setLogfileSealed(logfile->id());
 }
@@ -665,7 +665,7 @@ int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
   }
 
   Logfile* logfile = (*it).second;
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   return logfile->fd();
 }
@@ -686,7 +686,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
       while (it != _logfiles.end()) {
         Logfile* logfile = (*it).second;
 
-        assert(logfile != nullptr);
+        TRI_ASSERT(logfile != nullptr);
         
         if (logfile->isWriteable(size)) {
           // found a logfile, update the status variable and return the logfile
@@ -787,7 +787,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
       }
 
       if (++numberOfLogfiles > historicLogfiles()) { 
-        assert(first != nullptr);
+        TRI_ASSERT(first != nullptr);
         return first;
       }
     }
@@ -817,7 +817,7 @@ void LogfileManager::decreaseCollectQueueSize (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setCollectionRequested (Logfile* logfile) {
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   {
     WRITE_LOCKER(_logfilesLock);
@@ -832,7 +832,7 @@ void LogfileManager::setCollectionRequested (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::setCollectionDone (Logfile* logfile) {
-  assert(logfile != nullptr);
+  TRI_ASSERT(logfile != nullptr);
 
   {
     WRITE_LOCKER(_logfilesLock);
@@ -1082,7 +1082,7 @@ int LogfileManager::openLogfiles (bool wasCleanShutdown) {
     Logfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
-    assert((*it).second == nullptr);
+    TRI_ASSERT((*it).second == nullptr);
 
     int res = Logfile::judge(filename);
 

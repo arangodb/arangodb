@@ -296,7 +296,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
     return NULL;
   }
 
-  assert(fid == journal->_fid);
+  TRI_ASSERT(fid == journal->_fid);
 
   return journal;
 }
@@ -384,7 +384,7 @@ static TRI_datafile_t* CreateJournal (TRI_document_collection_t* document,
     return NULL;
   }
 
-  assert(fid == journal->_fid);
+  TRI_ASSERT(fid == journal->_fid);
 
 
   // if a physical file, we can rename it from the temporary name to the correct name
@@ -668,7 +668,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   size_t markerSize;
 
   markerSize = (size_t) marker->base._size;
-  assert(markerSize > 0);
+  TRI_ASSERT(markerSize > 0);
 
   // get a new header pointer
   header = document->_headersPtr->request(document->_headersPtr, markerSize);  // ONLY IN OPENITERATOR
@@ -745,8 +745,8 @@ static int RotateJournal (TRI_document_collection_t* document) {
 static int RollbackUpdate (TRI_document_collection_t* document,
                            TRI_doc_mptr_t* newHeader,
                            TRI_doc_mptr_t* oldHeader) {
-  assert(newHeader != nullptr);
-  assert(oldHeader != nullptr);
+  TRI_ASSERT(newHeader != nullptr);
+  TRI_ASSERT(oldHeader != nullptr);
 
   // ignore any errors we're getting from this
   DeleteSecondaryIndexes(document, newHeader, true);
@@ -774,8 +774,8 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 
   marker = (TRI_doc_document_key_marker_t const*) m;
 
-  assert(marker != NULL);
-  assert(m->_size > 0);
+  TRI_ASSERT(marker != NULL);
+  TRI_ASSERT(m->_size > 0);
 
   newHeader->_rid     = marker->_rid;
   newHeader->_fid     = fid;
@@ -813,7 +813,7 @@ static int AddIndex (TRI_document_collection_t* document,
                      TRI_index_t* idx) {
   int res;
 
-  assert(idx != NULL);
+  TRI_ASSERT(idx != NULL);
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
             TRI_TypeNameIndex(idx->_type),
@@ -931,8 +931,8 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* mptr, 
                            bool syncRequested) {
  
-  assert(header != nullptr);
-  assert(mptr != nullptr);
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(mptr != nullptr);
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   // .............................................................................
@@ -984,7 +984,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      bool isRestore) {
 
   // TODO: isRestore is not used yet!
-  assert(mptr != nullptr);
+  TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   rid = GetRevisionId(rid);
@@ -1028,7 +1028,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
     // document
-    assert(edge == nullptr);
+    TRI_ASSERT(edge == nullptr);
 
     marker = new triagens::wal::DocumentMarker(document->base._vocbase->_id,
                                                document->base._info._cid,
@@ -1040,7 +1040,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
   else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
     // edge
-    assert(edge != nullptr);
+    TRI_ASSERT(edge != nullptr);
 
     marker = new triagens::wal::EdgeMarker(document->base._vocbase->_id,
                                            document->base._info._cid,
@@ -1057,7 +1057,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
 
 
-  assert(marker != nullptr);
+  TRI_ASSERT(marker != nullptr);
 
   // now insert into indexes
   {
@@ -1084,10 +1084,10 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   
     if (res != TRI_ERROR_NO_ERROR) {
       // release the header. nobody else should point to it now
-      assert(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
+      TRI_ASSERT(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
     }
     else {
-      assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     }
   }
 
@@ -1124,7 +1124,7 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
                                    const TRI_voc_key_t key,
                                    TRI_doc_mptr_t* mptr,
                                    bool lock) {
-  assert(mptr != nullptr);
+  TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   {
@@ -1142,8 +1142,8 @@ static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
     *mptr = *header;
   }
 
-  assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
-  assert(mptr->_rid > 0);
+  TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+  TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1231,10 +1231,10 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
   rid = GetRevisionId(rid);
 
-  assert(key != nullptr);
+  TRI_ASSERT(key != nullptr);
 
   // initialise the result
-  assert(mptr != nullptr);
+  TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
     
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -1298,12 +1298,12 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   }
    
   if (res == TRI_ERROR_NO_ERROR) { 
-    assert(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
-    assert(mptr->_rid > 0);
+    TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+    TRI_ASSERT(mptr->_rid > 0);
   }
   else {
-    assert(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
-    assert(mptr->_rid == 0);
+    TRI_ASSERT(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
+    TRI_ASSERT(mptr->_rid == 0);
   }
 
   return res;
@@ -1319,7 +1319,7 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      TRI_doc_update_policy_t const* policy,
                                      bool lock,
                                      bool forceSync) {
-  assert(key != nullptr);
+  TRI_ASSERT(key != nullptr);
  
   rid = GetRevisionId(rid); 
 
@@ -1345,7 +1345,7 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     }
     
     // we found a document to remove
-    assert(header != nullptr);
+    TRI_ASSERT(header != nullptr);
     operation.header = header;
 
     // delete from indexes
@@ -1519,7 +1519,7 @@ open_iterator_operation_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state) {
-  assert(state->_tid > 0);
+  TRI_ASSERT(state->_tid > 0);
   
   return TRI_AddIdFailedTransaction(&state->_document->_failedTransactions, state->_tid);
 }
@@ -1834,7 +1834,7 @@ static int OpenIteratorStartTransaction (open_iterator_state_t* state,
   state->_tid = tid;
   state->_trxCollections = numCollections;
 
-  assert(state->_operations._length == 0);
+  TRI_ASSERT(state->_operations._length == 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2618,7 +2618,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  assert(document->_shaper != NULL);
+  TRI_ASSERT(document->_shaper != NULL);
 
   return document;
 }
@@ -2888,8 +2888,8 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   char const* typeStr;
   TRI_idx_iid_t iid;
  
-  assert(json != NULL); 
-  assert(json->_type == TRI_JSON_ARRAY); 
+  TRI_ASSERT(json != NULL); 
+  TRI_ASSERT(json->_type == TRI_JSON_ARRAY); 
 
   if (idx != NULL) {
     *idx = NULL;
@@ -3020,7 +3020,7 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     DeletePrimaryIndex(document, header, true); 
     DeleteSecondaryIndexes(document, header, true);
 
-    assert(document->_numberDocuments > 0);
+    TRI_ASSERT(document->_numberDocuments > 0);
     document->_numberDocuments--;
   
     return TRI_ERROR_NO_ERROR;
@@ -3153,7 +3153,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  assert(document->_shaper != NULL);
+  TRI_ASSERT(document->_shaper != NULL);
 
   TRI_InitVocShaper(document->_shaper);
 
@@ -3520,7 +3520,7 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
       }
 
       default: {
-        assert(false);
+        TRI_ASSERT(false);
         break;
       }
 
@@ -4450,7 +4450,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   }
 
   else {
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   return 0; // shut the vc++ up
@@ -5038,7 +5038,7 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
                                                            int minWordLength) {
   size_t i;
 
-  assert(attributeName);
+  TRI_ASSERT(attributeName);
 
   for (i = 0; i < document->_allIndexes._length; ++i) {
     TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];

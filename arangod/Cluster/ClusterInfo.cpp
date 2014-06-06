@@ -259,7 +259,7 @@ void ClusterInfo::initialise () {
         
 void ClusterInfo::cleanup () {
   auto i = instance();
-  assert(i != nullptr);
+  TRI_ASSERT(i != nullptr);
 
   delete i;
 }
@@ -1509,7 +1509,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
       // no existing index found. 
       if (! create) {
-        assert(resultJson == 0);
+        TRI_ASSERT(resultJson == 0);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
 
@@ -1560,7 +1560,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   // wipe cache
   flush();
 
-  assert(numberOfShards > 0);
+  TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to appear
   AgencyCommResult res = ac.getValues("Current/Version", false);
@@ -1692,7 +1692,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
-    assert(TRI_IsListJson(indexes));
+    TRI_ASSERT(TRI_IsListJson(indexes));
 
     // delete previous indexes entry
     TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
@@ -1757,7 +1757,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
   // wipe cache
   flush();
 
-  assert(numberOfShards > 0);
+  TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to disappear
   AgencyCommResult res = ac.getValues("Current/Version", false);

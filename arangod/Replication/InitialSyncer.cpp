@@ -80,7 +80,7 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
     c = (uint64_t) 8 * 1024 * 1024; // 8 mb
   }
 
-  assert(c > 0);
+  TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
 }
@@ -597,7 +597,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     batch++;
   }
   
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -786,7 +786,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
         }
         else {
           TRI_document_collection_t* document = col->_collection;
-          assert(document != nullptr);
+          TRI_ASSERT(document != nullptr);
 
           TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
@@ -803,7 +803,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
               break;
             }
             else {
-              assert(idx != 0);
+              TRI_ASSERT(idx != 0);
 
               res = TRI_SaveIndex(document, idx, _masterInfo._serverId);
 
@@ -828,7 +828,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
   
   // we won't get here
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 

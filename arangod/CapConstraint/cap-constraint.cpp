@@ -67,10 +67,10 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
     if (oldest != NULL) {
       size_t oldSize;
      
-      assert(oldest->getDataPtr() != NULL);  // ONLY IN INDEX
+      TRI_ASSERT(oldest->getDataPtr() != NULL);  // ONLY IN INDEX
       oldSize = ((TRI_df_marker_t*) (oldest->getDataPtr()))->_size;  // ONLY IN INDEX
 
-      assert(oldSize > 0);
+      TRI_ASSERT(oldSize > 0);
 
       if (trxCollection != NULL) {
         res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);

@@ -182,7 +182,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 201);
+///     TRI_ASSERT(response.code === 201);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -200,7 +200,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -218,7 +218,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 201);
+///     TRI_ASSERT(response.code === 201);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -234,7 +234,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -250,7 +250,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 404);
+///     TRI_ASSERT(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -266,7 +266,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
-///     assert(response.code === 400);
+///     TRI_ASSERT(response.code === 400);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -359,7 +359,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  assert(document.getDataPtr() != nullptr); // PROTECTED by trx here
+  TRI_ASSERT(document.getDataPtr() != nullptr); // PROTECTED by trx here
 
   // generate result
   if (wasSynchronous) {
@@ -493,7 +493,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -511,7 +511,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 ///     var response = logCurlRequest('GET', url, "", headers);
 ///
-///     assert(response.code === 304);
+///     TRI_ASSERT(response.code === 304);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Unknown document handle:
@@ -521,7 +521,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 404);
+///     TRI_ASSERT(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -575,7 +575,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   res = trx.read(&mptr, key);
 
   TRI_document_collection_t* document = trx.primaryCollection();
-  assert(document != nullptr);
+  TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
 
   // register a barrier. will be destroyed automatically
@@ -710,7 +710,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -724,7 +724,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 404);
+///     TRI_ASSERT(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -893,7 +893,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 ///
 ///     var response = logCurlRequest('HEAD', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1046,7 +1046,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///     var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
 ///
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1064,7 +1064,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///     var response = logCurlRequest('PUT', url, "{}");
 ///
-///     assert(response.code === 404);
+///     TRI_ASSERT(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1083,7 +1083,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
 ///
-///     assert(response.code === 412);
+///     TRI_ASSERT(response.code === 412);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1101,7 +1101,7 @@ bool RestDocumentHandler::checkDocument () {
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 ///
 ///     var response = logCurlRequest('PUT', url, "{}", headers);
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1119,7 +1119,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///     var response = logCurlRequest('PUT', url, '{"other":"content"}');
 ///
-///     assert(response.code === 412);
+///     TRI_ASSERT(response.code === 412);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1240,20 +1240,20 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 ///     var response = logCurlRequest("PATCH", url, { "hello": "world" });
 ///
-///     assert(response.code === 202);
+///     TRI_ASSERT(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
-///     assert(response2.code === 202);
+///     TRI_ASSERT(response2.code === 202);
 ///     logJsonResponse(response2);
 ///     var response3 = logCurlRequest("GET", url);
-///     assert(response3.code === 200);
+///     TRI_ASSERT(response3.code === 200);
 ///     logJsonResponse(response3);
 ///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", { "hello": null, "numbers": { "four": 4 } });
-///     assert(response4.code === 202);
+///     TRI_ASSERT(response4.code === 202);
 ///     logJsonResponse(response4);
 ///     var response5 = logCurlRequest("GET", url);
-///     assert(response5.code === 200);
+///     TRI_ASSERT(response5.code === 200);
 ///     logJsonResponse(response5);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -1337,7 +1337,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const TRI_voc_cid_t cid = trx.cid();
   TRI_voc_rid_t rid = 0;
   TRI_document_collection_t* document = trx.primaryCollection();
-  assert(document != nullptr);
+  TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
 
   const string cidString = StringUtils::itoa(document->base._info._planId);
@@ -1616,7 +1616,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 ///     var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 200);
+///     TRI_ASSERT(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1634,7 +1634,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 ///     var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 404);
+///     TRI_ASSERT(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1653,7 +1653,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 ///     var response = logCurlRequest('DELETE', url, "", headers);
 ///
-///     assert(response.code === 412);
+///     TRI_ASSERT(response.code === 412);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

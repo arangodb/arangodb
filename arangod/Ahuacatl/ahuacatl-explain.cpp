@@ -54,7 +54,7 @@ static TRI_json_t* NodeType (const TRI_aql_node_t* const node) {
   TRI_json_t* result;
   TRI_string_buffer_t buffer;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
@@ -79,7 +79,7 @@ static TRI_json_t* NodeDescription (const TRI_aql_node_t* const node) {
   TRI_string_buffer_t buffer;
   TRI_json_t* result;
 
-  assert(node);
+  TRI_ASSERT(node);
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
@@ -219,7 +219,7 @@ static TRI_aql_explain_t* CreateExplain (TRI_aql_context_t* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeExplain (TRI_aql_explain_t* const explain) {
-  assert(explain);
+  TRI_ASSERT(explain);
 
   // note: explain->_result is intentionally not freed here
   // the value is returned by TRI_ExplainAql() and must be
@@ -243,7 +243,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_SCOPE_START: {
       TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
 
-      assert(scope);
+      TRI_ASSERT(scope);
 
       if (scope->_type != TRI_AQL_SCOPE_SUBQUERY && scope->_type != TRI_AQL_SCOPE_MAIN) {
         ++explain->_level;
@@ -254,7 +254,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     case TRI_AQL_NODE_SCOPE_END: {
       TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AQL_NODE_DATA(node);
 
-      assert(scope);
+      TRI_ASSERT(scope);
       if (scope->_type != TRI_AQL_SCOPE_SUBQUERY && scope->_type != TRI_AQL_SCOPE_MAIN) {
         --explain->_level;
       }

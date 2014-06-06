@@ -304,7 +304,7 @@ namespace triagens {
           }
 
           ServerJob* job = dynamic_cast<ServerJob*>(ajob);
-          assert(job != 0);
+          TRI_ASSERT(job != 0);
 
           if (jobId != 0) {
             _jobManager->initAsyncJob<S, HF>(job, jobId);
@@ -366,7 +366,7 @@ namespace triagens {
                 }
 
                 ServerJob* job = dynamic_cast<ServerJob*>(ajob);
-                assert(job != 0);
+                TRI_ASSERT(job != 0);
 
                 registerJob(handler, job);
                 return true;

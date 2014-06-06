@@ -190,8 +190,8 @@ namespace triagens {
         void remove (T& item) {
           size_t i = TraitsType::location(item);
 
-          assert(i < _queueLen);
-          assert(!(*this)(_queue[i], item) && !(*this)(item, _queue[i]));
+          TRI_ASSERT(i < _queueLen);
+          TRI_ASSERT(!(*this)(_queue[i], item) && !(*this)(item, _queue[i]));
 
           TraitsType::setLocation(item, 0);
           T* iptr = _queue + i, *tail = _queue + --_queueLen;
@@ -269,7 +269,7 @@ namespace triagens {
             }
 
             if ((*this)(child, former)) {
-              assert(false);
+              TRI_ASSERT(false);
               THROW_INTERNAL_ERROR("cannot validate random head");
             }
           }

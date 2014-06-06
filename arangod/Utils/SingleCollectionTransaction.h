@@ -168,7 +168,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int readRandom (TRI_doc_mptr_t* mptr, TRI_barrier_t** barrier) {
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
           return this->readAny(this->trxCollection(), mptr, barrier);
         }
 
@@ -177,7 +177,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int read (TRI_doc_mptr_t* mptr, const string& key) {
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
           return this->readSingle(this->trxCollection(), mptr, key);
         }
 

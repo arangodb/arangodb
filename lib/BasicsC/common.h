@@ -216,21 +216,26 @@ static inline void* TRI_StripMarkPointer (void const* p) {
 /// @brief a wrapper for assert()
 ///
 /// This wrapper maps TRI_ASSERT() to (void) 0 for non-maintainers. 
-/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE 
-/// is set.
+/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE is set 
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT assert
-#define TRI_ASSERT_EXPENSIVE TRI_ASSERT
+#define TRI_ASSERT(expr) assert(expr)
+#define TRI_ASSERT_EXPENSIVE(expr) assert(expr)
 #endif
 
 #else
 
-#ifndef TRI_ASSERT ((void) (0))
-#define TRI_ASSERT_EXPENSIVE TRI_ASSERT 
+#ifndef TRI_ASSERT
+#if defined __cplusplus
+#define TRI_ASSERT(expr) (static_cast<void>(0))
+#define TRI_ASSERT_EXPENSIVE(expr) (static_cast<void>(0))
+#else
+#define TRI_ASSERT(expr) ((void) (0))
+#define TRI_ASSERT_EXPENSIVE(expr) ((void) (0))
+#endif
 #endif
 
 #endif

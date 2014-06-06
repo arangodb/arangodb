@@ -743,7 +743,7 @@ int ArangoServer::startupServer () {
     LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
   }
 
-  assert(vocbase != 0);
+  TRI_ASSERT(vocbase != 0);
 
   // initialise V8
   size_t concurrency = _dispatcherThreads;
@@ -1060,7 +1060,7 @@ void ArangoServer::openDatabases () {
   defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
   defaults.authenticateSystemOnly           = _authenticateSystemOnly;
 
-  assert(_server != 0);
+  TRI_ASSERT(_server != 0);
 
   int res = TRI_InitServer(_server,
                            _applicationEndpointServer,
@@ -1090,7 +1090,7 @@ void ArangoServer::openDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabases () {
-  assert(_server != 0);
+  TRI_ASSERT(_server != 0);
 
   TRI_CleanupActions();
 

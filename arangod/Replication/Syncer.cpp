@@ -187,7 +187,7 @@ Syncer::~Syncer () {
 string Syncer::rewriteLocation (void* data, const string& location) {
   Syncer* s = static_cast<Syncer*>(data);
 
-  assert(s != 0);
+  TRI_ASSERT(s != 0);
 
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
@@ -264,7 +264,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
   if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->_shaper->_memoryZone;

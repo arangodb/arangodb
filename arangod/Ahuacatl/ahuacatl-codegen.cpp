@@ -99,8 +99,8 @@ static void ProcessNode (TRI_aql_codegen_js_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeVariable (TRI_aql_codegen_variable_t* const variable) {
-  assert(variable);
-  assert(variable->_name);
+  TRI_ASSERT(variable);
+  TRI_ASSERT(variable->_name);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
@@ -195,7 +195,7 @@ static TRI_aql_codegen_variable_t* LookupVariable (TRI_aql_codegen_js_t* const g
                                                    const char* const name) {
   size_t i = generator->_scopes._length;
 
-  assert(name);
+  TRI_ASSERT(name);
 
   // iterate from current scope to the top level scope
   while (i-- > 0) {
@@ -630,9 +630,9 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
 #endif
 
   n = generator->_scopes._length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
   scope = (TRI_aql_codegen_scope_t*) TRI_RemoveVectorPointer(&generator->_scopes, n - 1);
-  assert(scope);
+  TRI_ASSERT(scope);
 
   // free all variables in scope
   n = scope->_variables._nrAlloc;
@@ -1149,11 +1149,11 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   size_t n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n == 1);
+  TRI_ASSERT(n == 1);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
-  assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
+  TRI_ASSERT(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
          fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
          (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
           (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
@@ -1172,7 +1172,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputIndexId(generator, collectionName, idx);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+    TRI_ASSERT(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
@@ -1199,7 +1199,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
   size_t i, n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n >= 1);
+  TRI_ASSERT(n >= 1);
 
   if (n == 1) {
     // peek at first element and check if it is a list access
@@ -1251,7 +1251,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
 
-    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
+    TRI_ASSERT(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
            (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
             (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
              fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)));
@@ -1263,7 +1263,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
     ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
     ScopeOutput(generator, " : ");
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-      assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+      TRI_ASSERT(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
              fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
       if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
@@ -1293,11 +1293,11 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
   size_t n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n > 0);
+  TRI_ASSERT(n > 0);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
-  assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
+  TRI_ASSERT(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
          fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
          (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
           (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
@@ -1316,7 +1316,7 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
   ScopeOutputQuoted(generator, fieldAccess->_fullName + fieldAccess->_variableNameLength + 1);
   ScopeOutput(generator, ", ");
   if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE) {
-    assert(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
+    TRI_ASSERT(fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN);
 
     if (fieldAccess->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
@@ -1344,7 +1344,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
   size_t i, n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n >= 1);
+  TRI_ASSERT(n >= 1);
 
   if (n == 1) {
     // peek at first element and check if it is a list access
@@ -1395,7 +1395,7 @@ static void GenerateSkiplistAccess (TRI_aql_codegen_js_t* const generator,
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, i);
 
-    assert(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
+    TRI_ASSERT(fieldAccess->_type == TRI_AQL_ACCESS_EXACT ||
            fieldAccess->_type == TRI_AQL_ACCESS_RANGE_SINGLE ||
            fieldAccess->_type == TRI_AQL_ACCESS_RANGE_DOUBLE ||
            fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE);
@@ -1464,7 +1464,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
   size_t i, n;
 
   n = idx->_fieldAccesses->_length;
-  assert(n >= 1);
+  TRI_ASSERT(n >= 1);
 
 
   if (n == 1) {
@@ -1472,7 +1472,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
     if (fieldAccess->_type == TRI_AQL_ACCESS_LIST) {
-      assert(false);
+      TRI_ASSERT(false);
       ScopeOutput(generator, "aql.GET_DOCUMENTS_BITARRAY_LIST('");
       ScopeOutput(generator, collectionName);
       ScopeOutput(generator, "', ");
@@ -1545,7 +1545,7 @@ static void GenerateBitarrayAccess (TRI_aql_codegen_js_t* const generator,
       }
 
       default: {
-        assert(false);
+        TRI_ASSERT(false);
       }
     }
 
@@ -1831,7 +1831,7 @@ static void ProcessCollection (TRI_aql_codegen_js_t* const generator,
                                bool incremental) {
   TRI_aql_collection_hint_t* hint = (TRI_aql_collection_hint_t*) (TRI_AQL_NODE_DATA(node));
 
-  assert(hint);
+  TRI_ASSERT(hint);
 
   if (hint->_index == NULL) {
     ProcessCollectionFull(generator, node, incremental);
@@ -2726,7 +2726,7 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
 #endif
 
   if (scope->_limitRegister != 0) {
-    assert(scope->_hint != NULL);
+    TRI_ASSERT(scope->_hint != NULL);
     
     if (scope->_offsetRegister != 0) {
       ScopeOutput(generator, "if (++");
@@ -2886,7 +2886,7 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
       ProcessScopeEnd(generator, node);
       break;
     case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS:
-      assert(false);
+      TRI_ASSERT(false);
       break;
     default: {
     }
@@ -2954,7 +2954,7 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
   TRI_aql_codegen_js_t* generator;
   int res;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   generator = (TRI_aql_codegen_js_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_codegen_js_t), false);
 
@@ -3004,7 +3004,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
   TRI_aql_codegen_register_t resultRegister;
   char* code;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   generator = CreateGenerator(context);
 
@@ -3060,7 +3060,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, generator->_errorCode, generator->_errorValue);
   }
 
-  assert(generator);
+  TRI_ASSERT(generator);
   FreeGenerator(generator);
 
   return code;

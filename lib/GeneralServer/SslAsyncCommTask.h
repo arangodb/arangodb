@@ -287,7 +287,7 @@ again:
             MUTEX_LOCKER(this->writeBufferLock);
 
             // size_t is unsigned, should never get < 0
-            assert(this->_writeBuffer->length() >= this->writeLength);
+            TRI_ASSERT(this->_writeBuffer->length() >= this->writeLength);
 
             // write buffer to SSL connection
             size_t len = this->_writeBuffer->length() - this->writeLength;

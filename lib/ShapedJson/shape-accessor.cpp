@@ -314,7 +314,7 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
-  assert(accessor != NULL);
+  TRI_ASSERT(accessor != NULL);
 
   if (accessor->_code != NULL) {
     TRI_Free(accessor->_memoryZone, (void*) accessor->_code);

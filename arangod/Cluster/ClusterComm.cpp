@@ -103,7 +103,7 @@ void ClusterComm::initialise () {
         
 void ClusterComm::cleanup () {
   auto i = instance();
-  assert(i != nullptr);
+  TRI_ASSERT(i != nullptr);
 
   delete i;
 }
@@ -223,7 +223,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
   {
     basics::ConditionLocker locker(&somethingToSend);
     toSend.push_back(op);
-    assert(0 != op);
+    TRI_ASSERT(0 != op);
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
@@ -530,8 +530,8 @@ ClusterCommResult* ClusterComm::wait (
           if (op->status >= CL_COMM_TIMEOUT) {
             // It is done, let's remove it from the queue and return it:
             i = receivedByOpID.find(op->operationID);  // cannot fail!
-            assert(i != receivedByOpID.end());
-            assert(i->second == q);
+            TRI_ASSERT(i != receivedByOpID.end());
+            TRI_ASSERT(i->second == q);
             receivedByOpID.erase(i);
             received.erase(q);
             res = static_cast<ClusterCommResult*>(op);
@@ -617,8 +617,8 @@ void ClusterComm::drop (
           nextq = q;
           nextq++;
           i = toSendByOpID.find(op->operationID);   // cannot fail
-          assert(i != toSendByOpID.end());
-          assert(q == i->second);
+          TRI_ASSERT(i != toSendByOpID.end());
+          TRI_ASSERT(q == i->second);
           toSendByOpID.erase(i);
           toSend.erase(q);
           q = nextq;
@@ -639,8 +639,8 @@ void ClusterComm::drop (
         nextq = q;
         nextq++;
         i = receivedByOpID.find(op->operationID);   // cannot fail
-        assert(i != receivedByOpID.end());
-        assert(q == i->second);
+        TRI_ASSERT(i != receivedByOpID.end());
+        TRI_ASSERT(q == i->second);
         receivedByOpID.erase(i);
         received.erase(q);
         q = nextq;
@@ -831,11 +831,11 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   basics::ConditionLocker locker(&somethingReceived);
   basics::ConditionLocker sendlocker(&somethingToSend);
   i = toSendByOpID.find(operationID);   // cannot fail
-  assert(i != toSendByOpID.end());
+  TRI_ASSERT(i != toSendByOpID.end());
 
   q = i->second;
   op = *q;
-  assert(op->operationID == operationID);
+  TRI_ASSERT(op->operationID == operationID);
   toSendByOpID.erase(i);
   toSend.erase(q);
   if (op->dropped) {
@@ -939,7 +939,7 @@ void ClusterCommThread::run () {
         else {
           LOG_DEBUG("Noticed something to send");
           op = cc->toSend.front();
-          assert(op->status == CL_COMM_SUBMITTED);
+          TRI_ASSERT(op->status == CL_COMM_SUBMITTED);
           op->status = CL_COMM_SENDING;
         }
       }

@@ -116,7 +116,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 ////////////////////////////////////////////////////////////////////////////////
 
     static inline char* data (v8::Handle<v8::Value> val) {
-      assert(val->IsObject());
+      TRI_ASSERT(val->IsObject());
 
       void* data = val.As<v8::Object>()->GetIndexedPropertiesExternalArrayData();
       return static_cast<char*>(data);
@@ -135,7 +135,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 ////////////////////////////////////////////////////////////////////////////////
 
     static inline size_t length (v8::Handle<v8::Value> val) {
-      assert(val->IsObject());
+      TRI_ASSERT(val->IsObject());
 
       int len = val.As<v8::Object>()->GetIndexedPropertiesExternalArrayDataLength();
       return static_cast<size_t>(len);

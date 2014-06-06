@@ -379,7 +379,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   // create database attribute
   string const& database = request->databaseName();
-  assert(! database.empty());
+  TRI_ASSERT(! database.empty());
 
   req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), (int) database.size()));
 

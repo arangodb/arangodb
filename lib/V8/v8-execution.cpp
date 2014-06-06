@@ -116,7 +116,7 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t* ctx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t* ctx) {
-  assert(ctx->_error == TRI_ERROR_NO_ERROR);
+  TRI_ASSERT(ctx->_error == TRI_ERROR_NO_ERROR);
 
   // convert back into a handle
   v8::Persistent<v8::Function> func = ctx->_func;

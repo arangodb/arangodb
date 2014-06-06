@@ -193,7 +193,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   void const* f;
   void const* p;
 
-  assert(name != NULL);
+  TRI_ASSERT(name != NULL);
 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
@@ -286,10 +286,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, aids);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
-  assert(f == NULL);
+  TRI_ASSERT(f == NULL);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result, false);
-  assert(f == NULL);
+  TRI_ASSERT(f == NULL);
 
   // return pid
   TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -446,7 +446,7 @@ TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
 
   LOG_ERROR("encountered an illegal shape type");
 
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_SHAPE_ILLEGAL;
 }
 
@@ -559,7 +559,7 @@ void TRI_InitialiseShaper () {
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
   shape->_sid = BasicShapes._sidList = 6;
 
-  assert(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
+  TRI_ASSERT(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

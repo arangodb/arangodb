@@ -170,8 +170,8 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
                                   TRI_vocbase_col_t* collection,
                                   TRI_server_id_t generatingServer) {
-  assert(collection != NULL);
-  assert(collection->_name != NULL);
+  TRI_ASSERT(collection != NULL);
+  TRI_ASSERT(collection->_name != NULL);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -521,7 +521,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   }
 
   // check collection identifier
-  assert(collection->_cid == cid);
+  TRI_ASSERT(collection->_cid == cid);
   res = TRI_InsertKeyAssociativePointer2(&vocbase->_collectionsById, &cid, collection, &found);
 
   if (found != NULL) {
@@ -758,7 +758,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
   // this shouldn't fail, as we removed an element above so adding one should be ok
   found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
-  assert(found == NULL);
+  TRI_ASSERT(found == NULL);
 
   TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
@@ -822,7 +822,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
     char* file;
 
     name = files._buffer[i];
-    assert(name != NULL);
+    TRI_ASSERT(name != NULL);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // no match, ignore this file
@@ -1107,7 +1107,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
     // no one else must have changed the status
-    assert(collection->_status == TRI_VOC_COL_STATUS_LOADING);
+    TRI_ASSERT(collection->_status == TRI_VOC_COL_STATUS_LOADING);
 
     if (document == NULL) {
       collection->_status = TRI_VOC_COL_STATUS_CORRUPTED;
@@ -1358,9 +1358,9 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_vocbase_t* vocbase;
   int res;
 
-  assert(name != NULL);
-  assert(path != NULL);
-  assert(defaults != NULL);
+  TRI_ASSERT(name != NULL);
+  TRI_ASSERT(path != NULL);
+  TRI_ASSERT(defaults != NULL);
 
   vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
 
@@ -1826,7 +1826,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_vocbase_col_t* collection;
   char* name;
 
-  assert(parameter != NULL);
+  TRI_ASSERT(parameter != NULL);
   name = parameter->_name;
 
   // check that the name does not contain any strange characters

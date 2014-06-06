@@ -267,7 +267,7 @@ static void ParseDoubleArg (const char * userarg, void * value) {
   po_double_t * desc;
   double tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = static_cast<po_double_t*>(value);
   tmp = TRI_DoubleString(userarg);
@@ -306,7 +306,7 @@ static void CreateDoubleOption (po_double_t * desc, const void * input, void * o
 static void ParseFlagArg (const char * userarg, void * value) {
   po_flag_t * flag;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   flag = (po_flag_t*) (value);
 
@@ -370,7 +370,7 @@ static void ParseInt16Arg (const char * userarg, void * value) {
   po_int16_t * desc;
   int32_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = (po_int16_t*) (value);
   tmp = TRI_Int32String(userarg);
@@ -415,7 +415,7 @@ static void ParseInt32Arg (const char * userarg, void * value) {
   po_int32_t * desc;
   int32_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = (po_int32_t*) (value);
   tmp = TRI_Int32String(userarg);
@@ -455,7 +455,7 @@ static void ParseInt64Arg (const char * userarg, void * value) {
   po_int64_t * desc;
   int64_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = (po_int64_t*) (value);
   tmp = TRI_Int64String(userarg);
@@ -510,8 +510,8 @@ static void CreateSectionOption (TRI_PO_section_t * section, const void * input,
 static void ParseStringArg (const char * userarg, void * value) {
   TRI_PO_string_t * desc;
 
-  assert(value != NULL);
-  assert(userarg != NULL);
+  TRI_ASSERT(value != NULL);
+  TRI_ASSERT(userarg != NULL);
 
   desc = (TRI_PO_string_t*) value;
 
@@ -552,7 +552,7 @@ static void ParseUInt16Arg (const char * userarg, void * value) {
   po_uint16_t * desc;
   uint32_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = static_cast<po_uint16_t*>(value);
   tmp = TRI_UInt32String(userarg);
@@ -597,7 +597,7 @@ static void ParseUInt32Arg (const char * userarg, void * value) {
   po_uint32_t * desc;
   uint32_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = static_cast<po_uint32_t*>(value);
   tmp = TRI_UInt32String(userarg);
@@ -637,7 +637,7 @@ static void ParseUInt64Arg (const char * userarg, void * value) {
   po_uint64_t * desc;
   uint64_t tmp;
 
-  assert(value != NULL);
+  TRI_ASSERT(value != NULL);
 
   desc = static_cast<po_uint64_t*>(value);
   tmp = TRI_UInt64String(userarg);
@@ -676,8 +676,8 @@ static void CreateUInt64Option (po_uint64_t * desc, const void * input, void * o
 static void ParseVectorStringArg (const char * userarg, void * value) {
   TRI_PO_vector_string_t * desc;
 
-  assert(value != NULL);
-  assert(userarg != NULL);
+  TRI_ASSERT(value != NULL);
+  TRI_ASSERT(userarg != NULL);
 
   desc = static_cast<TRI_PO_vector_string_t*>(value);
 
@@ -1093,8 +1093,8 @@ void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
                                  double *variable) {
   po_double_t * res;
 
-  assert(name != NULL);
-  assert(variable != NULL);
+  TRI_ASSERT(name != NULL);
+  TRI_ASSERT(variable != NULL);
 
   res = static_cast<po_double_t*>
         (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t), false));
@@ -1120,7 +1120,7 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
                                bool * variable) {
   po_flag_t * res;
 
-  assert(name != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_flag_t*>
                    (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t), false));
@@ -1147,8 +1147,8 @@ void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
 
   po_int16_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_int16_t*>
                    (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t), false));
@@ -1175,8 +1175,8 @@ void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
 
   po_int32_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_int32_t*>
                    (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t), false));
@@ -1203,8 +1203,8 @@ void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
 
   po_int64_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_int64_t*>
                    (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t), false));
@@ -1230,8 +1230,8 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
                                  char ** variable) {
   TRI_PO_string_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<TRI_PO_string_t*>
           (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_string_t), false));
@@ -1258,8 +1258,8 @@ void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
 
   po_uint16_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_uint16_t*>
               (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t), false));
@@ -1286,8 +1286,8 @@ void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
 
   po_uint32_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_uint32_t*>
               (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t), false));
@@ -1314,8 +1314,8 @@ void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
 
   po_uint64_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<po_uint64_t*>
               (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t), false));
@@ -1342,8 +1342,8 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
 
   TRI_PO_vector_string_t * res;
 
-  assert(variable != NULL);
-  assert(name != NULL);
+  TRI_ASSERT(variable != NULL);
+  TRI_ASSERT(name != NULL);
 
   res = static_cast<TRI_PO_vector_string_t*>
       (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_PO_vector_string_t), false));
@@ -1363,8 +1363,8 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddOptionsPODescription (TRI_PO_section_t * parent, TRI_PO_section_t * child) {
-  assert(parent != NULL);
-  assert(child != NULL);
+  TRI_ASSERT(parent != NULL);
+  TRI_ASSERT(child != NULL);
 
   TRI_PushBackVectorPointer(&parent->_children, child);
 }

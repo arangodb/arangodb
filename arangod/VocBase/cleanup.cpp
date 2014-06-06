@@ -123,7 +123,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
 
     element = container->_begin;
-    assert(element != nullptr);
+    TRI_ASSERT(element != nullptr);
 
     if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
       // check if we can really unload, this is only the case if the collection's WAL markers
@@ -247,8 +247,8 @@ void TRI_CleanupVocBase (void* data) {
   uint64_t iterations = 0;
 
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
-  assert(vocbase);
-  assert(vocbase->_state == 1);
+  TRI_ASSERT(vocbase);
+  TRI_ASSERT(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 

@@ -337,7 +337,7 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
   // Assign the callback functions
   // ...........................................................................
 
-  assert(numFields > 0);
+  TRI_ASSERT(numFields > 0);
 
   array->_numFields = numFields;
   array->_table = NULL;

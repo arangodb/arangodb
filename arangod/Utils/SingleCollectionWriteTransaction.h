@@ -146,7 +146,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(), 
                               TRI_DOC_MARKER_KEY_DOCUMENT, 
@@ -169,7 +169,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(), 
                               TRI_DOC_MARKER_KEY_EDGE, 
@@ -191,7 +191,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(), 
                               key, 
@@ -216,7 +216,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(), 
                               key, 
@@ -244,7 +244,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->update(this->trxCollection(), 
                               key, 
@@ -273,7 +273,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
-          assert(mptr != nullptr);
+          TRI_ASSERT(mptr != nullptr);
 
           return this->update(this->trxCollection(), 
                               key, 

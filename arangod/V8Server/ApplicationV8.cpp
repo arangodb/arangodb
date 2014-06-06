@@ -250,7 +250,7 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _definedBooleans(),
     _startupFile("server/server.js") {
 
-  assert(_server != 0);
+  TRI_ASSERT(_server != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,8 +305,8 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
   V8Context* context = _freeContexts.back();
 
-  assert(context != 0);
-  assert(context->_isolate != 0);
+  TRI_ASSERT(context != 0);
+  TRI_ASSERT(context->_isolate != 0);
 
   _freeContexts.pop_back();
   _busyContexts.insert(context);
@@ -342,7 +342,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
 void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  assert(gc != 0);
+  TRI_ASSERT(gc != 0);
 
   LOG_TRACE("leaving V8 context %d", (int) context->_id);
   double lastGc = gc->getLastGcStamp();
@@ -440,7 +440,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
   }
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  assert(gc != 0);
+  TRI_ASSERT(gc != 0);
 
   V8Context* context = 0;
 
@@ -468,7 +468,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
   // this is the context to clean up
   context = _freeContexts[pickedContextNr];
-  assert(context != 0);
+  TRI_ASSERT(context != 0);
 
   // now compare its last GC timestamp with the last global GC stamp
   if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
@@ -494,7 +494,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
 void ApplicationV8::collectGarbage () {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  assert(gc != 0);
+  TRI_ASSERT(gc != 0);
 
   // this flag will be set to true if we timed out waiting for a GC signal
   // if set to true, the next cycle will use a reduced wait time so the GC

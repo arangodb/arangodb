@@ -850,12 +850,12 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
                               shapedJson);
   }
   else {
-    assert(other->_type == TRI_WAL_MARKER_DOCUMENT);
+    TRI_ASSERT(other->_type == TRI_WAL_MARKER_DOCUMENT);
 
     document_marker_t const* original = reinterpret_cast<document_marker_t const*>(other);
 
-    assert(original->_databaseId == databaseId);
-    assert(original->_collectionId == collectionId);
+    TRI_ASSERT(original->_databaseId == databaseId);
+    TRI_ASSERT(original->_collectionId == collectionId);
 
     return new DocumentMarker(original->_databaseId,
                               original->_collectionId,
@@ -1002,12 +1002,12 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
                           shapedJson);
   }
   else {
-    assert(other->_type == TRI_WAL_MARKER_EDGE);
+    TRI_ASSERT(other->_type == TRI_WAL_MARKER_EDGE);
 
     edge_marker_t const* original = reinterpret_cast<edge_marker_t const*>(other);
 
-    assert(original->_databaseId == databaseId);
-    assert(original->_collectionId == collectionId);
+    TRI_ASSERT(original->_databaseId == databaseId);
+    TRI_ASSERT(original->_collectionId == collectionId);
 
     TRI_document_edge_t edge;
     edge._fromCid = original->_fromCid;

@@ -284,9 +284,9 @@ static inline void* ReallocateMemory (index_t* const idx,
   void* data;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(old != NULL);
-  assert(newSize > 0);
-  assert(oldSize > 0);
+  TRI_ASSERT(old != NULL);
+  TRI_ASSERT(newSize > 0);
+  TRI_ASSERT(oldSize > 0);
 #endif
 
   data = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, old, newSize);
@@ -305,7 +305,7 @@ static inline void* AllocateMemory (index_t* const idx, const size_t size) {
   void* data;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(size > 0);
+  TRI_ASSERT(size > 0);
 #endif
 
   data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, false);
@@ -323,8 +323,8 @@ static inline void FreeMemory (index_t* const idx,
                                void* data,
                                const size_t size) {
 #if TRI_FULLTEXT_DEBUG
-  assert(size > 0);
-  assert(idx->_memoryAllocated >= size);
+  TRI_ASSERT(size > 0);
+  TRI_ASSERT(idx->_memoryAllocated >= size);
 #endif
 
   idx->_memoryAllocated -= size;
@@ -340,9 +340,9 @@ static inline void SetNodeNumFollowers (index_t* const idx,
                                         node_t* const node,
                                         uint32_t value) {
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
-  assert(node->_followers != NULL);
-  assert(value <= 255);
+  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node->_followers != NULL);
+  TRI_ASSERT(value <= 255);
 #endif
 
   // note: value must be <= current number of followers
@@ -371,7 +371,7 @@ static inline uint32_t NodeNumFollowers (const node_t* const node) {
   uint8_t* head;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   if (node->_followers == NULL) {
@@ -391,7 +391,7 @@ static uint32_t NodeNumAllocated (const node_t* const node) {
   uint8_t* head;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   if (node->_followers == NULL) {
@@ -424,7 +424,7 @@ static inline node_char_t* FollowersKeys (void* data) {
   uint8_t* head = (uint8_t*) data;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(data != NULL);
+  TRI_ASSERT(data != NULL);
 #endif
 
   return (node_char_t*) (head + 2); // numAllocated + numEntries
@@ -437,7 +437,7 @@ static inline node_char_t* FollowersKeys (void* data) {
 
 static inline node_char_t* NodeFollowersKeys (const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
-  assert(node->_followers != NULL);
+  TRI_ASSERT(node->_followers != NULL);
 #endif
 
   return FollowersKeys(node->_followers);
@@ -463,8 +463,8 @@ static inline node_t** FollowersNodes (void* data) {
 
 static inline node_t** NodeFollowersNodes (const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
-  assert(node->_followers != NULL);
+  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node->_followers != NULL);
 #endif
 
   return FollowersNodes(node->_followers);
@@ -507,7 +507,7 @@ static bool ExtendSubNodeList (index_t* const idx,
   uint32_t nextAllocated;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   // current list has reached its limit, we must increase it
@@ -593,7 +593,7 @@ static void FreeFollowers (index_t* const idx, node_t* node) {
   uint32_t numAllocated;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   if (node->_followers == NULL) {
@@ -665,7 +665,7 @@ static bool CleanupNodes (index_t* idx,
   isActive = false;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   if (node->_followers != NULL) {
@@ -687,7 +687,7 @@ static bool CleanupNodes (index_t* idx,
 
       follower = followerNodes[i];
 #if TRI_FULLTEXT_DEBUG
-      assert(follower != NULL);
+      TRI_ASSERT(follower != NULL);
 #endif
 
       // recursively clean up sub-nodes
@@ -703,7 +703,7 @@ static bool CleanupNodes (index_t* idx,
 
       if (i != j) {
 #if TRI_FULLTEXT_DEBUG
-        assert(i > j);
+        TRI_ASSERT(i > j);
 #endif
 
         // move nodes
@@ -753,8 +753,8 @@ static inline node_t* FindDirectSubNodeSingle (const node_t* const node,
   node_char_t* followerKeys;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
-  assert(NodeNumFollowers(node) == 1);
+  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(NodeNumFollowers(node) == 1);
 #endif
 
   followerKeys = NodeFollowersKeys(node);
@@ -783,12 +783,12 @@ static inline node_t* FindDirectSubNodeLinear (const node_t* const node,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   numFollowers = NodeNumFollowers(node);
 #if TRI_FULLTEXT_DEBUG
-  assert(numFollowers >= 1);
+  TRI_ASSERT(numFollowers >= 1);
 #endif
 
   followerKeys = NodeFollowersKeys(node);
@@ -823,12 +823,12 @@ static node_t* FindDirectSubNodeBinary (const node_t* const node,
   uint32_t l, r;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   numFollowers = NodeNumFollowers(node);
 #if TRI_FULLTEXT_DEBUG
-  assert(numFollowers >= 1);
+  TRI_ASSERT(numFollowers >= 1);
 #endif
 
   followerKeys = NodeFollowersKeys(node);
@@ -877,7 +877,7 @@ static inline node_t* FindDirectSubNode (const node_t* const node,
   uint32_t numFollowers;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -908,7 +908,7 @@ static node_t* FindNode (const index_t* idx,
 
   node = (node_t*) idx->_root;
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
   p = (node_char_t*) key;
 
@@ -941,7 +941,7 @@ static TRI_fulltext_list_t* MergeSubNodeHandles (const node_t* const node,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -956,7 +956,7 @@ static TRI_fulltext_list_t* MergeSubNodeHandles (const node_t* const node,
 
     follower = followerNodes[i];
 #if TRI_FULLTEXT_DEBUG
-  assert(follower != NULL);
+  TRI_ASSERT(follower != NULL);
 #endif
     if (follower->_handles != NULL) {
       // OR-merge the follower node's documents with what we already have found
@@ -1005,7 +1005,7 @@ static node_t* InsertSubNode (index_t* const idx,
   uint32_t moveCount;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   // create the sub-node
@@ -1020,7 +1020,7 @@ static node_t* InsertSubNode (index_t* const idx,
   followerNodes = NodeFollowersNodes(node);
 
 #if TRI_FULLTEXT_DEBUG
-  assert(numFollowers >= position);
+  TRI_ASSERT(numFollowers >= position);
 #endif
 
   // we have to move this many elements
@@ -1054,7 +1054,7 @@ static node_t* EnsureSubNode (index_t* const idx,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   // search the node and find the correct insert position if it does not exist
@@ -1111,7 +1111,7 @@ static node_t* EnsureSubNode (index_t* const idx,
   }
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node->_followers != NULL);
+  TRI_ASSERT(node->_followers != NULL);
 #endif
 
   return InsertSubNode(idx, node, i, c);
@@ -1129,7 +1129,7 @@ static bool InsertHandle (index_t* const idx,
   size_t oldAlloc;
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   if (node->_handles == NULL) {
@@ -1356,10 +1356,10 @@ void TRI_FreeFtsIndex (TRI_fts_index_t* ftx) {
 
 #if TRI_FULLTEXT_DEBUG
   idx->_memoryBase -= sizeof(TRI_fulltext_handles_t);
-  assert(idx->_memoryBase == sizeof(index_t));
-  assert(idx->_memoryFollowers == 0);
-  assert(idx->_memoryNodes == 0);
-  assert(idx->_memoryAllocated == sizeof(index_t));
+  TRI_ASSERT(idx->_memoryBase == sizeof(index_t));
+  TRI_ASSERT(idx->_memoryFollowers == 0);
+  TRI_ASSERT(idx->_memoryNodes == 0);
+  TRI_ASSERT(idx->_memoryAllocated == sizeof(index_t));
 #endif
 
   TRI_DestroyReadWriteLock(&idx->_lock);
@@ -1424,7 +1424,7 @@ bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const ftx,
 
   node = idx->_root;
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   p = (char*) key;
@@ -1445,7 +1445,7 @@ bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const ftx,
   }
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
   result = InsertHandle(idx, node, handle);
@@ -1534,7 +1534,7 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
     // do not need to traverse the tree from the root again
     node = paths[start];
 #if TRI_FULLTEXT_DEBUG
-    assert(node != NULL);
+    TRI_ASSERT(node != NULL);
 #endif
 
     // now insert into the tree, starting at the next character after the common prefix
@@ -1544,7 +1544,7 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
       node_char_t c = (node_char_t) *(p++);
 
 #if TRI_FULLTEXT_DEBUG
-      assert(node != NULL);
+      TRI_ASSERT(node != NULL);
 #endif
 
       node = EnsureSubNode(idx, node, c);
@@ -1554,7 +1554,7 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
       }
 
 #if TRI_FULLTEXT_DEBUG
-  assert(node != NULL);
+  TRI_ASSERT(node != NULL);
 #endif
 
       paths[i + 1] = node;

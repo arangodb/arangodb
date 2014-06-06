@@ -59,7 +59,7 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
 
   variable->_definingNode = definingNode;
 
-  assert(definingNode);
+  TRI_ASSERT(definingNode);
 
   return variable;
 }
@@ -69,7 +69,7 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
-  assert(variable);
+  TRI_ASSERT(variable);
 
   if (variable->_name) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
@@ -120,7 +120,7 @@ bool TRI_EqualVariableAql (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsValidVariableNameAql (const char* const name) {
-  assert(name);
+  TRI_ASSERT(name);
 
   if (strlen(name) == 0) {
     // name must be at least one char long

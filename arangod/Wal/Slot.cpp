@@ -78,7 +78,7 @@ std::string Slot::statusText () const {
   // which are all covered in the above switch statement
   // stop stelling me that the control flow will reach the end of a non-void
   // function. this cannot happen!!!!!
-  assert(false); 
+  TRI_ASSERT(false); 
   return "unknown";
 }
 
@@ -89,8 +89,8 @@ std::string Slot::statusText () const {
 
 void Slot::fill (void* src,
                  size_t size) {
-  assert(size == _size);
-  assert(src != nullptr);   
+  TRI_ASSERT(size == _size);
+  TRI_ASSERT(src != nullptr);   
 
   TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
   
@@ -119,7 +119,7 @@ void Slot::fill (void* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Slot::setUnused () {
-  assert(isReturned());
+  TRI_ASSERT(isReturned());
   _tick        = 0;
   _logfileId   = 0;
   _mem         = nullptr;
@@ -135,7 +135,7 @@ void Slot::setUsed (void* mem,
                     uint32_t size,
                     Logfile::IdType logfileId,
                     Slot::TickType tick) {
-  assert(isUnused());
+  TRI_ASSERT(isUnused());
   _tick = tick;
   _logfileId = logfileId;
   _mem = mem;
@@ -148,7 +148,7 @@ void Slot::setUsed (void* mem,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Slot::setReturned (bool waitForSync) {
-  assert(isUsed());
+  TRI_ASSERT(isUsed());
   if (waitForSync) {
     _status = StatusType::RETURNED_WFS;
   }

@@ -43,8 +43,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InitParserAql (TRI_aql_context_t* context) {
-  assert(context);
-  assert(context->_parser);
+  TRI_ASSERT(context);
+  TRI_ASSERT(context->_parser);
 
   Ahuacatllex_init(&context->_parser->_scanner);
   Ahuacatlset_extra(context, context->_parser->_scanner);
@@ -84,9 +84,9 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
   char buffer[256];
   char* region;
 
-  assert(context);
-  assert(context->_query);
-  assert(message);
+  TRI_ASSERT(context);
+  TRI_ASSERT(context->_query);
+  TRI_ASSERT(message);
 
   region = TRI_GetContextErrorAql(context->_query, 
                                   context->_parser->_queryLength, 
@@ -120,7 +120,7 @@ void TRI_SetErrorParseAql (TRI_aql_context_t* const context,
 
 bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
                             const void* const value) {
-  assert(context);
+  TRI_ASSERT(context);
 
   if (value == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
@@ -138,8 +138,8 @@ bool TRI_PushStackParseAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_PopStackParseAql (TRI_aql_context_t* const context) {
-  assert(context);
-  assert(context->_parser->_stack._length > 0);
+  TRI_ASSERT(context);
+  TRI_ASSERT(context->_parser->_stack._length > 0);
 
   return TRI_RemoveVectorPointer(&context->_parser->_stack, context->_parser->_stack._length - 1);
 }
@@ -149,8 +149,8 @@ void* TRI_PopStackParseAql (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_PeekStackParseAql (TRI_aql_context_t* const context) {
-  assert(context);
-  assert(context->_parser->_stack._length > 0);
+  TRI_ASSERT(context);
+  TRI_ASSERT(context->_parser->_stack._length > 0);
 
   return context->_parser->_stack._buffer[context->_parser->_stack._length - 1];
 }
@@ -163,7 +163,7 @@ char* TRI_GetNameParseAql (TRI_aql_context_t* const context) {
   char buffer[16];
   int n;
 
-  assert(context);
+  TRI_ASSERT(context);
 
   n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++context->_variableIndex);
 

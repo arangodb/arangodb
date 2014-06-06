@@ -128,7 +128,7 @@ void SynchroniserThread::run () {
       if (id != 0) {
         // now perform the actual syncing
         Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
-        assert(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
+        TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
 
         // get the logfile's file descriptor
         int fd = getLogfileDescriptor(region.logfileId);
@@ -167,7 +167,7 @@ void SynchroniserThread::run () {
     CONDITION_LOCKER(guard, _condition);
 
     if (waiting > 0) {
-      assert(_waiting >= waiting);
+      TRI_ASSERT(_waiting >= waiting);
       _waiting -= waiting;
     }
 

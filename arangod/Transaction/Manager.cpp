@@ -78,7 +78,7 @@ Manager::~Manager () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Manager* Manager::instance () {
-  assert(Instance != nullptr);
+  TRI_ASSERT(Instance != nullptr);
   return Instance;
 }
 
@@ -87,7 +87,7 @@ Manager* Manager::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Manager::initialise () {
-  assert(Instance == nullptr);
+  TRI_ASSERT(Instance == nullptr);
 
   Instance = new Manager();
 }

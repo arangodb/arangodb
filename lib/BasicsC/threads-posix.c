@@ -72,7 +72,7 @@ static void* ThreadStarter (void* data) {
 
   d = data;
 
-  assert(d != NULL);
+  TRI_ASSERT(d != NULL);
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
   prctl(PR_SET_NAME, d->_name, 0, 0, 0);

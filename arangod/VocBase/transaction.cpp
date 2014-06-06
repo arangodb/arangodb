@@ -116,7 +116,7 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
       return "failed";
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "unknown";
 }
 
@@ -225,7 +225,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
-  assert(trxCollection != nullptr);
+  TRI_ASSERT(trxCollection != nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
 }
@@ -239,7 +239,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
                            const int nestingLevel) {
   int res;
 
-  assert(trxCollection != nullptr);
+  TRI_ASSERT(trxCollection != nullptr);
 
   TRI_transaction_t* trx = trxCollection->_transaction;
   
@@ -248,9 +248,9 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  assert(trxCollection->_collection != nullptr);
-  assert(trxCollection->_collection->_collection != nullptr);
-  assert(trxCollection->_locked == false);
+  TRI_ASSERT(trxCollection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->_locked == false);
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
@@ -294,16 +294,16 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
                              const TRI_transaction_type_e type,
                              const int nestingLevel) {
 
-  assert(trxCollection != nullptr);
+  TRI_ASSERT(trxCollection != nullptr);
   
   if ((trxCollection->_transaction->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) != 0) {
     // never unlock
     return TRI_ERROR_NO_ERROR;
   }
 
-  assert(trxCollection->_collection != nullptr);
-  assert(trxCollection->_collection->_collection != nullptr);
-  assert(trxCollection->_locked == true);
+  TRI_ASSERT(trxCollection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
+  TRI_ASSERT(trxCollection->_locked == true);
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
     
@@ -374,8 +374,8 @@ static int UseCollections (TRI_transaction_t* const trx,
       trxCollection->_waitForSync = trxCollection->_collection->_collection->base._info._waitForSync;
     }
 
-    assert(trxCollection->_collection != nullptr);
-    assert(trxCollection->_collection->_collection != nullptr);
+    TRI_ASSERT(trxCollection->_collection != nullptr);
+    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
     
     if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
       // read-lock the compaction lock
@@ -503,13 +503,13 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
 
 static void UpdateTransactionStatus (TRI_transaction_t* const trx,
                                      TRI_transaction_status_e status) {
-  assert(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_status == TRI_TRANSACTION_CREATED) {
-    assert(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_FAILED);
+    TRI_ASSERT(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_FAILED);
   }
   else if (trx->_status == TRI_TRANSACTION_RUNNING) {
-    assert(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
+    TRI_ASSERT(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
   }
 
   trx->_status = status;
@@ -577,7 +577,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransaction (TRI_transaction_t* trx) {
-  assert(trx != nullptr);
+  TRI_ASSERT(trx != nullptr);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx, 0);
@@ -611,7 +611,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
 bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const* trx,
                                               TRI_voc_cid_t cid) {
   
-  assert(trx->_status == TRI_TRANSACTION_RUNNING ||
+  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING ||
          trx->_status == TRI_TRANSACTION_ABORTED ||
          trx->_status == TRI_TRANSACTION_COMMITTED);
    
@@ -628,7 +628,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
   
   TRI_transaction_collection_t* trxCollection;
   
-  assert(trx->_status == TRI_TRANSACTION_CREATED ||
+  TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
          trx->_status == TRI_TRANSACTION_RUNNING);
    
   trxCollection = FindCollection(trx, cid, nullptr);
@@ -673,7 +673,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
           
   // upgrade transaction type if required
   if (nestingLevel == 0) {
-    assert(trx->_status == TRI_TRANSACTION_CREATED);
+    TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
     if (accessType == TRI_TRANSACTION_WRITE && 
         trx->_type == TRI_TRANSACTION_READ) {
@@ -694,7 +694,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
         return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
       }
 
-      assert(nestingLevel == 0);
+      TRI_ASSERT(nestingLevel == 0);
 
       // upgrade collection type to write-access
       trxCollection->_accessType = TRI_TRANSACTION_WRITE;
@@ -845,7 +845,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   TRI_transaction_collection_t* trxCollection = operation.trxCollection;
   TRI_transaction_t* trx = trxCollection->_transaction;
 
-  assert(operation.header != nullptr);
+  TRI_ASSERT(operation.header != nullptr);
   
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
@@ -915,7 +915,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
   LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
 
   if (nestingLevel == 0) {
-    assert(trx->_status == TRI_TRANSACTION_CREATED);
+    TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
     // get a new id
     trx->_id = TRI_NewTickServer();
@@ -927,7 +927,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     triagens::wal::LogfileManager::instance()->registerTransaction(trx->_id);  
   }
   else {
-    assert(trx->_status == TRI_TRANSACTION_RUNNING);
+    TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
   }
 
   int res = UseCollections(trx, nestingLevel);
@@ -963,7 +963,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
                            int nestingLevel) {
   LOG_TRX(trx, nestingLevel, "%s transaction", "committing");
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -995,7 +995,7 @@ int TRI_AbortTransaction (TRI_transaction_t* trx,
                           int nestingLevel) {
   LOG_TRX(trx, nestingLevel, "%s transaction", "aborting");
 
-  assert(trx->_status == TRI_TRANSACTION_RUNNING);
+  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 
   int res = TRI_ERROR_NO_ERROR;
 

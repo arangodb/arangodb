@@ -88,7 +88,7 @@ void ServerState::initialise () {
         
 void ServerState::cleanup () {
   auto i = instance();
-  assert(i != nullptr);
+  TRI_ASSERT(i != nullptr);
 
   delete i;
 }
@@ -109,7 +109,7 @@ std::string ServerState::roleToString (RoleEnum role) {
       return "COORDINATOR";
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "";
 }
 
@@ -174,7 +174,7 @@ std::string ServerState::stateToString (StateEnum state) {
       return "SHUTDOWN"; 
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "";
 }
 

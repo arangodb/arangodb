@@ -68,8 +68,8 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
                               TRI_shaper_t* shaper) {
   int result;
   
-  assert(NULL != left);
-  assert(NULL != right);
+  TRI_ASSERT(NULL != left);
+  TRI_ASSERT(NULL != right);
   result = TRI_CompareShapeTypes(NULL,
                                  NULL, 
                                  left,
@@ -107,8 +107,8 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
                                   TRI_shaper_t* shaper) {
   int result;
 
-  assert(NULL != left);
-  assert(NULL != right);
+  TRI_ASSERT(NULL != left);
+  TRI_ASSERT(NULL != right);
   result = TRI_CompareShapeTypes(left->_document,
                                  &left->_subObjects[leftPosition],
                                  NULL, 
@@ -150,8 +150,8 @@ static int CmpElmElm (void* sli,
   TRI_shaper_t* shaper;
   size_t j;
 
-  assert(NULL != left);
-  assert(NULL != right);
+  TRI_ASSERT(NULL != left);
+  TRI_ASSERT(NULL != right);
 
   if (leftElement == rightElement) {
     return 0;
@@ -217,8 +217,8 @@ static int CmpKeyElm (void* sli,
   TRI_shaper_t* shaper;
   size_t j;
 
-  assert(NULL != left);
-  assert(NULL != right);
+  TRI_ASSERT(NULL != left);
+  TRI_ASSERT(NULL != right);
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   shaper = skiplistindex->_collection->_shaper;
@@ -250,7 +250,7 @@ static void FreeElm (void* e) {
 static int CopyElement (SkiplistIndex* skiplistindex,
                         TRI_skiplist_index_element_t* leftElement,
                         TRI_skiplist_index_element_t* rightElement) {
-  assert(NULL != leftElement && NULL != rightElement);
+  TRI_ASSERT(NULL != leftElement && NULL != rightElement);
     
   leftElement->_document   = rightElement->_document;
   leftElement->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields, false));
@@ -269,7 +269,7 @@ static int CopyElement (SkiplistIndex* skiplistindex,
 ////////////////////////////////////////////////////////////////////////////////
 // Some static helper functions:
 // These are assigned to some callback hooks but do not seem to be used,
-// which is good because otherwise the assert(false) statements would
+// which is good because otherwise the TRI_ASSERT(false) statements would
 // bite!
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -281,7 +281,7 @@ static int SkiplistIndex_queryMethodCall (void* theIndex,
   if (slIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -294,7 +294,7 @@ static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (
   if (slIndex == NULL || indexOperator == NULL) {
     return NULL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -304,7 +304,7 @@ static int SkiplistIndex_freeMethodCall (void* theIndex,
   if (slIndex == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -321,7 +321,7 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
   // Some simple checks.
   // ...........................................................................
 
-  assert(NULL != iterator);
+  TRI_ASSERT(NULL != iterator);
 
   if (NULL == iterator->_cursor) {
     return false;
@@ -373,14 +373,14 @@ static TRI_skiplist_index_element_t* SkiplistIteration(
   // Some simple checks.
   // ...........................................................................
 
-  assert(NULL != iterator);
+  TRI_ASSERT(NULL != iterator);
 
   if (NULL == iterator->_cursor) {
     // In this case the iterator is exhausted or does not even have intervals.
     return NULL;
   }
 
-  assert(jumpSize > 0);
+  TRI_ASSERT(jumpSize > 0);
 
   // ...........................................................................
   // Obtain the current interval we are at.
@@ -467,7 +467,7 @@ int SkiplistIndex_assignMethod (void* methodHandle,
     }
 
     default : {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 
@@ -479,7 +479,7 @@ int SkiplistIndex_assignMethod (void* methodHandle,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const iterator) {
-  assert(NULL != iterator);
+  TRI_ASSERT(NULL != iterator);
 
   TRI_DestroyVector(&iterator->_intervals);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, iterator);
@@ -725,7 +725,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
                              (TRI_AtVector(&leftResult, i + 1));
         // if intervals intersect, optimise and start again
       }
-      assert(0);
+      TRI_ASSERT(0);
     }
     */
 
@@ -842,7 +842,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     }
 
     default: {
-      assert(false);
+      TRI_ASSERT(false);
     }
 
   } // end of switch statement
