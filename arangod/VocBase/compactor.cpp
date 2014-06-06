@@ -574,8 +574,20 @@ static bool Compactifier (TRI_df_marker_t const* marker,
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    // these markers are ignored from ArangoDB 2.2 onwards
-    // do not copy these markers anymore
+    // these markers are used from ArangoDB 2.2 onwards
+    // still, datafiles of older collections might contain these
+    // markers and we need to copy them
+
+    if (document->_failedTransactions != nullptr) {
+      // write to compactor files
+      res = CopyMarker(document, context->_compactor, marker, &result);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // TODO: dont fail but recover from this state
+        LOG_FATAL_AND_EXIT("cannot write transaction marker to compactor file: %s", TRI_last_error());
+      }
+    }
+    // otherwise don't copy
   }
 
   return true;
@@ -715,7 +727,10 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
            marker->_type == TRI_DOC_MARKER_COMMIT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_ABORT_TRANSACTION ||
            marker->_type == TRI_DOC_MARKER_PREPARE_TRANSACTION) {
-    // these markers are ignored from ArangoDB 2.2 onwards
+    if (document->_failedTransactions != nullptr) {
+      // these markers only need to be copied if there are "old" failed transactions
+      context->_targetSize += alignedSize;
+    }
   }
 
   return true;

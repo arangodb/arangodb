@@ -305,6 +305,8 @@ typedef struct TRI_vocbase_s {
   TRI_read_write_lock_t      _authInfoLock;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
 
+  std::set<TRI_voc_tid_t>*   _oldTransactions;
+
   struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
 

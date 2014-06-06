@@ -43,6 +43,10 @@
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/threads.h"
 
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/RestTransactionContext.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/StandaloneTransaction.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
@@ -1183,6 +1187,59 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if collection _trx is present and build a set of entries
+/// with it. this is done to ensure compatibility with old datafiles
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ScanTrxCallback (TRI_doc_mptr_t const* mptr,
+                             TRI_document_collection_t* document,
+                             void* data) {
+  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
+
+  char const* key = TRI_EXTRACT_MARKER_KEY(mptr);
+
+  if (vocbase->_oldTransactions == nullptr) {
+    vocbase->_oldTransactions = new std::set<TRI_voc_tid_t>;
+  }
+
+  uint64_t tid = TRI_UInt64String(key);
+
+  vocbase->_oldTransactions->insert(static_cast<TRI_voc_tid_t>(tid));
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if collection _trx is present and build a set of entries
+/// with it. this is done to ensure compatibility with old datafiles
+////////////////////////////////////////////////////////////////////////////////
+
+static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
+  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_TRANSACTION);
+
+  if (collection == nullptr) {
+    // collection not found, no problem
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  triagens::arango::CollectionNameResolver resolver(vocbase);
+  triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::StandaloneTransaction<triagens::arango::RestTransactionContext>> trx(vocbase, resolver, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_DocumentIteratorPrimaryCollection(&trx, trx.primaryCollection(), vocbase, &ScanTrxCallback);
+
+  trx.finish(res);
+  return res;
+
+  // don't need the collection anymore, so unload it
+  TRI_UnloadCollectionVocBase(vocbase, collection, false); 
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1228,10 +1285,10 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
                                          TRI_vocbase_defaults_t const* defaults) {
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_t), false));
 
-  if (vocbase == NULL) {
+  if (vocbase == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    return NULL;
+    return nullptr;
   }
 
   vocbase->_type               = type;
@@ -1239,8 +1296,10 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   vocbase->_path               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
   vocbase->_authInfoLoaded     = false;
-  vocbase->_replicationLogger  = NULL;
-  vocbase->_replicationApplier = NULL;
+  vocbase->_replicationLogger  = nullptr;
+  vocbase->_replicationApplier = nullptr;
+
+  vocbase->_oldTransactions    = nullptr;
   
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, defaults);
@@ -1309,14 +1368,18 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
 
 void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   // free replication
-  if (vocbase->_replicationApplier != NULL) {
+  if (vocbase->_replicationApplier != nullptr) {
     TRI_FreeReplicationApplier(vocbase->_replicationApplier);
-    vocbase->_replicationApplier = NULL;
+    vocbase->_replicationApplier = nullptr;
   }
 
-  if (vocbase->_replicationLogger != NULL) {
+  if (vocbase->_replicationLogger != nullptr) {
     TRI_FreeReplicationLogger(vocbase->_replicationLogger);
-    vocbase->_replicationLogger = NULL;
+    vocbase->_replicationLogger = nullptr;
+  }
+
+  if (vocbase->_oldTransactions == nullptr) {
+    delete vocbase->_oldTransactions;
   }
 
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
@@ -1389,6 +1452,8 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   }
 
   TRI_ReloadAuthInfo(vocbase);
+
+  ScanTrxCollection(vocbase);
 
   // .............................................................................
   // vocbase is now active
