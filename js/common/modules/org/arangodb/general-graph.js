@@ -1144,7 +1144,7 @@ AQLGenerator.prototype.toArray = function() {
 ///
 /// To count the number of matched elements: 
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLCount}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
@@ -1176,7 +1176,7 @@ AQLGenerator.prototype.count = function() {
 ///
 /// Start query execution with hasNext: 
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
@@ -1185,13 +1185,10 @@ AQLGenerator.prototype.count = function() {
 ///
 /// Iterate over the result as long as it has more elements:
 /// 
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextIteration}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
-///   while(query.hasNext()) {
-///     query.next();
-///   }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 /// 
@@ -1220,7 +1217,7 @@ AQLGenerator.prototype.hasNext = function() {
 ///
 /// Request some elements with next: 
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNext}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
@@ -1232,7 +1229,7 @@ AQLGenerator.prototype.hasNext = function() {
 ///
 /// The cursor is recreated if the query is changed:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNextRecreate}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
@@ -1896,7 +1893,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ///
 /// To request filtered edges:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesUnfiltered}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesFiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._edges({type: "married"}).toArray();
@@ -1948,7 +1945,7 @@ Graph.prototype._edges = function(edgeExample) {
 ///
 /// To request filtered vertices:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesUnfiltered}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesFiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
