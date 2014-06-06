@@ -172,14 +172,14 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   // reserve room for one additional entry
   if (TRI_ReserveVectorPointer(&collection->_compactors, 1) != TRI_ERROR_NO_ERROR) {
     // could not get memory, exit early
-    return NULL;
+    return nullptr;
   }
   
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
   compactor = TRI_CreateCompactorPrimaryCollection(document, fid, maximalSize);
 
-  if (compactor != NULL) {
+  if (compactor != nullptr) {
     int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
 
     // we have reserved space before, so we can be sure the push succeeds
