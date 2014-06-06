@@ -4,7 +4,7 @@ This is an introduction to managing databases in ArangoDB from within
 JavaScript. 
 
 While being in an established connection to ArangoDB, the current
-database can be changed explicitly by using the `db._useDatabase()`
+database can be changed explicitly by using the *db._useDatabase()*
 method. This will switch to the specified database (provided it
 exists and the user can connect to it). From this point on, any
 following actions in the same shell or connection will use the
@@ -18,7 +18,7 @@ is contained in the HTTP request/response data.
 Connecting to a specific database from arangosh is possible with
 the above command after arangosh has been started, but it is also
 possible to specify a database name when invoking arangosh. 
-For this purpose, use the command-line parameter `--server.database`,
+For this purpose, use the command-line parameter *--server.database*,
 e.g.
 
     > arangosh --server.database test 

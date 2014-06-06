@@ -50,7 +50,7 @@ An example AQL query might look like this:
       FILTER u.type == "newbie" && u.active == true
       RETURN u.name
 
-In this example query, the terms `FOR`, `FILTER`, and `RETURN` initiate the
+In this example query, the terms *FOR*, *FILTER*, and *RETURN* initiate the
 higher-level operation according to their name. These terms are also keywords,
 meaning that they have a special meaning in the language.
 
@@ -102,7 +102,7 @@ allows using otherwise-reserved keywords as names. An example for this is:
     FOR f IN `filter` 
       RETURN f.`sort`
 
-Due to the backticks, `filter` and `sort` are interpreted as names and not as
+Due to the backticks, *filter* and *sort* are interpreted as names and not as
 keywords here.
 
 !SUBSUBSECTION Collection names
@@ -128,8 +128,8 @@ attribute naming conventions.
 	FILTER u.active == true && f.active == true && u.id == f.userId
 	RETURN u.name
 
-In the above example, the attribute names `active`, `name`, `id`, and `userId`
-are qualified using the collection names they belong to (`u` and `f`
+In the above example, the attribute names *active*, *name*, *id*, and *userId*
+are qualified using the collection names they belong to (*u* and *f*
 respectively).
 
 !SUBSUBSECTION Variable names
@@ -143,12 +143,12 @@ collection name used in the same query.
       LET friends = u.friends
       RETURN { "name" : u.name, "friends" : friends }
 
-In the above query, `users` is a collection name, and both `u` and `friends` are
-variable names. This is because the `FOR` and `LET` operations need target
+In the above query, *users* is a collection name, and both *u* and *friends* are
+variable names. This is because the *FOR* and *LET* operations need target
 variables to store their intermediate results.
 
-Allowed characters in variable names are the letters `a` to `z` (both in lower
-and upper case), the numbers `0` to `9` and the underscore (`_`) symbol. A
+Allowed characters in variable names are the letters *a* to *z* (both in lower
+and upper case), the numbers *0* to *9* and the underscore (*_*) symbol. A
 variable name must not start with a number.  If a variable name starts with the
 underscore character, it must also contain at least one letter (a-z or A-Z).
 
@@ -159,7 +159,7 @@ available:
 
 - Primitive types: Consisting of exactly one value
   - null: An empty value, also: The absence of a value
-  - bool: Boolean truth value with possible values `false` and `true`
+  - bool: Boolean truth value with possible values *false* and *true*
   - number: Signed (real) number
   - string: UTF-8 encoded text value
 - Compound types: Consisting of multiple values
@@ -169,7 +169,7 @@ available:
 !SUBSUBSECTION Numeric literals
 
 Numeric literals can be integers or real values. They can optionally be signed
-using the `+` or `-` symbols. The scientific notation is also supported.
+using the *+* or *-* symbols. The scientific notation is also supported.
 
     1
     42
@@ -217,22 +217,22 @@ The first supported compound type is the list type. Lists are effectively
 sequences of (unnamed/anonymous) values. Individual list elements can be
 accessed by their positions. The order of elements in a list is important.
 
-A `list-declaration` starts with the `[` symbol and ends with the `]` symbol. A
-`list-declaration` contains zero or many `expression`s, separated from each
-other with the `,` symbol.
+A *list-declaration* starts with the *[* symbol and ends with the *]* symbol. A
+*list-declaration* contains zero or many *expression*s, separated from each
+other with the *,* symbol.
 
 In the easiest case, a list is empty and thus looks like:
 
     [ ]
 
-List elements can be any legal `expression` values. Nesting of lists is
+List elements can be any legal *expression* values. Nesting of lists is
 supported.
 
     [ 1, 2, 3 ]
     [ -99, "yikes!", [ true, [ "no"], [ ] ], 1 ]
     [ [ "fox", "marshal" ] ] 
 
-Individual list values can later be accesses by their positions using the `[]`
+Individual list values can later be accesses by their positions using the *[]*
 accessor. The position of the accessed element must be a numeric
 value. Positions start at 0.  It is also possible to use negative index values
 to access list values starting from the end of the list. This is convenient if
@@ -257,15 +257,15 @@ The other supported compound type is the document type. Documents are a
 composition of zero to many attributes. Each attribute is a name/value pair.
 Document attributes can be accessed individually by their names.
 
-Document declarations start with the `{` symbol and end with the `}` symbol. A
+Document declarations start with the *{* symbol and end with the *}* symbol. A
 document contains zero to many attribute declarations, separated from each other
-with the `,` symbol.  In the simplest case, a document is empty. Its
+with the *,* symbol.  In the simplest case, a document is empty. Its
 declaration would then be:
 
     { }
 
 Each attribute in a document is a name/value pair. Name and value of an
-attribute are separated using the `:` symbol.
+attribute are separated using the *:* symbol.
 
 The attribute name is mandatory and must be specified as a quoted or unquoted
 string. If a keyword is to be used as an attribute name, the name must be
@@ -279,7 +279,7 @@ documents can be used as attribute values
     { "name" : "John", likes : [ "Swimming", "Skiing" ], "address" : { "street" : "Cucumber lane", "zip" : "94242" } }
 
 Individual document attributes can later be accesses by their names using the
-`.` accessor. If a non-existing attribute is accessed, the result is `null`.
+*.* accessor. If a non-existing attribute is accessed, the result is *null*.
 
     u.address.city.name
     u.friends[0].name.first
@@ -296,7 +296,7 @@ query.
 Using bind parameters, the meaning of an existing query cannot be changed. Bind
 parameters can be used everywhere in a query where literals can be used.
 
-The syntax for bind parameters is `@nameparameter` where `nameparameter` is the
+The syntax for bind parameters is *@nameparameter* where *nameparameter* is the
 actual parameter name. The bind parameter values need to be passed along with
 the query when it is executed, but not as part of the query text itself. Please
 refer to the @ref HttpCursorHttp manual section for information about how to
@@ -306,13 +306,13 @@ pass the bind parameter values to the server.
       FILTER u.id == @id && u.name == @nameparameter
       RETURN u
 
-Bind parameter names must start with any of the letters `a` to `z` (both in
-lower and upper case) or a digit (`0` to `9`), and can be followed by any
+Bind parameter names must start with any of the letters *a* to *z* (both in
+lower and upper case) or a digit (*0* to *9*), and can be followed by any
 letter, digit or the underscore symbol.
 
 A special type of bind parameter exists for injecting collection names. This
-type of bind parameter has a name prefixed with an additional `@` symbol (thus
-when using the bind parameter in a query, two `@` symbols must be used).
+type of bind parameter has a name prefixed with an additional *@* symbol (thus
+when using the bind parameter in a query, two *@* symbols must be used).
 
     FOR u IN @@collection
       FILTER u.active == true
@@ -331,14 +331,14 @@ The following type order is used when comparing data types:
 
     null < bool  < number < string < list < document
 
-This means `null` is the smallest type in AQL and `document` is the type with
+This means *null* is the smallest type in AQL and *document* is the type with
 the highest order. If the compared operands have a different type, then the
 comparison result is determined and the comparison is finished.
 
-For example, the boolean `true` value will always be less than any numeric or
+For example, the boolean *true* value will always be less than any numeric or
 string value, any list (even an empty list) or any document. Additionally, any
 string value (even an empty string) will always be greater than any numeric
-value, a boolean value, `true` or `false`.
+value, a boolean value, *true* or *false*.
 
     null < false
     null < true
@@ -386,14 +386,14 @@ If the two compared operands have the same data types, then the operands values
 are compared. For the primitive types (null, boolean, number, and string), the
 result is defined as follows:
 
-- null: `null` is equal to `null`
-- boolean: `false` is less than `true`
+- null: *null* is equal to *null*
+- boolean: *false* is less than *true*
 - number: numeric values are ordered by their cardinal value
 - string: string values are ordered using a localized comparison,
   see @ref CommandLineDefaultLanguage "--default-language"
 
-Note: unlike in SQL, `null` can be compared to any value, including `null`
-itself, without the result being converted into `null` automatically.
+Note: unlike in SQL, *null* can be compared to any value, including *null*
+itself, without the result being converted into *null* automatically.
 
 For compound, types the following special rules are applied:
 
@@ -402,7 +402,7 @@ position, starting at the first element. For each position, the element types
 are compared first. If the types are not equal, the comparison result is
 determined, and the comparison is finished. If the types are equal, then the
 values of the two elements are compared.  If one of the lists is finished and
-the other list still has an element at a compared position, then `null` will be
+the other list still has an element at a compared position, then *null* will be
 used as the element value of the fully traversed list.
 
 If a list element is itself a compound value (a list or a document), then the
@@ -425,7 +425,7 @@ in a document is not relevant when comparing two documents.
 The combined and sorted list of attribute names is then traversed, and the
 respective attributes from the two compared operands are then looked up. If one
 of the documents does not have an attribute with the sought name, its attribute
-value is considered to be `null`.  Finally, the attribute value of both
+value is considered to be *null*.  Finally, the attribute value of both
 documents is compared using the before mentioned data type and value comparison.
 The comparisons are performed for all document attributes until there is an
 unambiguous comparison result. If an unambiguous comparison result is found, the
@@ -446,9 +446,9 @@ compared documents are considered equal.
 Collection data can be accessed by specifying a collection name in a query.  A
 collection can be understood as a list of documents, and that is how they are
 treated in AQL. Documents from collections are normally accessing using the
-`FOR` keyword. Note that when iterating over documents from a collection, the
+*FOR* keyword. Note that when iterating over documents from a collection, the
 order of documents is undefined. To traverse documents in an explicit and
-deterministic order, the `SORT` keyword should be used in addition.
+deterministic order, the *SORT* keyword should be used in addition.
 
 Data in collections is stored in documents, with each document potentially
 having different attributes than other documents. This is true even for
@@ -457,26 +457,26 @@ documents of the same collection.
 It is therefore quite normal to encounter documents that do not have some or all
 of the attributes that are queried in an AQL query. In this case, the
 non-existing attributes in the document will be treated as if they would exist
-with a value of `null`.  That means that comparing a document attribute to
-`null` will return true if the document has the particular attribute and the
-attribute has a value of `null`, or that the document does not have the
+with a value of *null*.  That means that comparing a document attribute to
+*null* will return true if the document has the particular attribute and the
+attribute has a value of *null*, or that the document does not have the
 particular attribute at all.
 
 For example, the following query will return all documents from the collection
-`users` that have a value of `null` in the attribute `name`, plus all documents
-from `users` that do not have the `name` attribute at all:
+*users* that have a value of *null* in the attribute *name*, plus all documents
+from *users* that do not have the *name* attribute at all:
 
     FOR u IN users
       FILTER u.name == null
       RETURN u
 
-Furthermore, `null` is less than any other value (excluding `null` itself). That
+Furthermore, *null* is less than any other value (excluding *null* itself). That
 means documents with non-existing attributes might be included in the result
 when comparing attribute values with the less than or less equal operators.
 
 For example, the following query will return all documents from the collection
-`users` that have an attribute `age` with a value less than `39`, but also all
-documents from the collection that do not have the attribute `age` at all.
+*users* that have an attribute *age* with a value less than *39*, but also all
+documents from the collection that do not have the attribute *age* at all.
 
     FOR u IN users
       FILTER u.age < 39
