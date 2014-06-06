@@ -372,10 +372,6 @@ namespace triagens {
 
         int addCollection (const string& name,
                            TRI_transaction_type_e type) {
-          if (name == TRI_COL_NAME_TRANSACTION) {
-            return registerError(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
-          }
-
           if (! _isReal) {
             return addCollection(_resolver.getCollectionIdCluster(name), name.c_str(), type);
           }
