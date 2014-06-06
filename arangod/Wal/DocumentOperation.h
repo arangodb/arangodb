@@ -120,7 +120,7 @@ namespace triagens {
       Marker*                               marker;
       struct TRI_transaction_collection_s*  trxCollection;
       TRI_doc_mptr_t*                       header;
-      TRI_doc_mptr_t                        oldHeader;
+      TRI_doc_mptr_copy_t                   oldHeader;
       TRI_voc_rid_t const                   rid;
       TRI_voc_document_operation_e          type;
       bool                                  handled;
