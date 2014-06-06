@@ -1576,7 +1576,7 @@ function DatabaseDocumentSuite () {
 /// @brief tests the _replace function with new signature
 ////////////////////////////////////////////////////////////////////////////////
 
-    test_ReplaceWithNewSignatureDocument : function () {
+    testReplaceWithNewSignatureDocument : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
