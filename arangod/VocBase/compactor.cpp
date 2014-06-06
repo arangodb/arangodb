@@ -177,7 +177,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-  compactor = TRI_CreateCompactorPrimaryCollection(document, fid, maximalSize);
+  compactor = TRI_CreateCompactorDocumentCollection(document, fid, maximalSize);
 
   if (compactor != nullptr) {
     int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
@@ -397,7 +397,7 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
     document->base._datafiles._buffer[i] = compactor;
 
     // update dfi
-    dfi = TRI_FindDatafileInfoPrimaryCollection(document, compactor->_fid, false);
+    dfi = TRI_FindDatafileInfoDocumentCollection(document, compactor->_fid, false);
 
     if (dfi != NULL) {
       memcpy(dfi, &context->_dfi, sizeof(TRI_doc_datafile_info_t));
@@ -482,7 +482,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     if (deleted) {
       context->_dfi._numberDead += 1;
-      context->_dfi._sizeDead += (int64_t) marker->_size;
+      context->_dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
       
       LOG_DEBUG("found a stale document after copying: %s", key);
 
@@ -496,7 +496,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // the fid might change
     if (found->_fid != context->_compactor->_fid) {
       // update old datafile's info
-      TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoPrimaryCollection(document, found->_fid, false);
+      TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, found->_fid, false);
 
       if (dfi != NULL) {
         dfi->_numberDead += 1;
@@ -511,7 +511,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // update datafile info
     context->_dfi._numberAlive += 1;
-    context->_dfi._sizeAlive += (int64_t) marker->_size;
+    context->_dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   // deletions
@@ -546,7 +546,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
     
     context->_dfi._numberShapes++;
-    context->_dfi._sizeShapes += (int64_t) marker->_size;
+    context->_dfi._sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
   }
   
   // attributes
@@ -566,7 +566,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
     
     context->_dfi._numberAttributes++;
-    context->_dfi._sizeAttributes += (int64_t) marker->_size;
+    context->_dfi._sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
   }
 
   // transaction markers
@@ -586,6 +586,9 @@ static bool Compactifier (TRI_df_marker_t const* marker,
         // TODO: dont fail but recover from this state
         LOG_FATAL_AND_EXIT("cannot write transaction marker to compactor file: %s", TRI_last_error());
       }
+
+      context->_dfi._numberTransactions++;
+      context->_dfi._sizeTransactions += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
     // otherwise don't copy
   }
@@ -663,10 +666,10 @@ static int RemoveDatafile (TRI_document_collection_t* document,
   TRI_RemoveVectorPointer(&document->base._datafiles, i);
   
   // update dfi
-  dfi = TRI_FindDatafileInfoPrimaryCollection(document, df->_fid, false);
+  dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, false);
 
   if (dfi != NULL) {
-    TRI_RemoveDatafileInfoPrimaryCollection(document, df->_fid);
+    TRI_RemoveDatafileInfoDocumentCollection(document, df->_fid);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, dfi);
   }
 
@@ -863,7 +866,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     return;
   }
 
-  if (! TRI_CloseCompactorPrimaryCollection(document, j)) {
+  if (! TRI_CloseCompactorDocumentCollection(document, j)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     LOG_ERROR("could not close compactor file");
@@ -878,7 +881,8 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
       context._dfi._numberDead == 0 &&
       context._dfi._numberDeletion == 0 &&
       context._dfi._numberShapes == 0 &&
-      context._dfi._numberAttributes == 0) {
+      context._dfi._numberAttributes == 0 &&
+      context._dfi._numberTransactions == 0) {
     if (n > 1) {
       // create .dead files for all collected files 
       for (i = 0; i < n; ++i) {
@@ -1022,7 +1026,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
     TRI_ASSERT(df != NULL);
 
-    dfi = TRI_FindDatafileInfoPrimaryCollection(document, df->_fid, true);
+    dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, true);
 
     if (dfi == NULL) {
       continue;
@@ -1071,8 +1075,9 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     
     LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
               "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, "
-              "numberShapes: %llu, numberAttributes: %llu, "
-              "sizeDead: %llu, sizeAlive: %llu, sizeShapes %llu, sizeAttributes: %llu",
+              "numberShapes: %llu, numberAttributes: %llu, transactions: %llu, "
+              "sizeDead: %llu, sizeAlive: %llu, sizeShapes %llu, sizeAttributes: %llu, " 
+              "sizeTransactions: %llu",
               (unsigned long long) df->_fid,
               (unsigned long long) df->_maximalSize,
               (unsigned long long) dfi->_numberDead,
@@ -1080,10 +1085,12 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
               (unsigned long long) dfi->_numberDeletion,
               (unsigned long long) dfi->_numberShapes,
               (unsigned long long) dfi->_numberAttributes,
+              (unsigned long long) dfi->_numberTransactions,
               (unsigned long long) dfi->_sizeDead,
               (unsigned long long) dfi->_sizeAlive,
               (unsigned long long) dfi->_sizeShapes,
-              (unsigned long long) dfi->_sizeAttributes);
+              (unsigned long long) dfi->_sizeAttributes,
+              (unsigned long long) dfi->_sizeTransactions);
     
     totalSize += (uint64_t) df->_maximalSize;
 

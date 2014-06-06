@@ -2061,7 +2061,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
-        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.documentCollection()->_barrierList));
 
         if (barrier == 0) {
           return TRI_ERROR_INTERNAL;

@@ -58,10 +58,6 @@
 /// The structure @ref TRI_collection_t is abstract. Currently, there is one
 /// concrete sub-class @ref TRI_document_collection_t.
 ///
-/// @section PrimaryCollection Document Collection
-///
-/// @section DocumentCollection Simple Document Collection
-///
 /// @copydetails TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 

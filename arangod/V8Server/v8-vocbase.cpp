@@ -1444,7 +1444,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   const string collectionName = string(collection->_name);
 
   bool created = false;
@@ -1951,7 +1951,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   }
 
   bool usedBarrier = false;
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.documentCollection()->_barrierList));
 
   if (barrier == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
@@ -2072,7 +2072,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  Barrier barrier(trx.primaryCollection());
+  Barrier barrier(trx.documentCollection());
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
@@ -2289,7 +2289,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
     
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   TRI_doc_mptr_copy_t mptr;
@@ -2406,7 +2406,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_document_collection_t* document = trx->primaryCollection();
+  TRI_document_collection_t* document = trx->documentCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   trx->lockWrite();
@@ -2525,7 +2525,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx->primaryCollection();
+  TRI_document_collection_t* document = trx->documentCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   trx->lockWrite();
@@ -2706,7 +2706,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
   Barrier barrier(document);
 
@@ -6110,7 +6110,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   // READ-LOCK start
   trx.lockRead();
@@ -6407,7 +6407,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   v8::Handle<v8::Object> err;
   TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], true, &err);
@@ -6739,7 +6739,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   const string collectionName = string(collection->_name);
 
   // get list of indexes
@@ -7899,7 +7899,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
+  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.documentCollection()->_barrierList));
 
   if (barrier == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);

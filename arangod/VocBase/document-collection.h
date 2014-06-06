@@ -200,11 +200,13 @@ typedef struct TRI_doc_datafile_info_s {
   TRI_voc_ssize_t _numberDeletion;
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;
+  TRI_voc_ssize_t _numberTransactions; // used only during compaction
 
   int64_t         _sizeAlive;
   int64_t         _sizeDead;
   int64_t         _sizeShapes;
   int64_t         _sizeAttributes;
+  int64_t         _sizeTransactions; // used only during compaction
 }
 TRI_doc_datafile_info_t;
 
@@ -223,12 +225,14 @@ typedef struct TRI_doc_collection_info_s {
   TRI_voc_ssize_t _numberDeletion;
   TRI_voc_ssize_t _numberShapes;
   TRI_voc_ssize_t _numberAttributes;
+  TRI_voc_ssize_t _numberTransactions;
   TRI_voc_ssize_t _numberIndexes;
 
   int64_t         _sizeAlive;
   int64_t         _sizeDead;
   int64_t         _sizeShapes;  
   int64_t         _sizeAttributes; 
+  int64_t         _sizeTransactions; 
   int64_t         _sizeIndexes; 
 
   int64_t         _datafileSize;
@@ -421,22 +425,6 @@ typedef struct TRI_document_collection_s {
 TRI_document_collection_t;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a primary collection structure
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitPrimaryCollection (TRI_document_collection_t*, TRI_shaper_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a primary collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyPrimaryCollection (TRI_document_collection_t*);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
 
@@ -444,51 +432,16 @@ void TRI_DestroyPrimaryCollection (TRI_document_collection_t*);
 /// @brief removes a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveDatafileInfoPrimaryCollection (TRI_document_collection_t*,
+void TRI_RemoveDatafileInfoDocumentCollection (TRI_document_collection_t*,
                                               TRI_voc_fid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a datafile description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_datafile_info_t* TRI_FindDatafileInfoPrimaryCollection (TRI_document_collection_t*,
+TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_collection_t*,
                                                                 TRI_voc_fid_t,
                                                                 bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new journal
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateJournalPrimaryCollection (TRI_document_collection_t*,
-                                                    TRI_voc_size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing journal
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CloseJournalPrimaryCollection (TRI_document_collection_t*,
-                                        size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new compactor file
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateCompactorPrimaryCollection (TRI_document_collection_t*,
-                                                      TRI_voc_fid_t,
-                                                      TRI_voc_size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing compactor file
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CloseCompactorPrimaryCollection (TRI_document_collection_t*,
-                                          size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump information about all datafiles of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DebugDatafileInfoPrimaryCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all documents in the collection, using a user-defined
@@ -501,7 +454,7 @@ void TRI_DebugDatafileInfoPrimaryCollection (TRI_document_collection_t*);
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorPrimaryCollection (triagens::arango::TransactionBase const*,
+size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase const*,
                                               TRI_document_collection_t*,
                                               void*,
                                               bool (*callback)(TRI_doc_mptr_t const*, 
@@ -649,17 +602,6 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
                                              TRI_doc_mptr_copy_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker into the datafile
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteMarkerDocumentCollection (TRI_document_collection_t*,
-                                       struct TRI_df_marker_s*,
-                                       const TRI_voc_size_t,
-                                       TRI_voc_fid_t*,
-                                       struct TRI_df_marker_s**,
-                                       const bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -672,6 +614,22 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*,
 
 bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*, 
                                          size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new compactor file
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_datafile_t* TRI_CreateCompactorDocumentCollection (TRI_document_collection_t*,
+                                                       TRI_voc_fid_t,
+                                                       TRI_voc_size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief closes an existing compactor file
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CloseCompactorDocumentCollection (TRI_document_collection_t*,
+                                           size_t);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

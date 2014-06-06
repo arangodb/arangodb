@@ -796,7 +796,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAttributes++;
-        dfi._sizeAttributes += (int64_t) totalSize;
+        dfi._sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -819,7 +819,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberShapes++;
-        dfi._sizeShapes += (int64_t) totalSize;
+        dfi._sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -858,7 +858,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
-        dfi._sizeAlive += (int64_t) totalSize;
+        dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -910,7 +910,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
-        dfi._sizeAlive += (int64_t) totalSize;
+        dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
         break;
       }
 
@@ -987,20 +987,22 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
   for (auto it = cache->dfi.begin(); it != cache->dfi.end(); ++it) {
     TRI_voc_fid_t fid = (*it).first;
     
-    TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoPrimaryCollection(document, fid, true);
+    TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoDocumentCollection(document, fid, true);
 
     if (dst != nullptr) {
       auto& dfi = (*it).second;
 
-      dst->_numberAttributes += dfi._numberAttributes;
-      dst->_sizeAttributes   += dfi._sizeAttributes;
-      dst->_numberShapes     += dfi._numberShapes;
-      dst->_sizeShapes       += dfi._sizeShapes;
-      dst->_numberAlive      += dfi._numberAlive;
-      dst->_sizeAlive        += dfi._sizeAlive;
-      dst->_numberDead       += dfi._numberDead;
-      dst->_sizeDead         += dfi._sizeDead;
-      dst->_numberDeletion   += dfi._numberDeletion;
+      dst->_numberAttributes   += dfi._numberAttributes;
+      dst->_sizeAttributes     += dfi._sizeAttributes;
+      dst->_numberShapes       += dfi._numberShapes;
+      dst->_sizeShapes         += dfi._sizeShapes;
+      dst->_numberAlive        += dfi._numberAlive;
+      dst->_sizeAlive          += dfi._sizeAlive;
+      dst->_numberDead         += dfi._numberDead;
+      dst->_sizeDead           += dfi._sizeDead;
+      dst->_numberTransactions += dfi._numberTransactions;
+      dst->_sizeTransactions   += dfi._sizeTransactions;
+      dst->_numberDeletion     += dfi._numberDeletion;
 
       // flush the local datafile info so we don't update the statistics twice
       // with the same values
@@ -1106,7 +1108,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
-      TRI_CloseJournalPrimaryCollection(document, i);
+      TRI_CloseJournalDocumentCollection(document, i);
     }
     
     TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, targetSize);

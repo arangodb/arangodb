@@ -458,7 +458,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
     return false;
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);

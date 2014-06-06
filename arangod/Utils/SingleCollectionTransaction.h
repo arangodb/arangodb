@@ -121,7 +121,7 @@ namespace triagens {
 /// @brief get the underlying primary collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_document_collection_t* primaryCollection () {
+        inline TRI_document_collection_t* documentCollection () {
           TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
           TRI_ASSERT(trxCollection != 0);

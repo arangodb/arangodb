@@ -389,7 +389,7 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     TRI_barrier_t* ce;
 
     TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_document_collection_t* primaryCollection;
+    TRI_document_collection_t* document;
 
     TRI_ASSERT(collection != NULL);
     TRI_ASSERT(collection->_name != NULL);
@@ -397,11 +397,11 @@ bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
     TRI_ASSERT(collection->_collection->_collection != NULL);
     TRI_ASSERT(collection->_barrier == NULL);
 
-    primaryCollection = collection->_collection->_collection;
+    document = collection->_collection->_collection;
 
     LOG_TRACE("adding barrier for collection '%s'", collection->_name);
 
-    ce = TRI_CreateBarrierElement(&primaryCollection->_barrierList);
+    ce = TRI_CreateBarrierElement(&document->_barrierList);
 
     if (ce == NULL) {      
       // couldn't create the barrier

@@ -332,7 +332,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+  if (trx.documentCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
@@ -341,7 +341,7 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_voc_cid_t const cid = trx.cid();
 
-  Barrier barrier(trx.primaryCollection());
+  Barrier barrier(trx.documentCollection());
 
   TRI_doc_mptr_copy_t document;
   res = trx.createDocument(&document, json, waitForSync);
@@ -574,7 +574,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   res = trx.read(&mptr, key);
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
 
@@ -758,7 +758,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
-  TRI_col_type_e typ = trx.primaryCollection()->base._info._type;
+  TRI_col_type_e typ = trx.documentCollection()->base._info._type;
 
   res = trx.finish(res);
 
@@ -1336,7 +1336,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   const TRI_voc_cid_t cid = trx.cid();
   TRI_voc_rid_t rid = 0;
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
 

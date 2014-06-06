@@ -1043,7 +1043,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   v8::Handle<v8::Object> err;
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->_shaper;
 
   // extract skip and limit
@@ -1258,7 +1258,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->_shaper;
 
   // .............................................................................
@@ -1528,7 +1528,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   // first and only argument schould be a list of document idenfifier
   if (argv.Length() != 1) {
@@ -1954,7 +1954,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->_shaper;
 
   v8::Handle<v8::Object> example = argv[0]->ToObject();
@@ -2109,7 +2109,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   // convert the example (index is locked by lockRead)
   TRI_index_search_value_t searchValue;
   
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->_shaper;
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
@@ -2275,15 +2275,15 @@ collection_checksum_t;
 template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
                                                            TRI_document_collection_t* document, 
                                                            void* data) {
-  // This callback is only called in TRI_DocumentIteratorPrimaryCollection
+  // This callback is only called in TRI_DocumentIteratorDocumentCollection
   // and there we have an ongoing transaction. Therefore all master pointer
   // and data pointer accesses here are safe!
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
@@ -2292,7 +2292,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
 
     // must convert _rid, _fromCid, _toCid into strings for portability
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorPrimaryCollection
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
@@ -2377,7 +2377,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_document_collection_t* document = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   Barrier barrier(document);
   
@@ -2397,20 +2397,20 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<true, true>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<true, true>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<false, true>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<false, true>);
     }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<true, false>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<true, false>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(&trx, document, &helper, &ChecksumCalculator<false, false>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<false, false>);
     }
   }
 
@@ -2516,7 +2516,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   }
 
   bool usedBarrier = false;
-  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
+  barrier = TRI_CreateBarrierElement(&trx.documentCollection()->_barrierList);
 
   if (barrier == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2783,7 +2783,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   }
 
   bool usedBarrier = false;
-  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
+  barrier = TRI_CreateBarrierElement(&trx.documentCollection()->_barrierList);
 
   if (barrier == 0) {
     TRI_V8_EXCEPTION_MEMORY(scope);
