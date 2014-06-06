@@ -8,10 +8,10 @@ Setting up a working master-slave replication requires two ArangoDB instances:
 For the following example setup, we'll use the instance *tcp://master.domain.org:8529* as the 
 master, and the instance *tcp://slave.domain.org:8530* as a slave.
 
-The goal is to have all data from the database `_system` on master *tcp://master.domain.org:8529* 
-be replicated to the database `_system` on the slave *tcp://slave.domain.org:8530*.
+The goal is to have all data from the database *_system* on master *tcp://master.domain.org:8529* 
+be replicated to the database *_system* on the slave *tcp://slave.domain.org:8530*.
 
-On the *master*, configure the replication logger for database `_system` to start automatically 
+On the *master*, configure the replication logger for database *_system* to start automatically 
 on ArangoDB startup. Additionally, set some restrictions for the event log size:
 
     db._useDatabase("_system");
@@ -22,13 +22,13 @@ on ArangoDB startup. Additionally, set some restrictions for the event log size:
       maxEventsSize: 0
     });
 
-After that, start the replication logger for the `_system` database on the master:
+After that, start the replication logger for the *_system* database on the master:
 
     db._useDatabase("_system");
     require("org/arangodb/replication").logger.start();
 
 
-On the *slave*, make sure there currently is no replication applier running in the `_system`
+On the *slave*, make sure there currently is no replication applier running in the *_system*
 database:
 
     db._useDatabase("_system");
@@ -49,7 +49,7 @@ Only execute the commands if you have verified you are on the correct server, in
 correct database!
 
 Then re-configure the slave database's replication applier to point to the master database, 
-set the username and password for the connection, and set the `autoStart` attribute:
+set the username and password for the connection, and set the *autoStart* attribute:
     
     db._useDatabase("_system");
     require("org/arangodb/replication").applier.properties({
@@ -66,7 +66,7 @@ After that, start the applier in the slave database:
     require("org/arangodb/replication").applier.start();
 
 After that, you should be able to monitor the state and progress of the replication 
-applier by executing the `state` command in the slave database:
+applier by executing the *state* command in the slave database:
     
     db._useDatabase("_system");
     require("org/arangodb/replication").applier.state();

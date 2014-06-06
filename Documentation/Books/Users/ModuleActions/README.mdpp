@@ -26,9 +26,11 @@ The function defines a response. code is the status code to return. result is th
 The function generates an error response.
 
 `actions.resultNotFound(req, res, code, msg, headers)`
+
 The function generates an error response.
 
 `actions.resultUnsupported(req, res, headers)`
+
 The function generates an error response.
 
 `actions.resultError(req, res, code, errorNum, errorMessage, headers, keyvals)`

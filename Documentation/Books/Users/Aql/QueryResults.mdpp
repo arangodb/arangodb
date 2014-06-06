@@ -60,7 +60,7 @@ queries might use data from collections that might also be inhomogeneous.  Some
 examples that will cause run-time errors are:
 
 - Division by zero: Will be triggered when an attempt is made to use the value
-  `0` as the divisor in an arithmetic division or modulus operation
+  *0* as the divisor in an arithmetic division or modulus operation
 - Invalid operands for arithmetic operations: Will be triggered when an attempt
   is made to use any non-numeric values as operands in arithmetic operations.
   This includes unary (unary minus, unary plus) and binary operations (plus,

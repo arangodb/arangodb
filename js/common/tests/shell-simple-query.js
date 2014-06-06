@@ -690,7 +690,7 @@ function SimpleQueryByExampleSuite () {
 /// @brief test: replaceByExampleWithNewSignature
 ////////////////////////////////////////////////////////////////////////////////
 
-      test_replaceByExampleWithNewSignature : function () {
+      testReplaceByExampleWithNewSignature : function () {
       var replaced;
 
       for (var i = 0; i < 50; ++i) {

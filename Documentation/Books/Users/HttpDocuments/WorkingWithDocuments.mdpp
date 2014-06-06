@@ -1,5 +1,820 @@
 !CHAPTER Working with Documents using REST
 
+`GET /_api/document/document-handle`*(reads a document)*
+
+!SUBSECTION URL parameters
+
+`document-handle (string,required)`
+
+The handle of the document.
+
+!SUBSECTION HTTP header parameters
+
+`If-None-Match (string,optional)`
+
+If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise an *HTTP 304* is returned.
+
+`If-Match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a *HTTP 412* is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Returns the document identified by *document-handle*. The returned document contains two special attributes: _id containing the document handle and _rev containing the revision.
+
+!SUBSECTION codes
+
+`HTTP 200`
+
+is returned if the document was found
+
+`HTTP 304`
+
+is returned if the "If-None-Match" header is given and the document has the same version
+
+`HTTP 404`
+
+is returned if the document or collection was not found
+
+`HTTP 412`
+
+is returned if a "If-Match" header or rev is given and the found document has a different version. The response will also contain the found document's current revision in the _rev attribute. Additionally, the attributes _id and _key will be returned.
+
+*Examples*
+
+Use a document handle:
+
+```
+unix> curl --dump - http://localhost:8529/_api/document/products/272950241
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "272950241"
+
+{ 
+  "hello" : "world", 
+  "_id" : "products/272950241", 
+  "_rev" : "272950241", 
+  "_key" : "272950241" 
+}
+```
+
+Use a document handle and an etag:
+
+```
+unix> curl --header 'If-None-Match: "273474529"' --dump - http://localhost:8529/_api/document/products/273474529
+```
+
+Unknown document handle:
+
+```
+unix> curl --dump - http://localhost:8529/_api/document/products/unknownhandle
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "document /_api/document/products/unknownhandle not found", 
+  "code" : 404, 
+  "errorNum" : 1202 
+}
+```
+
+`POST /_api/document`*(creates a document)*
+
+!SUBSECTION Body parameters
+
+`document (json,required)`
+
+A JSON representation of the document.
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The collection name.
+
+`createCollection (boolean,optional)`
+
+If this parameter has a value of true or yes, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed.
+*Note*: this flag is not supported in a cluster. Using it will result in an error.
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been synced to disk.
+
+!SUBSECTION Description
+
+Creates a new document in the collection named collection. A JSON representation of the document must be passed as the body of the POST request.
+If the document was created successfully, then the "Location" header contains the path to the newly created document. The "ETag" header field contains the revision of the document.
+
+The body of the response contains a JSON object with the following attributes:
+
+* _id contains the document handle of the newly created document
+* _key contains the document key
+* _rev contains the document revision
+
+If the collection parameter waitForSync is false, then the call returns as soon as the document has been accepted. It will not wait until the document has been synced to disk.
+
+Optionally, the URL parameter waitForSync can be used to force synchronization of the document creation operation to disk even in case that the waitForSync flag had been disabled for the entire collection. Thus, the waitForSync URL parameter can be used to force synchronization of just this specific operations. To use this, set the waitForSync parameter to true. If the waitForSync parameter is not specified or set to false, then the collection's default waitForSync behavior is applied. The waitForSync URL parameter cannot be used to disable synchronization for collections that have a default waitForSync value of true.
+
+!SUBSECTION codes
+
+`HTTP 201`
+
+is returned if the document was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the document was created successfully and waitForSync was false.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Create a document given a collection named products. Note that the revision identifier might or might not by equal to the auto-generated key.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+{ "Hello": "World" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+etag: "271115233"
+location: /_db/_system/_api/document/products/271115233
+
+{ 
+  "error" : false, 
+  "_id" : "products/271115233", 
+  "_rev" : "271115233", 
+  "_key" : "271115233" 
+}
+```
+
+Create a document in a collection named products with a collection-level waitForSync value of false.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+{ "Hello": "World" }
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "271573985"
+location: /_db/_system/_api/document/products/271573985
+
+{ 
+  "error" : false, 
+  "_id" : "products/271573985", 
+  "_rev" : "271573985", 
+  "_key" : "271573985" 
+}
+```
+
+Create a document in a collection with a collection-level waitForSync value of false, but using the waitForSync URL parameter.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products&waitForSync=true
+{ "Hello": "World" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+etag: "272032737"
+location: /_db/_system/_api/document/products/272032737
+
+{ 
+  "error" : false, 
+  "_id" : "products/272032737", 
+  "_rev" : "272032737", 
+  "_key" : "272032737" 
+}
+```
+
+Create a document in a new, named collection
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products&createCollection=true
+{ "Hello": "World" }
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "272491489"
+location: /_db/_system/_api/document/products/272491489
+
+{ 
+  "error" : false, 
+  "_id" : "products/272491489", 
+  "_rev" : "272491489", 
+  "_key" : "272491489" 
+}
+```
+
+Unknown collection name:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+{ "Hello": "World" }
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "collection 'products' not found", 
+  "code" : 404, 
+  "errorNum" : 1203 
+}
+```
+
+Illegal document:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+{ 1: "World" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "expecting attribute name", 
+  "code" : 400, 
+  "errorNum" : 600 
+}
+`````
+
+`PUT /_api/document/document-handle`*(replaces a document)*
+
+!SUBSECTION Body parameters
+
+`document (json,required)`
+
+A JSON representation of the new document.
+
+!SUBSECTION URL parameters
+
+`document-handle (string,required)`
+
+The handle of the document.
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been synced to disk.
+
+`rev (string,optional)`
+
+You can conditionally replace a document based on a target revision id by using the rev URL parameter.
+
+`policy (string,optional)`
+
+To control the update behavior in case there is a revision mismatch, you can use the policy parameter (see below).
+
+!SUBSECTION HTTP header parameters
+
+`If-Match (string,optional)`
+
+You can conditionally replace a document based on a target revision id by using the if-match HTTP header.
+
+!SUBSECTION Description
+
+Completely updates (i.e. replaces) the document identified by document-handle. If the document exists and can be updated, then a HTTP 201 is returned and the "ETag" header field contains the new revision of the document.
+If the new document passed in the body of the request contains the document-handle in the attribute _id and the revision in _rev, these attributes will be ignored. Only the URI and the "ETag" header are relevant in order to avoid confusion when using proxies.
+
+Optionally, the URL parameter waitForSync can be used to force synchronization of the document replacement operation to disk even in case that the waitForSync flag had been disabled for the entire collection. Thus, the waitForSync URL parameter can be used to force synchronization of just specific operations. To use this, set the waitForSync parameter to true. If the waitForSync parameter is not specified or set to false, then the collection's default waitForSync behavior is applied. The waitForSync URL parameter cannot be used to disable synchronization for collections that have a default waitForSync value of true.
+
+The body of the response contains a JSON object with the information about the handle and the revision. The attribute _id contains the known document-handle of the updated document, the attribute _rev contains the new document revision.
+
+If the document does not exist, then a HTTP 404 is returned and the body of the response contains an error document.
+
+There are two ways for specifying the targeted document revision id for conditional replacements (i.e. replacements that will only be executed if the revision id found in the database matches the document revision id specified in the request):
+
+* specifying the target revision in the rev URL query parameter
+* specifying the target revision in the if-match HTTP header
+* Specifying a target revision is optional, however, if done, only one of the described mechanisms must be used (either the rev URL parameter or the if-match HTTP header). Regardless which mechanism is used, the parameter needs to contain the target document revision id as returned in the _rev attribute of a document or by an HTTP etag header.
+
+For example, to conditionally replace a document based on a specific revision id, you can use the following request:
+
+`PUT /_api/document/document-handle?rev=etag`
+
+If a target revision id is provided in the request (e.g. via the etag value in the rev URL query parameter above), ArangoDB will check that the revision id of the document found in the database is equal to the target revision id provided in the request. If there is a mismatch between the revision id, then by default a HTTP 412 conflict is returned and no replacement is performed.
+
+The conditional update behavior can be overridden with the policy URL query parameter:
+
+`PUT /_api/document/document-handle?policy=policy`
+
+If policy is set to error, then the behavior is as before: replacements will fail if the revision id found in the database does not match the target revision id specified in the request.
+
+If policy is set to last, then the replacement will succeed, even if the revision id found in the database does not match the target revision id specified in the request. You can use the last policy to force replacements.
+
+!SUBSECTION codes
+
+`HTTP 201`
+
+is returned if the document was replaced successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the document was replaced successfully and waitForSync was false.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection or the document was not found
+
+`HTTP 412`
+
+is returned if a "If-Match" header or rev is given and the found document has a different version. The response will also contain the found document's current revision in the _rev attribute. Additionally, the attributes _id and _key will be returned.
+
+*Examples*
+
+Using document handle:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/275768289
+{"Hello": "you"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "276095969"
+location: /_db/_system/_api/document/products/275768289
+
+{ 
+  "error" : false, 
+  "_id" : "products/275768289", 
+  "_rev" : "276095969", 
+  "_key" : "275768289" 
+}
+```
+
+Unknown document handle:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/276554721
+{}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "document /_api/document/products/276554721 not found", 
+  "code" : 404, 
+  "errorNum" : 1202 
+}
+```
+
+Produce a revision conflict:
+
+```
+unix> curl -X PUT --header 'If-Match: "277668833"' --data-binary @- --dump - http://localhost:8529/_api/document/products/277341153
+{"other":"content"}
+
+HTTP/1.1 412 Precondition Failed
+content-type: application/json; charset=utf-8
+etag: "277341153"
+
+{ 
+  "error" : true, 
+  "code" : 412, 
+  "errorNum" : 1200, 
+  "errorMessage" : "precondition failed", 
+  "_id" : "products/277341153", 
+  "_rev" : "277341153", 
+  "_key" : "277341153" 
+}
+```
+
+Last write wins:
+
+```
+unix> curl -X PUT --header 'If-Match: "278651873"' --data-binary @- --dump - http://localhost:8529/_api/document/products/278324193?policy=last
+{}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "278914017"
+location: /_db/_system/_api/document/products/278324193
+
+{ 
+  "error" : false, 
+  "_id" : "products/278324193", 
+  "_rev" : "278914017", 
+  "_key" : "278324193" 
+}
+```
+
+Alternative to header field:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/279372769?rev=279700449
+{"other":"content"}
+
+HTTP/1.1 412 Precondition Failed
+content-type: application/json; charset=utf-8
+etag: "279372769"
+
+{ 
+  "error" : true, 
+  "code" : 412, 
+  "errorNum" : 1200, 
+  "errorMessage" : "precondition failed", 
+  "_id" : "products/279372769", 
+  "_rev" : "279372769", 
+  "_key" : "279372769" 
+}
+```
+
+`PATCH /_api/document/document-handle`*(patches a document)*
+
+!SUBSECTION Body parameters
+
+`document (json,required)`
+
+A JSON representation of the document update.
+
+!SUBSECTION URL parameters
+
+`document-handle (string,required)`
+
+The handle of the document.
+
+!SUBSECTION Query parameters
+
+`keepNull (boolean,optional)`
+
+If the intention is to delete existing attributes with the patch command, the URL query parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been synced to disk.
+
+`rev (string,optional)`
+
+You can conditionally patch a document based on a target revision id by using the rev URL parameter.
+
+`policy (string,optional)`
+
+To control the update behavior in case there is a revision mismatch, you can use the policy parameter.
+
+!SUBSECTION HTTP header parameters
+
+`If-Match (string,optional)`
+
+You can conditionally patch a document based on a target revision id by using the if-match HTTP header.
+
+!SUBSECTION Description
+
+Partially updates the document identified by document-handle. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing document if they do not yet exist, and overwritten in the existing document if they do exist there.
+Setting an attribute value to null in the patch document will cause a value of null be saved for the attribute by default.
+
+Optionally, the URL parameter waitForSync can be used to force synchronization of the document update operation to disk even in case that the waitForSync flag had been disabled for the entire collection. Thus, the waitForSync URL parameter can be used to force synchronization of just specific operations. To use this, set the waitForSync parameter to true. If the waitForSync parameter is not specified or set to false, then the collection's default waitForSync behavior is applied. The waitForSync URL parameter cannot be used to disable synchronization for collections that have a default waitForSync value of true.
+
+The body of the response contains a JSON object with the information about the handle and the revision. The attribute _id contains the known document-handle of the updated document, the attribute _rev contains the new document revision.
+
+If the document does not exist, then a HTTP 404 is returned and the body of the response contains an error document.
+
+You can conditionally update a document based on a target revision id by using either the rev URL parameter or the if-match HTTP header. To control the update behavior in case there is a revision mismatch, you can use the policy parameter. This is the same as when replacing documents (see replacing documents for details).
+
+!SUBSECTION codes
+
+`HTTP 201`
+
+is returned if the document was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the document was created successfully and waitForSync was false.
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a document. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection or the document was not found
+
+`HTTP 412`
+
+is returned if a "If-Match" header or rev is given and the found document has a different version. The response will also contain the found document's current revision in the _rev attribute. Additionally, the attributes _id and _key will be returned.
+
+*Examples*
+
+patches an existing document with new content.
+
+```
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/280355809
+{"hello":"world"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "280683489"
+location: /_db/_system/_api/document/products/280355809
+
+{ 
+  "error" : false, 
+  "_id" : "products/280355809", 
+  "_rev" : "280683489", 
+  "_key" : "280355809" 
+}
+
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/280355809
+{"numbers":{"one":1,"two":2,"three":3,"empty":null}}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "281273313"
+location: /_db/_system/_api/document/products/280355809
+
+{ 
+  "error" : false, 
+  "_id" : "products/280355809", 
+  "_rev" : "281273313", 
+  "_key" : "280355809" 
+}
+
+unix> curl --dump - http://localhost:8529/_api/document/products/280355809
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "281273313"
+
+{ 
+  "one" : "world", 
+  "hello" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3 
+  }, 
+  "_id" : "products/280355809", 
+  "_rev" : "281273313", 
+  "_key" : "280355809" 
+}
+
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/280355809?keepNull=false
+{"hello":null,"numbers":{"four":4}}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "281732065"
+location: /_db/_system/_api/document/products/280355809
+
+{ 
+  "error" : false, 
+  "_id" : "products/280355809", 
+  "_rev" : "281732065", 
+  "_key" : "280355809" 
+}
+
+unix> curl --dump - http://localhost:8529/_api/document/products/280355809
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "281732065"
+
+{ 
+  "one" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3, 
+    "four" : 4 
+  }, 
+  "_id" : "products/280355809", 
+  "_rev" : "281732065", 
+  "_key" : "280355809" 
+}
+```
+
+modifies a document, coordinator case in a cluster
+
+`DELETE /_api/document/document-handle`*(deletes a document)*
+
+!SUBSECTION URL parameters
+
+`document-handle (string,required)`
+
+Deletes the document identified by document-handle.
+
+!SUBSECTION Query parameters
+
+`rev (string,optional)`
+
+You can conditionally delete a document based on a target revision id by using the rev URL parameter.
+
+`policy (string,optional)`
+
+To control the update behavior in case there is a revision mismatch, you can use the policy parameter. This is the same as when replacing documents (see replacing documents for more details).
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been synced to disk.
+
+!SUBSECTION HTTP header parameters
+
+`If-Match (string,optional)`
+
+You can conditionally delete a document based on a target revision id by using the if-match HTTP header.
+
+!SUBSECTION Description
+
+The body of the response contains a JSON object with the information about the handle and the revision. The attribute _id contains the known document-handle of the deleted document, the attribute _rev contains the document revision.
+If the waitForSync parameter is not specified or set to false, then the collection's default waitForSync behavior is applied. The waitForSync URL parameter cannot be used to disable synchronization for collections that have a default waitForSync value of true.
+
+!SUBSECTION codes
+
+`HTTP 200`
+
+is returned if the document was deleted successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the document was deleted successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the collection or the document was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+is returned if a "If-Match" header or rev is given and the found document has a different version. The response will also contain the found document's current revision in the _rev attribute. Additionally, the attributes _id and _key will be returned.
+
+*Examples*
+
+Using document handle:
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/document/products/282256353
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "_id" : "products/282256353", 
+  "_rev" : "282256353", 
+  "_key" : "282256353" 
+}
+````
+
+Unknown document handle:
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/document/products/282911713
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "document /_api/document/products/282911713 not found", 
+  "code" : 404, 
+  "errorNum" : 1202 
+}
+````
+
+Revision conflict:
+
+```
+unix> curl -X DELETE --header 'If-Match: "284484577"' --dump - http://localhost:8529/_api/document/products/284156897
+
+HTTP/1.1 412 Precondition Failed
+content-type: application/json; charset=utf-8
+etag: "284156897"
+
+{ 
+  "error" : true, 
+  "code" : 412, 
+  "errorNum" : 1200, 
+  "errorMessage" : "precondition failed", 
+  "_id" : "products/284156897", 
+  "_rev" : "284156897", 
+  "_key" : "284156897" 
+}
+```
+
+`HEAD /_api/document/document-handle`*(reads a document header)*
+
+!SUBSECTION URL parameters
+
+`document-handle (string,required)`
+
+The handle of the document.
+
+!SUBSECTION Query parameters
+
+`rev (string,optional)`
+
+You can conditionally fetch a document based on a target revision id by using the rev URL parameter.
+
+!SUBSECTION HTTP header parameters
+
+`If-None-Match (string,optional)`
+
+If the "If-None-Match" header is given, then it must contain exactly one etag. If the current document revision is different to the specified etag, an HTTP 200 response is returned. If the current document revision is identical to the specified etag, then an HTTP 304 is returned.
+
+`If-Match (string,optional)`
+
+You can conditionally fetch a document based on a target revision id by using the if-match HTTP header.
+
+!SUBSECTION Description
+
+Like GET, but only returns the header fields and not the body. You can use this call to get the current revision of a document or check if the document was deleted.
+
+!SUBSECTION codes
+
+`HTTP 200`
+
+is returned if the document was found
+
+`HTTP 304`
+
+is returned if the "If-None-Match" header is given and the document has same version
+
+`HTTP 404`
+
+is returned if the document or collection was not found
+
+`HTTP 412`
+
+is returned if a "If-Match" header or rev is given and the found document has a different version. The response will also contain the found document's current revision in the etag header.
+
+*Examples*
+
+```
+unix> curl -X HEAD --dump - http://localhost:8529/_api/document/products/275244001
+```
+
+`GET /_api/document`*(reads all documents from collection)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The name of the collection.
+
+!SUBSECTION Description
+
+Returns a list of all URI for all documents from the collection identified by collection.
+
+!SUBSECTION codes
+
+`HTTP 200`
+
+All went good.
+
+`HTTP 404`
+
+The collection does not exist.
+
+*Examples*
+
+Returns a all ids.
+
+```
+unix> curl --dump - http://localhost:8529/_api/document/?collection=products
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "documents" : [ 
+    "/_api/document/products/274392033", 
+    "/_api/document/products/274719713", 
+    "/_api/document/products/274064353" 
+  ] 
+}
+```
+
+Collection does not exist.
+
+```
+unix> curl --dump - http://localhost:8529/_api/document/?collection=doesnotexist
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "collection 'doesnotexist' not found", 
+  "code" : 404, 
+  "errorNum" : 1203 
+}
+```
+
+<!--
 @CLEARPAGE
 @anchor RestDocumentRead
 @copydetails triagens::arango::RestDocumentHandler::readSingleDocument
@@ -27,3 +842,4 @@
 @CLEARPAGE
 @anchor RestDocumentReadAll
 @copydetails triagens::arango::RestDocumentHandler::readAllDocuments
+-->

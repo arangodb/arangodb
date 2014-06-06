@@ -2619,9 +2619,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       }
     }
   }
-// LOG_ERROR ( "overwrite %d  keepNull %d waitForSync %d" , options.overwrite , options.keepNull , options.waitForSync);
-  // delete null attributes
-  // default value: null values are saved as Null
 
   TRI_voc_key_t key = 0;
   TRI_voc_rid_t rid;
@@ -9930,7 +9927,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
-  if (acc == 0 || acc->_resultSid == 0) {
+  if (acc == 0 || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 

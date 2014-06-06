@@ -8,8 +8,8 @@ the database name in front of the actual path:
 
     http://localhost:8529/_db/mydb/...
 
-where `...` is the actual path to the accessed resource. In the example, the resource will be
-accessed in the context of the database `mydb`. Actual URLs in the context of `mydb` could look
+where *...* is the actual path to the accessed resource. In the example, the resource will be
+accessed in the context of the database *mydb*. Actual URLs in the context of *mydb* could look
 like this:
 
     http://localhost:8529/_db/mydb/_api/version

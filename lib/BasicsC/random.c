@@ -67,20 +67,18 @@ static unsigned long SeedRandom (void) {
 #ifdef TRI_HAVE_GETTIMEOFDAY
   struct timeval tv;
   int result;
-#endif
 
-
-  seed = (unsigned long) time(0);
-
-#ifdef TRI_HAVE_GETTIMEOFDAY
   result = gettimeofday(&tv, 0);
 
-  seed ^= (unsigned long)(tv.tv_sec);
+  seed = (unsigned long)(tv.tv_sec);
   seed ^= (unsigned long)(tv.tv_usec);
-  seed ^= (unsigned long)(result);
+#else
+  seed = (unsigned long) time(0);
 #endif
 
-  seed ^= (unsigned long)(TRI_CurrentProcessId());
+  seed ^= (unsigned long)(TRI_CurrentProcessId() << 8);
+  seed ^= (unsigned long)(TRI_CurrentProcessId() << 16);
+  seed ^= (unsigned long)(TRI_CurrentProcessId() << 24);
   seed ^= (unsigned long)(TRI_CurrentThreadId());
 
   return seed;
@@ -106,15 +104,15 @@ static unsigned long SeedRandom (void) {
 uint16_t TRI_UInt16Random (void) {
 #if RAND_MAX == 2147483647
 
-  return rand() & 0xFFFF;
+  return TRI_random() & 0xFFFF;
 
 #else
 
   uint32_t l1;
   uint32_t l2;
 
-  l1 = rand();
-  l2 = rand();
+  l1 = TRI_random();
+  l2 = TRI_random();
 
   return ((l1 & 0xFF) << 8) | (l2 & 0xFF);
 
@@ -131,8 +129,8 @@ uint32_t TRI_UInt32Random (void) {
   uint32_t l1;
   uint32_t l2;
 
-  l1 = (uint32_t) rand();
-  l2 = (uint32_t) rand();
+  l1 = (uint32_t) TRI_random();
+  l2 = (uint32_t) TRI_random();
 
   return ((l1 & 0xFFFF) << 16) | (l2 & 0xFFFF);
 
@@ -143,10 +141,10 @@ uint32_t TRI_UInt32Random (void) {
   uint32_t l3;
   uint32_t l4;
 
-  l1 = rand();
-  l2 = rand();
-  l3 = rand();
-  l4 = rand();
+  l1 = TRI_random();
+  l2 = TRI_random();
+  l3 = TRI_random();
+  l4 = TRI_random();
 
   return ((l1 & 0xFF) << 24) | ((l2 & 0xFF) << 16) | ((l3 & 0xFF) << 8) | (l4 & 0xFF);
 
@@ -179,7 +177,8 @@ void TRI_InitialiseRandom (void) {
     return;
   }
 
-  srandom(SeedRandom());
+  
+  TRI_srandom(SeedRandom());
 
   Initialised = true;
 }
