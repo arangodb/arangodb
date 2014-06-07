@@ -45,3 +45,26 @@
         {% endif %}
     </ul>
 </div>
+<script type="text/javascript">
+  jQuery(".summary>li").each(function(){
+  	var flag = true;
+  	var x = window.location.href;
+  	x = x.split("/");
+  	x = x[x.length - 2] + '/' + x[x.length - 1];
+  	jQuery('a',this).each(function(){
+  		var str = jQuery(this).attr('href');
+  		if(str.search(x) != -1){
+  		console.log(x);
+  		console.log(str);
+  			flag = false;
+  		}
+  	});
+  	if(flag){
+  		jQuery('ul',this).hide();
+  	}
+  });
+  jQuery(".summary>li").on("click",function(){
+  	jQuery(".summary>li>ul").hide();
+  	jQuery("ul",this).slideDown();
+  });
+</script>
