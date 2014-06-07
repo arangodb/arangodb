@@ -1430,14 +1430,7 @@ static int StoreGeoResult (V8ReadTransaction& trx,
 
   // sort result by distance
   auto compareSort = [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
-    if (left._distance < right._distance) {
-      return -1;
-    } 
-    else if (left._distance > right._distance) {
-      return 1;
-    }
-
-    return 0;
+    return left._distance < right._distance;
   };
   std::sort(tmp, gnd, compareSort);
 

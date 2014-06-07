@@ -88,7 +88,7 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
   }
 
   auto compareSort = [] (char const* l, char const* r) {
-    return strcmp(l, r);
+    return (strcmp(l, r) < 0);
   };
   std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords, compareSort);
 }
