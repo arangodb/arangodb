@@ -46,6 +46,22 @@ var compareStringIds = function (l, r) {
 
   return 0;
 };
+  
+var sortedKeys = function (col) {
+  var keys = [ ];
+
+  col.toArray().forEach(function (d) { 
+    keys.push(d._key);
+  });
+
+  keys.sort();
+  return keys;
+};
+
+var assertOrder = function (keys, col) {
+  assertEqual(keys.length, col.count());
+  assertEqual(keys, col.first(keys.length).map(function (doc) { return doc._key; }));
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -610,29 +626,6 @@ function transactionCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: trx using a reserved name
-////////////////////////////////////////////////////////////////////////////////
-
-    testTrxCollection : function () {
-      var obj = {
-        collections : {
-          write: "_trx"
-        },
-        action : function () {
-          return true;
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: trx using waitForSync
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -687,17 +680,6 @@ function transactionOperationsSuite () {
 
   var c1 = null;
   var c2 = null;
-  
-  var sortedKeys = function (col) {
-    var keys = [ ];
-
-    col.toArray().forEach(function (d) { 
-      keys.push(d._key);
-    });
-
-    keys.sort();
-    return keys;
-  };
 
   return {
 
@@ -1982,17 +1964,6 @@ function transactionRollbackSuite () {
 
   var c1 = null;
       
-  var sortedKeys = function (col) {
-    var keys = [ ];
-
-    col.toArray().forEach(function (d) { 
-      keys.push(d._key);
-    });
-
-    keys.sort();
-    return keys;
-  };
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2081,6 +2052,7 @@ function transactionRollbackSuite () {
       c1.save({ _key: "foo" });
       c1.save({ _key: "bar" });
       c1.save({ _key: "meow" });
+      assertOrder(["foo", "bar", "meow"], c1);
 
       var obj = {
         collections : {
@@ -2090,8 +2062,65 @@ function transactionRollbackSuite () {
           c1.save({ _key: "tom" });
           c1.save({ _key: "tim" });
           c1.save({ _key: "tam" });
+      
+          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
 
           assertEqual(6, c1.count());
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(3, c1.count());
+      assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
+      assertOrder(["foo", "bar", "meow"], c1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback inserts
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackInsertUpdate : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo" });
+      c1.save({ _key: "bar" });
+      c1.save({ _key: "meow" });
+      assertOrder(["foo", "bar", "meow"], c1);
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.save({ _key: "tom" });
+          c1.save({ _key: "tim" });
+          c1.save({ _key: "tam" });
+          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
+
+          c1.update("tom", { });
+          assertOrder(["foo", "bar", "meow", "tim", "tam", "tom"], c1);
+          c1.update("tim", { });
+          assertOrder(["foo", "bar", "meow", "tam", "tom", "tim"], c1);
+          c1.update("tam", { });
+          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
+          c1.update("bar", { });
+          assertOrder(["foo", "meow", "tom", "tim", "tam", "bar"], c1);
+          c1.remove("foo");
+          assertOrder(["meow", "tom", "tim", "tam", "bar"], c1);
+          c1.remove("bar");
+          assertOrder(["meow", "tom", "tim", "tam"], c1);
+          c1.remove("meow");
+          assertOrder(["tom", "tim", "tam"], c1);
+          c1.remove("tom");
+          assertOrder(["tim", "tam"], c1);
+
+          assertEqual(2, c1.count());
           throw "rollback";
         }
       };
@@ -2349,10 +2378,8 @@ function transactionRollbackSuite () {
         },
         action : function () {
           c1.save({ _key: "bar" });
-
           c1.save({ _key: "foo" });
-
-          throw "rollback";
+          fail();
         }
       };
 
@@ -2382,11 +2409,10 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action : function () {
-          c1.save( { name: "bar" });
-          c1.save( { name: "baz" });
-          c1.save( { name: "foo" });
-
-          throw "rollback";
+          c1.save({ name: "bar" });
+          c1.save({ name: "baz" });
+          c1.save({ name: "foo" });
+          fail();
         }
       };
 
@@ -3012,17 +3038,6 @@ function transactionCrossCollectionSuite () {
   var c1 = null;
   var c2 = null;
   
-  var sortedKeys = function (col) {
-    var keys = [ ];
-
-    col.toArray().forEach(function (d) { 
-      keys.push(d._key);
-    });
-
-    keys.sort();
-    return keys;
-  };
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

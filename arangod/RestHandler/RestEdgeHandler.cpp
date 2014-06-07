@@ -235,7 +235,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -264,14 +264,14 @@ bool RestEdgeHandler::createDocument () {
   TRI_document_edge_t edge;
   edge._fromCid = cid;
   edge._toCid   = cid;
-  edge._fromKey = 0;
-  edge._toKey   = 0;
+  edge._fromKey = nullptr;
+  edge._toKey   = nullptr;
 
   string wrongPart;
   // Note that in a DBserver in a cluster, the following call will
   // actually parse the first part of `from` as a cluster-wide
   // collection name, exactly as it is needed here!
-  res = parseDocumentId(from, edge._fromCid, edge._fromKey);
+  res = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
     wrongPart = "'from'";
@@ -280,7 +280,8 @@ bool RestEdgeHandler::createDocument () {
     // Note that in a DBserver in a cluster, the following call will
     // actually parse the first part of `from` as a cluster-wide
     // collection name, exactly as it is needed here!
-    res = parseDocumentId(to, edge._toCid, edge._toKey);
+    res = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
+
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'to'";
     }
@@ -308,9 +309,8 @@ bool RestEdgeHandler::createDocument () {
   Barrier barrier(primary);
 
   // will hold the result
-  TRI_doc_mptr_copy_t document;
-  res = trx.createEdge(&document, json, waitForSync, &edge);
-  const bool wasSynchronous = trx.synchronous();
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.createEdge(&mptr, json, waitForSync, &edge);
   res = trx.finish(res);
   
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -326,15 +326,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  TRI_ASSERT(document.getDataPtr() != nullptr);    // PROTECTED by trx here
-
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }

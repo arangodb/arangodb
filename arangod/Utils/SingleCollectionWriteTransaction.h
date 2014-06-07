@@ -71,10 +71,9 @@ namespace triagens {
 /// allow avoiding a lot of the general transaction overhead.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const triagens::arango::CollectionNameResolver& resolver,
-                                          const TRI_voc_cid_t cid) :
-          SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_WRITE),
+        SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
+                                          TRI_voc_cid_t cid) :
+          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
           _numWrites(0) {
 
           if (N == 1) {
@@ -86,10 +85,9 @@ namespace triagens {
 /// @brief same as above, but create using collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionWriteTransaction (TRI_vocbase_t* const vocbase,
-                                          const triagens::arango::CollectionNameResolver& resolver,
-                                          const string& name) :
-          SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_WRITE),
+        SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
+                                          std::string const& name) :
+          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
           _numWrites(0) {
 
           if (N == 1) {

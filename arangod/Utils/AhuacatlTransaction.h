@@ -65,10 +65,9 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase,
-                             triagens::arango::CollectionNameResolver const& resolver,
-                             TRI_aql_context_t* const context) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, false) {
+        AhuacatlTransaction (struct TRI_vocbase_s* vocbase,
+                             TRI_aql_context_t* context) :
+          Transaction<T>(vocbase, TRI_GetIdServer(), false) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
@@ -79,7 +78,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
 
-            processCollection(resolver, collection);
+            processCollection(collection);
           }
         }
 
@@ -94,23 +93,21 @@ namespace triagens {
 /// @brief add a collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        void processCollection (triagens::arango::CollectionNameResolver const& resolver,
-                                TRI_aql_collection_t* collection) {
+        void processCollection (TRI_aql_collection_t* collection) {
           if (ServerState::instance()->isCoordinator()) {
-            processCollectionCoordinator(resolver, collection);
-            return;
+            processCollectionCoordinator(collection);
           }
-
-          processCollectionNormal(resolver, collection);
+          else {
+            processCollectionNormal(collection);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a coordinator collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionCoordinator (triagens::arango::CollectionNameResolver const& resolver,
-                                           TRI_aql_collection_t* collection) {
-          TRI_voc_cid_t cid = resolver.getCollectionIdCluster(collection->_name);
+        void processCollectionCoordinator (TRI_aql_collection_t* collection) {
+          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->_name);
          
           this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
         }
@@ -119,9 +116,8 @@ namespace triagens {
 /// @brief add a regular collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionNormal (triagens::arango::CollectionNameResolver const& resolver,
-                                      TRI_aql_collection_t* collection) {
-          TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name);
+        void processCollectionNormal (TRI_aql_collection_t* collection) {
+          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->_name);
           TRI_voc_cid_t cid = 0;
 
           if (col != 0) {
@@ -131,7 +127,7 @@ namespace triagens {
           int res = this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
 
           if (res == TRI_ERROR_NO_ERROR && col != 0) {
-            collection->_collection = (TRI_vocbase_col_t*) col;
+            collection->_collection = const_cast<TRI_vocbase_col_t*>(col);
           }
         }
 

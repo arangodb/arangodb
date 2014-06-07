@@ -48,9 +48,6 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
-struct TRI_df_marker_s;
-struct TRI_doc_deletion_key_marker_s;
-struct TRI_doc_document_key_marker_s;
 struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_s;
@@ -527,12 +524,41 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase
 
 static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     return ((char const*) mptr->getDataPtr()) + ((TRI_doc_document_key_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
   else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
     return ((char const*) mptr->getDataPtr()) + ((triagens::wal::document_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
   }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_copy_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((char const*) mptr->getDataPtr()) + ((TRI_doc_document_key_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+  }
+  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((char const*) mptr->getDataPtr()) + ((triagens::wal::document_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
   return nullptr;
 }
 
@@ -598,7 +624,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
                                              TRI_voc_document_operation_e,
                                              TRI_doc_mptr_t*,
-                                             TRI_doc_mptr_copy_t*);
+                                             TRI_doc_mptr_copy_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new journal

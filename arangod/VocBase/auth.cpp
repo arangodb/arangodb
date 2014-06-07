@@ -447,10 +447,10 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
 
-  CollectionNameResolver resolver(vocbase);
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext>> trx(vocbase, resolver, collection->_cid);
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(vocbase, collection->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }

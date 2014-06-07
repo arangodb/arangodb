@@ -14,6 +14,13 @@ namespace triagens {
     class Marker;
 
     struct DocumentOperation {
+      enum class StatusType : uint8_t {
+        CREATED,
+        INDEXED,
+        HANDLED,
+        SWAPPED
+      };
+ 
       DocumentOperation (Marker* marker,
                          struct TRI_transaction_collection_s* trxCollection,
                          TRI_voc_document_operation_e type,
@@ -23,20 +30,19 @@ namespace triagens {
           header(nullptr),
           rid(rid),
           type(type),
-          handled(false),
-          hasReachedIndexes(false) {
+          status(StatusType::CREATED) {
 
         TRI_ASSERT(marker != nullptr);
       }
 
       ~DocumentOperation () {
-        if (handled) {
+        if (status == StatusType::HANDLED) {
           if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
             TRI_document_collection_t* document = trxCollection->_collection->_collection;
             document->_headersPtr->release(document->_headersPtr, header, false);  // PROTECTED by trx in trxCollection
           }
         }
-        else {
+        else if (status != StatusType::SWAPPED) {
           revert();
         }
 
@@ -49,31 +55,34 @@ namespace triagens {
         DocumentOperation* copy = new DocumentOperation(marker, trxCollection, type, rid);
         copy->header = header;
         copy->oldHeader = oldHeader;
-        copy->hasReachedIndexes = hasReachedIndexes;
+        copy->status = status;
 
         type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN; 
         marker = nullptr;
         header = nullptr;
-        handled = true;
+        status = StatusType::SWAPPED;
 
         return copy;
       }
 
       void init () {
-        if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+        if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           // copy the old header into a safe area
           TRI_ASSERT(header != nullptr);
-
           oldHeader = *header;
         }
+      }
+   
+      void indexed () {
+        TRI_ASSERT(status == StatusType::CREATED);
+        status = StatusType::INDEXED;
       }
 
       void handle () {
         TRI_ASSERT(header != nullptr);
-        TRI_ASSERT(! handled);
+        TRI_ASSERT(status == StatusType::INDEXED);
 
-        hasReachedIndexes = true;
-          
         TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
@@ -92,17 +101,17 @@ namespace triagens {
  
         // free the local marker buffer 
         delete[] marker->steal();
-        handled = true;
+        status = StatusType::HANDLED;
       }
 
       void revert () {
-        if (header == nullptr) {
+        if (header == nullptr || status == StatusType::SWAPPED) {
           return;
         }
 
         TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-        if (hasReachedIndexes) {
+        if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
           TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
         }
 
@@ -111,10 +120,13 @@ namespace triagens {
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           document->_headersPtr->move(document->_headersPtr, header, &oldHeader);  // PROTECTED by trx in trxCollection
+          header->copy(oldHeader); 
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          document->_headersPtr->relink(document->_headersPtr, header, header);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->relink(document->_headersPtr, header, &oldHeader); // PROTECTED by trx in trxCollection
         }
+
+        status = StatusType::SWAPPED;
       }
 
       Marker*                               marker;
@@ -123,8 +135,7 @@ namespace triagens {
       TRI_doc_mptr_copy_t                   oldHeader;
       TRI_voc_rid_t const                   rid;
       TRI_voc_document_operation_e          type;
-      bool                                  handled;
-      bool                                  hasReachedIndexes;
+      StatusType                            status;
     };
   }
 }

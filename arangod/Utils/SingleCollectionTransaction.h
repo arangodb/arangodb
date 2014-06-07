@@ -56,30 +56,36 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
-///
-/// A single collection transaction operates on a single collection (you guessed
-/// it)
+/// @brief create the transaction, using a collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* const vocbase,
-                                     const triagens::arango::CollectionNameResolver& resolver,
-                                     const TRI_voc_cid_t cid,
-                                     const TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, true),
+        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+                                     TRI_voc_cid_t cid,
+                                     TRI_transaction_type_e accessType) :
+          Transaction<T>(vocbase, TRI_GetIdServer(), true),
           _cid(cid),
           _accessType(accessType) {
 
           // add the (sole) collection
           this->addCollection(cid, _accessType);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the transaction, using a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+                                     std::string const& name,
+                                     TRI_transaction_type_e accessType) :
+          Transaction<T>(vocbase, TRI_GetIdServer(), true),
+          _cid(this->resolver()->getCollectionId(name)),
+          _accessType(accessType) {
+
+          // add the (sole) collection
+          this->addCollection(_cid, _accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,18 +95,9 @@ namespace triagens {
         virtual ~SingleCollectionTransaction () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -124,9 +121,9 @@ namespace triagens {
         inline TRI_document_collection_t* documentCollection () {
           TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
-          TRI_ASSERT(trxCollection != 0);
-          TRI_ASSERT(trxCollection->_collection != 0);
-          TRI_ASSERT(trxCollection->_collection->_collection != 0);
+          TRI_ASSERT(trxCollection != nullptr);
+          TRI_ASSERT(trxCollection->_collection != nullptr);
+          TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
           
           return trxCollection->_collection->_collection;
         }
@@ -228,18 +225,9 @@ namespace triagens {
           return this->readIncremental(this->trxCollection(), docs, barrier, internalSkip, batchSize, skip, total);
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -254,10 +242,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_type_e _accessType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 

@@ -31,12 +31,13 @@
 #include "Basics/Common.h"
 
 #include "VocBase/transaction.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 
 namespace triagens {
   namespace arango {
 
-    class RestTransactionContext : public TransactionBase {
+    class RestTransactionContext {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestTransactionContext
@@ -59,7 +60,22 @@ namespace triagens {
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~RestTransactionContext () {
+        virtual ~RestTransactionContext () {
+//          unregisterTransaction();
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        inline CollectionNameResolver const* getResolver () const {
+          return _resolver;
         }
 
 // -----------------------------------------------------------------------------
@@ -69,18 +85,28 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is embeddable
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isEmbeddable () {
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the parent transaction (none in our case)
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_t* getParentTransaction () const {
-          return 0;
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the transaction, does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int registerTransaction (TRI_transaction_t* const trx) const {
+        inline int registerTransaction (TRI_transaction_t* trx) {
+          _resolver = new CollectionNameResolver(trx->_vocbase);
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -88,9 +114,26 @@ namespace triagens {
 /// @brief unregister the transaction, does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int unregisterTransaction () const {
+        inline int unregisterTransaction () {
+          if (_resolver != nullptr) {
+            delete _resolver;
+            _resolver = nullptr;
+          }
+
           return TRI_ERROR_NO_ERROR;
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+ 
+        CollectionNameResolver* _resolver;
 
     };
 

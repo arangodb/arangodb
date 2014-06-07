@@ -34,12 +34,14 @@
 
 #include "V8/v8-globals.h"
 
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 
 namespace triagens {
   namespace arango {
 
-    class V8TransactionContext : public TransactionBase {
+    template<bool EMBEDDABLE>
+    class V8TransactionContext {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class V8TransactionContext
@@ -63,7 +65,8 @@ namespace triagens {
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~V8TransactionContext () {
+        virtual ~V8TransactionContext () {
+//          unregisterTransaction();
         }
 
 // -----------------------------------------------------------------------------
@@ -71,6 +74,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        inline CollectionNameResolver const* getResolver () const {
+          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the transaction is embedded
@@ -88,12 +99,20 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is embeddable
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isEmbeddable () const {
+          return EMBEDDABLE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_t* getParentTransaction () const {
           if (_v8g->_currentTransaction != nullptr) {
-            return (TRI_transaction_t*) _v8g->_currentTransaction;
+            return static_cast<TRI_transaction_t*>(_v8g->_currentTransaction);
           }
 
           return nullptr;
@@ -103,8 +122,9 @@ namespace triagens {
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int registerTransaction (TRI_transaction_t* const trx) const {
+        inline int registerTransaction (TRI_transaction_t* trx) {
           _v8g->_currentTransaction = trx;
+          _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -113,8 +133,15 @@ namespace triagens {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int unregisterTransaction () const {
+        inline int unregisterTransaction () {
           _v8g->_currentTransaction = nullptr;
+
+          if (_v8g->_resolver != nullptr) {
+            CollectionNameResolver* resolver = static_cast<CollectionNameResolver*>(_v8g->_resolver);
+            delete resolver;
+
+            _v8g->_resolver = nullptr;
+          }
 
           return TRI_ERROR_NO_ERROR;
         }

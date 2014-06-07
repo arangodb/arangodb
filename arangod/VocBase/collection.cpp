@@ -165,9 +165,7 @@ static bool UpgradeOpenIterator (TRI_df_marker_t const* marker,
   }
   // deletion
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-    TRI_doc_deletion_key_marker_t const* d;
-
-    d = (TRI_doc_deletion_key_marker_t const*) marker;
+    TRI_doc_deletion_key_marker_t const* d = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
     key = ((char*) d) + d->_offsetKey;
 
     found = static_cast<old_doc_mptr_t*>(TRI_LookupByKeyAssociativePointer(primaryIndex, key));
@@ -1752,7 +1750,6 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CloseCollection (TRI_collection_t* collection) {
-
   // close compactor files
   CloseDataFiles(&collection->_compactors);
 

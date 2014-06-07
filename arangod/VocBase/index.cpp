@@ -658,11 +658,22 @@ static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
-    char const* key = (char const*) edge + edge->_offsetFromKey;
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
-    hash = edge->_fromCid;
-    hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      char const* key = (char const*) edge + edge->_offsetFromKey;
+
+      hash = edge->_fromCid;
+      hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      char const* key = (char const*) edge + edge->_offsetFromKey;
+
+      hash = edge->_fromCid;
+      hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    }
   }
 
   return fasthash64(&hash, sizeof(hash), 0x56781234);
@@ -682,11 +693,22 @@ static uint64_t HashElementEdgeTo (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
-    char const* key = (char const*) edge + edge->_offsetToKey;
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
-    hash = edge->_toCid;
-    hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      char const* key = (char const*) edge + edge->_offsetToKey;
+
+      hash = edge->_toCid;
+      hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      char const* key = (char const*) edge + edge->_offsetToKey;
+
+      hash = edge->_toCid;
+      hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
+    }
   }
 
   return fasthash64(&hash, sizeof(hash), 0x56781234);
@@ -705,10 +727,20 @@ static bool IsEqualKeyEdgeFrom (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
-  char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
 
-  return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_fromCid;
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+    return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+    return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,10 +756,20 @@ static bool IsEqualKeyEdgeTo (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
-  char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
 
-  return (strcmp(lKey, rKey) == 0) && l->_cid == rEdge->_toCid;
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+    return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+    return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -742,14 +784,47 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
     return left == right;
   }
   else {
-    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
-    char const* lKey = (char const*) lEdge + lEdge->_offsetFromKey;
-    char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+    TRI_df_marker_t const* marker;
+    char const* lKey;
+    TRI_voc_cid_t lCid;
+    char const* rKey;
+    TRI_voc_cid_t rCid;
 
-    return strcmp(lKey, rKey) == 0 && lEdge->_fromCid == rEdge->_fromCid;
+    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
+    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+  
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) lEdge + lEdge->_offsetFromKey;
+      lCid = lEdge->_fromCid;
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) lEdge + lEdge->_offsetFromKey;
+      lCid = lEdge->_fromCid;
+    }
+    else {
+      return false;
+    }
+
+    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) rEdge + rEdge->_offsetFromKey;
+      rCid = rEdge->_fromCid;
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+      rCid = rEdge->_fromCid;
+    }
+    else {
+      return false;
+    }
+
+    return lCid == rCid && strcmp(lKey, rKey) == 0;
   }
 }
 
@@ -765,14 +840,47 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
     return left == right;
   }
   else {
-    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
-    char const* lKey = (char const*) lEdge + lEdge->_offsetToKey;
-    char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+    TRI_df_marker_t const* marker;
+    char const* lKey;
+    TRI_voc_cid_t lCid;
+    char const* rKey;
+    TRI_voc_cid_t rCid;
 
-    return strcmp(lKey, rKey) == 0 && lEdge->_toCid == rEdge->_toCid;
+    TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
+    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+  
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) lEdge + lEdge->_offsetToKey;
+      lCid = lEdge->_toCid;
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) lEdge + lEdge->_offsetToKey;
+      lCid = lEdge->_toCid;
+    }
+    else {
+      return false;
+    }
+
+    TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
+    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      lKey = (char const*) rEdge + rEdge->_offsetToKey;
+      rCid = rEdge->_toCid;
+    }
+    else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      rKey = (char const*) rEdge + rEdge->_offsetToKey;
+      rCid = rEdge->_toCid;
+    }
+    else {
+      return false;
+    }
+
+    return lCid == rCid && strcmp(lKey, rKey) == 0;
   }
 }
 

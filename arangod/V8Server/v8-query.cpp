@@ -1023,8 +1023,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1056,9 +1055,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), col, argv[0], false, &err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1239,8 +1238,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1276,9 +1274,9 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
 
   v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), col, argv[0], false, &err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1509,8 +1507,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1560,7 +1557,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       TRI_voc_cid_t cid;
       TRI_voc_key_t key = 0;
 
-      res = TRI_ParseVertex(resolver, cid, key, vertices->Get(i), true);
+      res = TRI_ParseVertex(trx.resolver(), cid, key, vertices->Get(i), true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // error is just ignored
@@ -1608,10 +1605,10 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
   else {
     TRI_vector_pointer_t edges;
 
-    TRI_voc_key_t key = 0;
+    TRI_voc_key_t key = nullptr;
     TRI_voc_cid_t cid;
 
-    res = TRI_ParseVertex(resolver, cid, key, argv[0], true);
+    res = TRI_ParseVertex(trx.resolver(), cid, key, argv[0], true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
@@ -1619,7 +1616,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
     edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
-    if (key != 0) {
+    if (key != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
@@ -1698,8 +1695,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1783,8 +1779,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1865,8 +1860,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   TRI_doc_mptr_copy_t document;
   document.setDataPtr(nullptr);  // PROTECTED by stack locality
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1935,8 +1929,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2084,9 +2077,9 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
   result->Set(v8::String::New("documents"), documents);
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2183,8 +2176,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2251,12 +2243,16 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
 }
 
-typedef struct collection_checksum_s {
-  TRI_string_buffer_t      _buffer;
-  CollectionNameResolver*  _resolver;
-  uint32_t                 _checksum;
-}
-collection_checksum_t;
+struct collection_checksum_t {
+  collection_checksum_t (CollectionNameResolver const* resolver) 
+    : _resolver(resolver), 
+      _checksum(0) {
+  }
+
+  CollectionNameResolver const*  _resolver;
+  TRI_string_buffer_t            _buffer;
+  uint32_t                       _checksum;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for checksum calculation, WR = with _rid, WD = with data
@@ -2272,24 +2268,35 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+      marker->_type == TRI_WAL_MARKER_DOCUMENT) {
     localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
   }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
-
+  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+           marker->_type == TRI_WAL_MARKER_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
     localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
-    const string extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
-                         helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
+      string const extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                           helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
   
-    localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+    }
+    else {
+      triagens::wal::edge_marker_t const* e = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+      string const extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                           helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+  
+      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+    }
   }
   else {
     return true;
@@ -2297,7 +2304,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 
   if (WD) {
     // with data
-    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+    void const* d = static_cast<void const*>(marker);
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
@@ -2358,8 +2365,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     withData = TRI_ObjectToBoolean(argv[1]);
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2371,9 +2377,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   Barrier barrier(document);
   
-  collection_checksum_t helper;
-  helper._checksum = 0;
-  helper._resolver = &resolver;
+  collection_checksum_t helper(trx.resolver());
     
   // .............................................................................
   // inside a read transaction
@@ -2496,8 +2500,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  SingleCollectionReadOnlyTransaction<V8TransactionContext<true>> trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
         
@@ -2584,9 +2587,9 @@ static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2698,8 +2701,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2763,8 +2765,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 
   TRI_barrier_t* barrier = 0;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  SingleCollectionReadOnlyTransaction<V8TransactionContext<true>> trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
         
@@ -2853,9 +2854,9 @@ static v8::Handle<v8::Value> NearQuery (V8ReadTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2909,8 +2910,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2977,9 +2977,9 @@ static v8::Handle<v8::Value> WithinQuery (V8ReadTransaction& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -3033,8 +3033,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  V8ReadTransaction trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for potentially embedded transactions
+/// @brief collection meta-data read locker
 ///
 /// @file
 ///
@@ -22,61 +22,64 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H
-#define TRIAGENS_UTILS_EMBEDDABLE_TRANSACTION_H 1
+#ifndef TRIAGENS_UTILS_COLLECTION_METADATA_READ_LOCKER_H
+#define TRIAGENS_UTILS_COLLECTION_METADATA_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
+
+#include "VocBase/collection.h"
 
 namespace triagens {
   namespace arango {
 
-    template<typename C>
-    class EmbeddableTransaction : public C {
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                       class EmbeddableTransaction
+// --SECTION--                                class CollectionMetadataReadLocker
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        EmbeddableTransaction () :
-          C() { 
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~EmbeddableTransaction () {
-        }
+    class CollectionMetadataReadLocker {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
       public:
+         
+        CollectionMetadataReadLocker (CollectionMetadataReadLocker const&) = delete;
+        CollectionMetadataReadLocker& operator= (CollectionMetadataReadLocker const&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embeddable
+/// @brief create the locker
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isEmbeddable () const {
-          return true;
+        CollectionMetadataReadLocker (TRI_collection_t* collection) 
+          : _collection(collection) {
+
+          TRI_ReadLockReadWriteLock(&_collection->_metadataLock);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the locker
+////////////////////////////////////////////////////////////////////////////////
+
+        ~CollectionMetadataReadLocker () {
+          TRI_ReadUnlockReadWriteLock(&_collection->_metadataLock);
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection pointer
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_collection_t* _collection;
     };
-
   }
 }
 
