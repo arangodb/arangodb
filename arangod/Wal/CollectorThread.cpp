@@ -573,8 +573,13 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   LOG_TRACE("updating datafile statistics for collection '%s'", document->base._info._name);
   updateDatafileStatistics(document, cache);
 
-  TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
-  document->_uncollectedLogfileEntries -= cache->totalOperationsCount; 
+  // TODO: the following assertion is only true in a running system
+  // if we just started the server, we don't know how many uncollected operations we have!!
+  // TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+  document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
+  if (document->_uncollectedLogfileEntries < 0) {
+    document->_uncollectedLogfileEntries = 0;
+  } 
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   

@@ -203,12 +203,9 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 /// @brief unloads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
-  TRI_vocbase_col_t* collection;
-  TRI_document_collection_t* document;
-  int res;
-
-  collection = (TRI_vocbase_col_t*) data;
+static bool UnloadCollectionCallback (TRI_collection_t* col, 
+                                      void* data) {
+  TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) data;
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -232,9 +229,9 @@ static bool UnloadCollectionCallback (TRI_collection_t* col, void* data) {
     return false;
   }
 
-  document = collection->_collection;
+  TRI_document_collection_t* document = collection->_collection;
 
-  res = TRI_CloseDocumentCollection(document);
+  int res = TRI_CloseDocumentCollection(document);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("failed to close collection '%s': %s",
@@ -1219,8 +1216,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
     return TRI_ERROR_NO_ERROR;
   }
   
-  triagens::arango::CollectionNameResolver resolver(vocbase);
-  triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::StandaloneTransaction<triagens::arango::RestTransactionContext>> trx(vocbase, resolver, collection->_cid);
+  triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1231,10 +1227,11 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   TRI_DocumentIteratorDocumentCollection(&trx, trx.documentCollection(), vocbase, &ScanTrxCallback);
 
   trx.finish(res);
-  return res;
 
   // don't need the collection anymore, so unload it
-  TRI_UnloadCollectionVocBase(vocbase, collection, false); 
+  TRI_UnloadCollectionVocBase(vocbase, collection, true); 
+
+  return res;
 }
 
 // -----------------------------------------------------------------------------

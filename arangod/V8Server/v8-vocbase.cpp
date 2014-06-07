@@ -101,7 +101,7 @@ static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
-  if (V8TransactionContext::IsEmbedded()) {                               \
+  if (V8TransactionContext<true>::IsEmbedded()) {                         \
     TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
   }
 
@@ -567,7 +567,7 @@ static bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualCollection (CollectionNameResolver const& resolver,
+static bool EqualCollection (CollectionNameResolver const* resolver,
                              string const& collectionName,
                              TRI_vocbase_col_t const* collection) {
   if (collectionName == StringUtils::itoa(collection->_cid)) {
@@ -579,13 +579,13 @@ static bool EqualCollection (CollectionNameResolver const& resolver,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    if (collectionName == resolver.getCollectionNameCluster(collection->_cid)) {
+    if (collectionName == resolver->getCollectionNameCluster(collection->_cid)) {
       return true;
     }
     return false;
   }
 
-  if (collectionName == resolver.getCollectionName(collection->_cid)) {
+  if (collectionName == resolver->getCollectionName(collection->_cid)) {
     return true;
   }
 
@@ -597,7 +597,7 @@ static bool EqualCollection (CollectionNameResolver const& resolver,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
-                                                            CollectionNameResolver const& resolver,
+                                                            CollectionNameResolver const* resolver,
                                                             TRI_vocbase_col_t const*& collection,
                                                             TRI_voc_key_t& key,
                                                             TRI_voc_rid_t& rid,
@@ -621,7 +621,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   TRI_ASSERT(key != nullptr);
 
 
-  if (collectionName == "") {
+  if (collectionName.empty()) {
     // only a document key without collection name was passed
     if (collection == nullptr) {
       // we do not know the collection
@@ -630,7 +630,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
                                                TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD));
     }
     // we use the current collection's name
-    collectionName = resolver.getCollectionName(collection->_cid);
+    collectionName = resolver->getCollectionName(collection->_cid);
   }
   else {
     // we read a collection name from the document id
@@ -662,7 +662,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
       }
     }
     else {
-      col = resolver.getCollectionStruct(collectionName);
+      col = resolver->getCollectionStruct(collectionName);
     }
 
     if (col == 0) {
@@ -1416,8 +1416,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
   }
   
-  CollectionNameResolver resolver(collection->_vocbase);
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1904,7 +1903,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
 
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
 
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
@@ -1924,7 +1923,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
 
-  V8ReadTransaction trx(vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2011,7 +2010,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
@@ -2047,7 +2046,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 
-  V8ReadTransaction trx(vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2238,7 +2237,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
@@ -2263,7 +2262,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    argv));
   }
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
+  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2346,7 +2345,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
+  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
@@ -2359,7 +2358,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> SaveVocbaseCol (
-    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2419,7 +2418,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver().getCollectionName(col->_cid), docKey));
+  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
   
@@ -2453,7 +2452,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> SaveEdgeCol (
-    SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1>* trx,
+    SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2463,8 +2462,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   if (argLength < 3 || argLength > 4) {
     TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
   }
-
-  CollectionNameResolver resolver(col->_vocbase);
 
   // set document key
   TRI_voc_key_t key = nullptr;
@@ -2491,7 +2488,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   edge._toKey   = nullptr;
 
   // extract from
-  res = TRI_ParseVertex(resolver, edge._fromCid, edge._fromKey, argv[0], false);
+  res = TRI_ParseVertex(trx->resolver(), edge._fromCid, edge._fromKey, argv[0], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -2499,7 +2496,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   }
 
   // extract to
-  res = TRI_ParseVertex(resolver, edge._toCid, edge._toKey, argv[1], false);
+  res = TRI_ParseVertex(trx->resolver(), edge._toCid, edge._toKey, argv[1], false);
   
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -2541,7 +2538,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
+  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
@@ -2626,7 +2623,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
@@ -2665,7 +2662,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   }
 
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
+  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2740,7 +2737,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver.getCollectionName(col->_cid), docKey));
+  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
   result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
   result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
   result->Set(v8g->_KeyKey, v8::String::New(docKey));
@@ -2894,7 +2891,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   }
 
   CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver, col, key, rid, argv[0]);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
@@ -2914,7 +2911,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
   }
 
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(vocbase, resolver, col->_cid);
+  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3299,8 +3296,8 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 /// @brief function that encapsulates execution of an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* const context,
-                                                         const TRI_json_t* const parameters) {
+static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
+                                                         TRI_json_t const* parameters) {
   v8::HandleScope scope;
 
   // parse & validate
@@ -3315,8 +3312,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cons
 
   // note: a query is not necessarily collection-based.
   // this means that the _collections array might contain 0 collections!
-  CollectionNameResolver resolver(context->_vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(context->_vocbase, resolver, context);
+  AhuacatlTransaction<V8TransactionContext<true>> trx(context->_vocbase, context);
 
   int res = trx.begin();
 
@@ -3733,14 +3729,12 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
 
   // start actual transaction
-  CollectionNameResolver resolver(vocbase);
-  ExplicitTransaction<StandaloneTransaction<V8TransactionContext> > trx(vocbase, 
-                                                                        resolver, 
-                                                                        readCollections, 
-                                                                        writeCollections, 
-                                                                        lockTimeout,
-                                                                        waitForSync,
-                                                                        replicate); 
+  ExplicitTransaction<V8TransactionContext<false>> trx(vocbase, 
+                                                       readCollections, 
+                                                       writeCollections, 
+                                                       lockTimeout,
+                                                       waitForSync,
+                                                       replicate); 
 
   int res = trx.begin();
 
@@ -5345,8 +5339,7 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   // note: a query is not necessarily collection-based.
   // this means that the _collections array might contain 0 collections!
-  CollectionNameResolver resolver(vocbase);
-  AhuacatlTransaction<EmbeddableTransaction<V8TransactionContext> > trx(vocbase, resolver, context);
+  AhuacatlTransaction<V8TransactionContext<true>> trx(vocbase, context);
 
   int res = trx.begin();
   
@@ -6083,8 +6076,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New((double) count));
   }
 
-  CollectionNameResolver resolver(collection->_vocbase);
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -6299,8 +6291,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 /// @brief drops an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const& resolver,
-                                                   TRI_vocbase_col_t const* collection,
+static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
                                                    v8::Handle<v8::Value> const val) {
   v8::HandleScope scope;
   
@@ -6326,8 +6317,10 @@ static v8::Handle<v8::Value> DropIndexCoordinator (CollectionNameResolver const&
     }
   }
 
-  if (collectionName != "") {
-    if (! EqualCollection(resolver, collectionName, collection)) {
+  if (! collectionName.empty()) {
+    CollectionNameResolver resolver(collection->_vocbase);
+
+    if (! EqualCollection(&resolver, collectionName, collection)) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
   }
@@ -6376,15 +6369,14 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
   }
 
-  CollectionNameResolver resolver(collection->_vocbase);
-
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DropIndexCoordinator(resolver, collection, argv[0]));
+    return scope.Close(DropIndexCoordinator(collection, argv[0]));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
@@ -6392,9 +6384,9 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   TRI_document_collection_t* document = trx.documentCollection();
 
   v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], true, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], true, &err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     if (err.IsEmpty()) {
       return scope.Close(v8::False());
     }
@@ -6486,8 +6478,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
 static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != 0);
   
-  CollectionNameResolver resolver(collection->_vocbase);
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -6709,8 +6700,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
     return scope.Close(GetIndexesCoordinator(collection));
   }
 
-  CollectionNameResolver resolver(collection->_vocbase);
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -7336,8 +7326,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
                         TRI_voc_rid_t& rid) {
   TRI_ASSERT(collection != 0);
 
-  CollectionNameResolver resolver(collection->_vocbase);
-  V8ReadTransaction trx(collection->_vocbase, resolver, collection->_cid);
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -7746,8 +7735,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
     }
   }
 
-  CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, 1> trx(collection->_vocbase, resolver, collection->_cid);
+  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -7873,8 +7861,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
   
-  CollectionNameResolver resolver(collection->_vocbase);
-  SingleCollectionWriteTransaction<EmbeddableTransaction<V8TransactionContext>, UINT64_MAX> trx(collection->_vocbase, resolver, collection->_cid);
+  SingleCollectionWriteTransaction<V8TransactionContext<true>, UINT64_MAX> trx(collection->_vocbase, collection->_cid);
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -9941,7 +9928,7 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseVertex (CollectionNameResolver const& resolver,
+int TRI_ParseVertex (CollectionNameResolver const* resolver,
                      TRI_voc_cid_t& cid,
                      TRI_voc_key_t& key,
                      v8::Handle<v8::Value> const val,
@@ -9972,10 +9959,10 @@ int TRI_ParseVertex (CollectionNameResolver const& resolver,
   }
    
   if (translateName && ServerState::instance()->isDBserver()) { 
-    cid = resolver.getCollectionIdCluster(collectionName);
+    cid = resolver->getCollectionIdCluster(collectionName);
   }
   else {
-    cid = resolver.getCollectionId(collectionName);
+    cid = resolver->getCollectionId(collectionName);
   }
 
   if (cid == 0) {
@@ -9991,8 +9978,9 @@ int TRI_ParseVertex (CollectionNameResolver const& resolver,
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
-                                      v8::Handle<v8::Value> val,
+TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
+                                      TRI_vocbase_col_t const* collection,
+                                      v8::Handle<v8::Value> const val,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {
   // reset the collection identifier
@@ -10024,8 +10012,7 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
     }
   }
 
-  if (collectionName != "") {
-    CollectionNameResolver resolver(collection->_vocbase);
+  if (! collectionName.empty()) {
     if (! EqualCollection(resolver, collectionName, collection)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
@@ -10051,34 +10038,37 @@ TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const* collection,
 
 template<class T>
 static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
+                                                          TRI_v8_global_t* v8g,
                                                           TRI_voc_cid_t cid,
-                                                          TRI_doc_mptr_t const* document,
+                                                          TRI_doc_mptr_t const* mptr,
                                                           v8::Handle<v8::Object> result) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_ASSERT(mptr != nullptr);
 
-  // store the document reference
-  TRI_voc_rid_t rid = document->_rid;
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(document);  // PROTECTED by trx from above
+  TRI_voc_rid_t rid = mptr->_rid;
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(mptr);  // PROTECTED by trx from above
+  TRI_ASSERT(rid > 0);
+  TRI_ASSERT(docKey != nullptr);
 
-  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver().getCollectionName(cid), docKey), v8::ReadOnly);
+  CollectionNameResolver const* resolver = trx.resolver();
+  result->Set(v8g->_IdKey, V8DocumentId(resolver->getCollectionName(cid), docKey), v8::ReadOnly);
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
 
-  TRI_df_marker_type_t type = ((TRI_df_marker_t*) document->getDataPtr())->_type;  // PROTECTED by trx from above
+  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr())->_type;  // PROTECTED by trx from above
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(document->getDataPtr());  // PROTECTED by trx from above
-
-    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+  
+    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(document->getDataPtr());  // PROTECTED by trx from above
-
-    result->Set(v8g->_FromKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(trx.resolver().getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
+    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+    
+    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
   }
 
   return scope.Close(result);
@@ -10102,7 +10092,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   TRI_ASSERT(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
   TRI_ASSERT(barrier != 0);
   
@@ -10124,7 +10114,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     }
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result = AddBasicDocumentAttributes<T>(trx, cid, document, result);
+    result = AddBasicDocumentAttributes<T>(trx, v8g, cid, document, result);
     
     v8::Handle<v8::Value> shaped = TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length);
 
@@ -10178,7 +10168,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   usedBarrier |= true;
 
-  return scope.Close(AddBasicDocumentAttributes<T>(trx, cid, document, result));
+  return scope.Close(AddBasicDocumentAttributes<T>(trx, v8g, cid, document, result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

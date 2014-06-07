@@ -56,7 +56,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionNameResolver (TRI_vocbase_t* vocbase) :
-          _vocbase(vocbase), _resolvedNames(), _resolvedIds() {
+          _vocbase(vocbase), 
+          _resolvedNames(), 
+          _resolvedIds() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

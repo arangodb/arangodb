@@ -196,7 +196,7 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(3)
+        doc.parsed_response['edges'].length.should eq(3)
 
         # check IN edges
         cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=in"
@@ -204,7 +204,7 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(1)
+        doc.parsed_response['edges'].length.should eq(1)
 
         # check OUT edges
         cmd = "/_api/edges/#{@ce}?vertex=#{id1}&direction=out"
@@ -212,7 +212,7 @@ describe ArangoDB do
 
         doc.code.should eq(200)
         doc.parsed_response['edges'].should be_kind_of(Array)
-        doc.parsed_response['edges'].length.should be(2)
+        doc.parsed_response['edges'].length.should eq(2)
       end
 
     end

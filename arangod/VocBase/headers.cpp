@@ -106,8 +106,6 @@ static void MoveBackHeader (TRI_headers_t* h,
                             TRI_doc_mptr_t* header, 
                             TRI_doc_mptr_t* old) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  int64_t oldSize;
-  int64_t newSize;
 
   if (header == nullptr) {
     return;
@@ -126,8 +124,8 @@ static void MoveBackHeader (TRI_headers_t* h,
   TRI_ASSERT(old != nullptr);
   TRI_ASSERT(old->getDataPtr() != nullptr);  // ONLY IN HEADERS
  
-  newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size);  // ONLY IN HEADERS
-  oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS
+  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size);  // ONLY IN HEADERS
+  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS
 
   // we must adjust the size of the collection
   headers->_totalSize += TRI_DF_ALIGN_BLOCK(newSize);
@@ -233,8 +231,6 @@ static void MoveHeader (TRI_headers_t* h,
                         TRI_doc_mptr_t* header,
                         TRI_doc_mptr_t* old) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  int64_t newSize;
-  int64_t oldSize;
 
   if (header == nullptr) {
     return;
@@ -248,8 +244,8 @@ static void MoveHeader (TRI_headers_t* h,
   TRI_ASSERT(old != nullptr);
   TRI_ASSERT(old->getDataPtr() != nullptr); // ONLY IN HEADERS
   
-  newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS
-  oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS
+  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS
+  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS
 
   headers->_totalSize -= TRI_DF_ALIGN_BLOCK(newSize);
   headers->_totalSize += TRI_DF_ALIGN_BLOCK(oldSize);
@@ -259,49 +255,37 @@ static void MoveHeader (TRI_headers_t* h,
     headers->_begin = header;
   }
   else if (headers->_begin == header) {
-    headers->_begin = header->_next;
+    if (old->_prev != nullptr) {
+      headers->_begin = old->_prev;
+    }
   }
 
   if (old->_next == nullptr) {
     headers->_end = header;
   }
   else if (headers->_end == header) {
-    headers->_end = header->_prev;
+    if (old->_next != nullptr) {
+      headers->_end = old->_next;
+    }
   }
+
 
   if (header->_prev != nullptr) {
-    if (header->_prev == old->_next) {
-      header->_prev->_next = nullptr;
-    }
-    else {
-      header->_prev->_next = header->_next;
-    }
+    header->_prev->_next = header->_next;
   }
-
   if (header->_next != nullptr) {
-    if (header->_next == old->_prev) {
-      header->_next->_prev = nullptr;
-    }
-    else {
-      header->_next->_prev = header->_prev;
-    }
+    header->_next->_prev = header->_prev;
   }
 
   if (old->_prev != nullptr) {
     old->_prev->_next = header;
-    header->_prev = old->_prev;
   }
-  else {
-    header->_prev = nullptr;
-  }
-
   if (old->_next != nullptr) {
     old->_next->_prev = header;
-    header->_next = old->_next;
   }
-  else {
-    header->_next = nullptr;
-  }
+
+  header->_prev = old->_prev;
+  header->_next = old->_next;
 
   TRI_ASSERT(headers->_begin != nullptr);
   TRI_ASSERT(headers->_end != nullptr);
@@ -318,7 +302,6 @@ static void RelinkHeader (TRI_headers_t* h,
                           TRI_doc_mptr_t* header,
                           TRI_doc_mptr_t* old) {
   simple_headers_t* headers = (simple_headers_t*) h;
-  int64_t size;
 
   if (header == nullptr) {
     return;
@@ -326,7 +309,7 @@ static void RelinkHeader (TRI_headers_t* h,
 
   TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS
 
-  size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS
+  int64_t size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS
   TRI_ASSERT(size > 0);
 
   TRI_ASSERT(headers->_begin != header);

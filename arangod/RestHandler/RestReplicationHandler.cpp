@@ -2052,8 +2052,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
         // some collections must not be dropped
 
         // instead, truncate them
-        CollectionNameResolver resolver(_vocbase);
-        SingleCollectionWriteTransaction<EmbeddableTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, col->_cid);
+        SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, col->_cid);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {

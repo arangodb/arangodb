@@ -66,15 +66,15 @@ namespace triagens {
     };
 
     template<typename T>
-    class Transaction : public T {
+    class Transaction : public T, public TransactionBase {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        Transaction (const Transaction&);
-        Transaction& operator= (const Transaction&);
+        Transaction (const Transaction&) = delete;
+        Transaction& operator= (const Transaction&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -86,9 +86,8 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction (TRI_vocbase_t* const vocbase,
+        Transaction (TRI_vocbase_t* vocbase,
                      TRI_server_id_t generatingServer,
-                     triagens::arango::CollectionNameResolver const& resolver,
                      bool replicate) :
           T(),
           _setupState(TRI_ERROR_NO_ERROR),
@@ -101,8 +100,7 @@ namespace triagens {
           _isReal(true),
           _trx(0),
           _vocbase(vocbase),
-          _generatingServer(generatingServer),
-          _resolver(resolver) {
+          _generatingServer(generatingServer) {
 
           TRI_ASSERT(_vocbase != 0);
 
@@ -154,8 +152,10 @@ namespace triagens {
 /// @brief return the collection name resolver
 ////////////////////////////////////////////////////////////////////////////////
         
-        const CollectionNameResolver& resolver () const {
-          return _resolver;
+        CollectionNameResolver const* resolver () const {
+          CollectionNameResolver const* r = this->getResolver();
+          TRI_ASSERT(r != nullptr);
+          return r;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,10 +373,10 @@ namespace triagens {
         int addCollection (const string& name,
                            TRI_transaction_type_e type) {
           if (! _isReal) {
-            return addCollection(_resolver.getCollectionIdCluster(name), name.c_str(), type);
+            return addCollection(this->resolver()->getCollectionIdCluster(name), name.c_str(), type);
           }
 
-          return addCollection(_resolver.getCollectionId(name), name.c_str(), type);
+          return addCollection(this->resolver()->getCollectionId(name), name.c_str(), type);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -984,13 +984,9 @@ namespace triagens {
             return res;
           }
 
-          const size_t n = ids.size();
-
-          for (size_t i = 0; i < n; ++i) {
-            const string& id = ids[i];
-          
+          for (auto it = ids.begin(); it != ids.end(); ++it) {
             res = document->removeDocument(trxCollection,
-                                          (TRI_voc_key_t) id.c_str(), 
+                                          (TRI_voc_key_t) (*it).c_str(), 
                                           0,
                                           nullptr, // policy
                                           false,
@@ -1129,7 +1125,7 @@ namespace triagens {
                                        _timeout, 
                                        _waitForSync);
 
-          if (_trx == 0) {
+          if (_trx == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -1144,11 +1140,11 @@ namespace triagens {
         int freeTransaction () {
           TRI_ASSERT(! isEmbeddedTransaction());
 
-          if (_trx != 0) {
+          if (_trx != nullptr) {
             this->unregisterTransaction();
 
             TRI_FreeTransaction(_trx);
-            _trx = 0;
+            _trx = nullptr;
           }
 
           return TRI_ERROR_NO_ERROR;
@@ -1231,12 +1227,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_server_id_t _generatingServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name resolver
-////////////////////////////////////////////////////////////////////////////////
-
-        const CollectionNameResolver _resolver;
 
     };
 

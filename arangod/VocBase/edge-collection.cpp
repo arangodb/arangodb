@@ -70,14 +70,29 @@ static TRI_edge_index_t* FindEdgesIndex (
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
-  TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
-  if (edge->_toCid == edge->_fromCid) {
-    char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
-    char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
 
-    return strcmp(fromKey, toKey) == 0;
+    if (edge->_toCid == edge->_fromCid) {
+      char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
+      char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
+
+      return strcmp(fromKey, toKey) == 0;
+    }
   }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+
+    if (edge->_toCid == edge->_fromCid) {
+      char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
+      char const* toKey =   reinterpret_cast<char const*>(edge) + edge->_offsetToKey;
+
+      return strcmp(fromKey, toKey) == 0;
+    }
+  }
+
   return false;
 }
 
@@ -89,11 +104,11 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 /// opposite direction (with matchType 2 or 3) to find all counterparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindEdges (const TRI_edge_direction_e direction,
+static bool FindEdges (TRI_edge_direction_e direction,
                        TRI_edge_index_t* idx,
                        TRI_vector_pointer_t* result,
                        TRI_edge_header_t* entry,
-                       const int matchType) {
+                       int matchType) {
   TRI_vector_pointer_t found;
 
   if (direction == TRI_EDGE_OUT) {
@@ -110,15 +125,14 @@ static bool FindEdges (const TRI_edge_direction_e direction,
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
   }
 
-  if (found._length > 0) {
-    size_t i;
+  size_t const n = found._length;
 
+  if (n > 0) {
     if (result->_capacity == 0) {
-      int res;
-
       // if result vector is still empty and we have results, re-init the
       // result vector to a "good" size. this will save later reallocations
-      res = TRI_InitVectorPointer2(result, TRI_UNKNOWN_MEM_ZONE, found._length);
+      int res = TRI_InitVectorPointer2(result, TRI_UNKNOWN_MEM_ZONE, n);
+
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_DestroyVectorPointer(&found);
         TRI_set_errno(res);
@@ -128,7 +142,7 @@ static bool FindEdges (const TRI_edge_direction_e direction,
     }
 
     // add all results found
-    for (i = 0;  i < found._length;  ++i) {
+    for (size_t i = 0;  i < n;  ++i) {
       TRI_doc_mptr_t* edge = (TRI_doc_mptr_t*) found._buffer[i];
 
       // the following queries will use the following sequences of matchTypes:

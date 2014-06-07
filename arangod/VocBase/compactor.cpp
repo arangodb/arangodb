@@ -443,22 +443,19 @@ static bool Compactifier (TRI_df_marker_t const* marker,
                           TRI_datafile_t* datafile) { 
   TRI_df_marker_t* result;
   TRI_doc_mptr_t const* found;
-  compaction_context_t* context;
   int res;
 
-  context  = (compaction_context_t*) data;
+  compaction_context_t* context = (compaction_context_t*) data;
   TRI_document_collection_t* document = context->_document;
 
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
-    TRI_doc_document_key_marker_t const* d;
-    TRI_voc_key_t key;
     bool deleted;
 
-    d = (TRI_doc_document_key_marker_t const*) marker;
-    key = (char*) d + d->_offsetKey;
+    TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+    TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
     found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
@@ -688,19 +685,17 @@ static int RemoveDatafile (TRI_document_collection_t* document,
 static bool CalculateSize (TRI_df_marker_t const* marker, 
                            void* data, 
                            TRI_datafile_t* datafile) { 
-  compaction_initial_context_t* context  = static_cast<compaction_initial_context_t*>(data);
+  compaction_initial_context_t* context = static_cast<compaction_initial_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
     
   // new or updated document
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
-    TRI_doc_document_key_marker_t const* d;
-    TRI_voc_key_t key;
     bool deleted;
 
-    d = (TRI_doc_document_key_marker_t const*) marker;
-    key = (char*) d + d->_offsetKey;
+    TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+    TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
     TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));

@@ -98,8 +98,6 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
       return "committed";
     case TRI_TRANSACTION_ABORTED:
       return "aborted";
-    case TRI_TRANSACTION_FAILED:
-      return "failed";
   }
 
   TRI_ASSERT(false);
@@ -112,6 +110,7 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 
 static void FreeOperations (TRI_transaction_t* trx) {
   size_t const n = trx->_collections._length;
+  bool mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
   
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
@@ -121,7 +120,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
       continue;
     }
  
-    if (trx->_status == TRI_TRANSACTION_ABORTED) {
+    if (mustRollback) {
       for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
         triagens::wal::DocumentOperation* op = (*it);
 
@@ -134,8 +133,10 @@ static void FreeOperations (TRI_transaction_t* trx) {
   
       delete op;
     }
-    
-    TRI_UpdateStatisticsDocumentCollection(document, trxCollection->_originalRevision, true, 0);
+  
+    if (mustRollback) { 
+      document->base._info._revision = trxCollection->_originalRevision; 
+    }
 
     delete trxCollection->_operations;
     trxCollection->_operations = nullptr;
@@ -492,7 +493,7 @@ static void UpdateTransactionStatus (TRI_transaction_t* const trx,
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED || trx->_status == TRI_TRANSACTION_RUNNING);
 
   if (trx->_status == TRI_TRANSACTION_CREATED) {
-    TRI_ASSERT(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_FAILED);
+    TRI_ASSERT(status == TRI_TRANSACTION_RUNNING || status == TRI_TRANSACTION_ABORTED);
   }
   else if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_ASSERT(status == TRI_TRANSACTION_COMMITTED || status == TRI_TRANSACTION_ABORTED);
@@ -570,7 +571,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   }
   
   // release the marker protector
-  bool const hasFailedOperations = (trx->_hasOperations && (trx->_status == TRI_TRANSACTION_FAILED || trx->_status == TRI_TRANSACTION_ABORTED)); 
+  bool const hasFailedOperations = (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED); 
   triagens::wal::LogfileManager::instance()->unregisterTransaction(trx->_id, hasFailedOperations);  
 
   // free all collections
@@ -797,11 +798,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   if (isSingleOperationTransaction) {
     waitForSync = syncRequested || trxCollection->_waitForSync;
   }
-  else {
-    // upgrade the info for the transaction
-    if (syncRequested || trxCollection->_waitForSync) {
-      trx->_waitForSync = true;
-    }
+  
+  // upgrade the info for the transaction
+  if (syncRequested || trxCollection->_waitForSync) {
+    trx->_waitForSync = true;
   }
   
   triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
@@ -880,7 +880,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     // something is wrong
     if (nestingLevel == 0) {
-      UpdateTransactionStatus(trx, TRI_TRANSACTION_FAILED);
+      UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
     }
 
     // free what we have got so far

@@ -32,7 +32,6 @@
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
 struct TRI_server_s;
@@ -40,6 +39,7 @@ struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
+    class CollectionNameResolver;
     class JSLoader;
   }
 }
@@ -49,15 +49,10 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup V8VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseVertex (triagens::arango::CollectionNameResolver const&,
+int TRI_ParseVertex (triagens::arango::CollectionNameResolver const*,
                      TRI_voc_cid_t&,
                      TRI_voc_key_t&,
                      v8::Handle<v8::Value> const,
@@ -67,7 +62,8 @@ int TRI_ParseVertex (triagens::arango::CollectionNameResolver const&,
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (TRI_vocbase_col_t const*,
+TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver const*,
+                                      TRI_vocbase_col_t const*,
                                       v8::Handle<v8::Value>,
                                       bool,
                                       v8::Handle<v8::Object>*);
@@ -127,10 +123,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
                           struct TRI_vocbase_s*,
                           triagens::arango::JSLoader*,
                           const size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

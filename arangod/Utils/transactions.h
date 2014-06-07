@@ -30,19 +30,24 @@
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/EmbeddableTransaction.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/RestTransactionContext.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
-#include "Utils/StandaloneTransaction.h"
 #include "Utils/V8TransactionContext.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for read-only transaction class type
 ////////////////////////////////////////////////////////////////////////////////
 
-#define V8ReadTransaction SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> >
+#define V8ReadTransaction SingleCollectionReadOnlyTransaction<V8TransactionContext<true>>
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief import transaction shortcut
+////////////////////////////////////////////////////////////////////////////////
+
+#define RestImportTransaction SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX>
+
 
 #endif
 

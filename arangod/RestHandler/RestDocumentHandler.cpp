@@ -297,7 +297,7 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_json_t* json = parseJsonBody();
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -318,7 +318,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -343,9 +343,8 @@ bool RestDocumentHandler::createDocument () {
 
   Barrier barrier(trx.documentCollection());
 
-  TRI_doc_mptr_copy_t document;
-  res = trx.createDocument(&document, json, waitForSync);
-  bool const wasSynchronous = trx.synchronous();
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.createDocument(&mptr, json, waitForSync);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -359,15 +358,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  TRI_ASSERT(document.getDataPtr() != nullptr); // PROTECTED by trx here
-
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);  // PROTECTED by trx here
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }
@@ -557,7 +548,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
 
   // .............................................................................
   // inside read transaction
@@ -593,7 +584,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   if (mptr.getDataPtr() == nullptr) {   // PROTECTED by trx here
-    generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
+    generateDocumentNotFound(trx, cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
@@ -602,10 +593,10 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(&trx, cid, &mptr, shaper, generateBody);
+      generateDocument(trx, cid, mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -613,15 +604,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(&trx, cid, &mptr, shaper, generateBody);
+      generateDocument(trx, cid, mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by trx here
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
 
@@ -740,7 +731,7 @@ bool RestDocumentHandler::readAllDocuments () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
 
   vector<string> ids;
 
@@ -777,10 +768,10 @@ bool RestDocumentHandler::readAllDocuments () {
   bool first = true;
   string prefix;
   if (typ == TRI_COL_TYPE_EDGE) {
-    prefix = '"' + EDGE_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+    prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
   }
   else {
-    prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+    prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
   }
 
   for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
@@ -1320,7 +1311,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1475,8 +1466,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
-  const bool wasSynchronous = trx.synchronous();
-
   res = trx.finish(res);
 
   // .............................................................................
@@ -1489,13 +1478,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), mptr._rid);
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }
@@ -1699,7 +1682,7 @@ bool RestDocumentHandler::deleteDocument () {
                                      waitForSync);
   }
 
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1716,7 +1699,6 @@ bool RestDocumentHandler::deleteDocument () {
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
 
-  const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
@@ -1733,12 +1715,8 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  if (wasSynchronous) {
-    generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), rid);
-  }
+  generateDeleted(trx, cid, (TRI_voc_key_t) key.c_str(), rid);
+
   return true;
 }
 

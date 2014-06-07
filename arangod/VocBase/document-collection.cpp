@@ -336,14 +336,6 @@ static TRI_voc_size_t Count (TRI_document_collection_t* document) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a header is visible in the current context
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsVisible (TRI_doc_mptr_t const* header) {
-  return (header != nullptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the collection tick with the marker's tick value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -428,7 +420,7 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 
 static int DeletePrimaryIndex (TRI_document_collection_t* document,
                                TRI_doc_mptr_t const* header,
-                               const bool isRollback) {
+                               bool isRollback) {
   // .............................................................................
   // remove from main index
   // .............................................................................
@@ -496,24 +488,6 @@ static int CreateHeader (TRI_document_collection_t* document,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          JOURNALS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a journal, and triggers creation of a new one
-/// this is used internally for testing
-////////////////////////////////////////////////////////////////////////////////
-
-static int RotateJournal (TRI_document_collection_t* document) {
-  // TODO: re-create this functionality
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                     DOCUMENT CRUD
 // -----------------------------------------------------------------------------
 
@@ -526,17 +500,17 @@ static int RotateJournal (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RollbackUpdate (TRI_document_collection_t* document,
-                           TRI_doc_mptr_t* newHeader,
-                           TRI_doc_mptr_copy_t* oldHeader) {
-  TRI_ASSERT(newHeader != nullptr);
+                           TRI_doc_mptr_t* header,
+                           TRI_doc_mptr_copy_t const* oldHeader) {
+  TRI_ASSERT(header != nullptr);
   TRI_ASSERT(oldHeader != nullptr);
 
   // ignore any errors we're getting from this
-  DeleteSecondaryIndexes(document, newHeader, true);
+  DeleteSecondaryIndexes(document, header, true);
 
-  newHeader->copy(*oldHeader); 
+  header->copy(*oldHeader); 
 
-  int res = InsertSecondaryIndexes(document, newHeader, true);
+  int res = InsertSecondaryIndexes(document, header, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("error rolling back update operation");
@@ -594,21 +568,19 @@ static void SetIndexCleanupFlag (TRI_document_collection_t* document,
 
 static int AddIndex (TRI_document_collection_t* document, 
                      TRI_index_t* idx) {
-  int res;
-
-  TRI_ASSERT(idx != NULL);
+  TRI_ASSERT(idx != nullptr);
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
             TRI_TypeNameIndex(idx->_type),
             document->base._info._name);
 
-  res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);
+  int res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (idx->cleanup != NULL) {
+  if (idx->cleanup != nullptr) {
     SetIndexCleanupFlag(document, true);
   }
 
@@ -622,16 +594,13 @@ static int AddIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RebuildIndexInfo (TRI_document_collection_t* document) {
-  size_t i, n;
-  bool result;
+  bool result = false;
 
-  result = false;
-
-  n = document->_allIndexes._length;
-  for (i = 0 ; i < n ; ++i) {
+  size_t const n = document->_allIndexes._length;
+  for (size_t i = 0 ; i < n ; ++i) {
     TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
-    if (idx->cleanup != NULL) {
+    if (idx->cleanup != nullptr) {
       result = true;
       break;
     }
@@ -652,6 +621,7 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
   if (document->_cleanupIndexes) {
     TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     size_t const n = document->_allIndexes._length;
+
     for (size_t i = 0 ; i < n ; ++i) {
       TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
@@ -734,9 +704,12 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   res = InsertSecondaryIndexes(document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    DeletePrimaryIndex(document, header, true);
     return res;
   }
-  
+
+  operation.indexed();
+
   res = TRI_AddOperationTransaction(operation, syncRequested);
       
   if (res != TRI_ERROR_NO_ERROR) {
@@ -865,11 +838,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
   
-    if (res != TRI_ERROR_NO_ERROR) {
-      // release the header. nobody else should point to it now
-      TRI_ASSERT(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
-    }
-    else {
+    if (res == TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     }
   }
@@ -888,7 +857,7 @@ static int LookupDocument (TRI_document_collection_t* document,
                            TRI_doc_mptr_t*& header) {
   header = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
   
-  if (! IsVisible(header)) {
+  if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
  
@@ -985,6 +954,8 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 
     return res;
   }
+        
+  operation.indexed();
 
   res = TRI_AddOperationTransaction(operation, syncRequested);
 
@@ -993,6 +964,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     *mptr = *((TRI_doc_mptr_t*) newHeader);
   }
   else {
+    // TODO: check if rollbackupdate will do any harm here
     RollbackUpdate(document, newHeader, &oldData);
   }
     
@@ -1102,10 +1074,10 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
                                      TRI_doc_update_policy_t const* policy,
                                      bool lock,
                                      bool forceSync) {
+  rid = GetRevisionId(rid);
+ 
   TRI_ASSERT(key != nullptr);
  
-  rid = GetRevisionId(rid); 
-
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->base._vocbase->_id,
@@ -1130,6 +1102,7 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     // we found a document to remove
     TRI_ASSERT(header != nullptr);
     operation.header = header;
+    operation.init();
 
     // delete from indexes
     res = DeleteSecondaryIndexes(document, header, false);
@@ -1145,6 +1118,8 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
       InsertSecondaryIndexes(document, header, true);
       return res;
     }
+  
+    operation.indexed();
 
     res = TRI_AddOperationTransaction(operation, forceSync);
   }
@@ -1340,15 +1315,13 @@ static void TrackDeadMarker (TRI_df_marker_t const* marker,
 static int OpenIteratorApplyInsert (open_iterator_state_t* state,
                                     open_iterator_operation_t* operation) {
 
-  TRI_df_marker_t const* marker;
-  TRI_doc_document_key_marker_t const* d;
   TRI_doc_mptr_t const* found;
   TRI_voc_key_t key;
   
   TRI_document_collection_t* document = state->_document; 
   
-  marker = operation->_marker;
-  d = (TRI_doc_document_key_marker_t const*) marker;
+  TRI_df_marker_t const* marker = operation->_marker;
+  TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
   
   if (state->_fid != operation->_fid) {
     // update the state
@@ -1368,7 +1341,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
               (unsigned long) d->_offsetKey);
   }
   else {
-    TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
+    TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
 
     LOG_TRACE("edge: fid %llu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
               (unsigned long long) operation->_fid,
@@ -2240,7 +2213,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   for (size_t i = 0; i < n; ++i) {
     TRI_doc_datafile_info_t* dfi = static_cast<TRI_doc_datafile_info_t*>(document->_datafileInfo._table[i]);
 
-    if (dfi != NULL) {
+    if (dfi != nullptr) {
       FreeDatafileInfo(dfi);
     }
   }
@@ -2495,10 +2468,10 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection); // will free document
 
-    return NULL;
+    return nullptr;
   }
 
-  TRI_ASSERT(document->_shaper != NULL);
+  TRI_ASSERT(document->_shaper != nullptr);
 
   return document;
 }
@@ -2911,7 +2884,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
 int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document,
                                              TRI_voc_document_operation_e type,
                                              TRI_doc_mptr_t* header,
-                                             TRI_doc_mptr_copy_t* oldData) {
+                                             TRI_doc_mptr_copy_t const* oldData) {
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     // ignore any errors we're getting from this
@@ -2924,7 +2897,10 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     return TRI_ERROR_NO_ERROR;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    return RollbackUpdate(document, header, oldData);
+    DeleteSecondaryIndexes(document, header, true);
+    int res = InsertSecondaryIndexes(document, oldData, true);
+
+    return res;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     int res = InsertPrimaryIndex(document, header, true);
@@ -2959,12 +2935,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
                                                        char const* path) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_document_collection_t* document;
   TRI_key_generator_t* keyGenerator;
   int res;
 
   // first open the document collection
-  document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
+  TRI_document_collection_t* document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
 
   if (document == nullptr) {
     return nullptr;
@@ -3039,7 +3014,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   // fill user-defined secondary indexes
   TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
-  
+
   return document;
 }
 
@@ -3048,19 +3023,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
-  int res;
-
   // closes all open compactors, journals, datafiles
-  res = TRI_CloseCollection(&document->base);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
+  int res = TRI_CloseCollection(&document->base);
 
   TRI_FreeVocShaper(document->_shaper);
   document->_shaper = nullptr;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 // -----------------------------------------------------------------------------
@@ -3285,29 +3254,29 @@ static bool DropIndex (TRI_document_collection_t* document,
 
 static int FillIndex (TRI_document_collection_t* document, 
                       TRI_index_t* idx) {
-  TRI_doc_mptr_t const* mptr;
-  uint64_t inserted;
   void** end;
   void** ptr;
-  int res;
 
   ptr = document->_primaryIndex._table;
   end = ptr + document->_primaryIndex._nrAlloc;
     
-  if (idx->sizeHint != NULL) {
+  if (idx->sizeHint != nullptr) {
     // give the index a size hint
     idx->sizeHint(idx, document->_primaryIndex._nrUsed);
   }
 
 
-  inserted = 0;
+  static const int LoopSize = 10000;
+  int counter = 0;
+  int loops = 0;
 
   for (;  ptr < end;  ++ptr) {
     TRI_doc_mptr_t const* p = static_cast<TRI_doc_mptr_t const*>(*ptr);
-    if (IsVisible(p)) {
-      mptr = p;
 
-      res = idx->insert(idx, mptr, false);
+    if (p != nullptr) {
+      TRI_doc_mptr_t const* mptr = p;
+
+      int res = idx->insert(idx, mptr, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
@@ -3318,12 +3287,13 @@ static int FillIndex (TRI_document_collection_t* document,
         return res;
       }
 
-      ++inserted;
+      if (++counter == LoopSize) {
+        counter = 0;
+        ++loops;
 
-      if (inserted % 10000 == 0) {
-        LOG_DEBUG("indexed %llu documents of collection %llu", 
-                  (unsigned long long) inserted, 
-                  (unsigned long long) document->base._info._cid);
+        LOG_TRACE("indexed %llu documents of collection %llu", 
+                 (unsigned long long) (LoopSize * loops),
+                 (unsigned long long) document->base._info._cid);
       }
     }
   }
@@ -5427,7 +5397,7 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
                                              &result,
                                              &shape);
 
-    if (! ok || shape == NULL) {
+    if (! ok || shape == nullptr) {
       return false;
     }
 
@@ -5465,24 +5435,21 @@ std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
                           size_t length,
                           TRI_shape_pid_t* pids,
                           TRI_shaped_json_t** values) {
-  TRI_shaper_t* shaper;
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
+
+  TRI_shaper_t* shaper = document->_shaper;
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_t*> filtered;
 
   // do a full scan
-  shaper = document->_shaper;
-
   TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) (document->_primaryIndex._table);
   TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
-    if (IsVisible(*ptr)) {
-      if (IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
-        filtered.push_back(*ptr);
-      }
+    if (*ptr != nullptr && IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
+      filtered.push_back(*ptr);
     }
   }
   return filtered;
@@ -5505,7 +5472,8 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
-  return RotateJournal(document);
+  // TODO: re-create this functionality
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 // Local Variables:
