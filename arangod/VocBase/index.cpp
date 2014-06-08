@@ -543,7 +543,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
 
 static int InsertPrimary (TRI_index_t* idx, 
                           TRI_doc_mptr_t const* doc, 
-                          const bool isRollback) {
+                          bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -553,7 +553,7 @@ static int InsertPrimary (TRI_index_t* idx,
 
 static int RemovePrimary (TRI_index_t* idx, 
                           TRI_doc_mptr_t const* doc,
-                          const bool isRollback) {
+                          bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -890,7 +890,7 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
 
 static int InsertEdge (TRI_index_t* idx, 
                        TRI_doc_mptr_t const* mptr,
-                       const bool isRollback) {
+                       bool isRollback) {
 
   TRI_multi_pointer_t* edgesIndex;
 
@@ -910,7 +910,7 @@ static int InsertEdge (TRI_index_t* idx,
 
 static int RemoveEdge (TRI_index_t* idx, 
                        TRI_doc_mptr_t const* mptr,
-                       const bool isRollback) {
+                       bool isRollback) {
 
   TRI_multi_pointer_t* edgesIndex;
 
@@ -1164,11 +1164,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx, 
                                                   TRI_index_operator_t* slOperator) {
-  TRI_skiplist_index_t*    skiplistIndex;
-  TRI_skiplist_iterator_t* iteratorResult;
-  int                      errorResult;
-
-  skiplistIndex = (TRI_skiplist_index_t*)(idx);
+  TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // .........................................................................
   // fill the relation operators which may be embedded in the slOperator with
@@ -1176,7 +1172,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   // received from a user for query the skiplist.
   // .........................................................................
 
-  errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
+  int errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
 
   if (errorResult != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errorResult);
@@ -1184,6 +1180,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
     return nullptr;
   }
 
+  TRI_skiplist_iterator_t* iteratorResult;
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex, 
                                       &skiplistIndex->_paths, 
                                       slOperator);
@@ -1204,19 +1201,15 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
 static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
                                 TRI_skiplist_index_element_t* skiplistElement,
                                 const TRI_doc_mptr_t* document) {
-  TRI_shaped_json_t shapedObject;
-  TRI_shaped_json_t shapedJson;
-  char const* ptr;
-  size_t j;
-  
   // ..........................................................................
   // Assign the document to the SkiplistIndexElement structure so that it can 
   // be retrieved later.
   // ..........................................................................
     
-  TRI_ASSERT(document != NULL); 
-  TRI_ASSERT(document->getDataPtr() != NULL);   // ONLY IN INDEX
+  TRI_ASSERT(document != nullptr); 
+  TRI_ASSERT(document->getDataPtr() != nullptr);   // ONLY IN INDEX
     
+  TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
   if (shapedJson._sid == 0) {
@@ -1226,9 +1219,9 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   }
 
   skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  ptr = (char const*) skiplistElement->_document->getDataPtr();  // ONLY IN INDEX
+  char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX
     
-  for (j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths, j)));
 
     // ..........................................................................
@@ -1237,7 +1230,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
 
-    if (acc == NULL || acc->_resultSid == 0) {
+    if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }  
       
@@ -1246,6 +1239,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     // Extract the field
     // ..........................................................................    
 
+    TRI_shaped_json_t shapedObject;
     if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
       return TRI_ERROR_INTERNAL;
     }
@@ -1268,7 +1262,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
 static int InsertSkiplistIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
@@ -1279,7 +1273,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   skiplistIndex = (TRI_skiplist_index_t*) idx;
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
@@ -1291,7 +1285,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
   
-  if (skiplistElement._subObjects == NULL) {
+  if (skiplistElement._subObjects == nullptr) {
     LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }  
@@ -1359,11 +1353,6 @@ static size_t MemorySkiplistIndex (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
-  TRI_json_t* json;
-  TRI_json_t* fields;
-  char const** fieldList;
-  size_t j;
-
   // ..........................................................................
   // Recast as a skiplist index
   // ..........................................................................
@@ -1380,13 +1369,13 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // Allocate sufficent memory for the field list
   // ..........................................................................
 
-  fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * skiplistIndex->_paths._length) , false));
 
   // ..........................................................................
   // Convert the attributes (field list of the skiplist index) into strings
   // ..........................................................................
 
-  for (j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
     const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
 
@@ -1402,10 +1391,10 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // create json object and fill it
   // ..........................................................................
 
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  for (j = 0; j < skiplistIndex->_paths._length; ++j) {
+  for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
@@ -1421,9 +1410,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
 
 static int RemoveSkiplistIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
-  TRI_skiplist_index_element_t skiplistElement;
-  int res;
+                                bool isRollback) {
 
   // ...........................................................................
   // Obtain the skiplist index structure
@@ -1435,6 +1422,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Allocate some memory for the SkiplistIndexElement structure
   // ...........................................................................
 
+  TRI_skiplist_index_element_t skiplistElement;
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
   
   if (skiplistElement._subObjects == nullptr) {
@@ -1446,7 +1434,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Fill the json field list from the document
   // ..........................................................................
   
-  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
+  int res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   
   // ..........................................................................
   // Error returned generally implies that the document never was part of the 
@@ -1672,9 +1660,8 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 
 static int InsertFulltextIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex;
-  TRI_fulltext_wordlist_t* wordlist;
   int res;
 
   fulltextIndex = (TRI_fulltext_index_t*) idx;
@@ -1686,7 +1673,7 @@ static int InsertFulltextIndex (TRI_index_t* idx,
 
   res = TRI_ERROR_NO_ERROR;
 
-  wordlist = GetWordlist(idx, doc);
+  TRI_fulltext_wordlist_t* wordlist = GetWordlist(idx, doc);
 
   if (wordlist == nullptr) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
@@ -1761,7 +1748,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
 
 static int RemoveFulltextIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_fulltext_index_t* fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   TRI_DeleteDocumentFulltextIndex(fulltextIndex->_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
@@ -2037,7 +2024,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
-      if (acc == NULL || acc->_resultSid == 0) {
+      if (acc == NULL || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }
 
@@ -2080,7 +2067,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
 
-      if (acc == NULL || acc->_resultSid == 0) {
+      if (acc == NULL || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
 
@@ -2113,7 +2100,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
 static int InsertBitarrayIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;
@@ -2352,7 +2339,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
 static int RemoveBitarrayIndex (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_bitarray_index_key_t element;
   TRI_bitarray_index_t* baIndex;
   int result;

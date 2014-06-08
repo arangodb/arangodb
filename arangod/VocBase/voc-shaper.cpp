@@ -1001,8 +1001,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_doc_mptr_t* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* leftShaper,
-                           TRI_shaper_t* rightShaper) {
+                           TRI_shaper_t* shaper) {
   
   TRI_shape_t const* leftShape;
   TRI_shape_t const* rightShape;
@@ -1017,7 +1016,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
-    ptr = (char const*) leftDocument->getDataPtr();  // ONLY IN INDEX
+    ptr = leftDocument->getShapedJsonPtr();  // ONLY IN INDEX
 
     left._sid = leftObject->_sid;
     left._data.length = (uint32_t) leftObject->_length;
@@ -1029,7 +1028,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
-    ptr = (char const*) rightDocument->getDataPtr();  // ONLY IN INDEX
+    ptr = rightDocument->getShapedJsonPtr();  // ONLY IN INDEX
 
     right._sid = rightObject->_sid;
     right._data.length = (uint32_t) rightObject->_length;
@@ -1040,14 +1039,14 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-  if (leftShaper == rightShaper && left._sid == right._sid) {
+  if (left._sid == right._sid) {
     // identical collection and shape
-    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+    leftShape = rightShape = shaper->lookupShapeId(shaper, left._sid);
   }
   else {
     // different shapes
-    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
-    rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+    leftShape  = shaper->lookupShapeId(shaper, left._sid);
+    rightShape = shaper->lookupShapeId(shaper, right._sid);
   }
 
   if (leftShape == nullptr || rightShape == nullptr) {
@@ -1197,17 +1196,17 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // compare strings
           // extract the strings
           if (leftType == TRI_SHAPE_SHORT_STRING) {
-            leftString = (char*)(sizeof(TRI_shape_length_short_string_t) + left._data.data);
+            leftString = (char*) (sizeof(TRI_shape_length_short_string_t) + left._data.data);
           }
           else {
-            leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left._data.data);
+            leftString = (char*) (sizeof(TRI_shape_length_long_string_t) + left._data.data);
           }          
           
           if (rightType == TRI_SHAPE_SHORT_STRING) {
-            rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right._data.data);
+            rightString = (char*) (sizeof(TRI_shape_length_short_string_t) + right._data.data);
           }
           else {
-            rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right._data.data);
+            rightString = (char*) (sizeof(TRI_shape_length_long_string_t) + right._data.data);
           }         
           
           return TRI_compare_utf8(leftString, rightString);
@@ -1300,8 +1299,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                                            nullptr,
                                            nullptr,
                                            &rightElement,
-                                           leftShaper,
-                                           rightShaper);
+                                           shaper);
 
             if (result != 0) { 
               return result;
@@ -1357,11 +1355,11 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           TRI_vector_t rightSorted;
 
           bool error = false;
-          if (FillAttributesVector(&leftSorted, &left, leftShape, leftShaper) != TRI_ERROR_NO_ERROR) {
+          if (FillAttributesVector(&leftSorted, &left, leftShape, shaper) != TRI_ERROR_NO_ERROR) {
             error = true;
           }
 
-          if (FillAttributesVector(&rightSorted, &right, rightShape, rightShaper) != TRI_ERROR_NO_ERROR) {
+          if (FillAttributesVector(&rightSorted, &right, rightShape, shaper) != TRI_ERROR_NO_ERROR) {
             error = true;
           }
 
@@ -1387,8 +1385,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                                            nullptr,
                                            nullptr,
                                            &r->_value,
-                                           leftShaper,
-                                           rightShaper);
+                                           shaper);
 
             if (result != 0) { 
               break;

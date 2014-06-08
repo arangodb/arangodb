@@ -717,9 +717,13 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_ASSERT(vocbase != nullptr);
 
   triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId);
-  TRI_vocbase_col_t* collection =collectionGuard.collection();
+  TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
- 
+
+  if (collection->_collection->base._info._isVolatile) {
+    // don't need to collect data for volatile collections
+    return TRI_ERROR_NO_ERROR;
+  }
  
   CollectorCache* cache = new CollectorCache(collectionId, 
                                              databaseId, 

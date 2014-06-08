@@ -440,7 +440,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
 
 static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
-                                   const bool isRollback) {
+                                   bool isRollback) {
   size_t const n = document->_allIndexes._length;
   int result = TRI_ERROR_NO_ERROR;
 
@@ -704,6 +704,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   res = InsertSecondaryIndexes(document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    DeleteSecondaryIndexes(document, header, true);
     DeletePrimaryIndex(document, header, true);
     return res;
   }
@@ -837,7 +838,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
-  
+ 
     if (res == TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     }
@@ -1055,10 +1056,6 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   if (res == TRI_ERROR_NO_ERROR) { 
     TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     TRI_ASSERT(mptr->_rid > 0);
-  }
-  else {
-    TRI_ASSERT(mptr->getDataPtr() == nullptr);  // PROTECTED by trx in trxCollection
-    TRI_ASSERT(mptr->_rid == 0);
   }
 
   return res;
@@ -3679,7 +3676,11 @@ void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t* document
   if (rid > 0) {
     SetRevision(document, rid, force);
   }
-  document->_uncollectedLogfileEntries += logfileEntries;
+
+  if (! document->base._info._isVolatile) {
+    // only count logfileEntries if the collection is durable
+    document->_uncollectedLogfileEntries += logfileEntries;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

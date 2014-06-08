@@ -38,23 +38,12 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if an element is 'empty'
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEmptyElement (TRI_hash_array_t* array,
-                            TRI_hash_index_element_t* element) {
-  if (element != NULL) {
-    if (element->_document == NULL) {
-      return true;
-    }
-  }
-
-  return false;
+static inline bool IsEmptyElement (TRI_hash_array_t* array,
+                                   TRI_hash_index_element_t* element) {
+  return (element != nullptr && element->_document == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,8 +52,8 @@ static bool IsEmptyElement (TRI_hash_array_t* array,
 
 static void ClearElement (TRI_hash_array_t* array,
                           TRI_hash_index_element_t* element) {
-  if (element != NULL) {
-    element->_document = NULL;
+  if (element != nullptr) {
+    element->_document = nullptr;
   }
 }
 
@@ -74,8 +63,8 @@ static void ClearElement (TRI_hash_array_t* array,
 
 static void DestroyElement (TRI_hash_array_t* array,
                             TRI_hash_index_element_t* element) {
-  if (element != NULL) {
-    if (element->_document != NULL) {
+  if (element != nullptr) {
+    if (element->_document != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
     }
   }
@@ -92,7 +81,7 @@ static void DestroyElement (TRI_hash_array_t* array,
 static bool IsEqualElementElement (TRI_hash_array_t* array,
                                    TRI_hash_index_element_t* left,
                                    TRI_hash_index_element_t* right) {
-  if (left->_document == NULL || right->_document == NULL) {
+  if (left->_document == nullptr || right->_document == nullptr) {
     return false;
   }
 
@@ -106,13 +95,11 @@ static bool IsEqualElementElement (TRI_hash_array_t* array,
 static bool IsEqualKeyElement (TRI_hash_array_t* array,
                                TRI_index_search_value_t* left,
                                TRI_hash_index_element_t* right) {
-  size_t j;
-
-  if (right->_document == NULL) {
+  if (right->_document == nullptr) {
     return false;
   }
 
-  for (j = 0;  j < array->_numFields;  ++j) {
+  for (size_t j = 0;  j < array->_numFields;  ++j) {
     TRI_shaped_json_t* leftJson = &left->_values[j];
     TRI_shaped_sub_t* rightSub = &right->_subObjects[j];
     size_t length;
@@ -128,7 +115,7 @@ static bool IsEqualKeyElement (TRI_hash_array_t* array,
     }
 
     if (0 < length) {
-      char* ptr = ((char*) right->_document->getDataPtr()) + rightSub->_offset;  // ONLY IN INDEX
+      char const* ptr = right->_document->getShapedJsonPtr() + rightSub->_offset;  // ONLY IN INDEX
 
       if (memcmp(leftJson->_data.data, ptr, length) != 0) {
         return false;
@@ -146,13 +133,13 @@ static bool IsEqualKeyElement (TRI_hash_array_t* array,
 static uint64_t HashKey (TRI_hash_array_t* array,
                          TRI_index_search_value_t* key) {
   uint64_t hash = TRI_FnvHashBlockInitial();
-  size_t j;
 
-  for (j = 0;  j < array->_numFields;  ++j) {
+  for (size_t j = 0;  j < array->_numFields;  ++j) {
 
     // ignore the sid for hashing
     hash = TRI_FnvHashBlock(hash, key->_values[j]._data.data, key->_values[j]._data.length);
   }
+
   return hash;
 }
 
@@ -166,7 +153,7 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 
   for (size_t j = 0;  j < array->_numFields;  j++) {
     // ignore the sid for hashing
-    char* ptr = ((char*) element->_document->getDataPtr()) + element->_subObjects[j]._offset;  // ONLY IN INDEX
+    char const* ptr = element->_document->getShapedJsonPtr() + element->_subObjects[j]._offset;  // ONLY IN INDEX
 
     // only hash the data block
     hash = TRI_FnvHashBlock(hash, ptr, element->_subObjects[j]._length);
@@ -174,10 +161,6 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 
   return hash;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH ARRAY
@@ -188,11 +171,6 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initial preallocation size of the hash table when the table is
 /// first created
 /// setting this to a high value will waste memory but reduce the number of
@@ -201,24 +179,15 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 
 #define INITIAL_SIZE    (251)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the size of a single entry
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t TableEntrySize (TRI_hash_array_t const* array) {
+constexpr size_t TableEntrySize () {
   return sizeof(TRI_hash_index_element_t);
 }
 
@@ -252,7 +221,7 @@ static void AddElement (TRI_hash_array_t* array,
   // memcpy ok here since are simply moving array items internally
   // ...........................................................................
 
-  memcpy(&array->_table[i], element, TableEntrySize(array));
+  memcpy(&array->_table[i], element, TableEntrySize());
   array->_nrUsed++;
 }
 
@@ -264,11 +233,11 @@ static void AddElement (TRI_hash_array_t* array,
 
 static int AllocateTable (TRI_hash_array_t* array, 
                           size_t numElements) {
-  size_t const size = TableEntrySize(array) * numElements;
+  size_t const size = TableEntrySize() * numElements;
 
   TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
 
-  if (table == NULL) {
+  if (table == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -311,18 +280,9 @@ static int ResizeHashArray (TRI_hash_array_t* array,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -340,7 +300,7 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
   TRI_ASSERT(numFields > 0);
 
   array->_numFields = numFields;
-  array->_table = NULL;
+  array->_table = nullptr;
   array->_nrUsed = 0;
   array->_nrAlloc = 0;
 
@@ -366,7 +326,7 @@ int TRI_InitHashArray (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashArray (TRI_hash_array_t* array) {
-  if (array == NULL) {
+  if (array == nullptr) {
     return;
   }
 
@@ -375,7 +335,7 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
   // ...........................................................................
 
   // array->_table might be NULL if array initialisation fails
-  if (array->_table != NULL) {
+  if (array->_table != nullptr) {
     TRI_hash_index_element_t* p;
     TRI_hash_index_element_t* e;
 
@@ -395,35 +355,26 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeHashArray (TRI_hash_array_t* array) {
-  if (array != NULL) {
+  if (array != nullptr) {
     TRI_DestroyHashArray(array);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, array);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the hash array's memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
-  if (array == NULL) {
+  if (array == nullptr) {
     return 0;
   }
 
-  return (size_t) (array->_nrAlloc * TableEntrySize(array)); 
+  return (size_t) (array->_nrAlloc * TableEntrySize()); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,15 +424,13 @@ TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
 
 TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
                                                   TRI_index_search_value_t* key) {
-  TRI_hash_index_element_t* element;
-
-  element = TRI_LookupByKeyHashArray(array, key);
+  TRI_hash_index_element_t* element = TRI_LookupByKeyHashArray(array, key);
 
   if (! IsEmptyElement(array, element) && IsEqualKeyElement(array, key, element)) {
     return element;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,7 +479,7 @@ TRI_hash_index_element_t* TRI_FindByElementHashArray (TRI_hash_array_t* array,
     return element2;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -825,10 +774,6 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 HASH ARRAY MULTI
 // -----------------------------------------------------------------------------
@@ -836,11 +781,6 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HashArray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -1205,10 +1145,6 @@ int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t* array,
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

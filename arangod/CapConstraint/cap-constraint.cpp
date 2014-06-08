@@ -211,7 +211,7 @@ static void RemoveIndexCapConstraint (TRI_index_t* idx,
 
 static int InsertCapConstraint (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   TRI_cap_constraint_t* cap = (TRI_cap_constraint_t*) idx;
 
   if (cap->_size > 0) {
@@ -251,7 +251,7 @@ static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
 
 static int RemoveCapConstraint (TRI_index_t* idx, 
                                 TRI_doc_mptr_t const* doc,
-                                const bool isRollback) {
+                                bool isRollback) {
   return TRI_ERROR_NO_ERROR;
 }
 

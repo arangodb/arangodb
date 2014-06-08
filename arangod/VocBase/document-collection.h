@@ -146,12 +146,46 @@ struct TRI_doc_mptr_t {
       _next = that._next;
     }
 
-    void const* getDataPtr () const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the beginning of the marker
+////////////////////////////////////////////////////////////////////////////////
+
+    inline void const* getDataPtr () const {
       return _dataptr;
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the pointer to the beginning of the memory for the marker
+////////////////////////////////////////////////////////////////////////////////
+
     void setDataPtr (void const* d) {
       _dataptr = d;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the beginning of the shaped json stored in the
+/// marker
+////////////////////////////////////////////////////////////////////////////////
+
+    char const* getShapedJsonPtr () const {
+      TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(_dataptr);
+
+      if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
+          marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+        auto offset = (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))->_offsetJson;
+        return static_cast<char const*>(_dataptr) + offset;
+      }
+      else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
+               marker->_type == TRI_WAL_MARKER_EDGE) {
+        auto offset = (reinterpret_cast<triagens::wal::document_marker_t const*>(marker))->_offsetJson;
+        return static_cast<char const*>(_dataptr) + offset;
+      }
+
+#ifdef TRI_ENABLE_MAINTAINER
+      TRI_ASSERT(false);
+#endif
+
+      return nullptr;
     }
     
     TRI_doc_mptr_t& operator= (TRI_doc_mptr_t const&) = delete;
