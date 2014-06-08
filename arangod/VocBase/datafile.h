@@ -640,7 +640,7 @@ int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t*,
 /// @brief checks whether a marker is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker);
+bool TRI_IsValidMarkerDatafile (TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a CRC and writes that into the header

@@ -1180,15 +1180,13 @@ int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t* datafile,
 /// @brief checks whether a marker is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker) {
-  TRI_df_marker_type_t type;
-
-  if (marker == 0) {
+bool TRI_IsValidMarkerDatafile (TRI_df_marker_t const* marker) {
+  if (marker == nullptr) {
     return false;
   }
 
   // check marker type
-  type = marker->_type;
+  TRI_df_marker_type_t type = marker->_type;
   if (type <= (TRI_df_marker_type_t) TRI_MARKER_MIN) {
     // marker type is less than minimum allowed type value
     return false;

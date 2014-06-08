@@ -336,7 +336,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 
 static int InsertGeoIndex (TRI_index_t* idx, 
                            TRI_doc_mptr_t const* doc,
-                           const bool isRollback) {
+                           bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
@@ -417,7 +417,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
 
 static int RemoveGeoIndex (TRI_index_t* idx, 
                            TRI_doc_mptr_t const* doc,
-                           const bool isRollback) {
+                           bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;

@@ -126,8 +126,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_doc_mptr_t* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* leftShaper,
-                           TRI_shaper_t* rightShaper);
+                           TRI_shaper_t* shaper);
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shape identifier pointer from a marker
