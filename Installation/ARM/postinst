@@ -1,6 +1,10 @@
 #!/bin/sh
-update-rc.d arangodb start 99 2 3 4 5 . stop 00 0 1 6 . >/dev/null
-/etc/init.d/arangodb start
+update-rc.d arangodb defaults
+if which invoke-rc.d >/dev/null 2>&1; then
+  invoke-rc.d arangodb start
+else
+  /etc/init.d/arangodb start
+fi
 
 echo "
 ArangoDB 2 (http://www.arangodb.org)
