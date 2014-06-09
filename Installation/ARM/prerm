@@ -1,3 +1,6 @@
 #!/bin/sh
-
-/etc/init.d/arangodb stop
+if which invoke-rc.d >/dev/null 2>&1; then
+  invoke-rc.d arangodb stop
+else
+  /etc/init.d/arangodb stop
+fi
