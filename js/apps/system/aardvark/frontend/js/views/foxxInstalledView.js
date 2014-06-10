@@ -9,7 +9,8 @@
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      'click .install': 'installDialog'
+      'click .install': 'installDialog',
+      'click .purge': 'removeDialog'
     },
 
     initialize: function(){
@@ -19,13 +20,57 @@
           "Install", this.install.bind(this)
         )
       ];
+      var buttonPurgeConfig = [
+        window.modalView.createDeleteButton(
+          "Remove", this.confirmRemoval.bind(this)
+        )
+      ];
       this.showMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
         "Install Application",
         buttonConfig
       );
+      this.showPurgeMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Remove Application",
+        buttonPurgeConfig
+      );
       this.appsView = this.options.appsView;
+    },
+
+    fillPurgeValues: function(mountinfo) {
+      var list = [],
+          isSystem,
+          mountvars = [];
+      if (this.model.get("isSystem")) {
+        isSystem = "Yes";
+      } else {
+        isSystem = "No";
+      }
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_name", "Name", this.model.get("name")
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_version", "Version", this.model.get("version")
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_system", "System", isSystem
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_just_info", "Info", "All mount points will be unmounted and removed"
+      ));
+      if (mountinfo) {
+        _.each(mountinfo, function(m) {
+          mountvars.push(m.mount);
+        });
+
+        list.push(window.modalView.createReadOnlyEntry(
+          "id_just_mountinfo", "Mount-points", JSON.stringify(mountvars)
+        ));
+      }
+      return list;
     },
 
     fillValues: function() {
@@ -52,6 +97,22 @@
         "id_system", "System", isSystem
       ));
       return list;
+    },
+
+    removeDialog: function(event) {
+      event.stopPropagation();
+      var name = this.model.get("name");
+      var mountinfo = this.model.collection.mountInfo(name);
+      this.showPurgeMod(this.fillPurgeValues(mountinfo));
+    },
+
+    confirmRemoval: function(event) {
+      var name = this.model.get("name");
+      var result = this.model.collection.purgeFoxx(name);
+      if (result === true) {
+        window.modalView.hide();
+        window.App.applicationsView.reload();
+      }
     },
 
     installDialog: function(event) {

@@ -1103,6 +1103,38 @@ exports.unmount = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returnes mount points of a Foxx application
+///
+/// Input:
+/// * name: application name
+///
+/// Output:
+/// * name: application name
+/// * mount: the mount path
+////////////////////////////////////////////////////////////////////////////////
+
+exports.mountinfo = function (key) {
+  'use strict';
+
+  var _ = require("underscore"), mountinfo = [], tmp;
+
+  if (key === undefined) {
+    _.each(exports.appRoutes(), function(m) {
+      mountinfo.push({name: m.appContext.name, mount: m.appContext.mount});
+    });
+  }
+  else {
+    _.each(exports.appRoutes(), function(m) {
+      if (m.appContext.name === key) {
+        mountinfo.push({name: m.appContext.name, mount: m.appContext.mount});
+      }
+    });
+  }
+
+  return mountinfo;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief purges a Foxx application
 ///
 /// Input:
@@ -1422,7 +1454,7 @@ exports.mountedApp = function (path) {
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function buildGithubUrl (repository, version) {
+exports.buildGithubUrl = function (repository, version) {
   'use strict';
 
   if (typeof version === "undefined") {
@@ -1430,7 +1462,7 @@ function buildGithubUrl (repository, version) {
   }
 
   return 'https://github.com/' + repository + '/archive/' + version + '.zip';
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a foxx app from a remote repository
