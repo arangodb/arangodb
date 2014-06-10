@@ -244,7 +244,6 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
   return true;
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CollectorThread
 // -----------------------------------------------------------------------------
@@ -868,6 +867,11 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
         dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
+
+        // update cap constraint info
+        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
+                                               TRI_DF_ALIGN_BLOCK(orig->_size), 
+                                               TRI_DF_ALIGN_BLOCK(totalSize));
         break;
       }
 
@@ -920,6 +924,11 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
         dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
+        
+        // update cap constraint info
+        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
+                                               TRI_DF_ALIGN_BLOCK(orig->_size), 
+                                               TRI_DF_ALIGN_BLOCK(totalSize));
         break;
       }
 

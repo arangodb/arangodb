@@ -74,6 +74,10 @@ typedef struct TRI_headers_s {
   
   // return the total size of headers currently present in the linked list
   int64_t (*size) (struct TRI_headers_s const*);
+  
+  // adjust the total size (called by the collector when changing WAL markers
+  // into datafile markers)
+  void (*adjustTotalSize) (struct TRI_headers_s const*, int64_t, int64_t);
 }
 TRI_headers_t;
 

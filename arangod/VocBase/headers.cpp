@@ -210,11 +210,18 @@ static void UnlinkHeader (TRI_headers_t* h,
   if (headers->_nrLinked == 0) {
     TRI_ASSERT(headers->_begin == nullptr);
     TRI_ASSERT(headers->_end == nullptr);
+
+if (headers->_totalSize != 0) {
+  std::cout << "NONO HEADERS 1: " << headers->_totalSize << "\n";
+}
     TRI_ASSERT(headers->_totalSize == 0);
   }
   else {
     TRI_ASSERT(headers->_begin != nullptr);
     TRI_ASSERT(headers->_end != nullptr);
+if (headers->_totalSize <= 0) {
+  std::cout << "NONO HEADERS 2: " << headers->_totalSize << "\n";
+}
     TRI_ASSERT(headers->_totalSize > 0);
   }
   
@@ -466,6 +473,23 @@ static int64_t TotalSizeHeaders (TRI_headers_t const* h) {
   return (int64_t) headers->_totalSize;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjust the total size of the markers handed out
+/// this is called by the collector
+////////////////////////////////////////////////////////////////////////////////
+
+static void AdjustTotalSizeHeaders (TRI_headers_t const* h,
+                                    int64_t oldSize,
+                                    int64_t newSize) {
+  simple_headers_t* headers = (simple_headers_t*) h;
+
+  // oldSize = size of marker in WAL
+  // newSize = size of marker in datafile 
+
+  TRI_ASSERT(oldSize >= newSize);
+  headers->_totalSize -= (oldSize - newSize);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -482,23 +506,24 @@ TRI_headers_t* TRI_CreateSimpleHeaders () {
     return nullptr;
   }
 
-  headers->_freelist      = nullptr;
-  headers->_begin         = nullptr;
-  headers->_end           = nullptr;
-  headers->_nrAllocated   = 0;
-  headers->_nrLinked      = 0;
-  headers->_totalSize     = 0;
+  headers->_freelist            = nullptr;
+  headers->_begin               = nullptr;
+  headers->_end                 = nullptr;
+  headers->_nrAllocated         = 0;
+  headers->_nrLinked            = 0;
+  headers->_totalSize           = 0;
 
-  headers->base.request   = RequestHeader;
-  headers->base.release   = ReleaseHeader;
-  headers->base.moveBack  = MoveBackHeader;
-  headers->base.move      = MoveHeader;
-  headers->base.relink    = RelinkHeader;
-  headers->base.unlink    = UnlinkHeader;
-  headers->base.front     = FrontHeaders;
-  headers->base.back      = BackHeaders;
-  headers->base.count     = CountHeaders;
-  headers->base.size      = TotalSizeHeaders;
+  headers->base.request         = RequestHeader;
+  headers->base.release         = ReleaseHeader;
+  headers->base.moveBack        = MoveBackHeader;
+  headers->base.move            = MoveHeader;
+  headers->base.relink          = RelinkHeader;
+  headers->base.unlink          = UnlinkHeader;
+  headers->base.front           = FrontHeaders;
+  headers->base.back            = BackHeaders;
+  headers->base.count           = CountHeaders;
+  headers->base.size            = TotalSizeHeaders;
+  headers->base.adjustTotalSize = AdjustTotalSizeHeaders;
 
   TRI_InitVectorPointer2(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
 

@@ -1960,6 +1960,10 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
 
   v8::Handle<v8::Object> example = argv[1]->ToObject();
 
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
