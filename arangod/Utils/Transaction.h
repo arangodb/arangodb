@@ -63,6 +63,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,7 @@ namespace triagens {
           _numberTrxInScope++;
         }
 
-        TransactionBase (bool standalone) {
+        explicit TransactionBase (bool standalone) {
           TRI_ASSERT(_numberTrxInScope >= 0);
           TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
           _numberTrxInScope++;
