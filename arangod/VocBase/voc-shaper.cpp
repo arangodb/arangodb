@@ -144,6 +144,10 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 
 static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, 
                                               char const* name) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   TRI_ASSERT(name != nullptr);
 
   voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
@@ -162,6 +166,10 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
 
 static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper, 
                                                     char const* name) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   // check if the attribute exists
   TRI_shape_aid_t aid = LookupAttributeByName(shaper, name);
 
@@ -247,6 +255,10 @@ static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* ke
 
 static char const* LookupAttributeId (TRI_shaper_t* shaper, 
                                       TRI_shape_aid_t aid) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   voc_shaper_t* s = (voc_shaper_t*) shaper;
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
 
@@ -299,6 +311,10 @@ static bool EqualElementShape (TRI_associative_synced_t* array,
 static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, 
                                      TRI_shape_t* shape,
                                      bool create) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
   TRI_shape_t const* found = TRI_LookupBasicShapeShaper(shape);
 
@@ -406,6 +422,10 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array,
 
 static TRI_shape_t const* LookupShapeId (TRI_shaper_t* shaper, 
                                          TRI_shape_sid_t sid) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   TRI_shape_t const* shape = TRI_LookupSidBasicShapeShaper(sid);
 
   if (shape == nullptr) {
@@ -641,6 +661,10 @@ int TRI_InitVocShaper (TRI_shaper_t* s) {
 
 int TRI_MoveMarkerVocShaper (TRI_shaper_t* s, 
                              TRI_df_marker_t* marker) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertCurrentTrxActive();
+#endif
+
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
@@ -758,6 +782,10 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
                                                      TRI_shape_sid_t sid,
                                                      TRI_shape_pid_t pid) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   TRI_shape_access_t search;
   search._sid = sid;
   search._pid = pid;
@@ -790,6 +818,10 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
                                      TRI_shape_pid_t pid,
                                      TRI_shaped_json_t* result,
                                      TRI_shape_t const** shape) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertSomeTrxInScope();
+#endif
+
   TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pid);
 
   if (accessor == nullptr) {
@@ -1005,6 +1037,10 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_shaped_json_t const* rightShaped,
                            TRI_shaper_t* shaper) {
   
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  triagens::arango::TransactionBase::assertCurrentTrxActive();
+#endif
+
   TRI_shape_t const* leftShape;
   TRI_shape_t const* rightShape;
   TRI_shaped_json_t left;
