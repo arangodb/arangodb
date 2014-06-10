@@ -34,7 +34,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/Barrier.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 
@@ -306,8 +305,6 @@ bool RestEdgeHandler::createDocument () {
   // inside write transaction
   // .............................................................................
   
-  Barrier barrier(primary);
-
   // will hold the result
   TRI_doc_mptr_copy_t mptr;
   res = trx.createEdge(&mptr, json, waitForSync, &edge);

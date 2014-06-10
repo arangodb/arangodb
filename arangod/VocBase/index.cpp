@@ -2004,7 +2004,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
   // ...........................................................................
 
 
-  if (shapedDoc != NULL) {
+  if (shapedDoc != nullptr) {
 
     // ..........................................................................
     // Attempting to locate a entry using TRI_shaped_json_t object. Use this
@@ -2012,11 +2012,11 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
     // having the document (from which the keys would follow).
     // ..........................................................................
 
-    element->data = NULL;
+    element->data = nullptr;
 
 
     for (j = 0; j < baIndex->_paths._length; ++j) {
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths, j)));
 
       // ..........................................................................
       // Determine if document has that particular shape
@@ -2024,7 +2024,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
 
-      if (acc == NULL || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
       }
 
@@ -2046,7 +2046,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
     }
   }
 
-  else if (document != NULL) {
+  else if (document != nullptr) {
 
     // ..........................................................................
     // Assign the document to the element structure so that it can
@@ -2057,7 +2057,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
     for (j = 0; j < baIndex->_paths._length; ++j) {
       TRI_shaped_json_t shapedJson;
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
+      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths, j)));
 
       // ..........................................................................
       // Determine if document has that particular shape
@@ -2067,7 +2067,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
 
-      if (acc == NULL || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
       }
 
@@ -2109,12 +2109,12 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
   // Obtain the bitarray index structure
   // ............................................................................
 
-  baIndex = (TRI_bitarray_index_t*) idx;
-  if (idx == NULL) {
+  if (idx == nullptr) {
     LOG_WARNING("internal error in InsertBitarrayIndex");
     return TRI_ERROR_INTERNAL;
   }
 
+  baIndex = (TRI_bitarray_index_t*) idx;
 
 
   // ............................................................................
@@ -2126,7 +2126,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
   element.fields      = static_cast<TRI_shaped_json_t*>(TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false));
   element.collection  = baIndex->base._collection;
 
-  if (element.fields == NULL) {
+  if (element.fields == nullptr) {
     LOG_WARNING("out-of-memory in InsertBitarrayIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2136,7 +2136,7 @@ static int InsertBitarrayIndex (TRI_index_t* idx,
   // value.
   // ............................................................................
 
-  result = BitarrayIndexHelper(baIndex, &element, doc, NULL);
+  result = BitarrayIndexHelper(baIndex, &element, doc, nullptr);
 
   // ............................................................................
   // most likely the cause of this error is that the 'shape' of the document
@@ -2211,8 +2211,8 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
   TRI_bitarray_index_t const* baIndex = (TRI_bitarray_index_t const*) idx;
 
-  if (baIndex == NULL) {
-    return NULL;
+  if (baIndex == nullptr) {
+    return nullptr;
   }
 
   TRI_document_collection_t* document = idx->_collection;
