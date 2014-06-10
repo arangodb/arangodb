@@ -1,0 +1,132 @@
+!CHAPTER Fulltext
+
+If a fulltext index exists, then /_api/simple/fulltext will use this index to execute the specified fulltext query.
+
+`POST /_api/index`*(creates a fulltext index)*
+
+!SUBSECTION Query parameters
+
+`collection-name (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`index-details (json,required)`
+
+!SUBSECTION Description
+
+Creates a fulltext index for the collection collection-name, if it does not already exist. The call expects an object containing the index details.
+
+* type: must be equal to "fulltext".
+* fields: A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].
+* minLength: Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then a HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then a HTTP 201 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Creating a fulltext index:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type" : "fulltext", "fields" : [ "text" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/172155873", 
+  "type" : "fulltext", 
+  "unique" : false, 
+  "minLength" : 2, 
+  "fields" : [ 
+    "text" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/fulltext`*(executes a fulltext index query)*
+
+!SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+This will find all documents from the collection that match the fulltext query specified in query.
+
+In order to use the fulltext operator, a fulltext index must be defined for the collection and the specified attribute.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* attribute: The attribute that contains the texts.
+* query: The fulltext query.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+* index: The identifier of the fulltext-index to use.
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext
+{ "collection": "products", "attribute" : "text", "query" : "word" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/190571489", 
+      "_rev" : "190571489", 
+      "_key" : "190571489", 
+      "text" : "this text contains word" 
+    }, 
+    { 
+      "_id" : "products/190768097", 
+      "_rev" : "190768097", 
+      "_key" : "190768097", 
+      "text" : "this text also has a word" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```

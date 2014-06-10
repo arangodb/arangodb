@@ -1,0 +1,137 @@
+!CHAPTER Working with Skiplist Indexes
+
+If a suitable skip-list index exists, then /_api/simple/range will use this index to execute a range query.
+
+`POST /_api/index`*(creates a skip list)*
+
+!SUBSECTION Query parameters
+
+`collection-name (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`index-details (json,required)`
+
+!SUBSECTION Description
+
+Creates a skip-list index for the collection collection-name, if it does not already exist. The call expects an object containing the index details.
+
+* type: must be equal to "skiplist".
+* fields: A list of attribute paths.
+* unique: If true, then create a unique index.
+
+*Note*: unique indexes on non-shard keys are not supported in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then a HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then a HTTP 201 is returned.
+
+`HTTP 400`
+
+If the collection already contains documents and you try to create a unique skip-list index in such a way that there are documents violating the uniqueness, then a HTTP 400 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Creating a skiplist:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type": "skiplist", "unique" : false, "fields" : [ "a", "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/171828193", 
+  "type" : "skiplist", 
+  "unique" : false, 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/range`*(executes simple range query)*
+
+!SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+This will find all documents within a given range. In order to execute a range query, a skip-list index on the queried attribute must be present.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* attribute: The attribute path to check.
+* left: The lower bound.
+* right: The upper bound.
+* closed: If true, use interval including left and right, otherwise exclude right, but include left.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range
+{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/208069601", 
+      "_rev" : "208069601", 
+      "_key" : "208069601", 
+      "i" : 2 
+    }, 
+    { 
+      "_id" : "products/208266209", 
+      "_rev" : "208266209", 
+      "_key" : "208266209", 
+      "i" : 3 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
