@@ -986,7 +986,7 @@ struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_coll
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
+std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           struct TRI_transaction_collection_s*,
                           size_t,
                           TRI_shape_pid_t*,
