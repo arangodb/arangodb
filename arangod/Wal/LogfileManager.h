@@ -251,9 +251,9 @@ namespace triagens {
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-        SlotInfo allocateAndWrite (void*,
-                                   uint32_t,
-                                   bool);
+        StandaloneSlotInfo allocateAndWrite (void*,
+                                             uint32_t,
+                                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief re-inserts a logfile back into the inventory only

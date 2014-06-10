@@ -41,6 +41,34 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         struct StandaloneSlotInfo
+// -----------------------------------------------------------------------------
+    
+    struct StandaloneSlotInfo {
+      explicit StandaloneSlotInfo (Slot const* slot) 
+        : mem(slot->mem()),
+          size(slot->size()),
+          logfileId(slot->logfileId()),
+          tick(slot->tick()),
+          errorCode(TRI_ERROR_NO_ERROR) {
+      }
+
+      explicit StandaloneSlotInfo (int errorCode)
+        : mem(nullptr),
+          size(0),
+          logfileId(0),
+          tick(0),
+          errorCode(errorCode) {
+      }
+
+      void const*           mem;
+      uint32_t const        size;
+      Logfile::IdType const logfileId;
+      Slot::TickType const  tick;
+      int const             errorCode;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   struct SlotInfo
 // -----------------------------------------------------------------------------
 
