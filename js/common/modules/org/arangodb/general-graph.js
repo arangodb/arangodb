@@ -1284,9 +1284,9 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelationDefinition
-/// Define an undirected relation.
-/// 
+///
 /// `general-graph._undirectedRelationDefinition(relationName, vertexCollections)`
+/// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
 /// list of *vertexCollections*. This relation allows the user to store
@@ -1337,6 +1337,27 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Define an directed relation.
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_directedRelationDefinition
+///
+/// `general-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections)`
+/// *Define a directed relation.*
+///
+/// The *relationName* defines the name of this relation and references to the underlying edge collection.
+/// The *fromVertexCollections* is an Array of document collections holding the start vertices.
+/// The *toVertexCollections* is an Array of document collections holding the target vertices.
+/// Relations are only allowed in the direction from any collection in *fromVertexCollections*
+/// to any collection in *toVertexCollections*.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1398,6 +1419,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
     edgeDefinition.push(args[x]);
   });
 };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -2374,6 +2396,82 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
   });
   return returnHash;
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
+/// Deletes an edge definition defined by the edge collection of a graph. If the
+/// collections defined in the edge definition (collection, from, to) are not used
+/// in another graph, the
+///
+/// `general-graph.__deleteEdgeDefinition(edgeCollectionName, dropCollections)`
+///
+/// *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
+/// definition.
+/// *dropCollections* - bool : True, all collections are removed, if not used in another edge
+/// definition (including other graphs). Deflaut: true.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = examples._create("myGraph", [ed1, ed2]);
+///   g._deleteEdgeDefinition("myEC1", true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections) {
+  var edgeDefinitions = this.__edgeDefinitions,
+    vertexCollections = [],
+    definitionFound = false,
+    index;
+
+  edgeDefinitions.forEach(
+    function(edgeDefinition, idx) {
+      if (edgeDefinition.collection === edgeCollection) {
+        definitionFound = true;
+          if (dropCollections !== false) {
+          //get all vertex collections
+          var vertexCols = edgeDefinition.from.concat(edgeDefinition.to);
+          vertexCols.forEach(
+            function(vertexCol) {
+              if (vertexCollections.indexOf(vertexCol) === -1) {
+                vertexCollections.push(vertexCol);
+              }
+            }
+          );
+        }
+      }
+    }
+  );
+  if (definitionFound) {
+    edgeDefinitions.splice(index, 1);
+    this.__edgeDefinitions = edgeDefinitions;
+    db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
+  }
+  if (dropCollections !== false) {
+    if (checkIfMayBeDropped(edgeCollection, this.__name, getGraphCollection().toArray())) {
+      db._drop(edgeCollection);
+    }
+    vertexCollections.forEach(
+      function(vC) {
+        if (checkIfMayBeDropped(vC, this.__name, getGraphCollection().toArray())) {
+          db._drop(vC);
+        }
+      }
+    );
+
+  }
+
+};
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print basic information for the graph

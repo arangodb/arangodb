@@ -275,7 +275,7 @@ do the same for all routes of a controller. For this purpose
 use the *allRoutes* object of the according controller.
 The following methods are available:
 
-*Error Response*
+!SUBSECTION Error Response
 
 `RequestContextBuffer::errorResponse(errorClass, code, description)`
 
