@@ -491,22 +491,25 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocateAndWrite (void* src,
-                                           uint32_t size,
-                                           bool waitForSync) {
+StandaloneSlotInfo LogfileManager::allocateAndWrite (void* src,
+                                                     uint32_t size,
+                                                     bool waitForSync) {
 
   SlotInfo slotInfo = allocate(size);
  
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    return slotInfo;
+    return StandaloneSlotInfo(slotInfo.errorCode);
   }
 
   TRI_ASSERT(slotInfo.slot != nullptr);
 
   slotInfo.slot->fill(src, size);
+ 
+  // we must copy the slotinfo because finalise() will set its internal to 0 again
+  StandaloneSlotInfo copy(slotInfo.slot);
 
   finalise(slotInfo, waitForSync);
-  return slotInfo;
+  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
