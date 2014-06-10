@@ -10,7 +10,28 @@
 
     events: {
       'click .install': 'installDialog',
-      'click .purge': 'removeDialog'
+      'click .purge': 'removeDialog',
+      'change select' : 'renderVersion'
+    },
+
+    renderVersion: function(e) {
+      var name = this.model.get("name"),
+      selectOptions = this.model.get("selectOptions"),
+      versionToRender = $('#'+name+'Select').val();
+      this.model.set("activeVersion", versionToRender);
+
+      var toRender = this.model.collection.findWhere({
+        name: name,
+        version: versionToRender
+      });
+
+
+      $('#'+name+'Select').parent().remove();
+
+      this.renderVersionModel(toRender, name, selectOptions, versionToRender);
+      this.initialize();
+      //window.App.applicationsView.reload();
+
     },
 
     initialize: function(){
@@ -148,9 +169,36 @@
       });
     },
 
+    renderVersionModel: function(model, name, selectOptions, activeVersion) {
+        $(this.el).html(this.template.render(model)).append(
+          '<div class="tileSelects"><select id="'+name+'Select">'+selectOptions+'</select></div>'
+        );
+
+        window.setTimeout(function() {
+          $('#'+name+'Select').val(activeVersion);
+        }, 100);
+
+    },
+
     render: function(){
-      $(this.el).html(this.template.render(this.model));
+      var name = this.model.get("name"),
+      selectOptions = this.model.get("selectOptions"),
+      activeVersion = this.model.get("activeVersion");
+
+      if (activeVersion === 0 || activeVersion === undefined) {
+        activeVersion = this.model.get("highestVersion");
+      }
+
+      //if multiple versions are installed
+      if (this.model.get("highestVersion")) {
+        this.renderVersionModel(this.model, name, selectOptions, activeVersion);
+      }
+      else {
+        $(this.el).html(this.template.render(this.model));
+      }
+
       return $(this.el);
     }
+
   });
 }());

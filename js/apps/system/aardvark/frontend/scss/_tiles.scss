@@ -88,6 +88,20 @@ $iconsize: 50px;
     white-space: nowrap !important;
   }
 
+  div.tileSelects {
+    margin-left: 40px;
+    position: relative;
+    z-index: 9999;
+
+    select {
+      float: right;
+      height: 20px;
+      margin-right: 5px;
+      margin-top: 16px;
+      width: 70px;
+    }
+  }
+
   div.iconSet {
     position: absolute;
     right: 5px;
