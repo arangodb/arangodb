@@ -156,7 +156,7 @@ struct TRI_doc_mptr_t {
     }
 #else
     // The actual code has an assertion about transactions!
-    void const* getDataPtr () const;
+    virtual void const* getDataPtr () const;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ struct TRI_doc_mptr_t {
     }
 #else
     // The actual code has an assertion about transactions!
-    void setDataPtr (void const* d);
+    virtual void setDataPtr (void const* d);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +237,7 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     }
 #else
     // The actual code has an assertion about transactions!
-    void const* getDataPtr () const;
+    virtual void const* getDataPtr () const;
 #endif
 
 #ifndef TRI_ENABLE_MAINTAINER_MODE
@@ -246,7 +246,7 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     }
 #else
     // The actual code has an assertion about transactions!
-    void setDataPtr (void const* d);
+    virtual void setDataPtr (void const* d);
 #endif
 
 };
