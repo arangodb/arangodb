@@ -101,6 +101,7 @@ add_executable(
     SkipLists/skiplistIndex.cpp
     Utils/DocumentHelper.cpp
     Utils/Exception.cpp
+    Utils/Transaction.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp
