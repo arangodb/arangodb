@@ -40,26 +40,44 @@ var RequestContext,
   createBodyParamBubbleWrap,
   addCheck;
 
-createBodyParamBubbleWrap = function (handler, paramName, Proto) {
-  'use strict';
-  var bubbleWrap;
+var elementExtractFactory = function(paramName, rootElement) {
+  var extractElement;
 
-  if (is.array(Proto)) {
-    Proto = Proto[0];
-    bubbleWrap = function (req, res) {
-      req.parameters[paramName] = _.map(req.body(), function(raw) {
-        return new Proto(raw);
-      });
-      handler(req, res);
+  if (rootElement) {
+    extractElement = function (req) {
+      return req.body()[paramName];
     };
   } else {
-    bubbleWrap = function (req, res) {
-      req.parameters[paramName] = new Proto(req.body());
-      handler(req, res);
+    extractElement = function (req) {
+      return req.body();
     };
   }
 
-  return bubbleWrap;
+  return extractElement;
+};
+
+var bubbleWrapFactory = function (handler, paramName, Proto, extractElement, multiple) {
+  'use strict';
+  if (multiple) {
+    Proto = Proto[0];
+  }
+
+  return function (req, res) {
+    if (multiple) {
+      req.parameters[paramName] = _.map(extractElement(req), function (raw) {
+        return new Proto(raw);
+      });
+    } else {
+      req.parameters[paramName] = new Proto(extractElement(req));
+    }
+    handler(req, res);
+  };
+};
+
+createBodyParamBubbleWrap = function (handler, paramName, Proto, rootElement) {
+  'use strict';
+  var extractElement = elementExtractFactory(paramName, rootElement);
+  return bubbleWrapFactory(handler, paramName, Proto, extractElement, is.array(Proto));
 };
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
@@ -151,7 +169,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route) {
+RequestContext = function (executionBuffer, models, route, rootElement) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -159,6 +177,7 @@ RequestContext = function (executionBuffer, models, route) {
     "integer": "/[0-9]+/",
     "string": "/[^/]+/"
   };
+  this.rootElement = rootElement;
 
   this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
@@ -276,7 +295,7 @@ extend(RequestContext.prototype, {
     } else {
       this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
     }
-    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto);
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto, this.rootElement);
 
     return this;
   },
