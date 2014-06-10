@@ -894,7 +894,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document by key
-/// the caller must make sure the read lock on the collection is helt
+/// the caller must make sure the read lock on the collection is held
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LookupDocument (TRI_document_collection_t* document,

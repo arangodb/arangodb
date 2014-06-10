@@ -2652,8 +2652,6 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   }
   else {
     if (n == 0) {
-      trx.finish(res);
-
       return scope.Close(v8::Null());
     }
 

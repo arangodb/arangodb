@@ -339,9 +339,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
     size_t blockSize = GetBlockSize(headers->_blocks._length);
     TRI_ASSERT(blockSize > 0);
 
-    // initialise the memory with 0's
     TRI_doc_mptr_t* begin = new TRI_doc_mptr_t[blockSize];
-    // char* begin = reinterpret_cast<char*>(new TRI_doc_mptr_t[blockSize]);
 
     TRI_doc_mptr_t* ptr = begin + (blockSize - 1);
 

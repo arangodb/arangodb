@@ -34,7 +34,9 @@ using namespace triagens::arango;
 /// transaction objects in scope in the current thread
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 thread_local int TransactionBase::_numberTrxInScope = 0;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is for the runtime protection check, number of
@@ -42,7 +44,9 @@ thread_local int TransactionBase::_numberTrxInScope = 0;
 /// begin and commit()/abort().
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 thread_local int TransactionBase::_numberTrxActive = 0;
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--
