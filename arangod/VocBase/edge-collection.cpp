@@ -106,7 +106,7 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 
 static bool FindEdges (TRI_edge_direction_e direction,
                        TRI_edge_index_t* idx,
-                       TRI_vector_pointer_t* result,
+                       std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t* entry,
                        int matchType) {
   TRI_vector_pointer_t found;
@@ -128,17 +128,10 @@ static bool FindEdges (TRI_edge_direction_e direction,
   size_t const n = found._length;
 
   if (n > 0) {
-    if (result->_capacity == 0) {
+    if (result.capacity() == 0) {
       // if result vector is still empty and we have results, re-init the
       // result vector to a "good" size. this will save later reallocations
-      int res = TRI_InitVectorPointer2(result, TRI_UNKNOWN_MEM_ZONE, n);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_DestroyVectorPointer(&found);
-        TRI_set_errno(res);
-
-        return false;
-      }
+      result.reserve(n);
     }
 
     // add all results found
@@ -164,7 +157,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
         }
       }
       
-      TRI_PushBackVectorPointer(result, CONST_CAST(edge));
+      result.push_back(*edge);
 
     }
   }
@@ -182,7 +175,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
+std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                         TRI_document_collection_t* document,
                                         TRI_edge_direction_e direction,
                                         TRI_voc_cid_t cid,
@@ -193,8 +186,7 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
   entry._key = key;
 
   // initialise the result vector
-  TRI_vector_pointer_t result;
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<TRI_doc_mptr_copy_t> result;
 
   TRI_edge_index_t* edgesIndex = FindEdgesIndex(document);
 
@@ -205,17 +197,17 @@ TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
 
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgesIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_OUT, edgesIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgesIndex, &result, &entry, 1);
+    FindEdges(TRI_EDGE_IN, edgesIndex, result, &entry, 1);
     // add all non-reflexive edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgesIndex, &result, &entry, 3);
+    FindEdges(TRI_EDGE_OUT, edgesIndex, result, &entry, 3);
   }
 
   return result;
