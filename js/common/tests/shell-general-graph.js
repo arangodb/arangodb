@@ -2189,16 +2189,16 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[3][v4][2]._id  , v7);
       assertEqual(actual[4][v5][0]._id  , v6);
       assertEqual(actual[5][v6][0]._id  , v4);
-      assertEqual(actual[5][v6][1]._id  , v5);
-      assertEqual(actual[5][v6][2]._id  , v8);
-      assertEqual(actual[5][v6][3]._id  , v7);
+      assertEqual(actual[5][v6][1]._id  , v8);
+      assertEqual(actual[5][v6][2]._id  , v7);
+      assertEqual(actual[5][v6][3]._id  , v5);
       assertEqual(actual[6][v7][0]._id  , v4);
       assertEqual(actual[6][v7][1]._id  , v6);
       assertEqual(actual[6][v7][2]._id  , v8);
-      assertEqual(actual[7][v8][0]._id  , v3);
-      assertEqual(actual[7][v8][1]._id  , v4);
-      assertEqual(actual[7][v8][2]._id  , v6);
-      assertEqual(actual[7][v8][3]._id  , v7);
+      assertEqual(actual[7][v8][0]._id  , v4);
+      assertEqual(actual[7][v8][1]._id  , v6);
+      assertEqual(actual[7][v8][2]._id  , v7);
+      assertEqual(actual[7][v8][3]._id  , v3);
 
       actual = testGraph._amountCommonProperties({} ,{} ,{});
       assertEqual(actual, [
