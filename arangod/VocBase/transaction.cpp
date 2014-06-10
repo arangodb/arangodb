@@ -870,7 +870,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
     operation.header->setDataPtr(slotInfo.mem);  // PROTECTED by ongoing trx from operation
-  } 
+  }
+
+  // set header file id
+  operation.header->_fid = slotInfo.slot->logfileId();
   
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
