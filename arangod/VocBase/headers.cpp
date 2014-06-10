@@ -210,18 +210,11 @@ static void UnlinkHeader (TRI_headers_t* h,
   if (headers->_nrLinked == 0) {
     TRI_ASSERT(headers->_begin == nullptr);
     TRI_ASSERT(headers->_end == nullptr);
-
-if (headers->_totalSize != 0) {
-  std::cout << "NONO HEADERS 1: " << headers->_totalSize << "\n";
-}
     TRI_ASSERT(headers->_totalSize == 0);
   }
   else {
     TRI_ASSERT(headers->_begin != nullptr);
     TRI_ASSERT(headers->_end != nullptr);
-if (headers->_totalSize <= 0) {
-  std::cout << "NONO HEADERS 2: " << headers->_totalSize << "\n";
-}
     TRI_ASSERT(headers->_totalSize > 0);
   }
   
