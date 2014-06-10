@@ -33,6 +33,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/Exception.h"
+#include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
@@ -482,6 +483,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
+  // create a fake transaction while accessing the collection
+  triagens::arango::TransactionBase trx(true);
 
   TRI_document_collection_t* document = collection->_collection;
 
