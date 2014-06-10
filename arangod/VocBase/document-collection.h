@@ -727,7 +727,8 @@ bool TRI_CloseCompactorDocumentCollection (TRI_document_collection_t*,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*, char const*);
+TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*,  
+                                                       TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
