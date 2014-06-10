@@ -395,6 +395,12 @@ extern "C" {
 ///   a suitable fulltext index.
 /// - 1572: @LIT{invalid date value}
 ///   Will be raised when a value cannot be converted to a date.
+/// - 1573: @LIT{multi-modify query}
+///    "Will be raised when an AQL query contains more than one data-modifying
+///   operation."
+/// - 1574: @LIT{modify in subquery}
+///    "Will be raised when an AQL query contains a data-modifying operation
+///   inside a subquery."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2141,6 +2147,28 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1573: ERROR_QUERY_MULTI_MODIFY
+///
+/// multi-modify query
+///
+///  "Will be raised when an AQL query contains more than one data-modifying
+/// operation."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_MULTI_MODIFY                                      (1573)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1574: ERROR_QUERY_MODIFY_IN_SUBQUERY
+///
+/// modify in subquery
+///
+///  "Will be raised when an AQL query contains a data-modifying operation
+/// inside a subquery."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY                                (1574)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

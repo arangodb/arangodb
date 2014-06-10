@@ -48,7 +48,11 @@ bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
       type == TRI_AQL_NODE_SORT ||
       type == TRI_AQL_NODE_LIMIT ||
       type == TRI_AQL_NODE_COLLECT ||
-      type == TRI_AQL_NODE_RETURN) {
+      type == TRI_AQL_NODE_RETURN ||
+      type == TRI_AQL_NODE_REMOVE ||
+      type == TRI_AQL_NODE_SAVE ||
+      type == TRI_AQL_NODE_UPDATE ||
+      type == TRI_AQL_NODE_REPLACE) {
     return true;
   }
 
@@ -110,6 +114,14 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "filter";
     case TRI_AQL_NODE_RETURN:
       return "return";
+    case TRI_AQL_NODE_REMOVE:
+      return "remove";
+    case TRI_AQL_NODE_SAVE:
+      return "save";
+    case TRI_AQL_NODE_UPDATE:
+      return "update";
+    case TRI_AQL_NODE_REPLACE:
+      return "replace";
     case TRI_AQL_NODE_COLLECT:
       return "collect";
     case TRI_AQL_NODE_SORT:

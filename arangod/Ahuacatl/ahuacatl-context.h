@@ -49,6 +49,19 @@ struct TRI_vocbase_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the type of query to execute
+////////////////////////////////////////////////////////////////////////////////
+
+typedef enum {
+  TRI_AQL_QUERY_READ,
+  TRI_AQL_QUERY_REMOVE,
+  TRI_AQL_QUERY_SAVE,
+  TRI_AQL_QUERY_UPDATE,
+  TRI_AQL_QUERY_REPLACE
+}
+TRI_aql_query_type_e;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the context for parsing a query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,10 +92,15 @@ typedef struct TRI_aql_context_s {
 
   size_t                      _variableIndex;
   size_t                      _scopeIndex;
+  size_t                      _subQueries;
+
+  TRI_aql_query_type_e        _type;
+  char*                       _writeCollection;
   
   struct TRI_json_s*          _userOptions;
   bool                        _fullCount;
   bool                        _isCoordinator;
+  bool                        _writeIgnore;
 }
 TRI_aql_context_t;
 

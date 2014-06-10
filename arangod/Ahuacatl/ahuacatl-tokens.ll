@@ -96,6 +96,30 @@
   return T_INTO;
 }
 
+(?i:FROM) {
+  return T_FROM;
+}
+
+(?i:REMOVE) {
+  return T_REMOVE;
+}
+
+(?i:SAVE) {
+  return T_SAVE;
+}
+
+(?i:UPDATE) {
+  return T_UPDATE;
+}
+
+(?i:REPLACE) {
+  return T_REPLACE;
+}
+
+(?i:IGNORE) {
+  return T_IGNORE;
+}
+
  /* ---------------------------------------------------------------------------
   * predefined type literals
   * --------------------------------------------------------------------------- */

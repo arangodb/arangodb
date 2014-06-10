@@ -179,11 +179,14 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  context->_vocbase       = vocbase;
-  context->_userOptions   = userOptions;
+  context->_type            = TRI_AQL_QUERY_READ;
+  context->_vocbase         = vocbase;
+  context->_userOptions     = userOptions;
+  context->_writeCollection = NULL;
 
   context->_variableIndex = 0;
   context->_scopeIndex    = 0;
+  context->_subQueries    = 0;
 
   // actual bind parameter values
   res = TRI_InitAssociativePointer(&context->_parameters._values,

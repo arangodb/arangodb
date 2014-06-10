@@ -71,6 +71,13 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
 %token T_INTO "INTO keyword"
+%token T_FROM "FROM keyword"
+%token T_IGNORE "IGNORE hint"
+
+%token T_REMOVE "REMOVE command"
+%token T_SAVE "SAVE command"
+%token T_UPDATE "UPDATE command"
+%token T_REPLACE "REPLACE command"
 
 %token T_NULL "null" 
 %token T_TRUE "true" 
@@ -182,6 +189,19 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 
 query: 
     optional_statement_block_statements return_statement {
+      context->_type = TRI_AQL_QUERY_READ;
+    }
+  | optional_statement_block_statements remove_statement {
+      context->_type = TRI_AQL_QUERY_REMOVE;
+    }
+  | optional_statement_block_statements save_statement {
+      context->_type = TRI_AQL_QUERY_SAVE;
+    }
+  | optional_statement_block_statements update_statement {
+      context->_type = TRI_AQL_QUERY_UPDATE;
+    }
+  | optional_statement_block_statements replace_statement {
+      context->_type = TRI_AQL_QUERY_REPLACE;
     }
   ;
 
@@ -416,11 +436,196 @@ return_statement:
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
-      
-      // $$ = node;
     }
   ;
 
+remove_statement:
+    T_REMOVE expression T_FROM T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $4);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeRemoveAql(context, $2, coll, false);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_REMOVE T_IGNORE expression T_FROM T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $5);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeRemoveAql(context, $3, coll, true);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+save_statement:
+    T_SAVE expression T_INTO T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $4);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeSaveAql(context, $2, coll, false);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_SAVE T_IGNORE expression T_INTO T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $5);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeSaveAql(context, $3, coll, true);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+update_statement:
+    T_UPDATE expression T_IN T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $4);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeUpdateAql(context, $2, coll, false);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_UPDATE T_IGNORE expression T_IN T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $5);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeUpdateAql(context, $3, coll, true);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+replace_statement:
+    T_REPLACE expression T_IN T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $4);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeReplaceAql(context, $2, coll, false);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_REPLACE T_IGNORE expression T_IN T_STRING {
+      TRI_aql_node_t* coll;
+      TRI_aql_node_t* node;
+
+      coll = TRI_CreateNodeCollectionAql(context, $5);
+      if (coll == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeReplaceAql(context, $3, coll, true);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
 
 expression:
     T_OPEN expression T_CLOSE {
@@ -430,11 +635,16 @@ expression:
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
         ABORT_OOM
       }
+
+      context->_subQueries++;
+
     } query T_CLOSE {
       TRI_aql_node_t* result;
       TRI_aql_node_t* subQuery;
       TRI_aql_node_t* nameNode;
       
+      context->_subQueries--;
+
       if (! TRI_EndScopeAql(context)) {
         ABORT_OOM
       }

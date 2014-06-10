@@ -78,6 +78,30 @@
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+static void SetWriteOperation (TRI_aql_context_t* context,
+                               TRI_aql_node_t const* collection,
+                               TRI_aql_query_type_e type,
+                               bool ignore) {
+  if (context->_writeCollection != NULL ||
+      context->_type != TRI_AQL_QUERY_READ) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MULTI_MODIFY, NULL);
+  }
+  else if (context->_subQueries > 0) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY, NULL);
+  }
+  else {
+    TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(collection, 0);
+
+    if (nameNode == NULL) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    }
+    else {
+      context->_writeCollection = TRI_AQL_NODE_STRING(nameNode);
+      context->_writeIgnore = ignore;
+      context->_type = type;
+    }
+  }
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,6 +361,74 @@ TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_RETURN)
 
   ADD_MEMBER(expression)
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST remove node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeRemoveAql (TRI_aql_context_t* const context,
+                                         const TRI_aql_node_t* const expression,
+                                         const TRI_aql_node_t* const collection,
+                                         bool ignore) {
+  CREATE_NODE(TRI_AQL_NODE_REMOVE)
+
+  ADD_MEMBER(expression)
+
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, ignore); 
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST save node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeSaveAql (TRI_aql_context_t* const context,
+                                       const TRI_aql_node_t* const expression,
+                                       const TRI_aql_node_t* const collection,
+                                       bool ignore) {
+  CREATE_NODE(TRI_AQL_NODE_SAVE)
+
+  ADD_MEMBER(expression)
+
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_SAVE, ignore);  
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST update node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeUpdateAql (TRI_aql_context_t* const context,
+                                         const TRI_aql_node_t* const expression,
+                                         const TRI_aql_node_t* const collection,
+                                         bool ignore) {
+  CREATE_NODE(TRI_AQL_NODE_UPDATE)
+
+  ADD_MEMBER(expression)
+  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, ignore);  
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST replace node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_aql_node_t* TRI_CreateNodeReplaceAql (TRI_aql_context_t* const context,
+                                          const TRI_aql_node_t* const expression,
+                                          const TRI_aql_node_t* const collection,
+                                          bool ignore) {
+  CREATE_NODE(TRI_AQL_NODE_REPLACE)
+
+  ADD_MEMBER(expression)
+  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, ignore);  
 
   return node;
 }

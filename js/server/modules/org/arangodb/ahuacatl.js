@@ -466,6 +466,166 @@ function COMPILE_REGEX (regex, modifiers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a document
+////////////////////////////////////////////////////////////////////////////////
+
+function REMOVE_DOCUMENT (ops, document) {
+  "use strict";
+
+  var weight = TYPEWEIGHT(document);
+  if (weight === TYPEWEIGHT_STRING) {
+    ops.push(document);
+    return;
+  }
+  if (weight === TYPEWEIGHT_DOCUMENT &&
+      document.hasOwnProperty("_key")) {
+    ops.push(document._key);
+    return;
+  }
+      
+  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a document
+////////////////////////////////////////////////////////////////////////////////
+
+function SAVE_DOCUMENT (ops, document) {
+  "use strict";
+
+  if (TYPEWEIGHT(document) === TYPEWEIGHT_DOCUMENT) {
+    ops.push(document);
+    return;
+  }
+      
+  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document
+////////////////////////////////////////////////////////////////////////////////
+
+function UPDATE_DOCUMENT (ops, document) {
+  "use strict";
+
+  if (TYPEWEIGHT(document) === TYPEWEIGHT_DOCUMENT &&
+      document.hasOwnProperty("_key")) {
+    ops.push(document);
+    return;
+  }
+      
+  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered remove operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_REMOVE (ops, collection, ignore) {
+  var removed = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (ignore) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.remove(ops[i]);
+        ++removed;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.remove(ops[i]);
+      ++removed;
+    }
+  }
+
+  return { total: n, executed: removed };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered save operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_SAVE (ops, collection, ignore) {
+  var saved = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (ignore) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.save(ops[i]);
+        ++saved;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.save(ops[i]);
+      ++saved;
+    }
+  }
+
+  return { total: n, executed: saved };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered update operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_UPDATE (ops, collection, ignore) {
+  var updated = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (ignore) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.update(ops[i]._key, ops[i]);
+        ++updated;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.update(ops[i]._key, ops[i]);
+      ++updated;
+    }
+  }
+
+  return { total: n, executed: updated };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered replace operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_REPLACE (ops, collection, ignore) {
+  var replaced = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (ignore) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.replace(ops[i]._key, ops[i]);
+        ++replaced;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.replace(ops[i]._key, ops[i]);
+      ++replaced;
+    }
+  }
+
+  return { total: n, executed: removed };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief call a function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5680,6 +5840,13 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
+exports.REMOVE_DOCUMENT = REMOVE_DOCUMENT;
+exports.SAVE_DOCUMENT = SAVE_DOCUMENT;
+exports.UPDATE_DOCUMENT = UPDATE_DOCUMENT;
+exports.EXECUTE_REMOVE = EXECUTE_REMOVE;
+exports.EXECUTE_SAVE = EXECUTE_SAVE;
+exports.EXECUTE_UPDATE = EXECUTE_UPDATE;
+exports.EXECUTE_REPLACE = EXECUTE_REPLACE;
 exports.FCALL = FCALL;
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
