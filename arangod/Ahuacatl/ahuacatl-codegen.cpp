@@ -2639,6 +2639,98 @@ static void ProcessReturnEmpty (TRI_aql_codegen_js_t* const generator,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for remove keyword
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessRemove (TRI_aql_codegen_js_t* const generator,
+                           const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  if (scope == NULL) {
+    return;
+  }
+
+  ScopeOutput(generator, "aql.REMOVE_DOCUMENT(ops, ");
+
+  // expression
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+
+  ScopeOutput(generator, ");\n");
+  
+  // }
+  CloseLoops(generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for save keyword
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessSave (TRI_aql_codegen_js_t* const generator,
+                         const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  if (scope == NULL) {
+    return;
+  }
+
+  ScopeOutput(generator, "aql.SAVE_DOCUMENT(ops, ");
+
+  // expression
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+
+  ScopeOutput(generator, ");\n");
+  
+  // }
+  CloseLoops(generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for update keyword
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
+                           const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  if (scope == NULL) {
+    return;
+  }
+
+  ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
+
+  // expression
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+
+  ScopeOutput(generator, ");\n");
+  
+  // }
+  CloseLoops(generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate code for replace keyword
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessReplace (TRI_aql_codegen_js_t* const generator,
+                            const TRI_aql_node_t* const node) {
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
+
+  if (scope == NULL) {
+    return;
+  }
+
+  ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
+
+  // expression
+  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+
+  ScopeOutput(generator, ");\n");
+  
+  // }
+  CloseLoops(generator);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for let keyword
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2870,6 +2962,18 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
     case TRI_AQL_NODE_RETURN:
       ProcessReturn(generator, node);
       break;
+    case TRI_AQL_NODE_REMOVE:
+      ProcessRemove(generator, node);
+      break;
+    case TRI_AQL_NODE_SAVE:
+      ProcessSave(generator, node);
+      break;
+    case TRI_AQL_NODE_UPDATE:
+      ProcessUpdate(generator, node);
+      break;
+    case TRI_AQL_NODE_REPLACE:
+      ProcessReplace(generator, node);
+      break;
     case TRI_AQL_NODE_RETURN_EMPTY:
       ProcessReturnEmpty(generator, node);
       break;
@@ -3012,8 +3116,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     return NULL;
   }
 
-  OutputString(&generator->_functionBuffer, "(function () {\nvar aql = require(\"org/arangodb/ahuacatl\"), extra = { };\n");
-
+  OutputString(&generator->_functionBuffer, "(function () {\nvar aql = require(\"org/arangodb/ahuacatl\"), extra = { };\nvar ops = [ ];\n");
   if (context->_userOptions != NULL && context->_userOptions->_type == TRI_JSON_ARRAY) {
     OutputString(&generator->_functionBuffer, "var options = ");
     TRI_StringifyJson(&generator->_functionBuffer, context->_userOptions);
@@ -3022,12 +3125,44 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
 
   resultRegister = CreateCode(generator);
 
+  if (context->_type != TRI_AQL_QUERY_READ) {
+    assert(context->_writeCollection != NULL);
+
+    OutputString(&generator->_buffer, "extra.operations = aql.EXECUTE_");
+
+    switch (context->_type) {
+      case TRI_AQL_QUERY_REMOVE:
+        OutputString(&generator->_buffer, "REMOVE");
+        break;
+      case TRI_AQL_QUERY_SAVE:
+        OutputString(&generator->_buffer, "SAVE");
+        break;
+      case TRI_AQL_QUERY_UPDATE:
+        OutputString(&generator->_buffer, "UPDATE");
+        break;
+      case TRI_AQL_QUERY_REPLACE:
+        OutputString(&generator->_buffer, "REPLACE");
+        break;
+      case TRI_AQL_QUERY_READ:
+        // cannot happen, but the compiler is unhappy otherwise
+        assert(false);
+        break;
+    }
+
+    OutputString(&generator->_buffer, "(ops, '"); 
+    OutputString(&generator->_buffer, context->_writeCollection); 
+    OutputString(&generator->_buffer, "', "); 
+    OutputString(&generator->_buffer, context->_writeIgnore ? "true" : "false"); 
+    OutputString(&generator->_buffer, ");\n"); 
+  }
+
   // append result
   OutputString(&generator->_buffer, "return {\n");
   OutputString(&generator->_buffer, "docs: ");
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ",\n");
+
   OutputString(&generator->_buffer, "extra: extra");
   OutputString(&generator->_buffer, "\n};\n");
 

@@ -165,6 +165,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
   REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING, "no suitable fulltext index found for fulltext query on '%s'");
   REG_ERROR(ERROR_QUERY_INVALID_DATE_VALUE, "invalid date value");
+  REG_ERROR(ERROR_QUERY_MULTI_MODIFY, "multi-modify query");
+  REG_ERROR(ERROR_QUERY_MODIFY_IN_SUBQUERY, "modify in subquery");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");

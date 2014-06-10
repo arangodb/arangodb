@@ -3364,10 +3364,17 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
                                                              v8::String::New(code, (int) codeLength), 
                                                              TRI_V8_SYMBOL("query"), 
                                                              false);
-
-  trx.finish(TRI_ERROR_NO_ERROR);
   
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, code);
+
+  if (result.IsEmpty()) {
+    // force a rollback
+    trx.abort();
+  }
+  else {
+    // commit / finish
+    trx.finish(TRI_ERROR_NO_ERROR);
+  }
 
   // return the result as a javascript array
   return scope.Close(result);
