@@ -501,12 +501,13 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
     auto operation = (*it);
 
-    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.mem);
+    TRI_df_marker_t const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
     TRI_voc_fid_t fid = operation.fid;
   
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      TRI_doc_document_key_marker_t const* m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(operation.mem);
-      char const* key = operation.mem + m->_offsetKey;
+      TRI_doc_document_key_marker_t const* m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(operation.datafilePosition);
+      char const* key = operation.datafilePosition + m->_offsetKey;
 
       TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
@@ -519,13 +520,18 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
       }
       else {
+        // update cap constraint info
+        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
+                                               TRI_DF_ALIGN_BLOCK(walMarker->_size),
+                                               TRI_DF_ALIGN_BLOCK(marker->_size));
+
         // we can safely update the master pointer's dataptr value
-        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.mem)));
+        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(operation.mem);
-      char const* key = operation.mem + m->base._offsetKey;
+      TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(operation.datafilePosition);
+      char const* key = operation.datafilePosition + m->base._offsetKey;
       
       TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
@@ -538,13 +544,18 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
       }
       else {
+        // update cap constraint info
+        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
+                                               TRI_DF_ALIGN_BLOCK(walMarker->_size),
+                                               TRI_DF_ALIGN_BLOCK(marker->_size));
+
         // we can safely update the master pointer's dataptr value
-        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.mem)));
+        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-      TRI_doc_deletion_key_marker_t const* m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(operation.mem);
-      char const* key = operation.mem + m->_offsetKey;
+      TRI_doc_deletion_key_marker_t const* m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(operation.datafilePosition);
+      char const* key = operation.datafilePosition + m->_offsetKey;
       
       TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
       
@@ -555,7 +566,6 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
         dfi._numberAlive--;
         dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-
       }
     }
     else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
@@ -802,7 +812,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // copy attribute name into marker
         memcpy(dst + sizeof(TRI_df_attribute_marker_t), name, n);
 
-        finishMarker(dst, document, source->_tick, cache);
+        finishMarker(base, dst, document, source->_tick, cache);
         
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
@@ -825,7 +835,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // copy shape into marker
         memcpy(dst + sizeof(TRI_df_shape_marker_t), shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick, cache);
+        finishMarker(base, dst, document, source->_tick, cache);
     
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
@@ -864,17 +874,12 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // copy shape into marker
         memcpy(dst + m->_offsetJson, shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick, cache);
+        finishMarker(base, dst, document, source->_tick, cache);
         
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
         dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
-
-        // update cap constraint info
-        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
-                                               TRI_DF_ALIGN_BLOCK(orig->_size), 
-                                               TRI_DF_ALIGN_BLOCK(totalSize));
         break;
       }
 
@@ -921,17 +926,12 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // copy shape into marker
         memcpy(dst + m->base._offsetJson, shape, shapeLength);
 
-        finishMarker(dst, document, source->_tick, cache);
+        finishMarker(base, dst, document, source->_tick, cache);
         
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
         dfi._numberAlive++;
         dfi._sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
-        
-        // update cap constraint info
-        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
-                                               TRI_DF_ALIGN_BLOCK(orig->_size), 
-                                               TRI_DF_ALIGN_BLOCK(totalSize));
         break;
       }
 
@@ -956,7 +956,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         // copy key into marker
         memcpy(dst + m->_offsetKey, key, n);
 
-        finishMarker(dst, document, source->_tick, cache);
+        finishMarker(base, dst, document, source->_tick, cache);
         
         // update statistics
         auto& dfi = getDfi(cache, cache->lastFid);
@@ -1180,24 +1180,25 @@ void CollectorThread::initMarker (TRI_df_marker_t* marker,
 /// @brief set the tick of a marker and calculate its CRC value
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectorThread::finishMarker (char* mem,
+void CollectorThread::finishMarker (char const* walPosition,
+                                    char* datafilePosition,
                                     TRI_document_collection_t* document,
                                     TRI_voc_tick_t tick,
                                     CollectorCache* cache) {
-  TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(mem);
+  TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
 
   // re-use the original WAL marker's tick  
   marker->_tick = tick;
 
   // calculate the CRC
   TRI_voc_crc_t crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, const_cast<char*>(mem), marker->_size);
+  crc = TRI_BlockCrc32(crc, const_cast<char*>(datafilePosition), marker->_size);
   marker->_crc = TRI_FinalCrc32(crc);
 
   TRI_ASSERT(document->base._tickMax < tick);
   document->base._tickMax = tick;
 
-  cache->operations->emplace_back(CollectorOperation(mem, cache->lastFid));
+  cache->operations->emplace_back(CollectorOperation(datafilePosition, walPosition, cache->lastFid));
 }
 
 // Local Variables:
