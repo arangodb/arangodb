@@ -53,7 +53,7 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class Transaction
+// --SECTION--                                             class TransactionBase
 // -----------------------------------------------------------------------------
 
     class TransactionBase {
@@ -64,6 +64,10 @@ namespace triagens {
 
       // intentionally empty
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class Transaction
+// -----------------------------------------------------------------------------
 
     template<typename T>
     class Transaction : public T, public TransactionBase {
@@ -102,7 +106,7 @@ namespace triagens {
           _vocbase(vocbase),
           _generatingServer(generatingServer) {
 
-          TRI_ASSERT(_vocbase != 0);
+          TRI_ASSERT(_vocbase != nullptr);
 
           if (ServerState::instance()->isCoordinator()) {
             _isReal = false;
@@ -116,7 +120,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~Transaction () {
-          if (_trx == 0) {
+          if (_trx == nullptr) {
             return;
           }
           
@@ -144,7 +148,7 @@ namespace triagens {
 /// @brief return the registered error data
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string getErrorData () const {
+        std::string const getErrorData () const {
           return _errorData;
         }
 
@@ -183,7 +187,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_status_e getStatus () const {
-          if (_trx != 0) {
+          if (_trx != nullptr) {
             return _trx->_status;
           }
 
@@ -195,7 +199,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int begin () {
-          if (_trx == 0) {
+          if (_trx == nullptr) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
@@ -221,7 +225,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int commit () {
-          if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -243,7 +247,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int abort () {
-          if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
@@ -307,10 +311,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
          
          TRI_shaper_t* shaper (TRI_transaction_collection_t const* trxCollection) const {
-           TRI_ASSERT(_trx != 0);
+           TRI_ASSERT(_trx != nullptr);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-           TRI_ASSERT(trxCollection->_collection != 0);
-           TRI_ASSERT(trxCollection->_collection->_collection != 0);
+           TRI_ASSERT(trxCollection->_collection != nullptr);
+           TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 
            return trxCollection->_collection->_collection->_shaper;
          }
@@ -319,8 +323,8 @@ namespace triagens {
 /// @brief add a collection by id, with the name supplied
 ////////////////////////////////////////////////////////////////////////////////
         
-        int addCollection (const TRI_voc_cid_t cid,
-                           const char* name,
+        int addCollection (TRI_voc_cid_t cid,
+                           char const* name,
                            TRI_transaction_type_e type) {
           int res = this->addCollection(cid, type);
 
@@ -335,9 +339,9 @@ namespace triagens {
 /// @brief add a collection by id
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollection (const TRI_voc_cid_t cid,
+        int addCollection (TRI_voc_cid_t cid,
                            TRI_transaction_type_e type) {
-          if (_trx == 0) {
+          if (_trx == nullptr) {
             return registerError(TRI_ERROR_INTERNAL);
           }
          
@@ -399,7 +403,7 @@ namespace triagens {
 /// @brief add a transaction hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addHint (const TRI_transaction_hint_e hint) {
+        void addHint (TRI_transaction_hint_e hint) {
           _hints |= (TRI_transaction_hint_t) hint;
         }
 
@@ -408,9 +412,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int lock (TRI_transaction_collection_t* trxCollection,
-                  const TRI_transaction_type_e type) {
+                  TRI_transaction_type_e type) {
 
-          if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -424,9 +428,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int unlock (TRI_transaction_collection_t* trxCollection,
-                    const TRI_transaction_type_e type) {
+                    TRI_transaction_type_e type) {
 
-          if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
@@ -440,12 +444,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isLocked (TRI_transaction_collection_t* const trxCollection,
-                       const TRI_transaction_type_e type) {
-          if (_trx == 0 || getStatus() != TRI_TRANSACTION_RUNNING) {
+                       TRI_transaction_type_e type) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             return false;
           }
 
-          const bool locked = TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
+          bool locked = TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
 
           return locked;
         }
@@ -506,7 +510,7 @@ namespace triagens {
 
         int readSingle (TRI_transaction_collection_t* trxCollection,
                         TRI_doc_mptr_copy_t* mptr,
-                        const string& key) {
+                        std::string const& key) {
 
           TRI_ASSERT(mptr != nullptr);
           
@@ -566,7 +570,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readOrdered (TRI_transaction_collection_t* trxCollection, 
-                         vector<TRI_doc_mptr_copy_t>& documents,
+                         std::vector<TRI_doc_mptr_copy_t>& documents,
                          int64_t offset,
                          int64_t count) {
           TRI_document_collection_t* document = documentCollection(trxCollection);
@@ -626,7 +630,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
-                       vector<TRI_doc_mptr_copy_t>& docs,
+                       std::vector<TRI_doc_mptr_copy_t>& docs,
                        TRI_barrier_t** barrier,
                        TRI_voc_ssize_t skip,
                        TRI_voc_size_t limit,
@@ -725,7 +729,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             vector<TRI_doc_mptr_copy_t>& docs,
+                             std::vector<TRI_doc_mptr_copy_t>& docs,
                              TRI_barrier_t** barrier,
                              TRI_voc_size_t& internalSkip,
                              TRI_voc_size_t batchSize,
@@ -800,11 +804,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int create (TRI_transaction_collection_t* trxCollection,
-                    const TRI_df_marker_type_e markerType,
+                    TRI_df_marker_type_e markerType,
                     TRI_doc_mptr_copy_t* mptr,
                     TRI_json_t const* json,
                     void const* data,
-                    const bool forceSync) {
+                    bool forceSync) {
 
           TRI_voc_key_t key = 0;
           int res = DocumentHelper::getKey(json, &key);
@@ -846,7 +850,7 @@ namespace triagens {
                            TRI_doc_mptr_copy_t* mptr,
                            TRI_shaped_json_t const* shaped,
                            void const* data,
-                           const bool forceSync) {
+                           bool forceSync) {
          
           TRI_document_collection_t* document = documentCollection(trxCollection);
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
@@ -870,14 +874,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int update (TRI_transaction_collection_t* trxCollection,
-                    const string& key,
+                    std::string const& key,
                     TRI_voc_rid_t rid,
                     TRI_doc_mptr_copy_t* mptr,
                     TRI_json_t* const json,
-                    const TRI_doc_update_policy_e policy,
-                    const TRI_voc_rid_t expectedRevision,
+                    TRI_doc_update_policy_e policy,
+                    TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
-                    const bool forceSync) {
+                    bool forceSync) {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
           TRI_memory_zone_t* zone = shaper->_memoryZone;
@@ -907,14 +911,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int update (TRI_transaction_collection_t* const trxCollection,
-                           const string& key,
+                           std::string const& key,
                            TRI_voc_rid_t rid,
                            TRI_doc_mptr_copy_t* mptr,
                            TRI_shaped_json_t* const shaped,
                            TRI_doc_update_policy_e policy,
-                           const TRI_voc_rid_t expectedRevision,
+                           TRI_voc_rid_t expectedRevision,
                            TRI_voc_rid_t* actualRevision,
-                           const bool forceSync) {
+                           bool forceSync) {
 
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
@@ -937,12 +941,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int remove (TRI_transaction_collection_t* trxCollection,
-                    const string& key,
+                    std::string const& key,
                     TRI_voc_rid_t rid,
                     TRI_doc_update_policy_e policy,
-                    const TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,
-                    const bool forceSync) {
+                    bool forceSync) {
           
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
@@ -964,9 +968,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int removeAll (TRI_transaction_collection_t* const trxCollection,
-                       const bool forceSync) {
+                       bool forceSync) {
 
-          vector<string> ids;
+          std::vector<string> ids;
           
           TRI_document_collection_t* document = documentCollection(trxCollection);
           
@@ -1033,7 +1037,7 @@ namespace triagens {
 
         int addCollectionEmbedded (TRI_voc_cid_t cid, 
                                    TRI_transaction_type_e type) {
-          TRI_ASSERT(_trx != 0);
+          TRI_ASSERT(_trx != nullptr);
 
           int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
 
@@ -1050,7 +1054,7 @@ namespace triagens {
 
         int addCollectionToplevel (TRI_voc_cid_t cid, 
                                    TRI_transaction_type_e type) {
-          TRI_ASSERT(_trx != 0);
+          TRI_ASSERT(_trx != nullptr);
           
           int res;
 
