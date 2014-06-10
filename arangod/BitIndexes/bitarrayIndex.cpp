@@ -974,7 +974,7 @@ static int BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const* valueList
 
 
 int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
-                                         const TRI_bitarray_index_key_t* element,
+                                         TRI_bitarray_index_key_t const* element,
                                          TRI_bitarray_mask_t* mask) {
   TRI_shaper_t* shaper;
   int shiftLeft;
@@ -983,11 +983,11 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // some safety checks first
   // ...........................................................................
 
-  if (baIndex == NULL || element == NULL) {
+  if (baIndex == nullptr || element == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (element->collection == NULL) {
+  if (element->collection == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -998,7 +998,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // we are here we wish to store this fact.
   // ...........................................................................
 
-  if (! baIndex->_supportUndef && (element->numFields == 0 || element->fields == NULL)) {
+  if (! baIndex->_supportUndef && (element->numFields == 0 || element->fields == nullptr)) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -1021,7 +1021,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   shiftLeft   = 0;
 
   for (size_t j = 0; j < baIndex->_values._length; ++j) {
-    uint64_t    tempMask;
+    uint64_t tempMask;
     int result;
 
     TRI_json_t* value = static_cast<TRI_json_t*>(TRI_JsonShapedJson(shaper, &(element->fields[j]))); // from shaped json to simple json
