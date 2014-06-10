@@ -262,10 +262,17 @@ static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeBarrier (TRI_transaction_collection_t* trxCollection) {
-  if (trxCollection->_barrier != nullptr &&
-      trxCollection->_barrierUsers == 0) {
+  if (trxCollection->_barrier != nullptr) {
+    // we're done with this barrier
+    TRI_barrier_blocker_t* barrier = reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier);
+    
+    barrier->_usedByTransaction = false;
 
-    TRI_FreeBarrier(trxCollection->_barrier);
+    if (! barrier->_usedByExternal) {
+      // no one else is using this barrier, so we can free it
+      TRI_FreeBarrier(trxCollection->_barrier);
+    }
+    
     trxCollection->_barrier = nullptr;
   }
 }

@@ -140,8 +140,6 @@ namespace triagens {
            TRI_transaction_collection_t* trxCollection = this->trxCollection();
            TRI_ASSERT(trxCollection->_barrier != nullptr);
 
-           ++trxCollection->_barrierUsers;
-
            return trxCollection->_barrier;
          }
 
@@ -149,7 +147,7 @@ namespace triagens {
 /// @brief whether or not a barrier is available for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-         inline bool hasBarrier () const {
+         inline bool hasBarrier () {
            TRI_transaction_collection_t* trxCollection = this->trxCollection();
 
            return (trxCollection->_barrier != nullptr);

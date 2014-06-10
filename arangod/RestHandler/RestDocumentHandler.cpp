@@ -572,6 +572,8 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
+  TRI_ASSERT(trx.hasBarrier());
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str());
     return false;

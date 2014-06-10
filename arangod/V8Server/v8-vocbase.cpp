@@ -1941,6 +1941,8 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   res = trx.read(&document, key);
   res = trx.finish(res);
 
+  TRI_ASSERT(trx.hasBarrier());
+
   if (res == TRI_ERROR_NO_ERROR) {
     result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, &document);
   }
@@ -9691,10 +9693,16 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
 
   // get the vocbase pointer from the barrier
   TRI_vocbase_t* vocbase = barrier->base._container->_collection->base._vocbase;
+ 
+  // mark that we don't need the barrier anymore
+  barrier->_usedByExternal = false;
   
   // free the barrier
-std::cout << "WEAK BARRIER\n";
-  TRI_FreeBarrier(&barrier->base);
+  if (! barrier->_usedByTransaction) {
+    // the underlying transaction is over. we are the only user of this barrier
+    // and must destroy it
+    TRI_FreeBarrier(&barrier->base);
+  }
     
   if (vocbase != nullptr) {
     // decrease the reference-counter for the database
@@ -10148,8 +10156,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
   result->SetInternalField(SLOT_CLASS, v8::External::New(data));
   
+  // tell everyone else that this barrier is used by an external
+  reinterpret_cast<TRI_barrier_blocker_t*>(barrier)->_usedByExternal = true;
+  
   map<void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
-
+  
   if (i == v8g->JSBarriers.end()) {
     // increase the reference-counter for the database
     TRI_ASSERT(barrier->_container != nullptr);
