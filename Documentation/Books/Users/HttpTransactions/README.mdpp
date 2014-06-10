@@ -6,7 +6,7 @@ ArangoDB's transactions are executed on the server. Transactions can be
 initiated by clients by sending the transaction description for execution to
 the server.
 
-Transactions in ArangoDB do not offer separate `BEGIN`, `COMMIT` and `ROLLBACK`
+Transactions in ArangoDB do not offer separate *BEGIN*, *COMMIT* and *ROLLBACK*
 operations as they are available in many other database products. 
 Instead, ArangoDB transactions are described by a Javascript function, and the 
 code inside the Javascript function will then be executed transactionally.
@@ -16,9 +16,154 @@ during transaction execution, all operations performed in the transaction are
 rolled back.
 
 For a more detailed description of how transactions work in ArangoDB please
-refer to @ref Transactions. 
+refer to [Transactions](../Transactions/README.md). 
 
 !SECTION Executing Transactions via HTTP
 
+`POST /_api/transaction`*(executes a transaction)*
+
+!SUBSECTION Body parameters
+
+`body (string,required)`
+
+Contains the collections and action.
+
+!SUBSECTION Description
+
+The transaction description must be passed in the body of the POST request.
+
+The following attributes must be specified inside the JSON object:
+
+*collections*: contains the list of collections to be used in the transaction (mandatory). collections must be a JSON array that can have the optional sub-attributes read and write. read and write must each be either lists of collections names or strings with a single collection name.
+action: the actual transaction operations to be executed, in the form of stringified Javascript code. The code will be executed on server side, with late binding. It is thus critical that the code specified in action properly sets up all the variables it needs. If the code specified in action ends with a return statement, the value returned will also be returned by the REST API in the result attribute if the transaction committed successfully.
+The following optional attributes may also be specified in the request:
+
+*waitForSync*: an optional boolean flag that, if set, will force the transaction to write all data to disk before returning.
+lockTimeout: an optional numeric value that can be used to set a timeout for waiting on collection locks. If not specified, a default value will be used. Setting lockTimeout to 0 will make ArangoDB not time out waiting for a lock.
+replicate: whether or not to replicate the operations from this transaction. If not specified, the default value is true.
+params: optional arguments passed to action.
+If the transaction is fully executed and committed on the server, HTTP 200 will be returned. Additionally, the return value of the code defined in action will be returned in the result attribute.
+
+For successfully committed transactions, the returned JSON object has the following properties:
+
+* error: boolean flag to indicate if an error occurred (false in this case)
+* code: the HTTP status code
+* result: the return value of the transaction
+
+If the transaction specification is either missing or malformed, the server will respond with HTTP 400.
+
+The body of the response will then contain a JSON object with additional error details. The object has the following attributes:
+
+* error: boolean flag to indicate that an error occurred (true in this case)
+* code: the HTTP status code
+* errorNum: the server error number
+* errorMessage: a descriptive error message
+
+If a transaction fails to commit, either by an exception thrown in the action code, or by an internal error, the server will respond with an error. Any other errors will be returned with any of the return codes HTTP 400, HTTP 409, or HTTP 500.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the transaction is fully executed and committed on the server, HTTP 200 will be returned.
+
+`HTTP 400`
+
+If the transaction specification is either missing or malformed, the server will respond with HTTP 400.
+
+`HTTP 404`
+
+If the transaction specification contains an unknown collection, the server will respond with HTTP 404.
+
+`HTTP 500`
+
+Exceptions thrown by users will make the server respond with a return code of HTTP 500
+
+*Examples*
+
+Executing a transaction on a single collection:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{"collections":{"write":"products"},"action":"function () { var db = require('internal').db; db.products.save({}); return db.products.count(); }"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : 1, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Executing a transaction using multiple collections:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{"collections":{"write":["products","materials"]},"action":"function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : "worked!", 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Aborting a transaction due to an internal error:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{"collections":{"write":"products"},"action":"function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"}
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1210, 
+  "errorMessage" : "unique constraint violated" 
+}
+```
+
+Aborting a transaction by explicitly throwing an exception:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{"collections":{"read":"products"},"action":"function () { throw 'doh!'; }"}
+
+HTTP/1.1 500 Internal Error
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 500, 
+  "errorNum" : 500, 
+  "errorMessage" : "doh!" 
+}
+```
+
+Referring to a non-existing collection:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{"collections":{"read":"products"},"action":"function () { return true; }"}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1203, 
+  "errorMessage" : "collection not found" 
+}
+```
+<!--
 @anchor HttpTransactionsPost
 @copydetails JSF_post_api_transaction
+-->

@@ -1,5 +1,189 @@
 !CHAPTER Working with Indexes using HTTP
 
+`GET /_api/index/{index-handle}`*(reads an index)*
+
+!SUBSECTION URL parameters
+
+`index-handle (string,required)`
+
+The index-handle.
+!SUBSECTION Description
+
+The result is an objects describing the index. It has at least the following attributes:
+
+* id: The identifier of the index.
+
+All other attributes are type-dependent.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index exists, then a HTTP 200 is returned.
+
+`HTTP 404`
+
+If the index does not exist, then a HTTP 404 is returned.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/index/products/0
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/0", 
+  "type" : "primary", 
+  "unique" : true, 
+  "fields" : [ 
+    "_id" 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`POST /_api/index`*(creates an index)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`index-details (json,required)`
+
+!SUBSECTION Description
+
+Creates a new index in the collection collection. Expects an object containing the index details.
+
+The type of the index to be created must specified in the type attribute of the index details. Depending on the index type, additional other attributes may need to specified in the request in order to create the index.
+
+See Working with Cap Constraints , Working with Geo Indexes , Working with Hash Indexes , Working with Fulltext Indexes , and Working with Skiplist Indexes for details.
+
+Most indexes (a notable exception being the cap constraint) require the list of attributes to be indexed in the fields attribute of the index details. Depending on the index type, a single attribute or multiple attributes may be indexed.
+
+Indexing system attributes such as _id, _key, _from, and _to is not supported by any index type. Manually creating an index that relies on any of these attributes is unsupported.
+
+Some indexes can be created as unique or non-unique variants. Uniqueness can be controlled for most indexes by specifying the unique in the index details. Setting it to true will create a unique index. Setting it to false or omitting the unique attribute will create a non-unique index.
+
+*Note* that the following index types do not support uniqueness, and using the unique attribute with these types may lead to an error:
+
+* cap constraints
+* fulltext indexes
+* bitarray indexes
+
+Note also that unique indexes on non-shard keys are not supported in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then an HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then an HTTP 201 is returned.
+
+`HTTP 400`
+
+If an invalid index description is posted or attributes are used that the target index will not support, then an HTTP 400 is returned.
+
+`HTTP 404`
+
+If collection is unknown, then an HTTP 404 is returned.
+
+`DELETE /_api/index/{index-handle}`*(deletes an index)*
+
+!SUBSECTION Query parameters
+
+`index-handle (string,required)`
+
+The index handle.
+
+!SUBSECTION Description
+
+Deletes an index with index-handle.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index could be deleted, then an HTTP 200 is returned.
+
+`HTTP 404`
+
+If the index-handle is unknown, then an HTTP 404 is returned.
+
+*Examples*
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/index/products/172942305
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/172942305", 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`GET /_api/index`*(reads all indexes of a collection)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The collection name.
+
+!SUBSECTION Description
+
+Returns an object with an attribute indexes containing a list of all index descriptions for the given collection. The same information is also available in the identifiers as hash map with the index handle as keys.
+
+*Examples*
+
+Return information about all indexes:
+
+```
+unix> curl --dump - http://localhost:8529/_api/index?collection=products
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "indexes" : [ 
+    { 
+      "id" : "products/0", 
+      "type" : "primary", 
+      "unique" : true, 
+      "fields" : [ 
+        "_id" 
+      ] 
+    } 
+  ], 
+  "identifiers" : { 
+    "products/0" : { 
+      "id" : "products/0", 
+      "type" : "primary", 
+      "unique" : true, 
+      "fields" : [ 
+        "_id" 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+
+<!--
 @anchor HttpIndexRead
 @copydetails JSF_get_api_index
 
@@ -14,4 +198,4 @@
 @CLEARPAGE
 @anchor HttpIndexReadAll
 @copydetails JSF_get_api_indexes
-
+-->

@@ -1,5 +1,267 @@
 !CHAPTER Modifying a Collection
 
+`PUT /_api/collection/{collection-name}/load`*(loads a collection)*
+
+!SUBSECTION URL parameters
+
+`collection-name (string,required)`
+
+The name of the collection.
+
+!SUBSECTION Description
+
+Loads a collection into memory. Returns the collection on success.
+The request might optionally contain the following attribute:
+
+* count: If set, this controls whether the return value should include the number of documents in the collection. Setting count to false may speed up loading a collection. The default value for count is true.
+
+On success an object with the following attributes is returned:
+
+* id: The identifier of the collection.
+* name: The name of the collection.
+* count: The number of documents inside the collection. This is only returned if the count input parameters is set to true or has not been specified.
+* status: The status of the collection as number.
+* type: The collection type. Valid types are:
+* 2: document collection
+* 3: edges collection
+
+!SUBSECTION Return codes
+
+`HTTP 400`
+
+If the collection-name is missing, then a HTTP 400 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/collection/43508705/load
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "43508705", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "count" : 0, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/collection/{collection-name}/unload`*(unloads a collection)*
+
+!SUBSECTION URL parameters
+
+`collection-name (string,required)`
+
+!SUBSECTION Description
+
+Removes a collection from memory. This call does not delete any documents. You can use the collection afterwards; in which case it will be loaded into memory, again. On success an object with the following attributes is returned:
+
+* id: The identifier of the collection.
+* name: The name of the collection.
+* status: The status of the collection as number.
+* type: The collection type. Valid types are:
+* 2: document collection
+* 3: edges collection
+
+!SUBSECTION Return codes
+
+`HTTP 400`
+
+If the collection-name is missing, then a HTTP 400 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/collection/43639777/unload
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "43639777", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "status" : 2, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/collection/{collection-name}/properties`*(changes the properties of a collection)*
+
+!SUBSECTION URL parameters
+
+`collection-name (string,required)`
+
+The name of the collection.
+
+!SUBSECTION Description
+
+Changes the properties of a collection. Expects an object with the attribute(s)
+waitForSync: If true then creating or changing a document will wait until the data has been synchronised to disk.
+journalSize: Size (in bytes) for new journal files that are created for the collection.
+If returns an object with the attributes
+
+* id: The identifier of the collection.
+* name: The name of the collection.
+* waitForSync: The new value.
+* journalSize: The new value.
+* status: The status of the collection as number.
+* type: The collection type. Valid types are:
+* 2: document collection
+* 3: edges collection
+*Note*: some other collection properties, such as type, isVolatile, numberOfShards or shardKeys cannot be changed once a collection is created.
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/43836385/properties
+{"waitForSync":true}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "43836385", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "doCompact" : true, 
+  "isVolatile" : false, 
+  "journalSize" : 1048576, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  }, 
+  "waitForSync" : true, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/collection/{collection-name}/rename`*(renames a collection)*
+
+!SUBSECTION URL parameters
+
+`collection-name (string,required)`
+
+The name of the collection to rename.
+
+!SUBSECTION Description
+
+Renames a collection. Expects an object with the attribute(s)
+
+* name: The new name.
+
+If returns an object with the attributes
+
+* id: The identifier of the collection.
+* name: The new name of the collection.
+* status: The status of the collection as number.
+* type: The collection type. Valid types are:
+* 2: document collection
+* 3: edges collection
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/43901921/rename
+{"name":"newname"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "43901921", 
+  "name" : "newname", 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/collection/{collection-name}/rotate`*(rotates the journal of a collection)*
+
+!SUBSECTION URL parameters
+
+`collection-name (string,required)`
+
+The name of the collection.
+
+!SUBSECTION Description
+
+Rotates the journal of a collection. The current journal of the collection will be closed and made a read-only datafile. The purpose of the rotate method is to make the data in the file available for compaction (compaction is only performed for read-only datafiles, and not for journals).
+Saving new data in the collection subsequently will create a new journal file automatically if there is no current journal.
+
+If returns an object with the attributes
+
+* result: will be true if rotation succeeded
+
+*Note*: this method is not available in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 400`
+
+If the collection currently has no journal, HTTP 500 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Rotating a journal:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/43967457/rotate
+{}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Rotating without a journal:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/44426209/rotate
+{}
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1105, 
+  "errorMessage" : "could not rotate journal: no journal" 
+}
+`````
+
+<!--
 @anchor HttpCollectionLoad
 @copydetails JSF_put_api_collection_load
 
@@ -20,3 +282,4 @@
 @copydetails JSF_put_api_collection_rotate
 
 @BNAVIGATE_HttpCollection
+-->
