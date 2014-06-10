@@ -62,251 +62,297 @@ namespace triagens {
 /// @brief Transaction base, every transaction class has to inherit from here
 ////////////////////////////////////////////////////////////////////////////////
 
-      // intentionally empty
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class Transaction
-// -----------------------------------------------------------------------------
-
-    template<typename T>
-    class Transaction : public T, public TransactionBase {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transaction
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-        Transaction (const Transaction&) = delete;
-        Transaction& operator= (const Transaction&) = delete;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
       public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        Transaction (TRI_vocbase_t* vocbase,
-                     TRI_server_id_t generatingServer,
-                     bool replicate) :
-          T(),
-          _setupState(TRI_ERROR_NO_ERROR),
-          _nestingLevel(0),
-          _errorData(),
-          _hints(0),
-          _timeout(0.0),
-          _waitForSync(false),
-          _replicate(replicate),
-          _isReal(true),
-          _trx(0),
-          _vocbase(vocbase),
-          _generatingServer(generatingServer) {
-
-          TRI_ASSERT(_vocbase != nullptr);
-
-          if (ServerState::instance()->isCoordinator()) {
-            _isReal = false;
+        TransactionBase () {
+          TRI_ASSERT(_numberTrxInScope >= 0);
+            TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
+            _numberTrxInScope++;
           }
 
-          TRI_ASSERT(_numberTrxInScope >= 0);
-          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
-          _numberTrxInScope++;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-          this->setupTransaction();
-        }
+          virtual ~TransactionBase () {
+            TRI_ASSERT(_numberTrxInScope > 0);
+            _numberTrxInScope--;
+            // Note that embedded transactions might have seen a begin()
+            // but no abort() or commit(), so _numberTrxActive might
+            // be one too big. We simply fix it here:
+            _numberTrxActive = _numberTrxInScope;
+          }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assert that a transaction object is in scope in the current thread
+  ////////////////////////////////////////////////////////////////////////////////
+
+          static void assertSomeTrxInScope () {
+            TRI_ASSERT(_numberTrxInScope > 0);
+          }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assert that the innermost transaction object in scope in the 
+  /// current thread is actually active (between begin() and commit()/abort().
+  ////////////////////////////////////////////////////////////////////////////////
+
+          static void assertCurrentTrxActive () {
+            TRI_ASSERT(_numberTrxInScope > 0 &&
+                       _numberTrxInScope == _numberTrxActive);
+          }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the following is for the runtime protection check, number of
+  /// transaction objects in scope in the current thread
+  ////////////////////////////////////////////////////////////////////////////////
+
+        protected:
+
+          static thread_local int _numberTrxInScope;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the following is for the runtime protection check, number of
+  /// transaction objects in the current thread that are active (between
+  /// begin and commit()/abort().
+  ////////////////////////////////////////////////////////////////////////////////
+
+          static thread_local int _numberTrxActive;
+
+      };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 class Transaction
+  // -----------------------------------------------------------------------------
+
+      template<typename T>
+      class Transaction : public T, public TransactionBase {
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+        private:
+          Transaction (const Transaction&) = delete;
+          Transaction& operator= (const Transaction&) = delete;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and destructors
+  // -----------------------------------------------------------------------------
+
+        public:
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+          Transaction (TRI_vocbase_t* vocbase,
+                       TRI_server_id_t generatingServer,
+                       bool replicate) :
+            T(),
+            _setupState(TRI_ERROR_NO_ERROR),
+            _nestingLevel(0),
+            _errorData(),
+            _hints(0),
+            _timeout(0.0),
+            _waitForSync(false),
+            _replicate(replicate),
+            _isReal(true),
+            _trx(0),
+            _vocbase(vocbase),
+            _generatingServer(generatingServer) {
+
+            TRI_ASSERT(_vocbase != nullptr);
+
+            if (ServerState::instance()->isCoordinator()) {
+              _isReal = false;
+            }
+
+            this->setupTransaction();
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~Transaction () {
+          virtual ~Transaction () {
 
-          if (_trx == nullptr) {
-            TRI_ASSERT(_numberTrxInScope > 0);
-            _numberTrxInScope--;
-            TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
-            return;
-          }
-          
-          if (isEmbeddedTransaction()) {
-            _trx->_nestingLevel--;
-          }
-          else {
-            if (getStatus() == TRI_TRANSACTION_RUNNING) {
-              // auto abort a running transaction
-              this->abort();
+            if (_trx == nullptr) {
+              return;
             }
+            
+            if (isEmbeddedTransaction()) {
+              _trx->_nestingLevel--;
+            }
+            else {
+              if (getStatus() == TRI_TRANSACTION_RUNNING) {
+                // auto abort a running transaction
+                this->abort();
+              }
 
-            // free the data associated with the transaction
-            freeTransaction();
+              // free the data associated with the transaction
+              freeTransaction();
+            }
           }
-
-          TRI_ASSERT(_numberTrxInScope > 0);
-          _numberTrxInScope--;
-          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
-        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
+        public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the registered error data
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const getErrorData () const {
-          return _errorData;
-        }
+          std::string const getErrorData () const {
+            return _errorData;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection name resolver
 ////////////////////////////////////////////////////////////////////////////////
-        
-        CollectionNameResolver const* resolver () const {
-          CollectionNameResolver const* r = this->getResolver();
-          TRI_ASSERT(r != nullptr);
-          return r;
-        }
+          
+          CollectionNameResolver const* resolver () const {
+            CollectionNameResolver const* r = this->getResolver();
+            TRI_ASSERT(r != nullptr);
+            return r;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isEmbeddedTransaction () const {
-          return (_nestingLevel > 0);
-        }
+          inline bool isEmbeddedTransaction () const {
+            return (_nestingLevel > 0);
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not shaped json in this trx should be copied
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool mustCopyShapedJson () const {
-          if (_trx != 0 && _trx->_hasOperations) {
-            return true;
-          }
+          inline bool mustCopyShapedJson () const {
+            if (_trx != 0 && _trx->_hasOperations) {
+              return true;
+            }
 
-          return false;
-        }
+            return false;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the status of the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline TRI_transaction_status_e getStatus () const {
-          if (_trx != nullptr) {
-            return _trx->_status;
-          }
+          inline TRI_transaction_status_e getStatus () const {
+            if (_trx != nullptr) {
+              return _trx->_status;
+            }
 
-          return TRI_TRANSACTION_UNDEFINED;
-        }
+            return TRI_TRANSACTION_UNDEFINED;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int begin () {
-          if (_trx == nullptr) {
-            return TRI_ERROR_TRANSACTION_INTERNAL;
-          }
-          
-          if (_setupState != TRI_ERROR_NO_ERROR) {
-            return _setupState;
-          }
-
-          TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
-          _numberTrxActive++;  // Every transaction gets here at most once
-
-          if (! _isReal) {
-            if (_nestingLevel == 0) {
-              _trx->_status = TRI_TRANSACTION_RUNNING;
+          int begin () {
+            if (_trx == nullptr) {
+              return TRI_ERROR_TRANSACTION_INTERNAL;
             }
-            return TRI_ERROR_NO_ERROR;
+            
+            if (_setupState != TRI_ERROR_NO_ERROR) {
+              return _setupState;
+            }
+
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
+            _numberTrxActive++;  // Every transaction gets here at most once
+
+            if (! _isReal) {
+              if (_nestingLevel == 0) {
+                _trx->_status = TRI_TRANSACTION_RUNNING;
+              }
+              return TRI_ERROR_NO_ERROR;
+            }
+
+
+            int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
+
+            return res;
           }
-
-
-          int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
-
-          return res;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit / finish the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int commit () {
-          
-          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-            // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INTERNAL;
-          }
-          
-          TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-          _numberTrxActive--;  // Every transaction gets here at most once
-
-          if (! _isReal) {
-            if (_nestingLevel == 0) {
-              _trx->_status = TRI_TRANSACTION_COMMITTED;
+          int commit () {
+            if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+              // transaction not created or not running
+              return TRI_ERROR_TRANSACTION_INTERNAL;
             }
-            return TRI_ERROR_NO_ERROR;
+            
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            _numberTrxActive--;  // Every transaction gets here at most once
+
+            if (! _isReal) {
+              if (_nestingLevel == 0) {
+                _trx->_status = TRI_TRANSACTION_COMMITTED;
+              }
+              return TRI_ERROR_NO_ERROR;
+            }
+
+            int res = TRI_CommitTransaction(_trx, _nestingLevel);
+
+            return res;
           }
-
-          int res = TRI_CommitTransaction(_trx, _nestingLevel);
-
-          return res;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int abort () {
-          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-            // transaction not created or not running
-            return TRI_ERROR_TRANSACTION_INTERNAL;
-          }
-          
-          TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-          _numberTrxActive--;  // Every transaction gets here at most once
-
-          if (! _isReal) {
-            if (_nestingLevel == 0) {
-              _trx->_status = TRI_TRANSACTION_ABORTED;
+          int abort () {
+            if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+              // transaction not created or not running
+              return TRI_ERROR_TRANSACTION_INTERNAL;
             }
-            return TRI_ERROR_NO_ERROR;
+            
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            _numberTrxActive--;  // Every transaction gets here at most once
+
+            if (! _isReal) {
+              if (_nestingLevel == 0) {
+                _trx->_status = TRI_TRANSACTION_ABORTED;
+              }
+              return TRI_ERROR_NO_ERROR;
+            }
+
+            int res = TRI_AbortTransaction(_trx, _nestingLevel);
+
+            return res;
           }
-
-          int res = TRI_AbortTransaction(_trx, _nestingLevel);
-
-          return res;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finish a transaction (commit or abort), based on the previous state
 ////////////////////////////////////////////////////////////////////////////////
 
-        int finish (const int errorNum) {
-          int res;
+          int finish (const int errorNum) {
+            int res;
 
-          if (errorNum == TRI_ERROR_NO_ERROR) {
-            // there was no previous error, so we'll commit
-            res = this->commit();
-          }
-          else {
-            // there was a previous error, so we'll abort
-            this->abort();
+            if (errorNum == TRI_ERROR_NO_ERROR) {
+              // there was no previous error, so we'll commit
+              res = this->commit();
+            }
+            else {
+              // there was a previous error, so we'll abort
+              this->abort();
 
-            // return original error number
-            res = errorNum;
+              // return original error number
+              res = errorNum;
+            }
+            
+            return res;
           }
-          
-          return res;
-        }
 
 
 // -----------------------------------------------------------------------------
@@ -1176,24 +1222,6 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that a transaction object is in scope in the current thread
-////////////////////////////////////////////////////////////////////////////////
-
-        void assertSomeTrxInScope () {
-          TRI_ASSERT(_numberTrxInScope > 0);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the innermost transaction object in scope in the 
-/// current thread is actually active (between begin() and commit()/abort().
-////////////////////////////////////////////////////////////////////////////////
-
-        void assertCurrentTrxActive () {
-          TRI_ASSERT(_numberTrxInScope > 0 &&
-                     _numberTrxInScope == _numberTrxActive);
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1247,21 +1275,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _isReal;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in scope in the current thread
-////////////////////////////////////////////////////////////////////////////////
-
-        static thread_local int _numberTrxInScope;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in the current thread that are active (between
-/// begin and commit()/abort().
-////////////////////////////////////////////////////////////////////////////////
-
-        static thread_local int _numberTrxActive;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
