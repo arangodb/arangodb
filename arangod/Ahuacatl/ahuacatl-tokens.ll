@@ -96,10 +96,6 @@
   return T_INTO;
 }
 
-(?i:FROM) {
-  return T_FROM;
-}
-
 (?i:REMOVE) {
   return T_REMOVE;
 }
