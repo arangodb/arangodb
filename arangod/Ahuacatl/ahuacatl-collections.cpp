@@ -123,7 +123,6 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
 
   collection->_name             = (char*) name;
   collection->_collection       = NULL;
-  collection->_barrier          = NULL;
   collection->_availableIndexes = NULL;
 
   return collection;
@@ -367,89 +366,6 @@ bool TRI_SetupCollectionsAql (TRI_aql_context_t* context) {
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a gc marker for all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddBarrierCollectionsAql (TRI_aql_context_t* context) {
-  size_t i;
-  size_t n;
-  bool result = true;
-
-  if (context->_isCoordinator) {
-    // coordinator does not have any barriers
-    return true;
-  }
-
-  // iterate in forward order
-  n = context->_collections._length;
-  for (i = 0; i < n; ++i) {
-    TRI_barrier_t* ce;
-
-    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-    TRI_document_collection_t* document;
-
-    TRI_ASSERT(collection != NULL);
-    TRI_ASSERT(collection->_name != NULL);
-    TRI_ASSERT(collection->_collection != NULL);
-    TRI_ASSERT(collection->_collection->_collection != NULL);
-    TRI_ASSERT(collection->_barrier == NULL);
-
-    document = collection->_collection->_collection;
-
-    LOG_TRACE("adding barrier for collection '%s'", collection->_name);
-
-    ce = TRI_CreateBarrierElement(&document->_barrierList);
-
-    if (ce == NULL) {      
-      // couldn't create the barrier
-      result = false;
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-      break;
-    }
-    else {
-      collection->_barrier = ce;
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the gc markers for all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveBarrierCollectionsAql (TRI_aql_context_t* context) {
-  size_t i;
-  
-  if (context->_isCoordinator) {
-    // coordinator does not have any barriers
-    return;
-  }
-
-  // iterate in reverse order
-  i = context->_collections._length;
-  while (i--) {
-    TRI_aql_collection_t* collection = (TRI_aql_collection_t*) context->_collections._buffer[i];
-
-    TRI_ASSERT(collection != NULL);
-    TRI_ASSERT(collection->_name != NULL);
-
-    if (collection->_collection == NULL || collection->_barrier == NULL) {
-      // don't process collections we weren't able to lock at all
-      continue;
-    }
-
-    TRI_ASSERT(collection->_barrier != NULL);
-    TRI_ASSERT(collection->_collection->_collection != NULL);
-
-    LOG_TRACE("removing barrier for collection '%s'", collection->_name);
-
-    TRI_FreeBarrier(collection->_barrier);
-    collection->_barrier = NULL;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,6 @@
 #include "BasicsC/vector.h"
 
 #include "VocBase/vocbase.h"
-#include "VocBase/barrier.h"
 
 #include "Ahuacatl/ahuacatl-index.h"
 #include "Ahuacatl/ahuacatl-scope.h"
@@ -78,7 +77,6 @@ struct TRI_vector_pointer_s;
 
 typedef struct TRI_aql_collection_s {
   TRI_vocbase_col_t*           _collection; // this might be NULL !
-  TRI_barrier_t*               _barrier;    // this might be NULL !
   char*                        _name;
   struct TRI_vector_pointer_s* _availableIndexes;
 }
@@ -151,18 +149,6 @@ TRI_aql_collection_t* TRI_GetCollectionAql (const struct TRI_aql_context_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SetupCollectionsAql (struct TRI_aql_context_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a gc marker for all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_AddBarrierCollectionsAql (struct TRI_aql_context_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the gc markers for all collections used in a query
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RemoveBarrierCollectionsAql (struct TRI_aql_context_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection name to the list of collections used

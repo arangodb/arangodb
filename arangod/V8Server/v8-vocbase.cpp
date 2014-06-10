@@ -49,7 +49,6 @@
 #include "ShapedJson/shaped-json.h"
 #include "Utils/AhuacatlGuard.h"
 #include "Utils/AhuacatlTransaction.h"
-#include "Utils/Barrier.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "V8/v8-conv.h"
@@ -1907,7 +1906,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
 
   CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == 0) {
+  if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -1917,7 +1916,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   }
   
   TRI_ASSERT(col != 0);
-  TRI_ASSERT(key != 0);
+  TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
@@ -1928,19 +1927,14 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  bool usedBarrier = false;
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.documentCollection()->_barrierList));
-
-  if (barrier == 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
-
-  TRI_ASSERT(barrier != 0);
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
@@ -1948,14 +1942,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   res = trx.finish(res);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<V8ReadTransaction >(trx, col->_cid, &document, barrier, usedBarrier);
+    result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, &document);
   }
 
-  TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-
-  if (! usedBarrier) {
-    TRI_FreeBarrier(barrier);
-  }
+  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR || document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     if (res == TRI_ERROR_NO_ERROR) {
@@ -2054,7 +2044,9 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  Barrier barrier(trx.documentCollection());
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
@@ -2274,7 +2266,11 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
 
   TRI_doc_mptr_copy_t mptr;
-  Barrier barrier(document);
+
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
   
   // we must lock here, because below we are
   // - reading the old document in coordinator case
@@ -2399,8 +2395,6 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  Barrier barrier(document);
-
   TRI_doc_mptr_copy_t mptr;
   res = trx->createDocument(key, &mptr, shaped, forceSync);
 
@@ -2521,7 +2515,6 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   TRI_doc_mptr_copy_t mptr;
   res = trx->createEdge(key, &mptr, shaped, forceSync, &edge);
 
-  Barrier barrier(document);
   res = trx->finish(res);
    
   TRI_FreeShapedJson(zone, shaped);
@@ -2683,11 +2676,17 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
+  
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
 
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
-  Barrier barrier(document);
-
+  
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());  // PROTECTED by trx here
   TRI_json_t* old = TRI_JsonShapedJson(document->_shaper, &shaped);
@@ -3340,12 +3339,6 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
 
     return scope.Close(v8::ThrowException(errorObject));
   }
-
-  // add barriers for all collections used
-  if (! TRI_AddBarrierCollectionsAql(context)) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot add barrier");
-  }
-
 
   // generate code
   size_t codeLength = 0;
@@ -7875,16 +7868,12 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.documentCollection()->_barrierList));
-
-  if (barrier == 0) {
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   res = trx.truncate(forceSync);
   res = trx.finish(res);
-
-  TRI_FreeBarrier(barrier);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -9683,7 +9672,7 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
 static void WeakBarrierCallback (v8::Isolate* isolate,
                                  v8::Persistent<v8::Value> object,
                                  void* parameter) {
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
   TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
   
   v8g->_hasDeadObjects = true;
@@ -9704,7 +9693,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   // free the barrier
   TRI_FreeBarrier(&barrier->base);
     
-  if (vocbase != 0) {
+  if (vocbase != nullptr) {
     // decrease the reference-counter for the database
     TRI_ReleaseVocBase(vocbase);
   }
@@ -10089,26 +10078,20 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 template<class T>
 v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           TRI_voc_cid_t cid,
-                                          TRI_doc_mptr_t const* document,
-                                          TRI_barrier_t* barrier, 
-                                          bool& usedBarrier) {
+                                          TRI_doc_mptr_t const* document) {
   v8::HandleScope scope;
     
   TRI_ASSERT(document != nullptr);
   TRI_ASSERT(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
-  TRI_ASSERT(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
-  TRI_ASSERT(barrier != 0);
-  
   bool doCopy = trx.mustCopyShapedJson();
   
   if (doCopy) {
     // we'll create a full copy of the document
-
-    TRI_document_collection_t* collection = barrier->_container->_collection;
+    TRI_document_collection_t* collection = trx.documentCollection();
     TRI_shaper_t* shaper = collection->_shaper;
   
     TRI_shaped_json_t json;
@@ -10157,6 +10140,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
   result->SetInternalField(SLOT_CLASS, v8::External::New(data));
   
+  TRI_barrier_t* barrier = trx.barrier();
+  TRI_ASSERT(barrier != nullptr);
+  
   map<void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
@@ -10172,8 +10158,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   else {
     result->SetInternalField(SLOT_BARRIER, i->second);
   }
-
-  usedBarrier |= true;
 
   return scope.Close(AddBasicDocumentAttributes<T>(trx, v8g, cid, document, result));
 }

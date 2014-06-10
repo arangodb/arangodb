@@ -75,9 +75,7 @@ TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver c
 template<class T>
 v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
                                           TRI_voc_cid_t,
-                                          TRI_doc_mptr_t const*,
-                                          TRI_barrier_t*,
-                                          bool&);
+                                          TRI_doc_mptr_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value

@@ -48,7 +48,7 @@ namespace triagens {
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_t;
+struct TRI_barrier_s;
 struct TRI_vocbase_s;
 struct TRI_vocbase_col_s;
 
@@ -161,6 +161,8 @@ typedef struct TRI_transaction_collection_s {
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
   struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
+  struct TRI_barrier_s*                _barrier;
+  uint64_t                             _barrierUsers;      // number of users of the barrier
   std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
   bool                                 _locked;            // collection lock flag
