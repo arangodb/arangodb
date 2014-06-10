@@ -53,12 +53,6 @@ struct TRI_index_s;
 struct TRI_json_s;
 struct TRI_key_generator_s;
 
-namespace triagens {
-  namespace arango {
-    class TransactionBase;
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
@@ -227,6 +221,9 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     }
 
     TRI_doc_mptr_copy_t const& operator= (TRI_doc_mptr_t const& that) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      triagens::arango::TransactionBase::assertCurrentTrxActive();
+#endif
       copy(that);
       return *this;
     }
