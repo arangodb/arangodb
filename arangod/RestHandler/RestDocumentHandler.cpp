@@ -35,7 +35,6 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
-#include "Utils/Barrier.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
@@ -341,8 +340,6 @@ bool RestDocumentHandler::createDocument () {
 
   TRI_voc_cid_t const cid = trx.cid();
 
-  Barrier barrier(trx.documentCollection());
-
   TRI_doc_mptr_copy_t mptr;
   res = trx.createDocument(&mptr, json, waitForSync);
   res = trx.finish(res);
@@ -568,9 +565,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
-
-  // register a barrier. will be destroyed automatically
-  Barrier barrier(document);
 
   res = trx.finish(res);
 
@@ -1331,9 +1325,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->_shaper;
 
-  const string cidString = StringUtils::itoa(document->base._info._planId);
+  string const cidString = StringUtils::itoa(document->base._info._planId);
 
-  Barrier barrier(document);
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return false;
+  }
 
   if (isPatch) {
     // patching an existing document

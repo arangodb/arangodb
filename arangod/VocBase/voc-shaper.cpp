@@ -669,6 +669,8 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // are identical in old and new marker) 
     // and re-insert same attribute with adjusted pointer
     void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
+
+    // TODO: sometimes this assertion fails. why?
     TRI_ASSERT(f != nullptr);
 
     // same for attribute ids

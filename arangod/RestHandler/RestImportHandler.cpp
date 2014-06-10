@@ -622,12 +622,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
     trx.truncate(false);
-    
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
   }
 
   if (linewise) {
@@ -1080,12 +1075,7 @@ bool RestImportHandler::createFromKeyValueList () {
 
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
     trx.truncate(false);
-    
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
   }
 
   size_t i = (size_t) lineNumber;

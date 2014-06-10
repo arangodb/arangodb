@@ -285,9 +285,6 @@ void TRI_FreeContextAql (TRI_aql_context_t* const context) {
 
   LOG_TRACE("freeing context");
 
-  // remove barriers for all collections used
-  TRI_RemoveBarrierCollectionsAql(context);
-
   // release all scopes
   TRI_FreeScopesAql(context);
 
