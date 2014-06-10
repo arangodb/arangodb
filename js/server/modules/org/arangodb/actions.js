@@ -950,14 +950,11 @@ function routeRequest (req, res) {
       func(req, res, action.route.callback.options, next);
     }
     catch (err) {
-      if (err instanceof internal.SleepAndRequeue) {
-        throw err;
+      if (! err.hasOwnProperty("route")) {
+        err.route = action.route;
       }
 
-      var msg = 'A runtime error occurred while executing an action: '
-              + String(err) + " " + String(err.stack) + " " + (typeof err);
-
-      exports.errorFunction(action.route, msg)(req, res, action.route.callback.options, next);
+      throw err;
     }
   };
 
