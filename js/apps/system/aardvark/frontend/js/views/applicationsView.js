@@ -13,13 +13,78 @@ window.ApplicationsView = Backbone.View.extend({
     "click #foxxToggle"         : "slideToggle",
     "click #importFoxxToggle"   : "slideToggleImport",
     "change #importFoxx"        : "uploadSetup",
-    "click #confirmFoxxImport"  : "importFoxx"
+    "click #confirmFoxxImport"  : "importFoxx",
+    "click #installFoxxFromGithub" : "createGithubModal"
   },
 
   uploadSetup: function (e) {
     var files = e.target.files || e.dataTransfer.files;
     this.file = files[0];
     this.allowUpload = true;
+  },
+
+  createGithubModal: function() {
+    var buttons = [], tableContent = [];
+    tableContent.push(
+      window.modalView.createTextEntry(
+        'github-name',
+        'App name',
+        '',
+        'Your chosen application-name comes here',
+        undefined,
+        false,
+        /[<>&'"]/
+    ));
+    tableContent.push(
+      window.modalView.createTextEntry(
+        'github-url',
+        'Github Url',
+        '',
+        'Your Github URL comes here: username/application-name',
+        undefined,
+        false,
+        /[<>&'"]/
+    ));
+    tableContent.push(
+      window.modalView.createTextEntry(
+        'github-version',
+        'Version (optional)',
+        '',
+        'Example: v1.1.2 for Version 1.1.2 - if no version is commited, master is used',
+        undefined,
+        false,
+        /[<>&'"]/
+    ));
+    buttons.push(
+      window.modalView.createSuccessButton('Install', this.submitGithubFoxx.bind(this))
+    );
+    window.modalView.show(
+      'modalTable.ejs', 'Install Foxx from Github', buttons, tableContent, undefined, undefined
+    );
+  },
+
+  closeGithubModal: function() {
+    window.modalView.hide();
+  },
+
+  submitGithubFoxx: function() {
+    var name, url, version, result;
+
+    //fetch needed information, need client side verification
+    name = $('#github-name').val();
+    url = $('#github-url').val();
+    version = $('#github-version').val();
+
+    if (version === '') {
+      version = "master";
+    }
+
+    //send server req through collection
+    result = this.collection.installFoxxFromGithub(url, name, version);
+    if (result === true) {
+      this.closeGithubModal();
+      this.reload();
+    }
   },
 
   importFoxx: function() {
