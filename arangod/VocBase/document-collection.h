@@ -150,17 +150,27 @@ struct TRI_doc_mptr_t {
 /// @brief return a pointer to the beginning of the marker
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void const* getDataPtr () const {
       return _dataptr;
     }
+#else
+    // The actual code has an assertion about transactions!
+    void const* getDataPtr () const;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the pointer to the beginning of the memory for the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    void setDataPtr (void const* d) {
+#ifndef TRI_ENABLE_MAINTAINER_MODE
+    inline void setDataPtr (void const* d) {
       _dataptr = d;
     }
+#else
+    // The actual code has an assertion about transactions!
+    void setDataPtr (void const* d);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the beginning of the shaped json stored in the
@@ -181,7 +191,7 @@ struct TRI_doc_mptr_t {
         return static_cast<char const*>(_dataptr) + offset;
       }
 
-#ifdef TRI_ENABLE_MAINTAINER
+#ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
 
@@ -192,6 +202,10 @@ struct TRI_doc_mptr_t {
     TRI_doc_mptr_t(TRI_doc_mptr_t const&) = delete;
     
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief A derived class for copies of master pointers, they
+////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     TRI_doc_mptr_copy_t () : TRI_doc_mptr_t() {
@@ -216,6 +230,25 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
       copy(that);
       return *this;
     }
+
+#ifndef TRI_ENABLE_MAINTAINER_MODE
+    inline void const* getDataPtr () const {
+      return _dataptr;
+    }
+#else
+    // The actual code has an assertion about transactions!
+    void const* getDataPtr () const;
+#endif
+
+#ifndef TRI_ENABLE_MAINTAINER_MODE
+    inline void setDataPtr (void const* d) {
+      _dataptr = d;
+    }
+#else
+    // The actual code has an assertion about transactions!
+    void setDataPtr (void const* d);
+#endif
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -34,12 +34,7 @@ using namespace triagens::arango;
 /// transaction objects in scope in the current thread
 ////////////////////////////////////////////////////////////////////////////////
 
-template<>
-thread_local int Transaction<RestTransactionContext>::_numberTrxInScope = 0;
-template<>
-thread_local int Transaction<V8TransactionContext<true>>::_numberTrxInScope = 0;
-template<>
-thread_local int Transaction<V8TransactionContext<false>>::_numberTrxInScope=0;
+thread_local int TransactionBase::_numberTrxInScope = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is for the runtime protection check, number of
@@ -47,12 +42,7 @@ thread_local int Transaction<V8TransactionContext<false>>::_numberTrxInScope=0;
 /// begin and commit()/abort().
 ////////////////////////////////////////////////////////////////////////////////
 
-template<> 
-thread_local int Transaction<RestTransactionContext>::_numberTrxActive = 0;
-template<>
-thread_local int Transaction<V8TransactionContext<true>>::_numberTrxActive = 0;
-template<>
-thread_local int Transaction<V8TransactionContext<false>>::_numberTrxActive = 0;
+thread_local int TransactionBase::_numberTrxActive = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--
