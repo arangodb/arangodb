@@ -1098,7 +1098,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection->_path);
+    document = TRI_OpenDocumentCollection(vocbase, collection);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);

@@ -2974,11 +2974,13 @@ bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase, 
-                                                       char const* path) {
+                                                       TRI_vocbase_col_t* col) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_key_generator_t* keyGenerator;
   int res;
+
+  char const* path = col->_path;
 
   // first open the document collection
   TRI_document_collection_t* document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
@@ -3031,8 +3033,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT(keyGenerator != nullptr);
   document->_keyGenerator = keyGenerator;
 
-  // iterate over all markers of the collection
-  res = IterateMarkersCollection(collection);
+  {
+    // create a fake transaction for loading the collection
+    TransactionBase trx(true);
+
+    // iterate over all markers of the collection
+    res = IterateMarkersCollection(collection);
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (document->_failedTransactions != nullptr) {
