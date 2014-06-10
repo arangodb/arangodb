@@ -117,8 +117,8 @@ struct TRI_doc_mptr_t {
     TRI_doc_mptr_t*        _prev;    // previous master pointer
     TRI_doc_mptr_t*        _next;    // next master pointer
 
-    TRI_doc_mptr_t () : _rid(0), _fid(0), _hash(0), _prev(nullptr), 
-                        _next(nullptr) {
+    TRI_doc_mptr_t () : _rid(0), _fid(0), _dataptr(nullptr), _hash(0), 
+                        _prev(nullptr), _next(nullptr) {
     }
 
     void clear () {
