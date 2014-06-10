@@ -459,7 +459,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // check if the document is still active
     found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-    deleted = (found == NULL || found->_rid > d->_rid);
+    deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
       LOG_TRACE("found a stale document: %s", key);
@@ -478,7 +478,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
 
     // check if the document is still active
     found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-    deleted = found == NULL;
+    deleted = (found == nullptr);
 
     if (deleted) {
       context->_dfi._numberDead += 1;
@@ -490,7 +490,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found); 
-    TRI_ASSERT(found2->getDataPtr() != NULL);
+    TRI_ASSERT(found2->getDataPtr() != nullptr);
     TRI_ASSERT(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);
 
     // the fid might change
@@ -498,7 +498,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       // update old datafile's info
       TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, found->_fid, false);
 
-      if (dfi != NULL) {
+      if (dfi != nullptr) {
         dfi->_numberDead += 1;
         dfi->_sizeDead += AlignedSize(marker);
       }

@@ -121,10 +121,49 @@ static void FreeOperations (TRI_transaction_t* trx) {
     }
  
     if (mustRollback) {
+      // revert all operations
       for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
         triagens::wal::DocumentOperation* op = (*it);
 
         op->revert();
+      }
+    }
+    else {
+      // update datafile statistics for all operations
+      // pair (number of dead markers, size of dead markers)
+      std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
+
+      for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
+        triagens::wal::DocumentOperation* op = (*it);
+
+        if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) { 
+          TRI_voc_fid_t fid = op->oldHeader._fid;
+          TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(op->oldHeader.getDataPtr());
+
+          auto it2 = stats.find(fid);
+
+          if (it2 == stats.end()) {
+            stats.insert(it2, std::make_pair(fid, std::make_pair(1, TRI_DF_ALIGN_BLOCK(marker->_size))));
+          }
+          else {
+            (*it2).second.first++;
+            (*it2).second.second += TRI_DF_ALIGN_BLOCK(marker->_size);
+          }
+        }
+      }
+
+      // now update the stats in one go
+      for (auto it = stats.begin(); it != stats.end(); ++it) {
+        TRI_voc_fid_t fid = (*it).first;
+
+        TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, fid, false);
+        // the old header might point to the WAL. in this case, there'll be no stats update
+
+        if (dfi != nullptr) {
+          dfi->_numberDead += (*it).second.first; // number of dead markers
+          dfi->_sizeDead += (*it).second.second; // size of dead markers
+        }
       }
     }
 
@@ -833,11 +872,29 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     operation.header->setDataPtr(slotInfo.mem);  // PROTECTED by ongoing trx from operation
   } 
   
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  
   if (isSingleOperationTransaction) {
+    // operation is directly executed
     operation.handle();
+
+    if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+      // update datafile statistics for the old header
+      TRI_ASSERT(operation.oldHeader._fid > 0);
+
+      TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, operation.oldHeader._fid, false);
+      // the old header might point to the WAL. in this case, there'll be no stats update
+
+      if (dfi != nullptr) {
+        TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(operation.oldHeader.getDataPtr());
+        dfi->_numberDead += 1;
+        dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(marker->_size);
+      }
+    }
   }
   else {
-    // buffer the operation
+    // operation is buffered and might be rollbacked
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<triagens::wal::DocumentOperation*>;
       trx->_hasOperations = true;
@@ -847,8 +904,6 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }
-
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   TRI_UpdateStatisticsDocumentCollection(document, operation.rid, false, 1);
 
