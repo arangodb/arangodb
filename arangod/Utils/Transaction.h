@@ -188,7 +188,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           virtual ~Transaction () {
-
             if (_trx == nullptr) {
               return;
             }
@@ -382,6 +381,12 @@ namespace triagens {
          
            if (trxCollection->_barrier == nullptr) {  
              trxCollection->_barrier = TRI_CreateBarrierElement(&document->_barrierList);
+           }
+
+           if (trxCollection->_barrier != nullptr) {
+              // tell everyone else this barrier is still in use,
+              // at least until the transaction is over
+             reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier)->_usedByTransaction = true;
            }
 
            return trxCollection->_barrier;

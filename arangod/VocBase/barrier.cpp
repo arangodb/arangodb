@@ -39,11 +39,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the barrier element into the linked list of barrier elemnents
 /// of the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,18 +85,9 @@ template <typename T> static T* CreateBarrier () {
   return static_cast<T*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(T), false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a barrier list
@@ -197,15 +183,17 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
                                           char const* filename) {
   TRI_barrier_blocker_t* element = CreateBarrier<TRI_barrier_blocker_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
-  element->base._type = TRI_BARRIER_ELEMENT;
-  element->_data = NULL;
+  element->base._type         = TRI_BARRIER_ELEMENT;
+  element->_data              = nullptr;
 
-  element->_line = line;
-  element->_filename = filename;
+  element->_line              = line;
+  element->_filename          = filename;
+  element->_usedByExternal    = false;
+  element->_usedByTransaction = false;
 
   LinkBarrierElement(&element->base, container);
 
@@ -391,10 +379,6 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
   // free the element
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

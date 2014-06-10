@@ -35,6 +35,7 @@
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-index.h"
 #include "VocBase/server.h"
@@ -742,7 +743,6 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
 static compaction_initial_context_t InitCompaction (TRI_document_collection_t* document,
                                                     TRI_vector_t const* compactions) {
   compaction_initial_context_t context;
-  size_t i, n;
 
   memset(&context, 0, sizeof(compaction_initial_context_t));
   context._failed = false;
@@ -754,8 +754,8 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
                         sizeof(TRI_df_footer_marker_t) + 
                         256; // allow for some overhead
 
-  n = compactions->_length;
-  for (i = 0; i < n; ++i) {
+  size_t const n = compactions->_length;
+  for (size_t i = 0; i < n; ++i) {
     compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     TRI_datafile_t* df = compaction->_datafile;
 
@@ -790,6 +790,10 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   
   n = compactions->_length;
   TRI_ASSERT(n > 0);
+      
+  // create a fake transaction
+  triagens::arango::TransactionBase trx(true);
+
 
   initial = InitCompaction(document, compactions);
 
