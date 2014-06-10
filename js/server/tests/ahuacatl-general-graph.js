@@ -384,51 +384,38 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 
     testCommonProperties: function () {
       actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', { } , {},  {}) SORT  ATTRIBUTES(e)[0] RETURN e");
-      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][0]._id, "UnitTestsAhuacatlVertex1/v2");
-      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][0]._id, "UnitTestsAhuacatlVertex1/v1");
-      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"][0]._id, "UnitTestsAhuacatlVertex2/v8");
-      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][0]._id, "UnitTestsAhuacatlVertex2/v6");
-      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][1]._id, "UnitTestsAhuacatlVertex2/v8");
-      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"][2]._id, "UnitTestsAhuacatlVertex2/v7");
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"].length, 1);
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex1/v4"].length, 3);
 
-      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v5"][0]._id, "UnitTestsAhuacatlVertex2/v6");
-      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v4");
-      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][1]._id, "UnitTestsAhuacatlVertex2/v8");
-      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][2]._id, "UnitTestsAhuacatlVertex2/v7");
-      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"][3]._id, "UnitTestsAhuacatlVertex2/v5");
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v5"].length, 1);
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v6"].length, 4);
 
+      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"].length, 3);
 
-      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][0]._id, "UnitTestsAhuacatlVertex1/v4");
-      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][1]._id, "UnitTestsAhuacatlVertex2/v6");
-      assertEqual(actual[6]["UnitTestsAhuacatlVertex2/v7"][2]._id, "UnitTestsAhuacatlVertex2/v8");
-
-      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][0]._id, "UnitTestsAhuacatlVertex1/v4");
-      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][1]._id, "UnitTestsAhuacatlVertex2/v6");
-      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][2]._id, "UnitTestsAhuacatlVertex2/v7");
-      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"][3]._id, "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[7]["UnitTestsAhuacatlVertex2/v8"].length, 4);
 
     },
 
     testCommonPropertiesWithFilters: function () {
       actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {ageing : true} , {harald : 'meier'},  {}) SORT  ATTRIBUTES(e)[0]  RETURN e");
-      assertEqual(actual[0]["UnitTestsAhuacatlVertex2/v5"][0]._id, "UnitTestsAhuacatlVertex2/v6");
-      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v4");
-      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][1]._id, "UnitTestsAhuacatlVertex2/v8");
-      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"][2]._id, "UnitTestsAhuacatlVertex2/v7");
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex2/v5"].length, 1);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"].length, 3);
 
     },
 
     testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
       actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {} , {},  {ignoreProperties : 'harald'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
 
-      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"][0]._id, "UnitTestsAhuacatlVertex1/v2");
-      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"][0]._id, "UnitTestsAhuacatlVertex1/v1");
-      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"][0]._id, "UnitTestsAhuacatlVertex2/v8");
+      assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
+      assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
+      assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"].length, 1);
 
-      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v5"][0]._id, "UnitTestsAhuacatlVertex2/v6");
+      assertEqual(actual[3]["UnitTestsAhuacatlVertex2/v5"].length, 1);
 
-      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex2/v5");
-      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v8"][0]._id, "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(actual[4]["UnitTestsAhuacatlVertex2/v6"].length, 1);
+      assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v8"].length, 1);
 
     }
   }
@@ -705,7 +692,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       ]);
     },
 
-    /*testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
+    testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
       var actual, start, middle;
 
       actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN e");
@@ -1104,7 +1091,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       );
 
 
-    },*/
+    },
 
     testGRAPH_CLOSENESS: function () {
       var actual, result = [];
