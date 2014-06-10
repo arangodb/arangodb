@@ -198,6 +198,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_accessType       = accessType;
   trxCollection->_nestingLevel     = nestingLevel;
   trxCollection->_collection       = nullptr;
+  trxCollection->_barrier          = nullptr;
   trxCollection->_operations       = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_locked           = false;
@@ -218,12 +219,25 @@ static void FreeCollection (TRI_transaction_collection_t* trxCollection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief frees an unused barrier if it exists
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeBarrier (TRI_transaction_collection_t* trxCollection) {
+  if (trxCollection->_barrier != nullptr &&
+      trxCollection->_barrierUsers == 0) {
+
+    TRI_FreeBarrier(trxCollection->_barrier);
+    trxCollection->_barrier = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LockCollection (TRI_transaction_collection_t* trxCollection,
-                           const TRI_transaction_type_e type,
-                           const int nestingLevel) {
+                           TRI_transaction_type_e type,
+                           int nestingLevel) {
   int res;
 
   TRI_ASSERT(trxCollection != nullptr);
@@ -278,8 +292,8 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
-                             const TRI_transaction_type_e type,
-                             const int nestingLevel) {
+                             TRI_transaction_type_e type,
+                             int nestingLevel) {
 
   TRI_ASSERT(trxCollection != nullptr);
   
@@ -323,8 +337,8 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
 /// @brief use all participating collections of a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UseCollections (TRI_transaction_t* const trx,
-                           const int nestingLevel) {
+static int UseCollections (TRI_transaction_t* trx,
+                           int nestingLevel) {
   size_t const n = trx->_collections._length;
 
   // process collections in forward order
@@ -401,8 +415,8 @@ static int UseCollections (TRI_transaction_t* const trx,
 /// @brief release collection locks for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ReleaseCollections (TRI_transaction_t* const trx,
-                               const int nestingLevel) {
+static int ReleaseCollections (TRI_transaction_t* trx,
+                               int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
   size_t i = trx->_collections._length;
@@ -579,6 +593,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   while (i-- > 0) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
+    FreeBarrier(trxCollection);
     FreeCollection(trxCollection);
   }
 
@@ -616,7 +631,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
   TRI_transaction_collection_t* trxCollection;
   
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
-         trx->_status == TRI_TRANSACTION_RUNNING);
+             trx->_status == TRI_TRANSACTION_RUNNING);
    
   trxCollection = FindCollection(trx, cid, nullptr);
   

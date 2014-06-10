@@ -67,6 +67,7 @@ namespace triagens {
                                      TRI_transaction_type_e accessType) :
           Transaction<T>(vocbase, TRI_GetIdServer(), true),
           _cid(cid),
+          _trxCollection(nullptr),
           _accessType(accessType) {
 
           // add the (sole) collection
@@ -106,12 +107,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_collection_t* trxCollection () {
-          TRI_ASSERT(_cid > 0);
+          TRI_ASSERT(this->_cid > 0);
 
-          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
+          if (this->_trxCollection == nullptr) {
+            this->_trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
+          }
 
-          TRI_ASSERT(trxCollection != 0);
-          return trxCollection;
+          TRI_ASSERT(this->_trxCollection != nullptr);
+          return this->_trxCollection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +130,30 @@ namespace triagens {
           
           return trxCollection->_collection->_collection;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the barrier for the collection
+/// note that the barrier must already exist
+////////////////////////////////////////////////////////////////////////////////
+         
+         inline TRI_barrier_t* barrier () {
+           TRI_transaction_collection_t* trxCollection = this->trxCollection();
+           TRI_ASSERT(trxCollection->_barrier != nullptr);
+
+           ++trxCollection->_barrierUsers;
+
+           return trxCollection->_barrier;
+         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a barrier is available for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+         inline bool hasBarrier () const {
+           TRI_transaction_collection_t* trxCollection = this->trxCollection();
+
+           return (trxCollection->_barrier != nullptr);
+         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying collection's id
@@ -164,9 +191,9 @@ namespace triagens {
 /// @brief read any (random) document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int readRandom (TRI_doc_mptr_copy_t* mptr, TRI_barrier_t** barrier) {
+        inline int readRandom (TRI_doc_mptr_copy_t* mptr) {
           TRI_ASSERT(mptr != nullptr);
-          return this->readAny(this->trxCollection(), mptr, barrier);
+          return this->readAny(this->trxCollection(), mptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +209,7 @@ namespace triagens {
 /// @brief read all document ids within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<string>& ids) {
+        int read (std::vector<std::string>& ids) {
           return this->readAll(this->trxCollection(), ids, true);
         }
 
@@ -190,7 +217,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readPositional (vector<TRI_doc_mptr_copy_t>& documents,
+        int readPositional (std::vector<TRI_doc_mptr_copy_t>& documents,
                             int64_t offset,
                             int64_t count) {
           return this->readOrdered(this->trxCollection(), documents, offset, count);
@@ -201,12 +228,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_barrier_t** barrier,
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
                   uint32_t* total) {
 
-          return this->readSlice(this->trxCollection(), docs, barrier, skip, limit, total);
+          return this->readSlice(this->trxCollection(), docs, skip, limit, total);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,14 +241,13 @@ namespace triagens {
 /// access to the documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readOffset (vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_barrier_t** barrier,
+        int readOffset (std::vector<TRI_doc_mptr_copy_t>& docs,
                   TRI_voc_size_t& internalSkip,
                   TRI_voc_size_t batchSize,
                   TRI_voc_ssize_t skip,
                   uint32_t* total) {
 
-          return this->readIncremental(this->trxCollection(), docs, barrier, internalSkip, batchSize, skip, total);
+          return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, total);
         }
 
 // -----------------------------------------------------------------------------
@@ -236,6 +261,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_cid_t _cid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trxCollection cache
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_collection_t* _trxCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection access type

@@ -73,9 +73,9 @@ namespace triagens {
             _numberTrxInScope++;
           }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
           virtual ~TransactionBase () {
             TRI_ASSERT(_numberTrxInScope > 0);
@@ -86,67 +86,67 @@ namespace triagens {
             _numberTrxActive = _numberTrxInScope;
           }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief assert that a transaction object is in scope in the current thread
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that a transaction object is in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
 
           static void assertSomeTrxInScope () {
             TRI_ASSERT(_numberTrxInScope > 0);
           }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief assert that the innermost transaction object in scope in the 
-  /// current thread is actually active (between begin() and commit()/abort().
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that the innermost transaction object in scope in the 
+/// current thread is actually active (between begin() and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
 
           static void assertCurrentTrxActive () {
             TRI_ASSERT(_numberTrxInScope > 0 &&
                        _numberTrxInScope == _numberTrxActive);
           }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the following is for the runtime protection check, number of
-  /// transaction objects in scope in the current thread
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
 
         protected:
 
           static thread_local int _numberTrxInScope;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the following is for the runtime protection check, number of
-  /// transaction objects in the current thread that are active (between
-  /// begin and commit()/abort().
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in the current thread that are active (between
+/// begin and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
 
           static thread_local int _numberTrxActive;
 
       };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 class Transaction
-  // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class Transaction
+// -----------------------------------------------------------------------------
 
       template<typename T>
       class Transaction : public T, public TransactionBase {
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Transaction
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction
+////////////////////////////////////////////////////////////////////////////////
 
         private:
           Transaction (const Transaction&) = delete;
           Transaction& operator= (const Transaction&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and destructors
-  // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
         public:
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create the transaction
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the transaction
+////////////////////////////////////////////////////////////////////////////////
 
           Transaction (TRI_vocbase_t* vocbase,
                        TRI_server_id_t generatingServer,
@@ -233,10 +233,10 @@ namespace triagens {
 /// @brief whether or not shaped json in this trx should be copied
 ////////////////////////////////////////////////////////////////////////////////
 
-          inline bool mustCopyShapedJson () const {
-            if (_trx != 0 && _trx->_hasOperations) {
-              return true;
-            }
+        inline bool mustCopyShapedJson () const {
+          if (_trx != nullptr && _trx->_hasOperations) {
+            return true;
+          }
 
             return false;
           }
@@ -354,6 +354,24 @@ namespace triagens {
             return res;
           }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief order a barrier for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+         TRI_barrier_t* orderBarrier (TRI_transaction_collection_t* trxCollection) {
+           TRI_ASSERT(_trx != nullptr);
+           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT(trxCollection->_collection != nullptr);
+
+           TRI_document_collection_t* document = trxCollection->_collection->_collection;
+           TRI_ASSERT(document != nullptr);
+         
+           if (trxCollection->_barrier == nullptr) {  
+             trxCollection->_barrier = TRI_CreateBarrierElement(&document->_barrierList);
+           }
+
+           return trxCollection->_barrier;
+         }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -366,10 +384,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
          
          TRI_document_collection_t* documentCollection (TRI_transaction_collection_t const* trxCollection) const {
-           TRI_ASSERT(_trx != 0);
+           TRI_ASSERT(_trx != nullptr);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-           TRI_ASSERT(trxCollection->_collection != 0);
-           TRI_ASSERT(trxCollection->_collection->_collection != 0);
+           TRI_ASSERT(trxCollection->_collection != nullptr);
+           TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 
            return trxCollection->_collection->_collection;
          }
@@ -442,7 +460,7 @@ namespace triagens {
 /// @brief add a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addCollection (const string& name,
+        int addCollection (std::string const& name,
                            TRI_transaction_type_e type) {
           if (! _isReal) {
             return addCollection(this->resolver()->getCollectionIdCluster(name), name.c_str(), type);
@@ -527,34 +545,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAny (TRI_transaction_collection_t* trxCollection,
-                     TRI_doc_mptr_copy_t* mptr,
-                     TRI_barrier_t** barrier) {
+                     TRI_doc_mptr_copy_t* mptr) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
-
-          if (*barrier == 0) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
 
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            TRI_FreeBarrier(*barrier);
-            *barrier = 0;
             return res;
           }
 
           if (document->_primaryIndex._nrUsed == 0) {
-            TRI_FreeBarrier(*barrier);
-            *barrier = 0;
-
             // no document found
             mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
           }
           else {
+            if (orderBarrier(trxCollection) == nullptr) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+
             size_t total = document->_primaryIndex._nrAlloc;
             size_t pos = TRI_UInt32Random() % total;
             void** beg = document->_primaryIndex._table;
@@ -582,6 +592,10 @@ namespace triagens {
 
           TRI_ASSERT(mptr != nullptr);
           
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
           int res = document->readDocument(trxCollection,
@@ -597,7 +611,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readAll (TRI_transaction_collection_t* trxCollection,
-                     vector<string>& ids, 
+                     std::vector<std::string>& ids, 
                      bool lock) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
@@ -612,6 +626,10 @@ namespace triagens {
           }
     
           if (document->_primaryIndex._nrUsed > 0) {
+            if (orderBarrier(trxCollection) == nullptr) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+
             ids.reserve(document->_primaryIndex._nrUsed);
 
             void** ptr = document->_primaryIndex._table;
@@ -650,6 +668,10 @@ namespace triagens {
             return res;
           }
 
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
           TRI_doc_mptr_t* doc;
 
           if (offset >= 0) {
@@ -657,13 +679,13 @@ namespace triagens {
             doc = document->_headersPtr->front(document->_headersPtr);  // PROTECTED by trx in trxCollection
             int64_t i = 0;
 
-            while (doc != 0 && i < offset) {
+            while (doc != nullptr && i < offset) {
               doc = doc->_next;
               ++i;
             }
 
             i = 0;
-            while (doc != 0 && i < count) {
+            while (doc != nullptr && i < count) {
               documents.emplace_back(*doc);
               doc = doc->_next;
               ++i;
@@ -674,13 +696,13 @@ namespace triagens {
             doc = document->_headersPtr->back(document->_headersPtr);  // PROTECTED by trx in trxCollection
             int64_t i = -1;
 
-            while (doc != 0 && i > offset) {
+            while (doc != nullptr && i > offset) {
               doc = doc->_prev;
               --i;
             }
 
             i = 0;
-            while (doc != 0 && i < count) {
+            while (doc != nullptr && i < count) {
               documents.emplace_back(*doc);
               doc = doc->_prev;
               ++i;
@@ -699,7 +721,6 @@ namespace triagens {
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
                        std::vector<TRI_doc_mptr_copy_t>& docs,
-                       TRI_barrier_t** barrier,
                        TRI_voc_ssize_t skip,
                        TRI_voc_size_t limit,
                        uint32_t* total) {
@@ -725,11 +746,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
-
-          if (*barrier == 0) {
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
+          if (orderBarrier(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -781,12 +798,6 @@ namespace triagens {
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
-          if (count == 0) {
-            // barrier not needed, kill it
-            TRI_FreeBarrier(*barrier);
-            *barrier = 0;
-          }
-
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -798,7 +809,6 @@ namespace triagens {
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
                              std::vector<TRI_doc_mptr_copy_t>& docs,
-                             TRI_barrier_t** barrier,
                              TRI_voc_size_t& internalSkip,
                              TRI_voc_size_t batchSize,
                              TRI_voc_ssize_t skip,
@@ -821,11 +831,7 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          *barrier = TRI_CreateBarrierElement(&document->_barrierList);
-
-          if (*barrier == 0) {
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
+          if (orderBarrier(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
@@ -858,12 +864,6 @@ namespace triagens {
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
 
-          if (count == 0) {
-            // barrier not needed, kill it
-            TRI_FreeBarrier(*barrier);
-            *barrier = 0;
-          }
-
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -889,7 +889,7 @@ namespace triagens {
           TRI_memory_zone_t* zone = shaper->_memoryZone;
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
-          if (shaped == 0) {
+          if (shaped == nullptr) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
           }
 
@@ -955,8 +955,12 @@ namespace triagens {
           TRI_memory_zone_t* zone = shaper->_memoryZone;
           TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
-          if (shaped == 0) {
+          if (shaped == nullptr) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+          
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
           }
 
           int res = update(trxCollection, 
@@ -990,6 +994,10 @@ namespace triagens {
 
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
           TRI_document_collection_t* document = documentCollection(trxCollection);
           
           int res = document->updateDocument(trxCollection, 
@@ -1038,9 +1046,13 @@ namespace triagens {
         int removeAll (TRI_transaction_collection_t* const trxCollection,
                        bool forceSync) {
 
-          std::vector<string> ids;
+          std::vector<std::string> ids;
           
           TRI_document_collection_t* document = documentCollection(trxCollection);
+          
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
           
           // WRITE-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_WRITE);
