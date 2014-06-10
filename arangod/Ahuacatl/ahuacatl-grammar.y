@@ -71,7 +71,6 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
 %token T_INTO "INTO keyword"
-%token T_FROM "FROM keyword"
 %token T_IGNORE "IGNORE hint"
 
 %token T_REMOVE "REMOVE command"
@@ -440,7 +439,7 @@ return_statement:
   ;
 
 remove_statement:
-    T_REMOVE expression T_FROM T_STRING {
+    T_REMOVE expression T_IN T_STRING {
       TRI_aql_node_t* coll;
       TRI_aql_node_t* node;
 
@@ -462,7 +461,7 @@ remove_statement:
         ABORT_OOM
       }
     }
-  | T_REMOVE T_IGNORE expression T_FROM T_STRING {
+  | T_REMOVE T_IGNORE expression T_IN T_STRING {
       TRI_aql_node_t* coll;
       TRI_aql_node_t* node;
 
