@@ -1,5 +1,41 @@
 !CHAPTER Other Replication Commands 
 
+get the server's id
+
+`GET /_api/replication/server-id`*(returns the servers id)*
+
+!SUBSECTION Description
+
+Returns the servers id. The id is also returned by other replication API methods, and this method is an easy means of determining a server's id.
+The body of the response is a JSON hash with the attribute serverId. The server id is returned as a string.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/server-id
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "serverId" : "18804023088184" 
+}
+```
+<!--
 @anchor HttpReplicationServerId
 @copydetails triagens::arango::RestReplicationHandler::handleCommandServerId
-
+-->

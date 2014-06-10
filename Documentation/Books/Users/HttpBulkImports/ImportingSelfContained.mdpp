@@ -11,7 +11,7 @@ Example input data:
     { "_key": "key2", ... }
     ...
 
-To use this method, the `type` URL parameter should be set to `documents`.
+To use this method, the *type* URL parameter should be set to *documents*.
 
 It is also possible to upload self-contained JSON documents that are embedded
 into a JSON list. Each element from the list will be treated as a document and
@@ -32,23 +32,36 @@ format requires ArangoDB to parse the complete list and keep it in memory for
 the duration of the import. This might be more resource-intensive than the
 line-wise processing.
 
-To use this method, the `type` URL parameter should be set to `array`.
+To use this method, the *type* URL parameter should be set to *array*.
 
-Setting the `type` URL parameter to `auto` will make the server auto-detect whether
+Setting the *type* URL parameter to *auto* will make the server auto-detect whether
 the data are line-wise JSON documents (type = documents) or a JSON list (type = array).
 
-@EXAMPLES
+*Examples*
 
-@verbinclude api-import-documents
+```
+curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?type=documents&collection=test&createCollection=true"
+{ "name" : "test", "gender" : "male", "age" : 39 }
+{ "type" : "bird", "name" : "robin" }
+
+HTTP/1.1 201 Created
+server: triagens GmbH High-Performance HTTP Server
+connection: Keep-Alive
+content-type: application/json; charset=utf-8
+
+{"error":false,"created":2,"empty":0,"errors":0}
+```
+
+<!--@verbinclude api-import-documents-->
 
 The server will respond with an HTTP 201 if everything went well. The number of
-documents imported will be returned in the `created` attribute of the
+documents imported will be returned in the *created* attribute of the
 response. If any documents were skipped or incorrectly formatted, this will be
-returned in the `errors` attribute. There will also be an attribute `empty` in 
-the response, which will contain a value of `0`.
+returned in the *errors* attribute. There will also be an attribute *empty* in 
+the response, which will contain a value of *0*.
 
-If the `details` parameter was set to `true` in the request, the response will 
-also contain an attribute `details` which is a list of details about errors that
+If the *details* parameter was set to *true* in the request, the response will 
+also contain an attribute *details* which is a list of details about errors that
 occurred on the server side during the import. This list might be empty if no
 errors occurred.
 

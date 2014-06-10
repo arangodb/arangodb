@@ -1,5 +1,213 @@
 !CHAPTER HTTP Interface for Graphs
 
+`POST /_api/graph`*(create graph)*
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been sync to disk.
+
+!SUBSECTION Body parameters
+
+`graph (json,required)`
+
+The call expects a JSON hash array as body with the following attributes: _key: The name of the new graph. vertices: The name of the vertices collection. edges: The name of the egde collection.
+
+!SUBSECTION Description
+
+Creates a new graph.
+Returns an object with an attribute graph containing a list of all graph properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the graph was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the graph was created successfully and waitForSync was false.
+
+`HTTP 400`
+
+is returned if it failed. The response body contains an error document in this case.
+
+*Examples*
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/
+{"_key":"graph","vertices":"vertices","edges":"edges"}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+etag: 103998433
+
+{ 
+  "graph" : { 
+    "_id" : "_graphs/graph", 
+    "_rev" : "103998433", 
+    "_key" : "graph", 
+    "edges" : "edges", 
+    "vertices" : "vertices" 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`GET /_api/graph/graph-name`*(get the properties of a specific or all graphs)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,optional)`
+
+The name of the graph.
+
+!SUBSECTION HTTP header parameters
+
+`If-None-Match (string,optional)`
+
+If graph-name is specified, then this header can be used to check whether a specific graph has changed or not.
+If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+
+`If-Match (string,optional)`
+
+If graph-name is specified, then this header can be used to check whether a specific graph has changed or not.
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+If graph-name is specified, returns an object with an attribute graph containing a JSON hash with all properties of the specified graph.
+
+If graph-name is not specified, returns a list of graph objects.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the graph was found (in case graph-name was specified) or the list of graphs was assembled successfully (in case graph-name was not specified).
+
+`HTTP 404`
+
+is returned if the graph was not found. This response code may only be returned if graph-name is specified in the request. The response body contains an error document in this case.
+
+`HTTP 304`
+
+"If-None-Match" header is given and the current graph has not a different version. This response code may only be returned if graph-name is specified in the request.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current graph has a different version. This response code may only be returned if graph-name is specified in the request.
+
+*Examples*
+
+get graph by name
+
+```
+unix> curl --dump - http://localhost:8529/_api/graph/graph
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: 105440225
+
+{ 
+  "graph" : { 
+    "_id" : "_graphs/graph", 
+    "_rev" : "105440225", 
+    "_key" : "graph", 
+    "edges" : "edges", 
+    "vertices" : "vertices" 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+get all graphs
+
+```
+unix> curl --dump - http://localhost:8529/_api/graph
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "graphs" : [ 
+    { 
+      "_id" : "_graphs/graph1", 
+      "_rev" : "106947553", 
+      "_key" : "graph1", 
+      "edges" : "edges1", 
+      "vertices" : "vertices1" 
+    }, 
+    { 
+      "_id" : "_graphs/graph2", 
+      "_rev" : "108192737", 
+      "_key" : "graph2", 
+      "edges" : "edges2", 
+      "vertices" : "vertices2" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`DELETE /_api/graph/graph-name`*(delete graph)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+!SUBSECTION HTTP header parameters
+
+`If-Match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Deletes graph, edges and vertices
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the graph was deleted and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the graph was deleted and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current graph has a different version
+
+*Examples*
+
+delete graph by name
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+<!--
 @NAVIGATE_HttpGraph
 @EMBEDTOC{HttpGraphTOC}
 
@@ -13,4 +221,4 @@
 @CLEARPAGE
 @anchor A_JSF_DELETE_graph_graph
 @copydetails JSF_delete_graph_graph
-
+-->
