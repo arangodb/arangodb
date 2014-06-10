@@ -9675,6 +9675,8 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
   TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
   
+  TRI_ASSERT(barrier != nullptr);
+  
   v8g->_hasDeadObjects = true;
 
   LOG_TRACE("weak-callback for barrier called");
@@ -9691,6 +9693,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   TRI_vocbase_t* vocbase = barrier->base._container->_collection->base._vocbase;
   
   // free the barrier
+std::cout << "WEAK BARRIER\n";
   TRI_FreeBarrier(&barrier->base);
     
   if (vocbase != nullptr) {
@@ -9704,7 +9707,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
-                                                    const v8::AccessorInfo& info) {
+                                                    v8::AccessorInfo const& info) {
   v8::HandleScope scope;
 
   // sanity check
@@ -9718,7 +9721,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (marker == 0) {
+  if (marker == nullptr) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -9733,6 +9736,8 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   // get the underlying collection
   TRI_barrier_t* barrier = static_cast<TRI_barrier_t*>(v8::Handle<v8::External>::Cast(self->GetInternalField(SLOT_BARRIER))->Value());
+  TRI_ASSERT(barrier != nullptr);
+
   TRI_document_collection_t* collection = barrier->_container->_collection;
 
   // get shape accessor
@@ -9751,7 +9756,7 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
 
   bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
 
-  if (ok && shape != 0) {
+  if (ok && shape != nullptr) {
     return scope.Close(TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length));
   }
     
@@ -10080,6 +10085,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           TRI_voc_cid_t cid,
                                           TRI_doc_mptr_t const* document) {
   v8::HandleScope scope;
+  
+  TRI_barrier_t* barrier = trx.barrier();
+  TRI_ASSERT(barrier != nullptr);
     
   TRI_ASSERT(document != nullptr);
   TRI_ASSERT(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
@@ -10099,7 +10107,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
-    if (shape == 0) {
+    if (shape == nullptr) {
       return scope.Close(v8::Object::New());
     }
 
@@ -10113,7 +10121,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
       // this is done to ensure proper order (_key, _id, _rev etc. come first)
       v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(shaped);
       v8::Handle<v8::Array> names = array->GetOwnPropertyNames();
-      const uint32_t n = names->Length();
+      uint32_t const n = names->Length();
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
         result->Set(key, array->Get(key));
@@ -10140,13 +10148,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
   result->SetInternalField(SLOT_CLASS, v8::External::New(data));
   
-  TRI_barrier_t* barrier = trx.barrier();
-  TRI_ASSERT(barrier != nullptr);
-  
   map<void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
 
   if (i == v8g->JSBarriers.end()) {
     // increase the reference-counter for the database
+    TRI_ASSERT(barrier->_container != nullptr);
+    TRI_ASSERT(barrier->_container->_collection != nullptr);
     TRI_UseVocBase(barrier->_container->_collection->base._vocbase);
 
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
@@ -10177,7 +10184,7 @@ int32_t TRI_GetVocBaseColType () {
 bool TRI_V8RunVersionCheck (void* vocbase, 
                             JSLoader* startupLoader,
                             v8::Handle<v8::Context> context) {
-  TRI_ASSERT(startupLoader != 0);
+  TRI_ASSERT(startupLoader != nullptr);
   
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -10203,7 +10210,7 @@ bool TRI_V8RunVersionCheck (void* vocbase,
 int TRI_V8RunUpgradeCheck (void* vocbase, 
                            JSLoader* startupLoader,
                            v8::Handle<v8::Context> context) {
-  TRI_ASSERT(startupLoader != 0);
+  TRI_ASSERT(startupLoader != nullptr);
   
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
@@ -10224,7 +10231,7 @@ int TRI_V8RunUpgradeCheck (void* vocbase,
 
 void TRI_V8InitialiseFoxx (void* vocbase, 
                            v8::Handle<v8::Context> context) {
-  void* orig = 0;
+  void* orig = nullptr;
 
   {
     v8::HandleScope scope;      
