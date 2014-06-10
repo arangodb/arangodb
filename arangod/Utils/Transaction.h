@@ -53,87 +53,6 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class TransactionBase
-// -----------------------------------------------------------------------------
-
-    class TransactionBase {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transaction base, every transaction class has to inherit from here
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-        TransactionBase () {
-          TRI_ASSERT(_numberTrxInScope >= 0);
-          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
-          _numberTrxInScope++;
-        }
-
-        explicit TransactionBase (bool standalone) {
-          TRI_ASSERT(_numberTrxInScope >= 0);
-          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
-          _numberTrxInScope++;
-          if (standalone) {
-            _numberTrxActive++;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ~TransactionBase () {
-          TRI_ASSERT(_numberTrxInScope > 0);
-          _numberTrxInScope--;
-          // Note that embedded transactions might have seen a begin()
-          // but no abort() or commit(), so _numberTrxActive might
-          // be one too big. We simply fix it here:
-          _numberTrxActive = _numberTrxInScope;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that a transaction object is in scope in the current thread
-////////////////////////////////////////////////////////////////////////////////
-
-        static void assertSomeTrxInScope () {
-          TRI_ASSERT(_numberTrxInScope > 0);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the innermost transaction object in scope in the 
-/// current thread is actually active (between begin() and commit()/abort().
-////////////////////////////////////////////////////////////////////////////////
-
-        static void assertCurrentTrxActive () {
-          TRI_ASSERT(_numberTrxInScope > 0 &&
-                     _numberTrxInScope == _numberTrxActive);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in scope in the current thread
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-        static thread_local int _numberTrxInScope;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in the current thread that are active (between
-/// begin and commit()/abort().
-////////////////////////////////////////////////////////////////////////////////
-
-        static thread_local int _numberTrxActive;
-
-      };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
@@ -276,8 +195,10 @@ namespace triagens {
               return _setupState;
             }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
             _numberTrxActive++;  // Every transaction gets here at most once
+#endif
 
             if (! _isReal) {
               if (_nestingLevel == 0) {
@@ -306,15 +227,19 @@ namespace triagens {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_COMMITTED;
               }
+#ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
               _numberTrxActive--;  // Every transaction gets here at most once
+#endif
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_CommitTransaction(_trx, _nestingLevel);
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
             _numberTrxActive--;  // Every transaction gets here at most once
+#endif
 
             return res;
           }
@@ -333,15 +258,19 @@ namespace triagens {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_ABORTED;
               }
+#ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
               _numberTrxActive--;  // Every transaction gets here at most once
+#endif
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_AbortTransaction(_trx, _nestingLevel);
             
+#ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
             _numberTrxActive--;  // Every transaction gets here at most once
+#endif
 
             return res;
           }

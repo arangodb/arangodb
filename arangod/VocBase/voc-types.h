@@ -155,6 +155,105 @@ typedef struct TRI_document_edge_s {
 }
 TRI_document_edge_t;
 
+namespace triagens {
+  namespace arango {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class TransactionBase
+// -----------------------------------------------------------------------------
+//
+    class TransactionBase {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transaction base, every transaction class has to inherit from here
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        TransactionBase () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope >= 0);
+          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
+          _numberTrxInScope++;
+#endif
+        }
+
+        explicit TransactionBase (bool standalone) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope >= 0);
+          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
+          _numberTrxInScope++;
+          if (standalone) {
+            _numberTrxActive++;
+          }
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~TransactionBase () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope > 0);
+          _numberTrxInScope--;
+          // Note that embedded transactions might have seen a begin()
+          // but no abort() or commit(), so _numberTrxActive might
+          // be one too big. We simply fix it here:
+          _numberTrxActive = _numberTrxInScope;
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that a transaction object is in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
+
+        static void assertSomeTrxInScope () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope > 0);
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that the innermost transaction object in scope in the 
+/// current thread is actually active (between begin() and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
+
+        static void assertCurrentTrxActive () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope > 0 &&
+                     _numberTrxInScope == _numberTrxActive);
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        static thread_local int _numberTrxInScope;
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in the current thread that are active (between
+/// begin and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        static thread_local int _numberTrxActive;
+#endif
+
+      };
+  }
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
