@@ -53,13 +53,16 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct CollectorOperation {
-      CollectorOperation (char const* mem,
+      CollectorOperation (char const* datafilePosition,
+                          char const* walPosition,
                           TRI_voc_fid_t fid)
-        : mem(mem),
+        : datafilePosition(datafilePosition),
+          walPosition(walPosition),
           fid(fid) {
-      };
+      }
 
-      char const*         mem;
+      char const*         datafilePosition;
+      char const*         walPosition;
       TRI_voc_fid_t const fid;
     };
 
@@ -315,7 +318,8 @@ namespace triagens {
 /// @brief set the tick of a marker and calculate its CRC value
 ////////////////////////////////////////////////////////////////////////////////
 
-        void finishMarker (char*,
+        void finishMarker (char const*,
+                           char*,
                            struct TRI_document_collection_s*,
                            TRI_voc_tick_t,
                            CollectorCache*);
