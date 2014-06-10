@@ -1880,15 +1880,21 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  // .............................................................................
+  // ...........................................................................
   // inside a read transaction
-  // .............................................................................
+  // ...........................................................................
 
   trx.lockRead();
 
   // find documents by example
-  vector<TRI_doc_mptr_t*> filtered
+  vector<TRI_doc_mptr_copy_t> filtered
     = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+
+  trx.finish(res);
+
+  // ...........................................................................
+  // outside a read transaction
+  // ...........................................................................
 
   // convert to list of shaped jsons
   size_t total = filtered.size();
@@ -1903,7 +1909,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     if (s < e) {
       for (size_t j = s; j < e; ++j) {
-        TRI_doc_mptr_t* mptr = filtered[j];
+        TRI_doc_mptr_copy_t* mptr = &filtered[j];
 
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr);
 
@@ -1917,12 +1923,6 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       }
     }
   }
-
-  trx.finish(res);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
 
   result->Set(v8::String::New("total"), v8::Integer::New((int32_t) total));
   result->Set(v8::String::New("count"), v8::Integer::New((int32_t) count));

@@ -5483,7 +5483,7 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 
-std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
+std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           TRI_transaction_collection_t* trxCollection,
                           size_t length,
                           TRI_shape_pid_t* pids,
@@ -5494,7 +5494,7 @@ std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
   TRI_shaper_t* shaper = document->_shaper;
 
   // use filtered to hold copies of the master pointer
-  std::vector<TRI_doc_mptr_t*> filtered;
+  std::vector<TRI_doc_mptr_copy_t> filtered;
 
   // do a full scan
   TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) (document->_primaryIndex._table);
@@ -5502,7 +5502,7 @@ std::vector<TRI_doc_mptr_t*> TRI_SelectByExample (
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr != nullptr && IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
-      filtered.push_back(*ptr);
+      filtered.push_back(**ptr);
     }
   }
   return filtered;
