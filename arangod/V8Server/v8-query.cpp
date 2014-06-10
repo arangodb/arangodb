@@ -1370,7 +1370,6 @@ static int StoreGeoResult (V8ReadTransaction& trx,
   double* dtr;
   geo_coordinate_distance_t* gtr;
   geo_coordinate_distance_t* tmp;
-  size_t n;
   uint32_t i;
   
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
@@ -1379,7 +1378,7 @@ static int StoreGeoResult (V8ReadTransaction& trx,
   }
   
   // sort the result
-  n = cors->length;
+  size_t n = cors->length;
 
   if (n == 0) {
     GeoIndex_CoordinatesFree(cors);
@@ -1884,8 +1883,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   trx.lockRead();
 
   // find documents by example
-  vector<TRI_doc_mptr_copy_t> filtered
-    = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  vector<TRI_doc_mptr_copy_t> filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
 
   trx.finish(res);
 
@@ -1920,6 +1918,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
       }
     }
   }
+  
 
   result->Set(v8::String::New("total"), v8::Integer::New((int32_t) total));
   result->Set(v8::String::New("count"), v8::Integer::New((int32_t) count));
