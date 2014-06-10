@@ -33,12 +33,13 @@
 #include "ShapedJson/Legends.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
-#include "VocBase/edge-collection.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace wal {
 
     static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                   low level structs, used for on-disk persistence

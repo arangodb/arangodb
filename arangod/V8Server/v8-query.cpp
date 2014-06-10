@@ -1514,7 +1514,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     const uint32_t len = vertices->Length();
 
     for (uint32_t i = 0;  i < len; ++i) {
-      TRI_vector_pointer_t edges;
+      std::vector<TRI_doc_mptr_copy_t> edges;
       TRI_voc_cid_t cid;
       TRI_voc_key_t key = 0;
 
@@ -1531,8 +1531,8 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       }
 
-      for (size_t j = 0;  j < edges._length;  ++j) {
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j]);
+      for (size_t j = 0;  j < edges.size();  ++j) {
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
 
         if (doc.IsEmpty()) {
           // error
@@ -1546,17 +1546,16 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
       }
 
-      TRI_DestroyVectorPointer(&edges);
-
       if (error) {
         break;
       }
     }
+    trx.finish(res);
   }
 
   // argument is a single vertex
   else {
-    TRI_vector_pointer_t edges;
+    std::vector<TRI_doc_mptr_copy_t> edges;
 
     TRI_voc_key_t key = nullptr;
     TRI_voc_cid_t cid;
@@ -1569,12 +1568,14 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
     edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
+    trx.finish(res);
+
     if (key != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
-    for (size_t j = 0;  j < edges._length;  ++j) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j]);
+    for (size_t j = 0;  j < edges.size();  ++j) {
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1585,11 +1586,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
         ++count;
       }
     }
-
-    TRI_DestroyVectorPointer(&edges);
   }
-
-  trx.finish(res);
 
   // .............................................................................
   // outside a read transaction

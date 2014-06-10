@@ -29,10 +29,8 @@
 #define TRIAGENS_VOC_BASE_EDGE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
 #include "VocBase/voc-types.h"
-
-struct TRI_document_collection_s;
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -41,19 +39,6 @@ struct TRI_document_collection_s;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge from and to
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_document_edge_s {
-  TRI_voc_cid_t _fromCid;
-  TRI_voc_key_t _fromKey;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_key_t _toKey;
-}
-TRI_document_edge_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction
@@ -88,7 +73,7 @@ TRI_edge_header_t;
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
+std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                                   struct TRI_document_collection_s*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
