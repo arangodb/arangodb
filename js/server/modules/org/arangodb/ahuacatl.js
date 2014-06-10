@@ -522,13 +522,13 @@ function UPDATE_DOCUMENT (ops, document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EXECUTE_REMOVE (ops, collection, ignore) {
-  var removed = 0, i, n = ops.length, c = COLLECTION(collection);
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
 
   if (ignore) {
     for (i = 0; i < n; ++i) {
       try {
         c.remove(ops[i]);
-        ++removed;
+        ++count;
       }
       catch (err) {
       }
@@ -537,11 +537,11 @@ function EXECUTE_REMOVE (ops, collection, ignore) {
   else { 
     for (i = 0; i < n; ++i) {
       c.remove(ops[i]);
-      ++removed;
+      ++count;
     }
   }
 
-  return { total: n, executed: removed };
+  return { total: n, executed: count };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,13 +549,13 @@ function EXECUTE_REMOVE (ops, collection, ignore) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EXECUTE_SAVE (ops, collection, ignore) {
-  var saved = 0, i, n = ops.length, c = COLLECTION(collection);
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
 
   if (ignore) {
     for (i = 0; i < n; ++i) {
       try {
         c.save(ops[i]);
-        ++saved;
+        ++count;
       }
       catch (err) {
       }
@@ -564,11 +564,11 @@ function EXECUTE_SAVE (ops, collection, ignore) {
   else { 
     for (i = 0; i < n; ++i) {
       c.save(ops[i]);
-      ++saved;
+      ++count;
     }
   }
 
-  return { total: n, executed: saved };
+  return { total: n, executed: count };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,13 +576,13 @@ function EXECUTE_SAVE (ops, collection, ignore) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EXECUTE_UPDATE (ops, collection, ignore) {
-  var updated = 0, i, n = ops.length, c = COLLECTION(collection);
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
 
   if (ignore) {
     for (i = 0; i < n; ++i) {
       try {
         c.update(ops[i]._key, ops[i]);
-        ++updated;
+        ++count;
       }
       catch (err) {
       }
@@ -591,11 +591,11 @@ function EXECUTE_UPDATE (ops, collection, ignore) {
   else { 
     for (i = 0; i < n; ++i) {
       c.update(ops[i]._key, ops[i]);
-      ++updated;
+      ++count;
     }
   }
 
-  return { total: n, executed: updated };
+  return { total: n, executed: count };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,13 +603,13 @@ function EXECUTE_UPDATE (ops, collection, ignore) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EXECUTE_REPLACE (ops, collection, ignore) {
-  var replaced = 0, i, n = ops.length, c = COLLECTION(collection);
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
 
   if (ignore) {
     for (i = 0; i < n; ++i) {
       try {
         c.replace(ops[i]._key, ops[i]);
-        ++replaced;
+        ++count;
       }
       catch (err) {
       }
@@ -618,11 +618,11 @@ function EXECUTE_REPLACE (ops, collection, ignore) {
   else { 
     for (i = 0; i < n; ++i) {
       c.replace(ops[i]._key, ops[i]);
-      ++replaced;
+      ++count;
     }
   }
 
-  return { total: n, executed: removed };
+  return { total: n, executed: count };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
