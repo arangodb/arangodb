@@ -42,10 +42,24 @@ var RequestContext,
 
 createBodyParamBubbleWrap = function (handler, paramName, Proto) {
   'use strict';
-  return function (req, res) {
-    req.parameters[paramName] = new Proto(req.body());
-    handler(req, res);
-  };
+  var bubbleWrap;
+
+  if (is.array(Proto)) {
+    Proto = Proto[0];
+    bubbleWrap = function (req, res) {
+      req.parameters[paramName] = _.map(req.body(), function(raw) {
+        return new Proto(raw);
+      });
+      handler(req, res);
+    };
+  } else {
+    bubbleWrap = function (req, res) {
+      req.parameters[paramName] = new Proto(req.body());
+      handler(req, res);
+    };
+  }
+
+  return bubbleWrap;
 };
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
@@ -249,13 +263,19 @@ extend(RequestContext.prototype, {
 /// This will initialize a `Model` with the data and provide it to you via the
 /// params as `paramName`.
 /// For information about how to annotate your models, see the Model section.
+/// If you provide the Model in an array, the response will take multiple models
+/// instead of one.
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, description, Proto) {
     'use strict';
     var handler = this.route.action.callback;
 
-    this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    if (is.array(Proto)) {
+      this.docs.addBodyParam(paramName, description, Proto[0].toJSONSchema(paramName));
+    } else {
+      this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    }
     this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto);
 
     return this;
