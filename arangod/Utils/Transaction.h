@@ -112,6 +112,10 @@ namespace triagens {
             _isReal = false;
           }
 
+          TRI_ASSERT(_numberTrxInScope >= 0);
+          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
+          _numberTrxInScope++;
+
           this->setupTransaction();
         }
 
@@ -120,7 +124,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~Transaction () {
+
           if (_trx == nullptr) {
+            TRI_ASSERT(_numberTrxInScope > 0);
+            _numberTrxInScope--;
+            TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
             return;
           }
           
@@ -136,6 +144,10 @@ namespace triagens {
             // free the data associated with the transaction
             freeTransaction();
           }
+
+          TRI_ASSERT(_numberTrxInScope > 0);
+          _numberTrxInScope--;
+          TRI_ASSERT(_numberTrxInScope == _numberTrxActive);
         }
 
 // -----------------------------------------------------------------------------
@@ -207,6 +219,9 @@ namespace triagens {
             return _setupState;
           }
 
+          TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
+          _numberTrxActive++;  // Every transaction gets here at most once
+
           if (! _isReal) {
             if (_nestingLevel == 0) {
               _trx->_status = TRI_TRANSACTION_RUNNING;
@@ -225,11 +240,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int commit () {
+          
           if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
             // transaction not created or not running
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
+          TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+          _numberTrxActive--;  // Every transaction gets here at most once
+
           if (! _isReal) {
             if (_nestingLevel == 0) {
               _trx->_status = TRI_TRANSACTION_COMMITTED;
@@ -252,6 +271,9 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
           
+          TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+          _numberTrxActive--;  // Every transaction gets here at most once
+
           if (! _isReal) {
             if (_nestingLevel == 0) {
               _trx->_status = TRI_TRANSACTION_ABORTED;
@@ -1166,6 +1188,24 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that a transaction object is in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
+
+        void assertSomeTrxInScope () {
+          TRI_ASSERT(_numberTrxInScope > 0);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that the innermost transaction object in scope in the 
+/// current thread is actually active (between begin() and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
+
+        void assertCurrentTrxActive () {
+          TRI_ASSERT(_numberTrxInScope > 0 &&
+                     _numberTrxInScope == _numberTrxActive);
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1219,6 +1259,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _isReal;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in scope in the current thread
+////////////////////////////////////////////////////////////////////////////////
+
+        static thread_local int _numberTrxInScope;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is for the runtime protection check, number of
+/// transaction objects in the current thread that are active (between
+/// begin and commit()/abort().
+////////////////////////////////////////////////////////////////////////////////
+
+        static thread_local int _numberTrxActive;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
