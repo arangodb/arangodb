@@ -1775,7 +1775,6 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   }
 
   TRI_doc_mptr_copy_t document;
-  document.setDataPtr(nullptr);  // PROTECTED by stack locality
 
   V8ReadTransaction trx(col->_vocbase, col->_cid);
 
