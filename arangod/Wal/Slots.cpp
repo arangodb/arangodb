@@ -195,6 +195,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
           return SlotInfo(TRI_ERROR_INTERNAL);
         }
 
+        // only in this case we return a valid slot
         slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
 
         return SlotInfo(slot);

@@ -858,7 +858,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trx->_waitForSync = true;
   }
   
-  triagens::wal::SlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+  triagens::wal::StandaloneSlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
@@ -873,7 +873,9 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
 
   // set header file id
-  operation.header->_fid = slotInfo.slot->logfileId();
+  operation.header->_fid = slotInfo.logfileId;
+
+  TRI_ASSERT(operation.header->_fid > 0);
   
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
