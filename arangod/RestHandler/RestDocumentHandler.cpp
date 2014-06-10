@@ -292,7 +292,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
+  bool const waitForSync = extractWaitForSync();
 
   TRI_json_t* json = parseJsonBody();
 

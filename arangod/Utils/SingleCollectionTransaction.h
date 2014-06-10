@@ -68,6 +68,7 @@ namespace triagens {
           Transaction<T>(vocbase, TRI_GetIdServer(), true),
           _cid(cid),
           _trxCollection(nullptr),
+          _documentCollection(nullptr),
           _accessType(accessType) {
 
           // add the (sole) collection
@@ -83,6 +84,8 @@ namespace triagens {
                                      TRI_transaction_type_e accessType) :
           Transaction<T>(vocbase, TRI_GetIdServer(), true),
           _cid(this->resolver()->getCollectionId(name)),
+          _trxCollection(nullptr),
+          _documentCollection(nullptr),
           _accessType(accessType) {
 
           // add the (sole) collection
@@ -111,24 +114,29 @@ namespace triagens {
 
           if (this->_trxCollection == nullptr) {
             this->_trxCollection = TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
+            
+            if (this->_trxCollection != nullptr && this->_trxCollection->_collection != nullptr) {
+              this->_documentCollection = this->_trxCollection->_collection->_collection;
+            }
           }
-
+            
           TRI_ASSERT(this->_trxCollection != nullptr);
           return this->_trxCollection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying primary collection
+/// @brief get the underlying document collection
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_document_collection_t* documentCollection () {
-          TRI_transaction_collection_t* trxCollection = this->trxCollection();
+          if (this->_documentCollection != nullptr) {
+            return this->_documentCollection;
+          }
 
-          TRI_ASSERT(trxCollection != nullptr);
-          TRI_ASSERT(trxCollection->_collection != nullptr);
-          TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-          
-          return trxCollection->_collection->_collection;
+          this->trxCollection();
+          TRI_ASSERT(this->_documentCollection != nullptr);
+
+          return this->_documentCollection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,6 +273,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_transaction_collection_t* _trxCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TRI_document_collection_t* cache
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_document_collection_t* _documentCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection access type
