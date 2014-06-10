@@ -292,17 +292,19 @@ namespace triagens {
               return TRI_ERROR_TRANSACTION_INTERNAL;
             }
             
-            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-            _numberTrxActive--;  // Every transaction gets here at most once
-
             if (! _isReal) {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_COMMITTED;
               }
+              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              _numberTrxActive--;  // Every transaction gets here at most once
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_CommitTransaction(_trx, _nestingLevel);
+
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            _numberTrxActive--;  // Every transaction gets here at most once
 
             return res;
           }
@@ -316,18 +318,20 @@ namespace triagens {
               // transaction not created or not running
               return TRI_ERROR_TRANSACTION_INTERNAL;
             }
-            
-            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-            _numberTrxActive--;  // Every transaction gets here at most once
 
             if (! _isReal) {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_ABORTED;
               }
+              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              _numberTrxActive--;  // Every transaction gets here at most once
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_AbortTransaction(_trx, _nestingLevel);
+            
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            _numberTrxActive--;  // Every transaction gets here at most once
 
             return res;
           }
