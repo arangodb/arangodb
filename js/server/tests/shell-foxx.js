@@ -13,6 +13,9 @@ fakeContext = {
   prefix: "",
   foxxes: [],
   comments: [],
+  manifest: {
+    rootElement: false
+  },
   clearComments: function () {},
   comment: function () {},
   collectionName: function () {}
