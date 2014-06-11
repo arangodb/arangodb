@@ -234,8 +234,8 @@ window.ApplicationsView = Backbone.View.extend({
       }
     });
   },
-  
-  initialize: function() {    
+
+  initialize: function() {
     this._installedSubViews = {};
     this._availableSubViews = {};
     this._showDevel = true;
@@ -243,15 +243,57 @@ window.ApplicationsView = Backbone.View.extend({
     this._showInactive = true;
     this.reload();
   },
-  
+
   render: function() {
     $(this.el).html(this.template.render({}));
-    var self = this;
+    var self = this, name;
+    var versions = {};
+
     _.each(this._installedSubViews, function (v) {
       $("#installedList").append(v.render());
     });
     _.each(this._availableSubViews, function (v) {
-      $("#availableList").append(v.render());
+      name = v.model.get("name");
+
+      //look which installed apps have multiple versions
+      if (versions[name]) {
+        versions[name].counter++;
+        versions[name].versions.push(v.model.get("version"));
+      }
+      else {
+        versions[name] = {
+          counter: 1,
+          versions: [v.model.get("version")]
+        };
+      }
+    });
+    _.each(this._availableSubViews, function (v) {
+      var name = v.model.get("name"),
+      version = v.model.get("version");
+      if (versions[name].counter > 1 ) {
+        //here comes special render for multiple versions view
+
+        var highestVersion = "0.0.0";
+        var selectOptions = "";
+
+        _.each(versions[name].versions, function(x) {
+          selectOptions += '<option>'+x+'</option>';
+          if (x > highestVersion) {
+            highestVersion = x;
+          }
+        });
+
+        if (version === highestVersion) {
+          v.model.set("highestVersion", highestVersion);
+          v.model.set("versions", versions[name].versions);
+          v.model.set("selectOptions", selectOptions);
+
+          $("#availableList").append(v.render());
+        }
+      }
+      else {
+        $("#availableList").append(v.render());
+      }
     });
     this.delegateEvents();
     $('#checkActive').attr('checked', this._showActive);
