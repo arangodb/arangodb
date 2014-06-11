@@ -127,6 +127,7 @@ ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised 
 ################################################################################
 
 ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
+ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encoutering an empty server database directory."
 
 ################################################################################
 ## ArangoDB replication errors
