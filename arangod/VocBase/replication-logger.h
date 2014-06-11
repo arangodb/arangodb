@@ -43,7 +43,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_df_marker_s;
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 struct TRI_doc_mptr_t;
 struct TRI_index_s;
 struct TRI_json_s;
@@ -308,7 +308,7 @@ int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
-                                struct TRI_document_collection_s*,
+                                struct TRI_document_collection_t*,
                                 TRI_voc_document_operation_e,
                                 struct TRI_df_marker_s const*,
                                 struct TRI_doc_mptr_t const*,

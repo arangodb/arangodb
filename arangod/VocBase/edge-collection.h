@@ -74,7 +74,7 @@ TRI_edge_header_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
-                                                  struct TRI_document_collection_s*,
+                                                  struct TRI_document_collection_t*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t);

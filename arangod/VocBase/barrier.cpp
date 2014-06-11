@@ -293,8 +293,8 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
-                                                  struct TRI_collection_s* collection,
-                                                  bool (*callback) (struct TRI_collection_s*, void*),
+                                                  struct TRI_collection_t* collection,
+                                                  bool (*callback) (struct TRI_collection_t*, void*),
                                                   void* data) {
   TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
@@ -319,8 +319,8 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
-                                                struct TRI_collection_s* collection,
-                                                bool (*callback) (struct TRI_collection_s*, void*),
+                                                struct TRI_collection_t* collection,
+                                                bool (*callback) (struct TRI_collection_t*, void*),
                                                 void* data) {
   TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
