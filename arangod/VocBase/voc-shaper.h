@@ -38,7 +38,7 @@
 #include "VocBase/document-collection.h"
 #include "Wal/Marker.h"
 
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -49,7 +49,7 @@ struct TRI_document_collection_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*, 
-                                   struct TRI_document_collection_s*);
+                                   struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a shaper, but does not free the pointer

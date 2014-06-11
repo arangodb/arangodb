@@ -39,7 +39,7 @@
 
 struct TRI_datafile_s;
 struct TRI_df_marker_s;
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 struct TRI_server_s;
 
 namespace triagens {
@@ -295,13 +295,13 @@ namespace triagens {
 /// @brief sync the journals of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int syncDatafileCollection (struct TRI_document_collection_s*);
+        int syncDatafileCollection (struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next free position for a new marker of the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* nextFreeMarkerPosition (struct TRI_document_collection_s*, 
+        char* nextFreeMarkerPosition (struct TRI_document_collection_t*, 
                                       TRI_df_marker_type_e,
                                       TRI_voc_size_t,
                                       CollectorCache*);
@@ -320,7 +320,7 @@ namespace triagens {
 
         void finishMarker (char const*,
                            char*,
-                           struct TRI_document_collection_s*,
+                           struct TRI_document_collection_t*,
                            TRI_voc_tick_t,
                            CollectorCache*);
 

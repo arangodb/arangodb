@@ -417,7 +417,7 @@ TRI_doc_collection_info_t;
 /// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_document_collection_s {
+struct TRI_document_collection_t {
   TRI_collection_t             base;
 
   // .............................................................................
@@ -456,21 +456,21 @@ typedef struct TRI_document_collection_s {
   // the collection's indexes that support cleanup
   bool                     _cleanupIndexes;
 
-  int (*beginRead) (struct TRI_document_collection_s*);
-  int (*endRead) (struct TRI_document_collection_s*);
+  int (*beginRead) (struct TRI_document_collection_t*);
+  int (*endRead) (struct TRI_document_collection_t*);
 
-  int (*beginWrite) (struct TRI_document_collection_s*);
-  int (*endWrite) (struct TRI_document_collection_s*);
+  int (*beginWrite) (struct TRI_document_collection_t*);
+  int (*endWrite) (struct TRI_document_collection_t*);
   
-  int (*beginReadTimed) (struct TRI_document_collection_s*, uint64_t, uint64_t);
-  int (*beginWriteTimed) (struct TRI_document_collection_s*, uint64_t, uint64_t);
+  int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
+  int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  void (*dump) (struct TRI_document_collection_s*);
+  void (*dump) (struct TRI_document_collection_t*);
 #endif 
  
-  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_s* collection);
-  TRI_voc_size_t (*size) (struct TRI_document_collection_s* collection);
+  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
+  TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
 
   
   // WAL-based CRUD methods
@@ -480,9 +480,8 @@ typedef struct TRI_document_collection_s {
   int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_copy_t*, bool);
 
   // function that is called to garbage-collect the collection's indexes
-  int (*cleanupIndexes)(struct TRI_document_collection_s*);
-}
-TRI_document_collection_t;
+  int (*cleanupIndexes)(struct TRI_document_collection_t*);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
