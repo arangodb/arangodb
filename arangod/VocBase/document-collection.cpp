@@ -2558,7 +2558,7 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
 
 void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
   TRI_DestroyDocumentCollection(document);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+  delete document;
 }
 
 // -----------------------------------------------------------------------------
