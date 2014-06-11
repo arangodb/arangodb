@@ -54,6 +54,7 @@
   * [Language Basics](Aql/Basics.md)
   * [Operators](Aql/Operators.md)
   * [High level Operations](Aql/Operations.md)
+  * [Graph Operations](Aql/GraphOperations.md)
   * [Advanced Features](Aql/Advanced.md)
 <!-- 11 -->
 * [Extending AQL](AqlExtending/README.md)

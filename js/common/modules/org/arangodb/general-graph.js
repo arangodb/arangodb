@@ -2293,7 +2293,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// @brief get common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
 
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
@@ -2301,12 +2301,15 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
     + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
     + ',@ex1'
     + ',@ex2'
-    + ',@options'
+    + ',@options1'
+    + ',@options2'
     + ')  SORT  ATTRIBUTES(e)[0] RETURN e';
-  options = options || {};
+  optionsVertex1 = optionsVertex1 || {};
+  optionsVertex2 = optionsVertex2 || {};
   var bindVars = {
     "graphName": this.__name,
-    "options": options,
+    "options1": optionsVertex1,
+    "options2": optionsVertex2,
     "ex1": ex1,
     "ex2": ex2
   };
@@ -2317,20 +2320,23 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
 /// @brief get amount of common neighbors of two vertices in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, options) {
+Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
   var query = "FOR e"
     + " IN GRAPH_COMMON_NEIGHBORS(@graphName"
     + ',@ex1'
     + ',@ex2'
-    + ',@options'
+    + ',@options1'
+    + ',@options2'
     + ') FOR a in ATTRIBUTES(e) FOR b in ATTRIBUTES(e[a])  '
     + 'SORT  ATTRIBUTES(e)[0] RETURN [a, b, LENGTH(e[a][b]) ]';
-  options = options || {};
+  optionsVertex1 = optionsVertex1 || {};
+  optionsVertex2 = optionsVertex2 || {};
   var bindVars = {
     "graphName": this.__name,
-    "options": options,
+    "options1": optionsVertex1,
+    "options2": optionsVertex2,
     "ex1": ex1,
     "ex2": ex2
   };
