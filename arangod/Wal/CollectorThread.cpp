@@ -479,8 +479,9 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
   
-  triagens::arango::CollectionGuard collectionGuard(vocbase, cache->collectionId);
+  triagens::arango::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
+
   TRI_ASSERT(collection != nullptr);
 
   // create a fake transaction while accessing the collection
@@ -728,24 +729,19 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId);
+  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId, true);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
+  
+  TRI_document_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
 
-  if (collection->_collection->_info._isVolatile) {
-    // don't need to collect data for volatile collections
-    return TRI_ERROR_NO_ERROR;
-  }
- 
   CollectorCache* cache = new CollectorCache(collectionId, 
                                              databaseId, 
                                              logfile,
                                              totalOperationsCount, 
                                              operations.size());
 
-
-  TRI_document_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
 
   int res = TRI_ERROR_INTERNAL;
 

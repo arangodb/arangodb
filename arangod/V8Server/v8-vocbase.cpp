@@ -812,7 +812,8 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
       return 0;
     }
 
-    res = TRI_UseCollectionVocBase(col->_vocbase, col);
+    TRI_vocbase_col_status_e status;
+    res = TRI_UseCollectionVocBase(col->_vocbase, col, status);
 
     if (res == TRI_ERROR_NO_ERROR && 
         col->_collection != 0) {

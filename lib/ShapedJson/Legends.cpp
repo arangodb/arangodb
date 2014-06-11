@@ -123,14 +123,14 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int JsonLegend::addShape (TRI_shape_sid_t sid, 
-                          char const* data, uint32_t len) {
+                          char const* data, 
+                          uint32_t len) {
   // data can be 0, then no data is associated, note that if the shape
   // contains an inhomogeneous list as one of its subobjects, then the
   // shape legend could be incomplete, because the actual shapes of
   // the subobject(s) are held only in the data and not in the shaper.
   // In this case this method includes all shapes it can but then
   // returns TRI_ERROR_LEGEND_INCOMPLETE.
-
   int res = TRI_ERROR_NO_ERROR;
 
   TRI_shape_t const* shape = nullptr;
@@ -138,20 +138,23 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
   // First the trivial cases:
   if (sid < TRI_FirstCustomShapeIdShaper()) {
     shape = TRI_LookupSidBasicShapeShaper(sid);
+
+    TRI_ASSERT(shape != nullptr);
   }
   else {
     shape = _shaper->lookupShapeId(_shaper, sid);
+
     if (nullptr == shape) {
       return TRI_ERROR_LEGEND_INCOMPLETE;
     }
 
     unordered_set<TRI_shape_sid_t>::const_iterator it = _have_shape.find(sid);
+
     if (it == _have_shape.end()) {
       _have_shape.insert(it, sid);
       Shape sh(sid, _shape_data.length(), shape->_size);
       _shapes.push_back(sh);
-      _shape_data.appendText( reinterpret_cast<char const*>(shape),
-                              shape->_size );
+      _shape_data.appendText(reinterpret_cast<char const*>(shape), shape->_size);
     }
   }
 
@@ -165,9 +168,8 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     // contain any inhomogeneous list as one of its subobjects,
     // therefore we do not have to hand down actual shaped JSON data.
     TRI_homogeneous_sized_list_shape_t const* shape_spec
-      = reinterpret_cast<TRI_homogeneous_sized_list_shape_t const*>
-                        (shape);
-    res = addShape(shape_spec->_sidEntry, 0, 0);
+      = reinterpret_cast<TRI_homogeneous_sized_list_shape_t const*>(shape);
+    res = addShape(shape_spec->_sidEntry, nullptr, 0);
   }
   else if (shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST) {
     // Handle a homogeneous list:
@@ -178,19 +180,22 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     TRI_homogeneous_list_shape_t const* shape_spec
       = reinterpret_cast<TRI_homogeneous_list_shape_t const*>
                         (shape);
-    res = addShape(shape_spec->_sidEntry, 0, 0);
+    res = addShape(shape_spec->_sidEntry, nullptr, 0);
+
     if (res == TRI_ERROR_LEGEND_INCOMPLETE) {
       // The subdocuments contain inhomogeneous lists, so we have to
       // scan them all:
+      TRI_ASSERT(data != nullptr);
+
       res = TRI_ERROR_NO_ERROR;  // just in case the length is 0
       TRI_shape_length_list_t const* len
         = reinterpret_cast<TRI_shape_length_list_t const*>(data);
       TRI_shape_size_t const* offsets
-        = reinterpret_cast<TRI_shape_size_t const*>(len+1);
+        = reinterpret_cast<TRI_shape_size_t const*>(len + 1);
       TRI_shape_length_list_t i;
-      for (i = 0;i < *len;i++) {
+      for (i = 0; i < *len; i++) {
         res = addShape(shape_spec->_sidEntry, data + offsets[i],
-                                              offsets[i+1]-offsets[i]);
+                                              offsets[i + 1] - offsets[i]);
         if (res != TRI_ERROR_NO_ERROR) {
           break;
         }
@@ -201,15 +206,16 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     // Handle an inhomogeneous list:
     // We have to scan recursively all entries of the list since they
     // contain sids in the data area.
-    TRI_shape_length_list_t const* len
-      = reinterpret_cast<TRI_shape_length_list_t const*>(data);
-    TRI_shape_sid_t const* sids
-      = reinterpret_cast<TRI_shape_sid_t const*>(len+1);
-    TRI_shape_size_t const* offsets
-      = reinterpret_cast<TRI_shape_size_t const*>(sids + *len);
+    TRI_ASSERT(data != nullptr);
+
+    TRI_shape_length_list_t const* len = reinterpret_cast<TRI_shape_length_list_t const*>(data);
+    TRI_shape_sid_t const* sids = reinterpret_cast<TRI_shape_sid_t const*>(len + 1);
+    TRI_shape_size_t const* offsets = reinterpret_cast<TRI_shape_size_t const*>(sids + *len);
     TRI_shape_length_list_t i;
-    for (i = 0;i < *len;i++) {
-      res = addShape(sids[i], data + offsets[i], offsets[i+1]-offsets[i]);
+
+    for (i = 0; i < *len; i++) {
+      res = addShape(sids[i], data + offsets[i], offsets[i + 1] - offsets[i]);
+
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -219,15 +225,10 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     // Handle an array:
     // Distinguish between fixed size subobjects and variable size
     // subobjects. The fixed ones cannot contain inhomogeneous lists.
-    TRI_array_shape_t const* shape_spec
-      = reinterpret_cast<TRI_array_shape_t const*> (shape);
-    TRI_shape_sid_t const* sids
-      = reinterpret_cast<TRI_shape_sid_t const*>(shape_spec+1);
-    TRI_shape_aid_t const* aids
-      = reinterpret_cast<TRI_shape_aid_t const*>
-        (sids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
-    TRI_shape_size_t const* offsets
-      = reinterpret_cast<TRI_shape_size_t const*>(data);
+    TRI_array_shape_t const* shape_spec = reinterpret_cast<TRI_array_shape_t const*>(shape);
+    TRI_shape_sid_t const* sids = reinterpret_cast<TRI_shape_sid_t const*>(shape_spec + 1);
+    TRI_shape_aid_t const* aids = reinterpret_cast<TRI_shape_aid_t const*>(sids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
+    TRI_shape_size_t const* offsets = reinterpret_cast<TRI_shape_size_t const*>(data);
     uint64_t i;
     for (i = 0; res == TRI_ERROR_NO_ERROR && 
                 i < shape_spec->_fixedEntries + shape_spec->_variableEntries;
@@ -237,17 +238,21 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_fixedEntries; 
          i++) {
       // Fixed size subdocs cannot have inhomogeneous lists as subdocs:
-      res = addShape(sids[i], 0, 0);
+      res = addShape(sids[i], nullptr, 0);
     }
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_variableEntries;
          i++) {
       addShape(sids[i + shape_spec->_fixedEntries],
-               data + offsets[i], offsets[i+1] - offsets[i]);
+               data + offsets[i], offsets[i + 1] - offsets[i]);
     }
   }
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief round a value to the next multiple of 8
+////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_shape_size_t roundup8 (TRI_shape_size_t x) {
   return (x + 7) - ((x + 7) & 7);

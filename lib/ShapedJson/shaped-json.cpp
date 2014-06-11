@@ -732,7 +732,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = (uint32_t) n;
+    * (TRI_shape_length_list_t*) ptr = (TRI_shape_length_list_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     TRI_shape_sid_t* sids = (TRI_shape_sid_t*) ptr;
