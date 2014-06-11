@@ -82,7 +82,7 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   idx->_nrResizes++;
 #endif
 
-  idx->_table = (void**) TRI_Allocate(idx->_memoryZone, (size_t) (idx->_nrAlloc * sizeof(void*)), true);
+  idx->_table = (void**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (idx->_nrAlloc * sizeof(void*)), true);
 
   if (idx->_table == nullptr) {
     idx->_nrAlloc = oldAlloc;
@@ -100,7 +100,7 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
     }
   }
 
-  TRI_Free(idx->_memoryZone, oldTable);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
 
   return true;
 }
@@ -143,13 +143,11 @@ static inline bool IsEqualHashElement (char const* key, uint64_t hash, void cons
 /// @brief initialises the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitPrimaryIndex (TRI_primary_index_t* idx,
-                          TRI_memory_zone_t* zone) {
-  idx->_memoryZone = zone;
+int TRI_InitPrimaryIndex (TRI_primary_index_t* idx) {
   idx->_nrAlloc = 0;
   idx->_nrUsed  = 0;
 
-  if (nullptr == (idx->_table = (void**) TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+  if (nullptr == (idx->_table = (void**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(void*) * INITIAL_SIZE, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -164,7 +162,7 @@ int TRI_InitPrimaryIndex (TRI_primary_index_t* idx,
 
 void TRI_DestroyPrimaryIndex (TRI_primary_index_t* idx) {
   if (idx->_table != nullptr) {
-    TRI_Free(idx->_memoryZone, idx->_table);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_table);
     idx->_table = nullptr;
   }
 }
