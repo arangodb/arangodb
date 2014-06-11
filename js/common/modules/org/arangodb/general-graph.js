@@ -1120,7 +1120,6 @@ AQLGenerator.prototype.execute = function() {
     query += " RETURN [" + this._path + "]";
   } else if (this.stack[this.stack.length-1].isPathVerticesQuery()) {
     query += " RETURN FLATTEN([" + this._pathVertices + "])";
-    require("internal").print(query);
   } else if (this.stack[this.stack.length-1].isPathEdgesQuery()) {
     query += " RETURN FLATTEN([" + this._pathEdges + "])";
   } else {
@@ -1429,7 +1428,6 @@ var _create = function (graphName, edgeDefinitions) {
 
   var gdb = getGraphCollection(),
     err,
-    g,
     graphAlreadyExists = true,
     collections;
   if (!graphName) {
@@ -1438,10 +1436,11 @@ var _create = function (graphName, edgeDefinitions) {
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
     throw err;
   }
-  if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
+  edgeDefinitions = edgeDefinitions || [];
+  if (!Array.isArray(edgeDefinitions)) {
     err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.message;
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
     throw err;
   }
   //check, if a collection is already used in a different edgeDefinition
