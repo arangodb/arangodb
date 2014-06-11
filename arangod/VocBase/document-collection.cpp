@@ -2230,7 +2230,7 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
     return res;
   }
 
-  res = TRI_InitPrimaryIndex(&document->_primaryIndex, TRI_UNKNOWN_MEM_ZONE);
+  res = TRI_InitPrimaryIndex(&document->_primaryIndex);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyAssociativePointer(&document->_datafileInfo);

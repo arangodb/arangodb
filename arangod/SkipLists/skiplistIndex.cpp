@@ -269,7 +269,7 @@ static int SkiplistIndex_queryMethodCall (void* theIndex,
                                           TRI_index_challenge_t* challenge, 
                                           void* data) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL || indexOperator == NULL) {
+  if (slIndex == nullptr || indexOperator == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
   TRI_ASSERT(false);
@@ -282,17 +282,17 @@ static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (
                    void* data, 
                    bool (*filter) (TRI_index_iterator_t*)) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL || indexOperator == NULL) {
-    return NULL;
+  if (slIndex == nullptr || indexOperator == nullptr) {
+    return nullptr;
   }
   TRI_ASSERT(false);
-  return NULL;
+  return nullptr;
 }
 
 static int SkiplistIndex_freeMethodCall (void* theIndex, 
                                          void* data) {
   SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == NULL) {
+  if (slIndex == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
   TRI_ASSERT(false);
@@ -312,9 +312,9 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
   // Some simple checks.
   // ...........................................................................
 
-  TRI_ASSERT(NULL != iterator);
+  TRI_ASSERT(nullptr != iterator);
 
-  if (NULL == iterator->_cursor) {
+  if (nullptr == iterator->_cursor) {
     return false;
   }
 
@@ -354,7 +354,7 @@ static bool SkiplistHasNextIterationCallback(TRI_skiplist_iterator_t* iterator) 
 /// @brief Jumps forwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_index_element_t* SkiplistIteration(
+static TRI_skiplist_index_element_t* SkiplistIteration (
                                TRI_skiplist_iterator_t* iterator, 
                                int64_t jumpSize) {
   TRI_skiplist_iterator_interval_t* interval;
@@ -368,7 +368,7 @@ static TRI_skiplist_index_element_t* SkiplistIteration(
 
   if (nullptr == iterator->_cursor) {
     // In this case the iterator is exhausted or does not even have intervals.
-    return NULL;
+    return nullptr;
   }
 
   TRI_ASSERT(jumpSize > 0);
@@ -494,7 +494,7 @@ void SkiplistIndex_destroy (SkiplistIndex* slIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SkiplistIndex_free (SkiplistIndex* slIndex) {
-  if (slIndex == NULL) {
+  if (slIndex == nullptr) {
     return;
   }
   SkiplistIndex_destroy(slIndex);
