@@ -2509,6 +2509,7 @@ jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
+//jsunity.run(VertexCollectionChainedFluentAQLResultsSuite);
 
 return jsunity.done();
 
