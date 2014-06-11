@@ -208,6 +208,10 @@ function extendContext (context, app, root) {
     return replaced;
   };
 
+  context.collection = function (name) {
+    return arangodb.db._collection(this.collectionName(name));
+  };
+
   context.path = function (name) {
     return fs.join(root, app._path, name);
   };
