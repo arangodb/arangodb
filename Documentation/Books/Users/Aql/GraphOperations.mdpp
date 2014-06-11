@@ -1,0 +1,31 @@
+!CHAPTER Graph operations
+
+This chapter describe graph related aql functions.
+
+
+!SUBSECTION GRAPH_PATHS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_paths -->
+
+!SUBSECTION GRAPH_SHORTEST_PATH
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths -->
+
+!SUBSECTION_GRAPH_DISTANCE_TO
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_distance -->
+
+!SUBSECTION_GRAPH_TRAVERSAL
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal -->
+
+!SUBSECTION_GRAPH_TRAVERSAL_TREE
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree -->
+
+!SUBSECTION_GRAPH_NEIGHBORS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_neighbors -->
+
+
+
