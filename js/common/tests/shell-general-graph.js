@@ -285,15 +285,10 @@ function GeneralGraphCreationSuite() {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
-      try {
-        graph._create(
-          gn,
-          []
-        );
-        fail();
-      } catch (err) {
-        assertEqual(err.errorMessage, "at least one edge definition is required to create a graph.");
-      }
+      var g = graph._create(
+        gn
+      );
+      assertEqual(g.__edgeDefinitions, []);
     },
 
     test_create_WithOut_Name : function () {
@@ -324,7 +319,8 @@ function GeneralGraphCreationSuite() {
       try {
         graph._create(gn, edgeDef);
       } catch (err) {
-        assertEqual(err, "graph " + gn + " already exists.");
+        assertEqual(err.errorNum, ERRORS.ERROR_GRAPH_DUPLICATE.code);
+        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_DUPLICATE.message);
       }
     },
 
@@ -371,7 +367,8 @@ function GeneralGraphCreationSuite() {
         graph._graph(gn + "UnknownExtension");
         fail();
       } catch (e) {
-        assertEqual(e, "graph " + gn + "UnknownExtension" + " does not exist.");
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_FOUND.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_FOUND.message);
       }
     },
 
@@ -2507,15 +2504,11 @@ function GeneralGraphCommonNeighborsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
 jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
-*/
 jsunity.run(GeneralGraphCreationSuite);
-/*
 jsunity.run(ChainedFluentAQLResultsSuite);
-*/
 
 return jsunity.done();
 

@@ -36,5 +36,5 @@ A skiplist is used to find ranges of documents.
 A fulltext index can be used to find words, or prefixes of words inside documents. A fulltext index can be set on one attribute only, and will index all words contained in documents that have a textual value in this attribute. Only words with a (specifiable) minimum length are indexed. Word tokenization is done using the word boundary analysis provided by libicu, which is taking into account the selected language provided at server start. Words are indexed in their lower-cased form. The index supports complete match queries (full words) and prefix queries.
 
 The basic operations (create, read, update, delete) for documents are mapped to
-the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`).
+the standard HTTP methods (*POST*, *GET*, *PUT*, *DELETE*).
 

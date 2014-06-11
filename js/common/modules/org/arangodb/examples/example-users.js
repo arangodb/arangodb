@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief example-users
@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require("org/arangodb").db;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -325,7 +324,8 @@ var data = [
    "gender":"female",
    "birthday":"1981-06-24",
    "contact":{"address":{"street":"22 Laramie Cir","zip":"91189","city":"Pasadena","state":"CA"},
-              "email":["carlee.degenfelder@nosql-matters.org","degenfelder@nosql-matters.org","carlee@nosql-matters.org"],
+              "email":["carlee.degenfelder@nosql-matters.org","degenfelder@nosql-matters.org",
+                       "carlee@nosql-matters.org"],
               "region":"626","phone":["626-4051264","626-2789580"]},
    "likes":[],
    "memberSince":"2010-09-21"},

@@ -1,3 +1,389 @@
+!CHAPTE Vertex
+
+`POST /_api/graph/graph-name/vertex-name`*(create vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been sync to disk.
+
+!SUBSECTION Body parameters
+
+`vertex (json,required)`
+
+The call expects a JSON hash array as body with the vertex properties:
+_key: The name of the vertex (optional).
+further optional attributes.
+
+!SUBSECTION Description
+
+Creates a vertex in a graph.
+Returns an object with an attribute vertex containing a list of all vertex properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the graph was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the graph was created successfully and waitForSync was false.
+
+*Examples*
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex
+{"_key":"v1","optional1":"val1"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 112518113
+
+{ 
+  "vertex" : { 
+    "_id" : "vertices/v1", 
+    "_rev" : "112518113", 
+    "_key" : "v1", 
+    "optional1" : "val1" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`GET /_api/graph/graph-name/vertex-name`*(get vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Query parameters
+
+`rev (string,optional)`
+
+Revision of a vertex
+
+!SUBSECTION HTTP header parameters
+
+`If-None-Match (string,optional)`
+
+If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+
+`If-Match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Returns an object with an attribute vertex containing a list of all vertex properties.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the graph was found
+
+`HTTP 304`
+
+"If-Match" header is given and the current graph has not a different version
+
+`HTTP 404`
+
+is returned if the graph or vertex was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-None-Match" header or rev is given and the current graph has a different version
+
+*Examples*
+
+get vertex properties by name
+
+```
+unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: 115532769
+
+{ 
+  "vertex" : { 
+    "_id" : "vertices/v1", 
+    "_rev" : "115532769", 
+    "_key" : "v1", 
+    "optional1" : "val1" 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/graph/graph-name/vertex-name`*(update vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until vertex has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of a vertex
+
+!SUBSECTION Body parameters
+
+`vertex (json,required)`
+
+The call expects a JSON hash array as body with the new vertex properties.
+
+!SUBSECTION HTTP header parameters
+
+`if-match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Replaces the vertex properties.
+Returns an object with an attribute vertex containing a list of all vertex properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the vertex was updated successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the vertex was updated successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the vertex was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current vertex has a different version
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+{"optional1":"val2"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 120579041
+
+{ 
+  "vertex" : { 
+    "_id" : "vertices/v1", 
+    "_rev" : "120579041", 
+    "_key" : "v1", 
+    "optional1" : "val2" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`PATCH /_api/graph/graph-name/vertex-name`*(update vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until vertex has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of a vertex
+
+`keepNull (boolean,optional)`
+
+Modify the behavior of the patch command to remove any attribute
+
+!SUBSECTION Body parameters
+
+`graph (json,required)`
+
+The call expects a JSON hash array as body with the properties to patch.
+
+!SUBSECTION HTTP header parameters
+
+`if-match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Partially updates the vertex properties.
+Setting an attribute value to null in the patch document will cause a value of null be saved for the attribute by default. If the intention is to delete existing attributes with the patch command, the URL parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
+
+Returns an object with an attribute vertex containing a list of all vertex properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the vertex was updated successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the vertex was updated successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the vertex was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current vertex has a different version
+
+*Examples*
+
+```
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+{"optional1":"vertexPatch"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 123659233
+
+{ 
+  "vertex" : { 
+    "_id" : "vertices/v1", 
+    "_rev" : "123659233", 
+    "_key" : "v1", 
+    "optional1" : "vertexPatch" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+{"optional1":null}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 124117985
+
+{ 
+  "vertex" : { 
+    "_id" : "vertices/v1", 
+    "_rev" : "124117985", 
+    "_key" : "v1", 
+    "optional1" : null 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`DELETE /_api/graph/graph-name/vertex-name`*(delete vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until document has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of a vertex
+
+!SUBSECTION HTTP header parameters
+
+`If-Match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Deletes vertex and all in and out edges of the vertex
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the vertex was deleted and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the vertex was deleted and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the vertex was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current vertex has a different version
+
+*Examples*
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : true, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+<!-->
 @CLEARPAGE
 @anchor A_JSF_POST_graph_vertex
 @copydetails JSF_post_graph_vertex
@@ -17,4 +403,4 @@
 @CLEARPAGE
 @anchor A_JSF_DELETE_graph_vertex
 @copydetails JSF_delete_graph_vertex
-
+-->
