@@ -776,10 +776,10 @@ int truncateCollectionOnCoordinator ( string const& dbname,
 
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
 
   // Some stuff to prepare cluster-intern requests:
   map<string, string> headers;
@@ -859,8 +859,8 @@ int getDocumentOnCoordinator (
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard( collid, json, true, shardID,
-                                       usesDefaultShardingAttributes );
+  int error = ci->getResponsibleShard(collid, json, true, shardID,
+                                      usesDefaultShardingAttributes );
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:

@@ -48,7 +48,7 @@ namespace {
       COMPLETER->getAlternatives(text, alternatives);
       LineEditor::sortAlternatives(alternatives);
 
-      for(vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); i++) {
+      for (vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); ++i) {
         linenoiseAddCompletion(lc, (*i).c_str());
       }
     }

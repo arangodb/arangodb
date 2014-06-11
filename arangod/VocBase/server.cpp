@@ -874,7 +874,7 @@ static int OpenDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CloseDatabases (TRI_server_t* server) {
-  DatabaseWriteLocker(&server->_databasesLock);
+  DatabaseWriteLocker locker(&server->_databasesLock);
 
   size_t n = server->_databases._nrAlloc;
 

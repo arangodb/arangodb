@@ -270,7 +270,7 @@ void ConnectionManager::closeUnusedConnections (double limit) {
           sc->unused.erase(i);
           if (haveprev) {
             i = prev;   // will be incremented in next iteration
-            i++;
+            ++i;
             haveprev = false;
           }
           else {
