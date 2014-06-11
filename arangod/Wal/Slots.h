@@ -41,11 +41,11 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         struct StandaloneSlotInfo
+// --SECTION--                                               struct SlotInfoCopy
 // -----------------------------------------------------------------------------
     
-    struct StandaloneSlotInfo {
-      explicit StandaloneSlotInfo (Slot const* slot) 
+    struct SlotInfoCopy {
+      explicit SlotInfoCopy (Slot const* slot) 
         : mem(slot->mem()),
           size(slot->size()),
           logfileId(slot->logfileId()),
@@ -53,7 +53,7 @@ namespace triagens {
           errorCode(TRI_ERROR_NO_ERROR) {
       }
 
-      explicit StandaloneSlotInfo (int errorCode)
+      explicit SlotInfoCopy (int errorCode)
         : mem(nullptr),
           size(0),
           logfileId(0),
