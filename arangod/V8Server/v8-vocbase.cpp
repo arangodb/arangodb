@@ -2282,7 +2282,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->base._info._planId);
+    const string cidString = StringUtils::itoa(document->_info._planId);
 
     TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
@@ -2702,7 +2702,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBserver()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->base._info._planId);
+    const string cidString = StringUtils::itoa(document->_info._planId);
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
       TRI_FreeJson(document->_shaper->_memoryZone, old);
@@ -5557,7 +5557,7 @@ static v8::Handle<v8::Value> JS_UpgradeVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_collection_t* col = &collection->_collection->base;
+  TRI_collection_t* col = collection->_collection;
 
 #ifdef TRI_ENABLE_LOGGER
   const char* name = col->_info._name;
@@ -7032,7 +7032,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   }
 
   TRI_document_collection_t* document = collection->_collection;
-  TRI_collection_t* base = &document->base;
+  TRI_collection_t* base = document;
 
   // check if we want to change some parameters
   if (0 < argv.Length()) {
@@ -7355,7 +7355,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
 
   // READ-LOCK start
   trx.lockRead();
-  rid = collection->_collection->base._info._revision;
+  rid = collection->_collection->_info._revision;
   trx.finish(res);
   // READ-LOCK end
 
@@ -9709,7 +9709,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   persistent.Clear();
 
   // get the vocbase pointer from the barrier
-  TRI_vocbase_t* vocbase = barrier->base._container->_collection->base._vocbase;
+  TRI_vocbase_t* vocbase = barrier->base._container->_collection->_vocbase;
  
   // mark that we don't need the barrier anymore
   barrier->_usedByExternal = false;
@@ -10182,7 +10182,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     // increase the reference-counter for the database
     TRI_ASSERT(barrier->_container != nullptr);
     TRI_ASSERT(barrier->_container->_collection != nullptr);
-    TRI_UseVocBase(barrier->_container->_collection->base._vocbase);
+    TRI_UseVocBase(barrier->_container->_collection->_vocbase);
 
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);

@@ -1142,9 +1142,14 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
   // create collection structure
   if (collection == NULL) {
-    collection = static_cast<TRI_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false));
+    try {
+      collection = new TRI_collection_t();
+    }
+    catch (std::exception e) {
+      collection = nullptr;
+    }
 
-    if (collection == NULL) {
+    if (collection == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
       LOG_ERROR("cannot create collection '%s', out of memory", path);

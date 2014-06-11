@@ -703,7 +703,7 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   parameters._maximalSize = maximalSize;
   parameters._waitForSync = waitForSync;
 
-  res = TRI_UpdateCollectionInfo(_vocbase, &col->_collection->base, &parameters);
+  res = TRI_UpdateCollectionInfo(_vocbase, col->_collection, &parameters);
 
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 

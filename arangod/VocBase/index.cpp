@@ -341,7 +341,7 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
     return false;
   }
 
-  filename = TRI_Concatenate2File(collection->base._directory, name);
+  filename = TRI_Concatenate2File(collection->_directory, name);
 
   if (filename == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -391,12 +391,12 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   // construct filename
   number   = TRI_StringUInt64(idx->_iid);
   name     = TRI_Concatenate3String("index-", number, ".json");
-  filename = TRI_Concatenate2File(document->base._directory, name);
+  filename = TRI_Concatenate2File(document->_directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  vocbase = document->base._vocbase;
+  vocbase = document->_vocbase;
 
   // and save
   ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
@@ -412,8 +412,8 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 
   // it is safe to use _name as we hold a read-lock on the collection status
   TRI_LogCreateIndexReplication(vocbase, 
-                                document->base._info._cid, 
-                                document->base._info._name, 
+                                document->_info._cid, 
+                                document->_info._name, 
                                 idx->_iid, 
                                 json,
                                 generatingServer);
