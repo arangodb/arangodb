@@ -522,6 +522,8 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::flush () {
+  LOG_TRACE("about to flush active write-ahead logfile");
+
   SlotInfo slotInfo = _slots->nextUnused(0);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -533,8 +535,10 @@ int LogfileManager::flush () {
 
     return slotInfo.errorCode;
   }
-  
-  _slots->returnUsed(slotInfo, true);
+ 
+  // do not sync here, because otherwise the operation might never finish 
+  // as we're writing 0 bytes to the logfile! 
+  _slots->returnUsed(slotInfo, false);
   
   return TRI_ERROR_NO_ERROR;
 }

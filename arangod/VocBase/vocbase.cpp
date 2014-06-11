@@ -171,8 +171,8 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
                                   TRI_vocbase_col_t* collection,
                                   TRI_server_id_t generatingServer) {
-  TRI_ASSERT(collection != NULL);
-  TRI_ASSERT(collection->_name != NULL);
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(collection->_name != nullptr);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
 
@@ -180,7 +180,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   // only if we find the collection by its id, we can delete it by name
-  if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid) != NULL) {
+  if (TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsById, &collection->_cid) != nullptr) {
     // this is because someone else might have created a new collection with the same name,
     // but with a different id
     TRI_RemoveKeyAssociativePointer(&vocbase->_collectionsByName, collection->_name);
@@ -226,6 +226,11 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
       TRI_ContainsBarrierList(&collection->_collection->_barrierList, TRI_BARRIER_COLLECTION_COMPACTION)) {
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
+    // still some barriers left...
+    // as the cleanup thread has already popped the unload barrier from the barrier list,
+    // we need to insert a new one to really executed the unload
+    TRI_UnloadCollectionVocBase(collection->_collection->_vocbase, collection, false);
+
     return false;
   }
 
@@ -247,9 +252,10 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
   TRI_FreeDocumentCollection(document);
 
   collection->_status = TRI_VOC_COL_STATUS_UNLOADED;
-  collection->_collection = NULL;
+  collection->_collection = nullptr;
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
   return true;
 }
 
@@ -297,7 +303,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   // unload collection
   // .............................................................................
 
-  if (collection->_collection != NULL) {
+  if (collection->_collection != nullptr) {
     TRI_document_collection_t* document = collection->_collection;
 
     res = TRI_CloseDocumentCollection(document);
@@ -316,7 +322,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
 
     TRI_FreeDocumentCollection(document);
 
-    collection->_collection = NULL;
+    collection->_collection = nullptr;
   }
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -606,13 +612,13 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                              col->_info._cid,
                              col->_directory);
 
-  if (collection == NULL) {
+  if (collection == nullptr) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
     TRI_CloseDocumentCollection(document);
     TRI_FreeDocumentCollection(document);
     // TODO: does the collection directory need to be removed?
-    return NULL;
+    return nullptr;
   }
 
   if (parameter->_planId > 0) {
@@ -2043,7 +2049,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     // remove dangling .json.tmp file if it exists
     tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_VOC_PARAMETER_FILE, ".tmp");
 
-    if (tmpFile != NULL) {
+    if (tmpFile != nullptr) {
       if (TRI_ExistsFile(tmpFile)) {
         TRI_UnlinkFile(tmpFile);
         LOG_DEBUG("removing dangling temporary file '%s'", tmpFile);
@@ -2054,7 +2060,9 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     if (! info._deleted) {
       info._deleted = true;
 
-      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
+      // dropping a collection does not need to be synced
+      bool const doSync = false;  // vocbase->_settings.forceSyncProperties;
+      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync); 
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {

@@ -3766,8 +3766,8 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document
 TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
   TRI_vector_pointer_t* vector = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_pointer_t), false));
 
-  if (vector == NULL) {
-    return NULL;
+  if (vector == nullptr) {
+    return nullptr;
   }
 
   TRI_InitVectorPointer(vector, TRI_CORE_MEM_ZONE);
@@ -3778,7 +3778,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     TRI_json_t* json = idx->json(idx);
 
-    if (json != NULL) {
+    if (json != nullptr) {
       TRI_PushBackVectorPointer(vector, json);
     }
   }
@@ -3830,7 +3830,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
     // combine name and pid
     pidnames = static_cast<pid_name_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false));
 
-    if (pidnames == NULL) {
+    if (pidnames == nullptr) {
       LOG_ERROR("out of memory in PidNamesByAttributeNames");
       return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     }

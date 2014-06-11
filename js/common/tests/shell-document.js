@@ -42,11 +42,12 @@ function waitUnload (collection) {
   collection.unload();
   flushWal();
    
-  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) {
+    collection.unload();
     wait(1);
   }
+
   assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
-  
 }
 
 // -----------------------------------------------------------------------------
