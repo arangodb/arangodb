@@ -3126,7 +3126,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
   resultRegister = CreateCode(generator);
 
   if (context->_type != TRI_AQL_QUERY_READ) {
-    assert(context->_writeCollection != NULL);
+    TRI_ASSERT(context->_writeCollection != NULL);
 
     OutputString(&generator->_buffer, "extra.operations = aql.EXECUTE_");
 
@@ -3145,7 +3145,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
         break;
       case TRI_AQL_QUERY_READ:
         // cannot happen, but the compiler is unhappy otherwise
-        assert(false);
+        TRI_ASSERT(false);
         break;
     }
 

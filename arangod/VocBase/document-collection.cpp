@@ -3351,11 +3351,6 @@ static int FillIndex (TRI_document_collection_t* document,
       int res = idx->insert(idx, mptr, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
-                    (unsigned long long) document->_info._cid,
-                    (char*) TRI_EXTRACT_MARKER_KEY(mptr),  // ONLY IN INDEX
-                    (unsigned long long) idx->_iid);
-  
         return res;
       }
 
