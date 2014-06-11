@@ -45,6 +45,12 @@ var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var RegexCache = { };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cache for resolved graphs
+////////////////////////////////////////////////////////////////////////////////
+
+var ResolvedGraphCache = { };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief user functions cache
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4129,10 +4135,49 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find all paths through a graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_paths
+///
+/// `GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
+/// *The GRAPH\_PATHS function returns all paths of a graph.*
+///
+/// This function determines all available paths in a graph identified by *graphName*.
+/// Except for *graphName* every other parameter is optional.
+///
+/// * String  *graphName*     : The name of the graph.
+/// * String  *direction*     : The direction of the edges.
+/// Possible values are *any*, *inbound* and *outbound* (default).
+/// * Boolean *followCycles*  : If set to *true* the query follows cycles in the graph,
+/// default is false.
+/// * Number *minLength*      : Defines the minimal length a path must
+/// have to be returned (default is 0).
+/// * Number *maxLength*      : Defines the maximal length a path must
+/// have to be returned (default is 10).
+///
+/// @EXAMPLES
+///
+/// Return all paths of the graph "social":
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   db._query("RETURN GRAPH_PATHS('social')").toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Return all inbound paths of the graph "social" with a maximal
+/// length of 1 and a minimal length of 2:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths2}
+///   ~require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, maxLength) {
+function GENERAL_GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength) {
   "use strict";
 
   var searchDirection;
@@ -4142,7 +4187,7 @@ function GENERAL_GRAPH_PATHS (graphname, direction, followCycles, minLength, max
   maxLength      = maxLength !== undefined ? maxLength : 10;
 
   // check graph exists and load edgeDefintions
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
   if (!graph) {
     THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
@@ -4509,11 +4554,16 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
 
 function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
   // check graph exists and load edgeDefintions
+
+  /*if (ResolvedGraphCache[graphname + JSON.stringify(options)]) {
+    require("internal").print("resolved from cache");
+    return ResolvedGraphCache[graphname + JSON.stringify(options)];
+  }*/
+
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
   if (! graph) {
     THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
-
   var fromCollections = [], toCollection = [],edgeCollections = [];
   graph.edgeDefinitions.forEach(function (def) {
     if (options.direction === "outbound") {
@@ -4553,12 +4603,11 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
     }
   });
-
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
 
-  return {
+  var result =  {
     fromVertices :DOCUMENTS_BY_EXAMPLE(
       fromCollections.filter(removeDuplicates), options.fromVertexExample
     ),
@@ -4570,6 +4619,10 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
     fromCollections : fromCollections,
     toCollection : toCollection
   };
+
+  //ResolvedGraphCache[graphname + JSON.stringify(options)] = result;
+  return result;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4914,7 +4967,88 @@ function IS_EXAMPLE_SET (example) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path algorithm
+/// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
+///
+/// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
+/// *The GRAPH\_SHORTEST\_PATH function returns all paths of a graph.*
+///
+/// This function determines all shortest paths in a graph identified by *graphName*.
+/// The function accepts an id, an example, a list of examples
+/// or even an empty example as parameter for
+/// start and end vertex. If one wants to calls this function to receive nearly all
+/// shortest paths for a graph the
+/// option *algorithm* should be set to *Floyd-Warshall* to increase performance.
+/// If no algorithm is given in the options the function chooses the appropriate
+/// one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
+/// The length of a path is by default the amount of edges from one start vertex to
+/// an end vertex. The option weight allows the user to define an edge attribute
+/// representing the length.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *startVertexExample* : An example for the desired
+/// start Vertices (see below).
+/// * String|Object|Array  *endVertexExample*   : An example for the desired
+/// end Vertices (see below).
+/// * Object               *options*            : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
+/// collections that should be considered.
+/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+/// collections that should be considered.
+/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+/// collections that should be considered.
+/// * String|Object|Array  *edgeExamples*                     : A filter example for the
+/// edges in the shortest paths (see below).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path could
+/// not be calculated.
+///
+/// Examples for startVertexExample/endVertexExample:
+/// * {}                : Returns all possible start/end vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
+///  the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, shortest distance from all villages to other cities:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_SHORTEST_PATH("
+/// |+"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
+/// |"startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+/// | "e.distance, LENGTH(e.paths)]"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, shortest distance from Munich and Cologne to Olpe:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_SHORTEST_PATH("
+/// |+"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
                                       startVertexExample,
@@ -4950,27 +5084,6 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
 }
 
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief distance to
-////////////////////////////////////////////////////////////////////////////////
-
-function GENERAL_GRAPH_DISTANCE_TO (graphName,
-                                      startVertexExample,
-                                      endVertexExample,
-                                      options) {
-  "use strict";
-
-  if (! options) {
-    options = {};
-  }
-  options.distance = true;
-  return GENERAL_GRAPH_SHORTEST_PATH(graphName, startVertexExample, endVertexExample, options);
-
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -4993,23 +5106,63 @@ function GRAPH_TRAVERSAL (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_traversal
+///
+/// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
+/// *The GRAPH\_TRAVERSAL function traverses through the graph.*
+///
+/// This function performs traversals on the given graph.
+/// For a more detailed documentation on the optional parameters see
+/// [Traversals](../Traversals/README.md).
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *startVerte*         : The ID of the start vertex of the traversal.
+/// * String|Object|Array  *direction*          : The direction of the edges. Possible values
+/// are *outbound*, *inbound* and *any* (default).
+/// * Object               *options*            : Optional options, see below:
+///
+/// @EXAMPLES
+///
+/// A route planner example, start a traversal from Munich :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+/// | " 'outbound') RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, start a traversal from Munich with a max depth of 1
+/// so only the direct neighbors of munich are returned:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+/// |" 'outbound', {maxDepth : 1}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_TRAVERSAL (graphName,
                           startVertex,
                           direction,
-                          params) {
+                          options) {
   "use strict";
 
-  params = TRAVERSAL_PARAMS(params);  
+  options = TRAVERSAL_PARAMS(options);
 
   return TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
     TRAVERSAL.generalGraphDatasourceFactory(graphName),
     TO_ID(startVertex),
     undefined,
     direction,
-    params);
+    options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5063,32 +5216,108 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
   return [ result[0][params.connect] ];
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph and create a hierarchical result
-/// this function uses the same setup as the TRAVERSE() function but will use
-/// a different visitor to create the result
+/// @startDocuBlock JSF_ahuacatl_general_graph_distance
+///
+/// `GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+/// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
+///
+/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+///
+////////////////////////////////////////////////////////////////////////////////
+function GENERAL_GRAPH_DISTANCE_TO (graphName,
+                                      startVertexExample,
+                                      endVertexExample,
+                                      options) {
+  "use strict";
+
+  if (! options) {
+    options = {};
+  }
+  var res = GENERAL_GRAPH_SHORTEST_PATH(
+    graphName, startVertexExample, endVertexExample, options
+  ), result = [];
+  res.forEach(function (r) {
+    result.push({
+      startVertex : r.startVertex,
+      distance : r.distance,
+      vertex : r.vertex
+    });
+  });
+  return result;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree
+///
+/// `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
+/// *The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
+/// This function creates a tree format from the result for a better visualization of
+/// the path.
+/// This function performs traversals on the given graph.
+/// For a more detailed documentation on the optional parameters see
+/// [Traversals](../Traversals/README.md).
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *startVerte*         : The ID of the start vertex
+/// of the traversal.
+/// * String|Object|Array  *direction*          : The direction of the edges.
+///  Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *connectName*        : The result attribute which
+///  contains the connection.
+/// * Object               *options*            : Optional options, see below:
+///
+/// @EXAMPLES
+///
+/// A route planner example, start a traversal from Munich :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'," +
+/// | " 'outbound', 'connnection') RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, start a traversal from Munich with a max depth of 1 so
+///  only the direct neighbors of munich are returned:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich',"+
+/// | " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
                                        startVertex,
                                        direction,
                                        connectName,
-                                       params) {
+                                       options) {
   "use strict";
 
-  params = TRAVERSAL_TREE_PARAMS(params, connectName, "GRAPH_TRAVERSAL_TREE");
+  options = TRAVERSAL_TREE_PARAMS(options, connectName, "GRAPH_TRAVERSAL_TREE");
 
   var result = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
     TRAVERSAL.generalGraphDatasourceFactory(graphName),
     TO_ID(startVertex),
     undefined,
     direction,
-    params);
+    options);
 
   if (result.length === 0) {
     return [ ];
   }
-  return [ result[0][params.connect] ];
+  return [ result[0][options.connect] ];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5179,9 +5408,70 @@ function GRAPH_NEIGHBORS (vertexCollection,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected neighbors
+/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+///
+/// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
+/// *The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertexExample*      : An example for the desired
+/// vertices (see below).
+/// * Object               *options*            : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction
+///  of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+/// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for edgeExamples/neighborExamples:
+/// * {}                : Returns all possible edges/neighbors for this graph.
+/// * *idString*        : Returns the edge/vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the edges/vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all neighbors of locations with a distance of either
+/// 700 or 600.:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_NEIGHBORS("
+/// |+"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all outbound neighbors of munich with a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_NEIGHBORS("
+/// |+"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   vertexExample,
                                   options) {
@@ -5193,6 +5483,14 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   options.fromVertexExample = vertexExample;
   if (!options.direction) {
     options.direction =  'any';
+  }
+
+  if (options.vertexCollectionRestriction) {
+    if (options.direction === "inbound") {
+      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
+    } else {
+      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
+    }
   }
 
   var neighbors = [],
@@ -5231,9 +5529,71 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected edges
+/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+///
+/// `GRAPH_EDGES (graphName, vertexExample, options)`
+/// *The GRAPH\_EDGES function returns all edges of vertices.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertexExample*      : An example for the desired
+/// vertices (see below).
+/// * Object               *options*            : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction
+/// of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+/// edge collections that should be considered.
+/// * String|Array         *startVertexCollectionRestriction* : One or multiple
+/// vertex collections that should be considered.
+/// * String|Array         *endVertexCollectionRestriction*   : One or multiple
+/// vertex collections that should be considered.
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+/// for the edges (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+/// the desired neighbors (see below).
+/// * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for edgeExamples/neighborExamples:
+/// * {}                : Returns all possible edges/neighbors for this graph.
+/// * *idString*        : Returns the edge/vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the edges/vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all edges to locations with a distance of either 700 or 600.:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_EDGES("
+/// |+"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all outbound edges of munich with a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_EDGES("
+/// |+"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_EDGES (
   graphName,
   vertexExample,
@@ -5254,9 +5614,62 @@ function GENERAL_GRAPH_EDGES (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return connected edges
+/// @startDocuBlock JSF_ahuacatl_general_graph_vertices
+///
+/// `GRAPH_VERTICES (graphName, vertexExample, options)`
+/// *The GRAPH\_VERTICES function returns all vertices.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex.
+/// According to the optional filters it will only return vertices that have
+/// outbound, onbound or any (default) edges.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertexExample*      : An example for the desired
+/// vertices (see below).
+/// * Object               *options*            : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Array         *vertexCollectionRestriction*      : One or multiple
+/// vertex collections that should be considered.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all vertices of the graph
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_VERTICES("
+/// |+"'routeplanner', {}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all vertices from collection *city*.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_VERTICES("
+/// |+"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
+/// |" : 'city'}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_VERTICES (
   graphName,
   vertexExamples,
@@ -5268,6 +5681,14 @@ function GENERAL_GRAPH_VERTICES (
   }
   if (! options.direction) {
     options.direction =  'any';
+  }
+
+  if (options.vertexCollectionRestriction) {
+    if (options.direction === "inbound") {
+      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
+    } else {
+      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
+    }
   }
 
   options.fromVertexExample = vertexExamples;
@@ -5283,69 +5704,205 @@ function GENERAL_GRAPH_VERTICES (
 function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
   var ret = {};
   result.forEach(function (r) {
-    if (! ret[r.startVertex]) {
-      ret[r.startVertex] = [];
+    var v = JSON.stringify(r.vertex)
+    if (! ret[v]) {
+      ret[v] = [];
     }
-    ret[r.startVertex].push(r.vertex);
+    if (ret[v].indexOf(r.startVertex) === -1) {
+      ret[v].push(r.startVertex);
+    }
   });
   return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return common neighbors of two vertices lists
+/// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
+///
+/// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
+/// defined by the examples.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *optionsVertex1*     : Optional options, see below:
+/// * Object               *optionsVertex2*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all neighbors of locations with a distance of
+/// either 700 or 600.:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+/// |+"'routeplanner', {}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all outbound neighbors of munich with a maximal
+/// depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+/// |+"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
+/// |" : 'city'}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_COMMON_NEIGHBORS (
   graphName,
   vertex1Examples,
   vertex2Examples,
-  options) {
+  options1,
+  options2) {
   "use strict";
 
-  if (! options) {
-    options = { };
-  }
   var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
-    GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options)
-  );
-  var result = {}, res = [];
+    GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
+  ), neighbors2;
+  if (vertex1Examples == vertex2Examples) {
+    neighbors2 == CLONE(neighbors1);
+  } else {
+    neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
+      GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
+    );
+  }
 
-  Object.keys(neighbors1).forEach(function (n1) {
-    if (!result[n1]) {
-      result[n1] = {};
+  var res = {}, res2 = {}, res3 = [];
+
+  Object.keys(neighbors1).forEach(function (v) {
+    if (!neighbors2[v]) {
+      return;
     }
-    neighbors1[n1].forEach(function (n11) {
-      options.neighborExamples = {_id : n11._id };
-      var neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
-        GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options)
-      );
-      Object.keys(neighbors2).forEach(function (n2) {
-        if (n1 === n2) {return;}
-        if (!result[n1][n2]) {
-          result[n1][n2] = [];
+    if (!res[v]) {
+      res[v] = {n1 : neighbors1[v], n2 : neighbors2[v]};
+    }
+  });
+  Object.keys(res).forEach(function (v) {
+    res[v].n1.forEach(function (s1) {
+      if (!res2[s1]) {
+        res2[s1] = {};
+      }
+      res[v].n2.forEach(function (s2) {
+        if (s1 === s2) {
+          return;
         }
-        var keys = [];
-        result[n1][n2].forEach(function (a) {keys.push(a._id);});
-        if (keys.indexOf(n11._id) === -1) {
-          result[n1][n2].push(n11);
+        if (!res2[s1][s2]) {
+          res2[s1][s2] = [];
         }
+        res2[s1][s2].push(JSON.parse(v));
       });
+      if (Object.keys(res2[s1]).length === 0) {
+        delete res2[s1];
+      }
     });
   });
-  Object.keys(result).forEach(function (r) {
-    var tmp = {};
-    tmp[r] = result[r];
-    if (Object.keys(result[r]).length > 0) {
-      res.push(tmp);
-    }
+  Object.keys(res2).forEach(function (r) {
+    var e = {}
+    e[r] = res2[r];
+    res3.push(e);
   });
-  return res;
+  return res3;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return common neighbors of two vertices lists
+/// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
+///
+/// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
+/// *The GRAPH\_COMMON\_PROPERTIES function returns all vertices
+/// defined by the examples that share common properties
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *vertex2CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *ignoreProperties* : One or multiple
+///  attributes of a document that should be ignored.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all locations with the same properties:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+/// |+"'routeplanner', {}, {}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all cities which share same properties except for population.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+/// |+"'routeplanner', {}, {}, {vertex1CollectionRestriction : 'city', " +
+/// | "vertex2CollectionRestriction : 'city'" +
+/// |" ,ignoreProperties: 'population'}) RETURN e"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
-
 function GENERAL_GRAPH_COMMON_PROPERTIES (
   graphName,
   vertex1Examples,
@@ -5360,6 +5917,8 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   options.toVertexExample = vertex2Examples;
   options.direction =  'any';
   options.ignoreProperties = TO_LIST(options.ignoreProperties, true);
+  options.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
+  options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
 
   var g = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
   var result = {}, res = [];
@@ -5373,10 +5932,10 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
       if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
         return;
       }
-      if (!t[key + "|" + JSON.stringify(n1[key])]) {
-        t[key + "|" + JSON.stringify(n1[key])] = {from : [], to : []};
+      if (!t[JSON.stringify({key : key , value : n1[key]})]) {
+        t[JSON.stringify({key : key , value : n1[key]})] = {from : [], to : []};
       }
-      t[key + "|" + JSON.stringify(n1[key])].from.push(n1);
+      t[JSON.stringify({key : key , value : n1[key]})].from.push(n1);
     });
   });
 
@@ -5385,10 +5944,10 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
       if (key.indexOf("_") === 0) {
         return;
       }
-      if (!t[key + "|" + JSON.stringify(n1[key])]) {
+      if (!t[JSON.stringify({key : key , value : n1[key]})]) {
         return;
       }
-      t[key + "|" + JSON.stringify(n1[key])].to.push(n1);
+      t[JSON.stringify({key : key , value : n1[key]})].to.push(n1);
     });
   });
 
@@ -5397,17 +5956,21 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
     t[r].from.forEach(function (f) {
       if (!tmp[f._id]) {
         tmp[f._id] = [];
+        tmp[f._id + "|keys"] = [];
       }
       t[r].to.forEach(function (t) {
         if (t._id === f._id) {
           return;
         }
-        tmp[f._id].push(t);
+        if (tmp[f._id + "|keys"].indexOf(t._id) === -1) {
+          tmp[f._id + "|keys"].push(t._id);
+          tmp[f._id].push(t);
+        }
       });
     });
   });
   Object.keys(tmp).forEach(function (r) {
-    if (tmp[r].length === 0) {
+    if (tmp[r].length === 0 || r.indexOf("|keys") !== -1) {
       return;
     }
     var a = {};
@@ -5421,7 +5984,90 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the absolute eccentricity of vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
+///
+/// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
+/// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// of the vertices defined by the examples.
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertexExample.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertexExample*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
+/// collections that should be considered.
+/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+/// collections that should be considered.
+/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+/// collections that should be considered.
+/// * String|Object|Array  *edgeExamples*                     : A filter example for the
+/// edges in the shortest paths (see below).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the absolute eccentricity of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+/// |+"'routeplanner', {})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute eccentricity of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+/// |+"'routeplanner', {}, {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute eccentricity of all cities regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+/// | "direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
@@ -5450,7 +6096,57 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the normalized eccentricity of all vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_eccentricity
+///
+/// `GRAPH_ECCENTRICITY (graphName, options)`
+/// *The GRAPH\_ECCENTRICITY function returns the normalized
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// of the graphs vertices
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the eccentricity of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ECCENTRICITY("
+/// |+"'routeplanner')"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the eccentricity of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ECCENTRICITY("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 
@@ -5479,7 +6175,90 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the eccentricity of all vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
+///
+/// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
+/// *The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
+/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+/// of the vertices defined by the examples.
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertexExample.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * String|Object|Array  *vertexExample*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
+/// collections that should be considered.
+/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+/// collections that should be considered.
+/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+/// collections that should be considered.
+/// * String|Object|Array  *edgeExamples*                     : A filter example for the
+/// edges in the shortest paths (see below).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the absolute closeness of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+/// |+"'routeplanner', {})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute closeness of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+/// |+"'routeplanner', {}, {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute closeness of all cities regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+/// | "direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 
@@ -5507,7 +6286,69 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the normalized closeness of all vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_closeness
+///
+/// `GRAPH_CLOSENESS (graphName, options)`
+/// *The GRAPH\_CLOSENESS function returns the normalized
+/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+/// of graphs vertices.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the closeness of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_CLOSENESS("
+/// |+"'routeplanner')"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the closeness of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_CLOSENESS("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute closeness of all cities regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_CLOSENESS("
+/// | + "'routeplanner',{direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 
@@ -5541,7 +6382,70 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the betweeness of all vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
+///
+/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
+/// *The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
+/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
+/// of all vertices in the graph.
+///
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the absolute betweenness of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+/// |+"'routeplanner', {})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute closeness of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the absolute closeness of all cities regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
@@ -5555,7 +6459,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   }
   options.algorithm = "Floyd-Warshall";
 
-  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, {} , {}, options),
+  var distanceMap = GENERAL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
     result = {};
   distanceMap.forEach(function(d) {
     var tmp = {};
@@ -5590,7 +6494,69 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the normalized betweenness of all vertices in the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
+///
+/// `GRAPH_BETWEENNESS (graphName, options)`
+/// *The GRAPH\_BETWEENNESS function returns the
+/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
+/// of graphs vertices.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+/// used, otherwise the default is *Dijkstra*
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the betweenness of all locations.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_BETWEENNESS("
+/// |+"'routeplanner')"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the closeness of all locations.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_BETWEENNESS("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the closeness of all cities regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_BETWEENNESS("
+/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 
