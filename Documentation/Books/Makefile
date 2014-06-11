@@ -18,6 +18,6 @@ build-books: md-files
 build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
 	cd $(NAME) && gitbook build -o ../books/$(NAME)
-	cp Users/arangodb_logo2.png books/Users/
+	cp Users/Arangodb_Logo.png books/Users/
 	@for file in $(basename $(MD_FILES)); do echo "remove $${file}.md";rm $${file}.md;done
 	
