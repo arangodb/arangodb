@@ -1193,7 +1193,7 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
 void TRI_FreeCollection (TRI_collection_t* collection) {
   TRI_ASSERT(collection);
   TRI_DestroyCollection(collection);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+  delete collection;
 }
 
 // -----------------------------------------------------------------------------
