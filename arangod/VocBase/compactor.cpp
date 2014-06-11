@@ -443,7 +443,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
                           void* data, 
                           TRI_datafile_t* datafile) { 
   TRI_df_marker_t* result;
-  TRI_doc_mptr_t const* found;
   int res;
 
   compaction_context_t* context = (compaction_context_t*) data;
@@ -459,7 +458,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
     // check if the document is still active
-    found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+    TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
     deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
