@@ -543,8 +543,10 @@ TRI_long_string_shape_t;
 /// keys belonging to fixed sized values and into keys belonging to variable
 /// sized values. The offsets into the data array of an @c TRI_shaped_json_t
 /// for the fixed sized values are stored inside the shape. The offsets for the
-/// variable sized values are store inside the shaped JSON. The memory layout
-/// of a array shape is as follows:
+/// variable sized values are store inside the shaped JSON. The offsets
+/// are measured from the end of the offset table of the variable entries
+/// in the shaped JSON. The memory layout of a array shape is as
+/// follows:
 ///
 /// <table border>
 ///   <tr>
@@ -703,7 +705,8 @@ TRI_array_shape_t;
 /// </table>
 ///
 /// The first variable list element is stored between offset _offsets[0]
-/// (inclusive) and _offsets[1] (exclusive).
+/// (inclusive) and _offsets[1] (exclusive). Offsets are measured from
+/// the end of the tables, that is, where it says "byte[size1]" above.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_list_shape_s {
