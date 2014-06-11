@@ -1,0 +1,125 @@
+!CHAPTER Working with Cap Constraints
+
+`POST /_api/index`*(creates a cap constraint)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`cap-constraint (json,required)`
+
+!SUBSECTION Description
+
+Creates a cap constraint for the collection collection-name, if it does not already exist. Expects an object containing the index details.
+
+* type: must be equal to "cap".
+* size: The maximal number of documents for the collection. If specified, the value must be greater than zero.
+* byteSize: The maximal size of the active document data in the collection (in bytes). If specified, the value must be at least 16384.
+*Note* that the cap constraint does not index particular attributes of the documents in a collection, but limits the number of documents in the collection to a maximum value. The cap constraint thus does not support attribute names specified in the fields attribute nor uniqueness of any kind via the unique attribute.
+
+It is allowed to specify either size or byteSize, or both at the same time. If both are specified, then the automatic document removal will be triggered by the first non-met constraint.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then an HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then an HTTP 201 is returned.
+
+`HTTP 400`
+
+If either size or byteSize contain invalid values, then an HTTP 400 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Creating a cap constraint
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{"type":"cap","size":10}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/169927649", 
+  "type" : "cap", 
+  "unique" : false, 
+  "size" : 10, 
+  "byteSize" : 0, 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+
+<!--
+@anchor IndexCapHttpEnsureCapConstraint
+@copydetails JSF_post_api_index_cap
+
+!SUBSECTION Working with Hash Indexes
+
+If a suitable hash index exists, then @ref HttpSimpleByExample
+"/_api/simple/by-example" will use this index to execute a query-by-example.
+
+@anchor IndexHashHttpEnsureHash
+@copydetails JSF_post_api_index_hash
+
+@CLEARPAGE
+@anchor IndexHashHttpByExample
+@copydetails JSA_put_api_simple_by_example
+
+@CLEARPAGE
+@anchor IndexHashHttpFirstExample
+@copydetails JSA_put_api_simple_first_example
+
+!SUBSECTION Working with Skiplist Indexes
+
+If a suitable skip-list index exists, then @ref HttpSimpleRange
+"/_api/simple/range" will use this index to execute a range query.
+
+@anchor IndexSkiplistHttpEnsureSkiplist
+@copydetails JSF_post_api_index_skiplist
+
+@CLEARPAGE
+@anchor IndexSkiplistHttpRange
+@copydetails JSA_put_api_simple_range
+
+!SUBSECTION Working with Geo Indexes
+
+@anchor IndexGeoHttpEnsureGeo
+@copydetails JSF_post_api_index_geo
+
+@CLEARPAGE
+@anchor IndexGeoHttpNear
+@copydetails JSA_put_api_simple_near
+
+@CLEARPAGE
+@anchor IndexGeoHttpWithin
+@copydetails JSA_put_api_simple_within
+
+!SUBSECTION Working with Fulltext Indexes
+
+If a fulltext index exists, then @ref HttpSimpleFulltext
+"/_api/simple/fulltext" will use this index to execute the specified
+fulltext query.
+
+@anchor IndexFulltextHttpEnsureFulltextIndex
+@copydetails JSF_post_api_index_fulltext
+
+@CLEARPAGE
+@anchor IndexFulltextHttpFulltext
+@copydetails JSA_put_api_simple_fulltext
+-->

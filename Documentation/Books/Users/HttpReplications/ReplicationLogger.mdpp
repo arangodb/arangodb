@@ -3,6 +3,440 @@
 The logger commands allow starting, starting, and fetching the current state of a
 database's replication logger. 
 
+`GET /_api/replication/logger-config`*(returns the configuration of the replication logger)*
+
+!SUBSECTION Description
+
+Returns the configuration of the replication logger.
+The body of the response is a JSON hash with the configuration. The following attributes may be present in the configuration:
+
+* autoStart: whether or not to automatically start the replication logger on server startup
+* logRemoteChanges: whether or not externally created changes should be logged by the local logger
+* maxEvents: the maximum number of log events kept by the replication logger before deleting oldest events. A value of 0 means that the number of events is not restricted.
+* maxEventsSize: the maximum cumulated size of log event data kept by the replication logger before deleting oldest events. A value of 0 means that the cumulated size of events is not restricted.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-config
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "autoStart" : false, 
+  "logRemoteChanges" : false, 
+  "maxEvents" : 1048576, 
+  "maxEventsSize" : 134217728 
+}
+```
+
+set the configuration of the replication logger
+
+`PUT /_api/replication/logger-config`*(adjusts the configuration of the replication logger)*
+
+!SUBSECTION Body parameters
+
+`configuration (json,required)`
+
+A JSON representation of the configuration.
+
+!SUBSECTION Description
+
+Sets the configuration of the replication logger.
+The body of the request must be JSON hash with the configuration. The following attributes are allowed for the configuration:
+
+* autoStart: whether or not to automatically start the replication logger on server startup
+* logRemoteChanges: whether or not externally created changes should be logged by the local logger
+* maxEvents: the maximum number of log events kept by the replication logger before deleting oldest events. Use a value of 0 to not restrict the number of events.
+* maxEventsSize: the maximum cumulated size of log event data kept by the replication logger before deleting oldest events. Use a value of 0 to not restrict the size.
+
+Note that when setting both maxEvents and maxEventsSize, reaching either limitation will trigger a deletion of the "oldest" log events from the replication log.
+
+In case of success, the body of the response is a JSON hash with the updated configuration.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 400`
+
+is returned if the configuration is incomplete or malformed.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/logger-config
+{"logRemoteChanges":true,"maxEvents":1048576}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "autoStart" : false, 
+  "logRemoteChanges" : true, 
+  "maxEvents" : 1048576, 
+  "maxEventsSize" : 134217728 
+}
+
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/logger-config
+{"logRemoteChanges":false,"maxEvents":16384,"maxEventsSize":16777216}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "autoStart" : false, 
+  "logRemoteChanges" : false, 
+  "maxEvents" : 16384, 
+  "maxEventsSize" : 16777216 
+}
+```
+
+starts the replication logger
+
+`PUT /_api/replication/logger-start`*(starts the replication logger)*
+
+!SUBSECTION Description
+
+Starts the server's replication logger. Will do nothing if the replication logger is already running.
+The body of the response contains a JSON object with the following attributes:
+
+* running: will contain true
+
+*Note*: this method is not supported on a coordinator in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the logger was started successfully, or was already running.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if the logger could not be started.
+
+`HTTP 501`
+
+is returned when this operation is called on a coordinator in a cluster.
+
+*Examples*
+
+Starts the replication logger.
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-start
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "running" : true 
+}
+```
+
+stops the replication logger
+
+
+`PUT /_api/replication/logger-stop`*(stops the replication logger)*
+
+!SUBSECTION Description
+
+Stops the server's replication logger. Will do nothing if the replication logger is not running.
+The body of the response contains a JSON object with the following attributes:
+
+* running: will contain false
+
+*Note*: this method is not supported on a coordinator in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the logger was stopped successfully, or was not running before.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if the logger could not be stopped.
+
+`HTTP 501`
+
+is returned when this operation is called on a coordinator in a cluster.
+
+*Examples*
+
+Starts the replication logger.
+
+```
+unix> curl -X PUT --dump - http://localhost:8529/_api/replication/logger-stop
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "running" : false 
+}
+```
+
+returns the state of the replication logger
+
+`GET /_api/replication/logger-state`*(returns the replication logger state)*
+
+!SUBSECTION Description
+
+Returns the current state of the server's replication logger. The state will include information about whether the logger is running and about the last logged tick value. This tick value is important for incremental fetching of data.
+The state API can be called regardless of whether the logger is currently running or not.
+
+The body of the response contains a JSON object with the following attributes:
+
+* state: the current logger state as a JSON hash array with the following sub-attributes:
+
+* running: whether or not the logger is running
+* lastLogTick: the tick value of the latest tick the logger has logged. This value can be used for incremental fetching of log data.
+* totalEvents: total number of events logged since the server was started. The value is not reset between multiple stops and re-starts of the logger.
+* time: the current date and time on the logger server
+* server: a JSON hash with the following sub-attributes:
+
+* version: the logger server's version
+* serverId: the logger server's id
+* clients: a list of all replication clients that ever connected to the logger since it was started. This list can be used to determine approximately how much data the individual clients have already fetched from the logger server. Each entry in the list contains a time value indicating the server time the client last fetched data from the replication logger. The lastServedTick value of each client indicates the latest tick value sent to the client upon a client request to the replication logger.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the logger state could be determined successfully.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if the logger state could not be determined.
+
+*Examples*
+
+Returns the state of an inactive replication logger.
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-state
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "state" : { 
+    "running" : false, 
+    "lastLogTick" : "299885537", 
+    "totalEvents" : 2, 
+    "time" : "2014-05-29T15:03:52Z" 
+  }, 
+  "server" : { 
+    "version" : "2.1.0", 
+    "serverId" : "18804023088184" 
+  }, 
+  "clients" : [ ] 
+}
+```
+
+Returns the state of an active replication logger.
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-state
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "state" : { 
+    "running" : true, 
+    "lastLogTick" : "300213217", 
+    "totalEvents" : 3, 
+    "time" : "2014-05-29T15:03:52Z" 
+  }, 
+  "server" : { 
+    "version" : "2.1.0", 
+    "serverId" : "18804023088184" 
+  }, 
+  "clients" : [ ] 
+}
+```
+
+To query the latest changes logged by the replication logger, the HTTP interface also provides the logger-follow.
+
+This method should be used by replication clients to incrementally fetch updates from an ArangoDB database.
+
+forward a command in the coordinator case
+
+returns ranged data from the replication log
+
+`GET /_api/replication/logger-follow`*(returns recent log entries from the replication log)*
+
+!SUBSECTION Query parameters
+
+`from (number,optional)`
+
+Lower bound tick value for results.
+
+`to (number,optional)`
+
+Upper bound tick value for results.
+
+`chunkSize (number,optional)`
+
+Approximate maximum size of the returned result.
+
+!SUBSECTION Description
+
+Returns data from the server's replication log. This method can be called by replication clients after an initial synchronisation of data. The method will return all "recent" log entries from the logger server, and the clients can replay and apply these entries locally so they get to the same data state as the logger server.
+Clients can call this method repeatedly to incrementally fetch all changes from the logger server. In this case, they should provide the from value so they will only get returned the log events since their last fetch.
+
+When the from URL parameter is not used, the logger server will return log entries starting at the beginning of its replication log. When the from parameter is used, the logger server will only return log entries which have higher tick values than the specified from value (note: the log entry with a tick value equal to from will be excluded). Use the from value when incrementally fetching log data.
+
+The to URL parameter can be used to optionally restrict the upper bound of the result to a certain tick value. If used, the result will contain only log events with tick values up to (including) to. In incremental fetching, there is no need to use the to parameter. It only makes sense in special situations, when only parts of the change log are required.
+
+The chunkSize URL parameter can be used to control the size of the result. It must be specified in bytes. The chunkSize value will only be honored approximately. Otherwise a too low chunkSize value could cause the server to not be able to put just one log entry into the result and return it. Therefore, the chunkSize value will only be consulted after a log entry has been written into the result. If the result size is then bigger than chunkSize, the server will respond with as many log entries as there are in the response already. If the result size is still smaller than chunkSize, the server will try to return more data if there's more data left to return.
+
+If chunkSize is not specified, some server-side default value will be used.
+
+The Content-Type of the result is application/x-arango-dump. This is an easy-to-process format, with all log events going onto separate lines in the response body. Each log event itself is a JSON hash, with at least the following attributes:
+
+* tick: the log event tick value
+* type: the log event type
+
+Individual log events will also have additional attributes, depending on the event type. A few common attributes which are used for multiple events types are:
+
+* cid: id of the collection the event was for
+* tid: id of the transaction the event was contained in
+* key: document key
+* rev: document revision id
+* data: the original document data
+
+A more detailed description of the individual replication event types and their data structures can be found in Replication Event Types.
+
+The response will also contain the following HTTP headers:
+
+* x-arango-replication-active: whether or not the logger is active. Clients can use this flag as an indication for their polling frequency. If the logger is not active and there are no more replication events available, it might be sensible for a client to abort, or to go to sleep for a long time and try again later to check whether the logger has been activated.
+* x-arango-replication-lastincluded: the tick value of the last included value in the result. In incremental log fetching, this value can be used as the from value for the following request. Note that if the result is empty, the value will be 0. This value should not be used as from value by clients in the next request (otherwise the server would return the log events from the start of the log again).
+* x-arango-replication-lasttick: the last tick value the logger server has logged (not necessarily included in the result). By comparing the the last tick and last included tick values, clients have an approximate indication of how many events there are still left to fetch.
+* x-arango-replication-checkmore: whether or not there already exists more log data which the client could fetch immediately. If there is more log data available, the client could call logger-follow again with an adjusted from value to fetch remaining log entries until there are no more.
+
+If there isn't any more log data to fetch, the client might decide to go to sleep for a while before calling the logger again.
+
+*Note*: this method is not supported on a coordinator in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully, and there are log events available for the requested range. The response body will not be empty in this case.
+
+`HTTP 204`
+
+is returned if the request was executed successfully, but there are no log events available for the requested range. The response body will be empty in this case.
+
+`HTTP 400`
+
+is returned if either the from or to values are invalid.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+
+`HTTP 501`
+
+is returned when this operation is called on a coordinator in a cluster.
+
+*Examples*
+
+No log events available:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=300606433
+
+HTTP/1.1 204 No Content
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 0
+x-arango-replication-lasttick: 300606433
+```
+
+A few log events:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=300999649
+
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 302965729
+x-arango-replication-lasttick: 302965729
+
+{"tick":"301196257","type":2000,"cid":"301065185","cname":"products","collection":{"version":5,"type":2,"cid":"301065185","deleted":false,"doCompact":true,"maximalSize":1048576,"name":"products","isVolatile":false,"waitForSync":false}}
+{"tick":"301720545","type":2300,"cid":"301065185","cname":"products","key":"p1","rev":"301523937","data":{"_key":"p1","_rev":"301523937","name":"flux compensator"}}
+{"tick":"302179297","type":2300,"cid":"301065185","cname":"products","key":"p2","rev":"301982689","data":{"_key":"p2","_rev":"301982689","hp":5100,"name":"hybrid hovercraft"}}
+{"tick":"302506977","type":2302,"cid":"301065185","cname":"products","key":"p1","rev":"302310369","oldRev":"301523937"}
+{"tick":"302834657","type":2300,"cid":"301065185","cname":"products","key":"p2","rev":"302638049","oldRev":"301982689","data":{"_key":"p2","_rev":"302638049","hp":5100,"name":"broken hovercraft"}}
+{"tick":"302965729","type":2001,"cid":"301065185","cname":"products"}
+```
+
+More events than would fit into the response:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=303358945&chunkSize=400
+
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
+x-arango-replication-checkmore: true
+x-arango-replication-lastincluded: 304079841
+x-arango-replication-lasttick: 305325025
+
+{"tick":"303555553","type":2000,"cid":"303424481","cname":"products","collection":{"version":5,"type":2,"cid":"303424481","deleted":false,"doCompact":true,"maximalSize":1048576,"name":"products","isVolatile":false,"waitForSync":false}}
+{"tick":"304079841","type":2300,"cid":"303424481","cname":"products","key":"p1","rev":"303883233","data":{"_key":"p1","_rev":"303883233","name":"flux compensator"}}
+```
+
+
+<!--
 @anchor HttpReplicationLoggerGetConfig
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerGetConfig
 
@@ -30,4 +464,4 @@ from an ArangoDB database.
 
 @anchor HttpReplicationLoggerFollow
 @copydetails triagens::arango::RestReplicationHandler::handleCommandLoggerFollow
-
+-->

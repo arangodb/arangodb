@@ -26,7 +26,7 @@ See below under [Async Execution and later Result Retrieval](#async_execution_an
 !SUBSUBSECTION Fire and Forget
 
 To mitigate client blocking issues, ArangoDB since version 1.4. offers a generic mechanism 
-for non-blocking requests: if clients add the HTTP header `x-arango-async: true` to their
+for non-blocking requests: if clients add the HTTP header *x-arango-async: true* to their
 requests, ArangoDB will put the request into an in-memory task queue and return an HTTP 202
 (accepted) response to the client instantly. The server will execute the tasks from
 the queue asynchronously, decoupling the client requests and the actual work.
@@ -45,7 +45,7 @@ Clients should thus not send the extra header when they have strict durability
 requirements or if they rely on result of the sent operation for further actions.
 
 The maximum number of queued tasks is determined by the startup option 
-`-scheduler.maximal-queue-size`. If more than this number of tasks are already queued,
+*-scheduler.maximal-queue-size*. If more than this number of tasks are already queued,
 the server will reject the request with an HTTP 500 error.
 
 Finally, please note that it is not possible to cancel such a
@@ -54,11 +54,11 @@ use [Async Execution and later Result Retrieval](#async_execution_and_later_resu
 
 !SUBSUBSECTION Async Execution and later Result Retrieval 
 
-By adding the HTTP header `x-arango-async: store` to a request, clients can instruct
+By adding the HTTP header *x-arango-async: store* to a request, clients can instruct
 the ArangoDB server to execute the operation asynchronously as [above](#fire_and_forget)
 "above", but also store the operation result in memory for a later retrieval. The
-server will return a job id in the HTTP response header `x-arango-async-id`. The client
-can use this id in conjunction with the HTTP API at `/_api/job`, which is described in
+server will return a job id in the HTTP response header *x-arango-async-id*. The client
+can use this id in conjunction with the HTTP API at */_api/job*, which is described in
 detail in this manual.
 
 Clients can ask the ArangoDB server via the async jobs API which results are
@@ -68,7 +68,7 @@ originally returned job id. The server will then return the job result as if the
 executed normally. Furthermore, clients can cancel running async jobs by
 their job id, see [HttpJobPutCancel](../HttpAsyncResultsManagement/ManagingAsyncResults.md).
 
-ArangoDB will keep all results of jobs initiated with the `x-arango-async: store` 
+ArangoDB will keep all results of jobs initiated with the *x-arango-async: store* 
 header. Results are removed from the server only if a client explicitly asks the
 server for a specific result.
 

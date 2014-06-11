@@ -47,7 +47,26 @@ actions.defineHttp({
   prefix : true,
   context : "admin",
 
-  callback : actions.routeRequest
+  callback : function (req, res) {
+    try {
+      actions.routeRequest(req, res);
+    }
+    catch (err) {
+      if (err instanceof internal.SleepAndRequeue) {
+        throw err;
+      }
+
+      var msg = 'A runtime error occurred while executing an action: '
+                + String(err) + " " + String(err.stack);
+
+      if (err.hasOwnProperty("route")) {
+        actions.errorFunction(err.route, msg)(req, res);
+      }
+      else {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, actions.HTTP_SERVER_ERROR, msg);
+      }
+    }
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
