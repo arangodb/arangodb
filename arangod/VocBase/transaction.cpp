@@ -865,7 +865,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trx->_waitForSync = true;
   }
   
-  triagens::wal::StandaloneSlotInfo slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+  triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred

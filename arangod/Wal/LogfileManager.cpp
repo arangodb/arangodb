@@ -232,6 +232,9 @@ bool LogfileManager::start () {
               (unsigned long long) _slots->lastAssignedTick(),
               (unsigned long long) _lastCollectedId);
   }
+  else {
+    // need to run the recovery procedure here
+  }
 
   res = openLogfiles(shutdownFileExists);
   
@@ -491,14 +494,14 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-StandaloneSlotInfo LogfileManager::allocateAndWrite (void* src,
-                                                     uint32_t size,
-                                                     bool waitForSync) {
+SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
+                                               uint32_t size,
+                                               bool waitForSync) {
 
   SlotInfo slotInfo = allocate(size);
  
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    return StandaloneSlotInfo(slotInfo.errorCode);
+    return SlotInfoCopy(slotInfo.errorCode);
   }
 
   TRI_ASSERT(slotInfo.slot != nullptr);
@@ -506,10 +509,34 @@ StandaloneSlotInfo LogfileManager::allocateAndWrite (void* src,
   slotInfo.slot->fill(src, size);
  
   // we must copy the slotinfo because finalise() will set its internal to 0 again
-  StandaloneSlotInfo copy(slotInfo.slot);
+  SlotInfoCopy copy(slotInfo.slot);
 
   finalise(slotInfo, waitForSync);
   return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalise and seal the currently open logfile
+/// this is useful to ensure that any open writes up to this point have made
+/// it into a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::flush () {
+  SlotInfo slotInfo = _slots->nextUnused(0);
+
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    if (slotInfo.errorCode == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
+      // this is an expected "error" meaning that the logfile is already
+      // empty and does not need to be flushed
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    return slotInfo.errorCode;
+  }
+  
+  finalise(slotInfo, true);
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -717,7 +744,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
 
     // signal & sleep outside the lock
     _allocatorThread->signal(size);
-    usleep(10000);
+    usleep(10 * 1000);
   }
   
   return nullptr;
