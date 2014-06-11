@@ -99,6 +99,7 @@ namespace triagens {
             if (_restoreOriginalStatus && 
                 (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING || 
                  _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
+              // re-unload the collection
               TRI_UnloadCollectionVocBase(_vocbase, _collection, false);
             }
           }
