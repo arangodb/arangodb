@@ -1431,8 +1431,7 @@ var _create = function (graphName, edgeDefinitions) {
     err,
     g,
     graphAlreadyExists = true,
-    collections,
-    err;
+    collections;
   if (!graphName) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
