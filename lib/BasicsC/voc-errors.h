@@ -207,6 +207,8 @@ extern "C" {
 ///   Will be raised when an attempt to create an index has failed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
+/// - 1301: @LIT{server database directory is empty}
+///   Will be raised when encoutering an empty server database directory.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -1415,6 +1417,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1301: ERROR_ARANGO_EMPTY_DATADIR
+///
+/// server database directory is empty
+///
+/// Will be raised when encoutering an empty server database directory.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
