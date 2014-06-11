@@ -426,6 +426,9 @@ function GeneralGraphCreationSuite() {
         vc5 = "UnitTestEdgeDefDeleteVertexCol5";
       try {
         graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
         graph._drop(gN2);
       } catch(ignore) {
       }
@@ -447,11 +450,255 @@ function GeneralGraphCreationSuite() {
 
       try {
         graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_extendEdgeDefinitionFromExistingGraph1: function() {
+      var gN1 = "UnitTestEdgeDefExtend1Graph1",
+        ec1 = "UnitTestEdgeDefExtend1EdgeCol1",
+        vc1 = "UnitTestEdgeDefExtend1VertexCol1",
+        vc2 = "UnitTestEdgeDefExtend1VertexCol2",
+        vc3 = "UnitTestEdgeDefExtend1VertexCol3";
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc2]),
+        dr2 = graph._directedRelationDefinition(ec1, [vc2], [vc3]),
+        g1 = graph._create(gN1, [dr1]);
+
+      try {
+        g1._extendEdgeDefinitions(dr2);
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message
+        );
+      }
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_extendEdgeDefinitionFromExistingGraph2: function() {
+      var gN1 = "UnitTestEdgeDefExtend2Graph1",
+        gN2 = "UnitTestEdgeDefExtend2Graph2",
+        ec1 = "UnitTestEdgeDefExtend2EdgeCol1",
+        ec2 = "UnitTestEdgeDefExtend2EdgeCol2",
+        ec3 = "UnitTestEdgeDefExtend2EdgeCol3",
+        vc1 = "UnitTestEdgeDefExtend2VertexCol1",
+        vc2 = "UnitTestEdgeDefExtend2VertexCol2",
+        vc3 = "UnitTestEdgeDefExtend2VertexCol3",
+        vc4 = "UnitTestEdgeDefExtend2VertexCol4",
+        vc5 = "UnitTestEdgeDefExtend2VertexCol5";
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+        dr2a = graph._directedRelationDefinition(ec2, [vc3], [vc4]),
+        g1 = graph._create(gN1, [dr1]),
+        g2 = graph._create(gN2, [dr2]);
+
+      try {
+        g1._extendEdgeDefinitions(dr2a);
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          ec2 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+        );
+      }
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_extendEdgeDefinitionFromExistingGraph3: function() {
+      var gN1 = "UnitTestEdgeDefExtend3Graph1",
+        gN2 = "UnitTestEdgeDefExtend3Graph2",
+        ec1 = "UnitTestEdgeDefExtend3EdgeCol1",
+        ec2 = "UnitTestEdgeDefExtend3EdgeCol2",
+        ec3 = "UnitTestEdgeDefExtend3EdgeCol3",
+        vc1 = "UnitTestEdgeDefExtend3VertexCol1",
+        vc2 = "UnitTestEdgeDefExtend3VertexCol2",
+        vc3 = "UnitTestEdgeDefExtend3VertexCol3",
+        vc4 = "UnitTestEdgeDefExtend3VertexCol4",
+        vc5 = "UnitTestEdgeDefExtend3VertexCol5";
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelationDefinition(ec3, [vc3], [vc4]),
+        g1 = graph._create(gN1, [dr1]),
+        g2 = graph._create(gN2, [dr2]);
+
+      assertEqual([dr1], g1.__edgeDefinitions);
+      g1._extendEdgeDefinitions(dr2);
+      assertEqual([dr1, dr2], g1.__edgeDefinitions);
+      g1._extendEdgeDefinitions(dr3);
+      assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
+
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_editEdgeDefinitionFromExistingGraph1: function() {
+      var gN1 = "UnitTestEdgeDefEdit1Graph1",
+        ec1 = "UnitTestEdgeDefEdit1EdgeCol1",
+        ec2 = "UnitTestEdgeDefEdit1EdgeCol2",
+        vc1 = "UnitTestEdgeDefEdit1VertexCol1",
+        vc2 = "UnitTestEdgeDefEdit1VertexCol2",
+        vc3 = "UnitTestEdgeDefEdit1VertexCol3",
+        vc4 = "UnitTestEdgeDefEdit1VertexCol4",
+        vc5 = "UnitTestEdgeDefEdit1VertexCol5";
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+        g1 = graph._create(gN1, [dr1]);
+
+      try {
+        g1._editEdgeDefinitions(dr2);
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED
+        );
+      }
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_editEdgeDefinitionFromExistingGraph2: function() {
+      var gN1 = "UnitTestEdgeDefEdit2Graph1",
+        gN2 = "UnitTestEdgeDefEdit2Graph2",
+        ec1 = "UnitTestEdgeDefEdit2EdgeCol1",
+        vc1 = "UnitTestEdgeDefEdit2VertexCol1",
+        vc2 = "UnitTestEdgeDefEdit2VertexCol2",
+        vc3 = "UnitTestEdgeDefEdit2VertexCol3",
+        vc4 = "UnitTestEdgeDefEdit2VertexCol4",
+        vc5 = "UnitTestEdgeDefEdit2VertexCol5";
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
+        g1 = graph._create(gN1, [dr1]),
+        g2 = graph._create(gN2, [dr1]);
+
+      g1._editEdgeDefinitions(dr2, true);
+      assertEqual([dr2], g1.__edgeDefinitions);
+      assertEqual([dr2], g2.__edgeDefinitions);
+      assertTrue(db._collection(vc1) === null);
+      assertTrue(db._collection(vc2) === null);
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+    },
+
+    test_editEdgeDefinitionFromExistingGraph3: function() {
+      var prefix = "UnitTestEdgeDefEdit3",
+        gN1 = prefix + "Graph1",
+        gN2 = prefix + "Graph2",
+        ec1 = prefix + "EdgeCol1",
+        ec2 = prefix + "EdgeCol2",
+        vc1 = prefix + "VertexCol1",
+        vc2 = prefix + "VertexCol2",
+        vc3 = prefix + "VertexCol3",
+        vc4 = prefix + "VertexCol4",
+        vc5 = prefix + "VertexCol5";
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelationDefinition(ec2, [vc2], [vc2, vc3]),
+        g1 = graph._create(gN1, [dr1, dr3]),
+        g2 = graph._create(gN2, [dr1]);
+
+      g1._editEdgeDefinitions(dr2, true);
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+      assertEqual([dr2], g2.__edgeDefinitions);
+      assertTrue(db._collection(vc1) === null);
+      assertFalse(db._collection(vc2) === null);
+
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
         graph._drop(gN2);
       } catch(ignore) {
       }
 
     }
+
+
   };
 }
 
@@ -2106,10 +2353,10 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsAny: function () {
-      actual = testGraph._listCommonNeighbors(v3 , v6,  {direction : 'any'});
+      actual = testGraph._listCommonNeighbors(v3 , v6);
       assertEqual(actual[0][v3][v6][0]._id  , v2);
       assertEqual(actual[0][v3][v6][1]._id  , v7);
-      actual = testGraph._amountCommonNeighbors(v3 , v6,  {direction : 'any'});
+      actual = testGraph._amountCommonNeighbors(v3 , v6);
       assertEqual(actual[0][v3][0][v6] , 2);
     },
 ////////////////////////////////////////////////////////////////////////////////
@@ -2117,7 +2364,7 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'});
+      actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
       assertEqual(actual[0][v3][v6][0]._id, v2);
       assertEqual(actual[1][v5][v8][0]._id, v3);
       assertEqual(actual[1][v5][v7][0]._id, v3);
@@ -2127,7 +2374,7 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[4][v8][v5][0]._id, v3);
       assertEqual(actual[4][v8][v7][0]._id, v3);
 
-      actual = testGraph._amountCommonNeighbors({} , {},  {direction : 'inbound'});
+      actual = testGraph._amountCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
       assertEqual(actual[0][v3][0][v6] , 1);
       assertEqual(actual[1][v5][0][v8] , 1);
       assertEqual(actual[1][v5][1][v7] , 1);
@@ -2148,6 +2395,7 @@ function GeneralGraphCommonNeighborsSuite() {
     testCommonNeighborsOut: function () {
       actual = testGraph._listCommonNeighbors(
         {hugo: true}, {heinz: 1},
+        {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
       assertEqual(Object.keys(actual[1])[0], v2);
@@ -2157,17 +2405,18 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[1][Object.keys(actual[1])[0]][v3].length, 4);
 
       assertEqual(Object.keys(actual[0])[0], v1);
-      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), [v3, v8]);
+      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), [v8, v3]);
 
       assertEqual(actual[0][Object.keys(actual[0])[0]][v3].length, 4);
       assertEqual(actual[0][Object.keys(actual[0])[0]][v8].length, 3);
 
       actual = testGraph._amountCommonNeighbors(
         {hugo: true }, {heinz: 1},
+        {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
       );
-      assertEqual(actual[0][v1][0][v3], 4);
-      assertEqual(actual[0][v1][1][v8], 3);
+      assertEqual(actual[0][v1][0][v8], 3);
+      assertEqual(actual[0][v1][1][v3], 4);
       assertEqual(actual[1][v2][0][v8], 3);
       assertEqual(actual[1][v2][1][v3], 4);
     },
@@ -2262,6 +2511,7 @@ jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
+//jsunity.run(VertexCollectionChainedFluentAQLResultsSuite);
 
 return jsunity.done();
 
