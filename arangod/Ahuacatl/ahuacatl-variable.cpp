@@ -32,29 +32,24 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a new variable
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
-                                           TRI_aql_node_t* const definingNode) {
+TRI_aql_variable_t* TRI_CreateVariableAql (char const* name,
+                                           TRI_aql_node_t* definingNode) {
   TRI_aql_variable_t* variable;
 
   variable = (TRI_aql_variable_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_variable_t), false);
 
-  if (variable == NULL) {
-    return NULL;
+  if (variable == nullptr) {
+    return nullptr;
   }
 
   variable->_name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name);
 
-  if (variable->_name == NULL) {
+  if (variable->_name == nullptr) {
     TRI_FreeVariableAql(variable);
-    return NULL;
+    return nullptr;
   }
 
   variable->_definingNode = definingNode;
@@ -68,28 +63,19 @@ TRI_aql_variable_t* TRI_CreateVariableAql (const char* const name,
 /// @brief free an existing variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeVariableAql (TRI_aql_variable_t* const variable) {
-  TRI_ASSERT(variable);
+void TRI_FreeVariableAql (TRI_aql_variable_t* variable) {
+  TRI_ASSERT(variable != nullptr);
 
-  if (variable->_name) {
+  if (variable->_name != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable->_name);
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, variable);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash variable
@@ -114,13 +100,12 @@ bool TRI_EqualVariableAql (TRI_associative_pointer_t* array,
   return TRI_EqualString(static_cast<char const*>(key), variable->_name);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable name follows the required naming convention
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidVariableNameAql (const char* const name) {
-  TRI_ASSERT(name);
+bool TRI_IsValidVariableNameAql (char const* name) {
+  TRI_ASSERT(name != nullptr);
 
   if (strlen(name) == 0) {
     // name must be at least one char long
@@ -135,10 +120,6 @@ bool TRI_IsValidVariableNameAql (const char* const name) {
   // everything else is allowed
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
