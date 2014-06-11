@@ -1,5 +1,567 @@
 !CHAPTER HTTP Interface for Administration and Monitoring
 
+`GET /_admin/log`*(reads the global log from the server)*
+
+!SUBSECTION Query parameters
+
+`upto (string,optional)`
+
+Returns all log entries up to log level upto. Note that upto must be:
+
+* fatal or 0
+* error or 1
+* warning or 2
+* info or 3
+* debug or 4 The default value is info.
+* level (string,optional)
+* Returns all log entries of log level level. Note that the URL parameters upto and level are mutually exclusive.
+* start (number,optional)
+* Returns all log entries such that their log entry identifier (lid value) is greater or equal to start.
+* size (number,optional)
+* Restricts the result to at most size log entries.
+* offset (number,optional)
+* Starts to return log entries skipping the first offset log entries. offset and size can be used for pagination.
+* search (string,optional)
+* Only return the log entries containing the text specified in search.
+* sort (string,optional)
+* Sort the log entries either ascending (if sort is asc) or descending (if sort is desc) according to their lid values. Note that the lid imposes a chronological order. The default value is asc.
+
+!SUBSECTION Description
+
+Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes:
+
+* lid: a list of log entry identifiers. Each log message is uniquely identified by its lid and the identifiers are in ascending order.
+* level: a list of the log-levels for all log entries.
+* timestamp: a list of the timestamps as seconds since 1970-01-01 for all log entries.
+* text a list of the texts of all log entries
+* totalAmount: the total amount of log entries before pagination.
+
+!SUBSECTION Return codes
+
+`HTTP 400`
+
+is returned if invalid values are specified for upto or level.
+
+`HTTP 403`
+
+is returned if the log is requested for any database other than _system.
+
+`HTTP 500`
+
+is returned if the server cannot generate the result due to an out-of-memory error.
+
+`POST /_admin/modules/flush`*(flushs the module cache)*
+
+!SUBSECTION Description
+
+The call flushes the modules cache on the server. See JSModulesCache for details about this cache.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Module cache was flushed successfully.
+
+`POST /_admin/routing/reload`*(reloads the routing collection)*
+
+!SUBSECTION Description
+
+Reloads the routing information from the collection routing.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Routing information was reloaded successfully.
+
+`GET /_admin/statistics`*(reads the statistics)*
+
+!SUBSECTION Description
+
+Returns the statistics information. The returned object contains the statistics figures grouped together according to the description returned by _admin/statistics-description. For instance, to access a figure userTime from the group system, you first select the sub-object describing the group stored in system and in that sub-object the value for userTime is stored in the attribute of the same name.
+
+In case of a distribution, the returned object contains the total count in count and the distribution list in counts. The sum (or total) of the individual values is returned in sum.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Statistics were returned successfully.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_admin/statistics
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "time" : 1401375816.797818, 
+  "system" : { 
+    "minorPageFaults" : 58001, 
+    "majorPageFaults" : 220, 
+    "userTime" : 3.25, 
+    "systemTime" : 0.39, 
+    "numberOfThreads" : 17, 
+    "residentSize" : 118894592, 
+    "residentSizePercent" : 0.0015610849021088387, 
+    "virtualSize" : 2694352896 
+  }, 
+  "client" : { 
+    "httpConnections" : 1, 
+    "connectionTime" : { 
+      "sum" : 0.0004601478576660156, 
+      "count" : 1, 
+      "counts" : [ 
+        1, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "totalTime" : { 
+      "sum" : 11.666441202163696, 
+      "count" : 848, 
+      "counts" : [ 
+        688, 
+        90, 
+        59, 
+        7, 
+        1, 
+        3, 
+        0 
+      ] 
+    }, 
+    "requestTime" : { 
+      "sum" : 11.539090871810913, 
+      "count" : 848, 
+      "counts" : [ 
+        688, 
+        90, 
+        59, 
+        7, 
+        1, 
+        3, 
+        0 
+      ] 
+    }, 
+    "queueTime" : { 
+      "sum" : 0.027733325958251953, 
+      "count" : 848, 
+      "counts" : [ 
+        848, 
+        0, 
+        0, 
+        0, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "ioTime" : { 
+      "sum" : 0.09961700439453125, 
+      "count" : 848, 
+      "counts" : [ 
+        848, 
+        0, 
+        0, 
+        0, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "bytesSent" : { 
+      "sum" : 495532, 
+      "count" : 848, 
+      "counts" : [ 
+        232, 
+        501, 
+        1, 
+        114, 
+        0, 
+        0 
+      ] 
+    }, 
+    "bytesReceived" : { 
+      "sum" : 196766, 
+      "count" : 848, 
+      "counts" : [ 
+        623, 
+        225, 
+        0, 
+        0, 
+        0, 
+        0 
+      ] 
+    } 
+  }, 
+  "http" : { 
+    "requestsTotal" : 848, 
+    "requestsAsync" : 0, 
+    "requestsGet" : 223, 
+    "requestsHead" : 0, 
+    "requestsPost" : 446, 
+    "requestsPut" : 34, 
+    "requestsPatch" : 3, 
+    "requestsDelete" : 142, 
+    "requestsOptions" : 0, 
+    "requestsOther" : 0 
+  }, 
+  "server" : { 
+    "uptime" : 19.310930013656616, 
+    "physicalMemory" : 76161515520 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`GET /_admin/statistics-description`*(statistics description)*
+
+!SUBSECTION Description
+
+Returns a description of the statistics returned by /_admin/statistics. The returned objects contains a list of statistics groups in the attribute groups and a list of statistics figures in the attribute figures.
+
+A statistics group is described by
+
+* group: The identifier of the group.
+* name: The name of the group.
+* description: A description of the group.
+
+A statistics figure is described by
+
+* group: The identifier of the group to which this figure belongs.
+* identifier: The identifier of the figure. It is unique within the group.
+* name: The name of the figure.
+* description: A description of the figure.
+* type: Either current, accumulated, or distribution.
+* cuts: The distribution vector.
+* units: Units in which the figure is measured.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Description was returned successfully.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_admin/statistics-description
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "groups" : [ 
+    { 
+      "group" : "system", 
+      "name" : "Process Statistics", 
+      "description" : "Statistics about the ArangoDB process" 
+    }, 
+    { 
+      "group" : "client", 
+      "name" : "Client Connection Statistics", 
+      "description" : "Statistics about the connections." 
+    }, 
+    { 
+      "group" : "http", 
+      "name" : "HTTP Request Statistics", 
+      "description" : "Statistics about the HTTP requests." 
+    }, 
+    { 
+      "group" : "server", 
+      "name" : "Server Statistics", 
+      "description" : "Statistics about the ArangoDB server" 
+    } 
+  ], 
+  "figures" : [ 
+    { 
+      "group" : "system", 
+      "identifier" : "userTime", 
+      "name" : "User Time", 
+      "description" : "Amount of time that this process has been scheduled in user mode, measured in se...", 
+      "type" : "accumulated", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "systemTime", 
+      "name" : "System Time", 
+      "description" : "Amount of time that this process has been scheduled in kernel mode, measured in ...", 
+      "type" : "accumulated", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "numberOfThreads", 
+      "name" : "Number of Threads", 
+      "description" : "Number of threads in the arangod process.", 
+      "type" : "current", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "residentSize", 
+      "name" : "Resident Set Size", 
+      "description" : "The total size of the number of pages the process has in real memory. This is ju...", 
+      "type" : "current", 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "residentSizePercent", 
+      "name" : "Resident Set Size", 
+      "description" : "The percentage of physical memory used by the process as resident set size.", 
+      "type" : "current", 
+      "units" : "percent" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "virtualSize", 
+      "name" : "Virtual Memory Size", 
+      "description" : "On Windows, this figure contains the total amount of memory that the memory mana...", 
+      "type" : "current", 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "minorPageFaults", 
+      "name" : "Minor Page Faults", 
+      "description" : "The number of minor faults the process has made which have not required loading ...", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "majorPageFaults", 
+      "name" : "Major Page Faults", 
+      "description" : "On Windows, this figure contains the total number of page faults. On other syste...", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "httpConnections", 
+      "name" : "Client Connections", 
+      "description" : "The number of connections that are currently open.", 
+      "type" : "current", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "totalTime", 
+      "name" : "Total Time", 
+      "description" : "Total time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "requestTime", 
+      "name" : "Request Time", 
+      "description" : "Request time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "queueTime", 
+      "name" : "Queue Time", 
+      "description" : "Queue time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesSent", 
+      "name" : "Bytes Sent", 
+      "description" : "Bytes sents for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesReceived", 
+      "name" : "Bytes Received", 
+      "description" : "Bytes receiveds for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "connectionTime", 
+      "name" : "Connection Time", 
+      "description" : "Total connection time of a client.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.1, 
+        1, 
+        60 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsTotal", 
+      "name" : "Total requests", 
+      "description" : "Total number of HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsAsync", 
+      "name" : "Async requests", 
+      "description" : "Number of asynchronously executed HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsGet", 
+      "name" : "HTTP GET requests", 
+      "description" : "Number of HTTP GET requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsHead", 
+      "name" : "HTTP HEAD requests", 
+      "description" : "Number of HTTP HEAD requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPost", 
+      "name" : "HTTP POST requests", 
+      "description" : "Number of HTTP POST requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPut", 
+      "name" : "HTTP PUT requests", 
+      "description" : "Number of HTTP PUT requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPatch", 
+      "name" : "HTTP PATCH requests", 
+      "description" : "Number of HTTP PATCH requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsDelete", 
+      "name" : "HTTP DELETE requests", 
+      "description" : "Number of HTTP DELETE requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsOptions", 
+      "name" : "HTTP OPTIONS requests", 
+      "description" : "Number of HTTP OPTIONS requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsOther", 
+      "name" : "other HTTP requests", 
+      "description" : "Number of other HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "server", 
+      "identifier" : "uptime", 
+      "name" : "Server Uptime", 
+      "description" : "Number of seconds elapsed since server start.", 
+      "type" : "current", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "server", 
+      "identifier" : "physicalMemory", 
+      "name" : "Physical Memory", 
+      "description" : "Physical memory in bytes.", 
+      "type" : "current", 
+      "units" : "bytes" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`GET /_admin/server/role`*(returns the role of a server in a cluster)*
+
+!SUBSECTION Description
+
+Returns the role of a server in a cluster. The role is returned in the role attribute of the result. Possible return values for role are:
+
+* COORDINATOR: the server is a coordinator in a cluster
+* PRIMARY: the server is a primary database server in a cluster
+* SECONDARY: the server is a secondary database server in a cluster
+* UNDEFINED: in a cluster, UNDEFINED is returned if the server role cannot be determined. On a single server, UNDEFINED is the only possible return value.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Is returned in all cases.
+
+
+<!--
 @NAVIGATE_HttpSystem
 @EMBEDTOC{HttpSystemTOC}
 
@@ -30,3 +592,4 @@ monitoring of the server.
 @copydetails JSF_get_admin_server_role
 
 @BNAVIGATE_HttpSystem
+-->

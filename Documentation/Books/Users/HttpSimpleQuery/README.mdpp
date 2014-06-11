@@ -1,0 +1,1417 @@
+!CHAPTER HTTP Interface for Simple Queries
+
+!SUBSECTION Simple Queries
+
+This is an introduction to ArangoDB's Http interface for simple queries.
+
+Simple queries can be used if the query condition is straight forward simple,
+i.e., a document reference, all documents, a query-by-example, or a simple geo
+query. In a simple query you can specify exactly one collection and one
+condition. The result can then be sorted and can be split into pages.
+
+!SECTION Working with Simples Queries using HTTP
+
+To limit the amount of results to be transferred in one batch, simple queries
+support a *batchSize* parameter that can optionally be used to tell the server
+to limit the number of results to be transferred in one batch to a certain
+value. If the query has more results than were transferred in one go, more
+results are waiting on the server so they can be fetched subsequently. If no
+value for the *batchSize* parameter is specified, the server will use a
+reasonable default value.
+
+If the server has more documents than should be returned in a single batch, the
+server will set the *hasMore* attribute in the result. It will also return the
+id of the server-side cursor in the *id* attribute in the result.  This id can
+be used with the cursor API to fetch any outstanding results from the server and
+dispose the server-side cursor afterwards.
+
+`PUT /_api/simple/all`*(executes simple query ALL)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+Returns all documents of a collections. The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Limit the amount of documents using limit
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all
+{ "collection": "products", "skip": 2, "limit" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/174056417", 
+      "_rev" : "174056417", 
+      "_key" : "174056417", 
+      "Hello3" : "World3" 
+    }, 
+    { 
+      "_id" : "products/173401057", 
+      "_rev" : "173401057", 
+      "_key" : "173401057", 
+      "Hello1" : "World1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Using a batchSize value
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all
+{ "collection": "products", "batchSize" : 3 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/176284641", 
+      "_rev" : "176284641", 
+      "_key" : "176284641", 
+      "Hello4" : "World4" 
+    }, 
+    { 
+      "_id" : "products/175956961", 
+      "_rev" : "175956961", 
+      "_key" : "175956961", 
+      "Hello3" : "World3" 
+    }, 
+    { 
+      "_id" : "products/175629281", 
+      "_rev" : "175629281", 
+      "_key" : "175629281", 
+      "Hello2" : "World2" 
+    } 
+  ], 
+  "hasMore" : true, 
+  "id" : "176808929", 
+  "count" : 5, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/by-example`*(executes simple query by-example)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents matching a given example.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* example: The example document.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Matching an attribute:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" :  { "i" : 1 }  }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/192013281", 
+      "_rev" : "192013281", 
+      "_key" : "192013281", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/192340961", 
+      "_rev" : "192340961", 
+      "_key" : "192340961", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/192603105", 
+      "_rev" : "192603105", 
+      "_key" : "192603105", 
+      "i" : 1 
+    }, 
+    { 
+      "_id" : "products/192799713", 
+      "_rev" : "192799713", 
+      "_key" : "192799713", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 2, 
+        "j" : 2 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 4, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Matching an attribute which is a sub-document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" : { "a.j" : 1 } }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/194307041", 
+      "_rev" : "194307041", 
+      "_key" : "194307041", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/193979361", 
+      "_rev" : "193979361", 
+      "_key" : "193979361", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Matching an attribute within a sub-document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } } }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/196273121", 
+      "_rev" : "196273121", 
+      "_key" : "196273121", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 1, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/first-example`*(returns a document matching an example)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will return the first document matching a given example.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* example: The example document.
+
+Returns a result containing the document or HTTP 404 if no document matched the example.
+
+If more than one document in the collection matches the specified example, only one of these documents will be returned, and it is undefined which of the matching documents is returned.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the query was successfully executed.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+If a matching document was found:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example
+{ "collection": "products", "example" :  { "i" : 1 }  }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "document" : { 
+    "_id" : "products/197911521", 
+    "_rev" : "197911521", 
+    "_key" : "197911521", 
+    "i" : 1, 
+    "a" : { 
+      "k" : 1, 
+      "j" : 1 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+If no document was found:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example
+{ "collection": "products", "example" :  { "l" : 1 }  }
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 404, 
+  "errorMessage" : "no match" 
+}
+```
+
+`PUT /_api/simple/by-example-hash`*(executes query by-example using a hash index)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query specification.
+
+/SUBSECTION Description
+
+This will find all documents matching a given example, using the specified hash index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* index: The id of the index to be used for the query. The index must exist and must be of type hash.
+* example: an example document. The example must contain a value for each attribute in the index.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal number of documents to return. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case. The same error code is also returned if an invalid index id or type is used.
+
+`PUT /_api/simple/by-example-skiplist`*(executes query by-example using a skiplist index)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query specification.
+
+/SUBSECTION Description
+
+This will find all documents matching a given example, using the specified skiplist index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* index: The id of the index to be used for the query. The index must exist and must be of type skiplist.
+* example: an example document. The example must contain a value for each attribute in the index.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal number of documents to return. (optional)
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case. The same error code is also returned if an invalid index id or type is used.
+
+`PUT /_api/simple/by-example-bitarray`*(executes query by-example using a bitarray index)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query specification.
+
+/SUBSECTION Description
+
+This will find all documents matching a given example, using the specified skiplist index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* index: The id of the index to be used for the query. The index must exist and must be of type bitarray.
+* example: an example document. The example must contain a value for each attribute in the index.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal number of documents to return. (optional)
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case. The same error code is also returned if an invalid index id or type is used.
+
+`PUT /_api/simple/by-condition-skiplist`*(executes query by-condition using a skiplist index)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query specification.
+
+/SUBSECTION Description
+
+This will find all documents matching a given condition, using the specified skiplist index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* index: The id of the index to be used for the query. The index must exist and must be of type skiplist.
+* condition: the condition which all returned documents shall satisfy. Conditions must be specified for all indexed attributes.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal number of documents to return. (optional)
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case. The same error code is also returned if an invalid index id or type is used.
+
+`PUT /_api/simple/by-condition-bitarray`*(executes query by-condition using a bitarray index)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query specification.
+
+/SUBSECTION Description
+
+This will find all documents matching a given condition, using the specified skiplist index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* index: The id of the index to be used for the query. The index must exist and must be of type bitarray.
+* condition: the condition which all returned documents shall satisfy. Conditions must be specified for all indexed attributes.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal number of documents to return. (optional)
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case. The same error code is also returned if an invalid index id or type is used.
+
+`PUT /_api/simple/any`*(returns a random document from a collection)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+Returns a random document from a collection. The call expects a JSON object as body with the following attributes:
+
+* collection: The identifier or name of the collection to query.
+Returns a JSON object with the document stored in the attribute document if the collection contains at least one document. If the collection is empty, the document attrbute contains null.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/any
+{ "collection": "products" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "document" : { 
+    "_id" : "products/178512865", 
+    "_rev" : "178512865", 
+    "_key" : "178512865", 
+    "Hello5" : "World5" 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/simple/range`*(executes simple range query)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents within a given range. In order to execute a range query, a skip-list index on the queried attribute must be present.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* attribute: The attribute path to check.
+* left: The lower bound.
+* right: The upper bound.
+* closed: If true, use interval including left and right, otherwise exclude right, but include left.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range
+{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/208069601", 
+      "_rev" : "208069601", 
+      "_key" : "208069601", 
+      "i" : 2 
+    }, 
+    { 
+      "_id" : "products/208266209", 
+      "_rev" : "208266209", 
+      "_key" : "208266209", 
+      "i" : 3 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/near`*(executes a near query)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+The default will find at most 100 documents near the given coordinate. The returned list is sorted according to the distance, with the nearest document being first in the list. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached.
+
+In order to use the near operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo field to select a particular index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* latitude: The latitude of the coordinate.
+* longitude: The longitude of the coordinate.
+* distance: If given, the attribute key used to return the distance to the given coordinate. (optional). If specified, distances are returned in meters.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. The default is 100. (optional)
+* geo: If given, the identifier of the geo-index to use. (optional)
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Without distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/180478945", 
+      "_rev" : "180478945", 
+      "_key" : "180478945", 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/180085729", 
+      "_rev" : "180085729", 
+      "_key" : "180085729", 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+With distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/182969313", 
+      "_rev" : "182969313", 
+      "_key" : "182969313", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/183362529", 
+      "_rev" : "183362529", 
+      "_key" : "183362529", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/182772705", 
+      "_rev" : "182772705", 
+      "_key" : "182772705", 
+      "distance" : 444.779706578235, 
+      "name" : "Name/-0.004/", 
+      "loc" : [ 
+        -0.004, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 3, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/within`*(executes a within query)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents within a given radius around the coordinate (latitude, longitude). The returned list is sorted by distance.
+
+In order to use the within operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo field to select a particular index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* latitude: The latitude of the coordinate.
+* longitude: The longitude of the coordinate.
+* radius: The maximal radius (in meters).
+* distance: If given, the attribute key used to return the distance to the given coordinate. (optional). If specified, distances are returned in meters.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. The default is 100. (optional)
+* geo: If given, the identifier of the geo-index to use. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Without distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2, "radius" : 500 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/186246113", 
+      "_rev" : "186246113", 
+      "_key" : "186246113", 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/185852897", 
+      "_rev" : "185852897", 
+      "_key" : "185852897", 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+With distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/188736481", 
+      "_rev" : "188736481", 
+      "_key" : "188736481", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/189129697", 
+      "_rev" : "189129697", 
+      "_key" : "189129697", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/188539873", 
+      "_rev" : "188539873", 
+      "_key" : "188539873", 
+      "distance" : 444.779706578235, 
+      "name" : "Name/-0.004/", 
+      "loc" : [ 
+        -0.004, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 3, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/fulltext`*(executes a fulltext index query)*
+
+/SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents from the collection that match the fulltext query specified in query.
+
+In order to use the fulltext operator, a fulltext index must be defined for the collection and the specified attribute.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* attribute: The attribute that contains the texts.
+* query: The fulltext query.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+* index: The identifier of the fulltext-index to use.
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+/SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext
+{ "collection": "products", "attribute" : "text", "query" : "word" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/190571489", 
+      "_rev" : "190571489", 
+      "_key" : "190571489", 
+      "text" : "this text contains word" 
+    }, 
+    { 
+      "_id" : "products/190768097", 
+      "_rev" : "190768097", 
+      "_key" : "190768097", 
+      "text" : "this text also has a word" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/remove-by-example`*(removes documents by example)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents in the collection that match the specified example object.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to remove from.
+* example: An example document that all collection documents are compared against.
+* waitForSync: if set to true, then all removal operations will instantly be synchronised to disk. If this is not specified, then the collection's default sync behavior will be applied.
+* limit: an optional value that determines how many documents to delete at most. If limit is specified but is less than the number of documents in the collection, it is undefined which of the documents will be deleted.
+
+*Note*: the limit attribute is not supported on sharded collections. Using it will result in an error.
+
+Returns the number of documents that were deleted.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } } }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : 1, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/simple/replace-by-example`*(replaces documents by example)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents in the collection that match the specified example object, and replace the entire document body with the new value specified. Note that document meta-attributes such as _id, _key, _from, _to etc. cannot be replaced.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to replace within.
+* example: An example document that all collection documents are compared against.
+* newValue: The replacement document that will get inserted in place of the "old" documents.
+* waitForSync: if set to true, then all removal operations will instantly be synchronised to disk. If this is not specified, then the collection's default sync behavior will be applied.
+* limit: an optional value that determines how many documents to replace at most. If limit is specified but is less than the number of documents in the collection, it is undefined which of the documents will be replaced.
+
+*Note*: the limit attribute is not supported on sharded collections. Using it will result in an error.
+
+Returns the number of documents that were replaced.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/replace-by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : {"foo" : "bar"}, "limit" : 3 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "replaced" : 1, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/simple/update-by-example`*(updates documents by example)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will find all documents in the collection that match the specified example object, and partially update the document body with the new value specified. Note that document meta-attributes such as _id, _key, _from, _to etc. cannot be replaced.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to update within.
+* example: An example document that all collection documents are compared against.
+* newValue: A document containing all the attributes to update in the found documents.
+* keepNull: This parameter can be used to modify the behavior when handling null values. Normally, null values are stored in the database. By setting the keepNull parameter to false, this behavior can be changed so that all attributes in data with null values will be removed from the updated document.
+* waitForSync: if set to true, then all removal operations will instantly be synchronised to disk. If this is not specified, then the collection's default sync behavior will be applied.
+* limit: an optional value that determines how many documents to update at most. If limit is specified but is less than the number of documents in the collection, it is undefined which of the documents will be updated.
+
+*Note*: the limit attribute is not supported on sharded collections. Using it will result in an error.
+
+Returns the number of documents that were updated.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the collection was updated successfully and waitForSync was true.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/update-by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : { "a" : { "j" : 22 } }, "limit" : 3 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "updated" : 1, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/simple/first`*(returns the first document(s) of a collection)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will return the first document(s) from the collection, in the order of insertion/update time. When the count argument is supplied, the result will be a list of documents, with the "oldest" document being first in the result list. If the count argument is not supplied, the result is the "oldest" document of the collection, or null if the collection is empty.
+
+The request body must be a JSON object with the following attributes:
+
+* collection: the name of the collection
+* count: the number of documents to return at most. Specifiying count is optional. If it is not specified, it defaults to 1.
+
+*Note*: this method is not supported for sharded collections with more than one shard.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the query was successfully executed.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+Retrieving the first n documents:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first
+{ "collection": "products", "count" : 2 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/201712609", 
+      "_rev" : "201712609", 
+      "_key" : "201712609", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/202040289", 
+      "_rev" : "202040289", 
+      "_key" : "202040289", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Retrieving the first document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first
+{ "collection": "products" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "_id" : "products/203285473", 
+    "_rev" : "203285473", 
+    "_key" : "203285473", 
+    "i" : 1, 
+    "a" : { 
+      "k" : 1, 
+      "j" : 1 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/simple/last`*(returns the last document(s) of a collection)*
+
+/SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+/SUBSECTION Description
+
+This will return the last documents from the collection, in the order of insertion/update time. When the count argument is supplied, the result will be a list of documents, with the "latest" document being first in the result list.
+
+The request body must be a JSON object with the following attributes:
+
+* collection: the name of the collection
+* count: the number of documents to return at most. Specifiying count is optional. If it is not specified, it defaults to 1.
+
+If the count argument is not supplied, the result is the "latest" document of the collection, or null if the collection is empty.
+
+*Note*: this method is not supported for sharded collections with more than one shard.
+
+/SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the query was successfully executed.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+*Examples*
+
+Retrieving the last n documents:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last
+{ "collection": "products", "count" : 2 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/205644769", 
+      "_rev" : "205644769", 
+      "_key" : "205644769", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 2, 
+        "j" : 2 
+      } 
+    }, 
+    { 
+      "_id" : "products/205448161", 
+      "_rev" : "205448161", 
+      "_key" : "205448161", 
+      "i" : 1 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Retrieving the first document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/last
+{ "collection": "products" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "_id" : "products/207217633", 
+    "_rev" : "207217633", 
+    "_key" : "207217633", 
+    "i" : 1, 
+    "a" : { 
+      "k" : 2, 
+      "j" : 2 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+
+<!--
+@anchor HttpSimpleAll
+@copydetails JSA_put_api_simple_all
+
+@CLEARPAGE
+@anchor HttpSimpleByExample
+@copydetails JSA_put_api_simple_by_example
+
+@CLEARPAGE
+@anchor HttpSimpleFirstExample
+@copydetails JSA_put_api_simple_first_example
+
+@CLEARPAGE
+@anchor HttpSimpleByExampleHash
+@copydetails JSA_put_api_simple_by_example_hash
+
+@CLEARPAGE
+@anchor HttpSimpleByExampleSkiplist
+@copydetails JSA_put_api_simple_by_example_skiplist
+
+@CLEARPAGE
+@anchor HttpSimpleByExampleBitarray
+@copydetails JSA_put_api_simple_by_example_bitarray
+
+@CLEARPAGE
+@anchor HttpSimpleByConditionSkiplist
+@copydetails JSA_put_api_simple_by_condition_skiplist
+
+@CLEARPAGE
+@anchor HttpSimpleByConditionBitarray
+@copydetails JSA_put_api_simple_by_condition_bitarray
+
+@CLEARPAGE
+@anchor HttpSimpleAny
+@copydetails JSA_put_api_simple_any
+
+@CLEARPAGE
+@anchor HttpSimpleRange
+@copydetails JSA_put_api_simple_range
+
+@CLEARPAGE
+@anchor HttpSimpleNear
+@copydetails JSA_put_api_simple_near
+
+@CLEARPAGE
+@anchor HttpSimpleWithin
+@copydetails JSA_put_api_simple_within
+
+@CLEARPAGE
+@anchor HttpSimpleFulltext
+@copydetails JSA_put_api_simple_fulltext
+
+@CLEARPAGE
+@anchor HttpSimpleRemoveByExample
+@copydetails JSA_put_api_simple_remove_by_example
+
+@CLEARPAGE
+@anchor HttpSimpleReplaceByExample
+@copydetails JSA_put_api_simple_replace_by_example
+
+@CLEARPAGE
+@anchor HttpSimpleUpdateByExample
+@copydetails JSA_put_api_simple_update_by_example
+
+@CLEARPAGE
+@anchor HttpSimpleFirst
+@copydetails JSA_put_api_simple_first
+
+@CLEARPAGE
+@anchor HttpSimpleLast
+@copydetails JSA_put_api_simple_last
+
+-->

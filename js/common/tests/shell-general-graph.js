@@ -285,15 +285,10 @@ function GeneralGraphCreationSuite() {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);
       }
-      try {
-        graph._create(
-          gn,
-          []
-        );
-        fail();
-      } catch (err) {
-        assertEqual(err.errorMessage, "at least one edge definition is required to create a graph.");
-      }
+      var g = graph._create(
+        gn
+      );
+      assertEqual(g.__edgeDefinitions, []);
     },
 
     test_create_WithOut_Name : function () {
@@ -324,7 +319,8 @@ function GeneralGraphCreationSuite() {
       try {
         graph._create(gn, edgeDef);
       } catch (err) {
-        assertEqual(err, "graph " + gn + " already exists.");
+        assertEqual(err.errorNum, ERRORS.ERROR_GRAPH_DUPLICATE.code);
+        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_DUPLICATE.message);
       }
     },
 
@@ -371,7 +367,8 @@ function GeneralGraphCreationSuite() {
         graph._graph(gn + "UnknownExtension");
         fail();
       } catch (e) {
-        assertEqual(e, "graph " + gn + "UnknownExtension" + " does not exist.");
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_FOUND.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_FOUND.message);
       }
     },
 
@@ -413,10 +410,49 @@ function GeneralGraphCreationSuite() {
       // This should remove edges
       assertEqual(g[rn].count(), 1);
       graph._drop(gn, true);
+    },
+
+
+    test_deleteEdgeDefinitionFromExistingGraph: function() {
+      var gN1 = "UnitTestEdgeDefDeleteGraph1",
+        gN2 = "UnitTestEdgeDefDeleteGraph2",
+        ec1 = "UnitTestEdgeDefDeleteEdgeCol1",
+        ec2 = "UnitTestEdgeDefDeleteEdgeCol2",
+        ec3 = "UnitTestEdgeDefDeleteEdgeCol3",
+        vc1 = "UnitTestEdgeDefDeleteVertexCol1",
+        vc2 = "UnitTestEdgeDefDeleteVertexCol2",
+        vc3 = "UnitTestEdgeDefDeleteVertexCol3",
+        vc4 = "UnitTestEdgeDefDeleteVertexCol4",
+        vc5 = "UnitTestEdgeDefDeleteVertexCol5";
+      try {
+        graph._drop(gN1);
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelationDefinition(ec3, [vc4], [vc5]),
+        g1 = graph._create(gN1, [dr1, dr2, dr3]),
+        g2 = graph._create(gN2, [dr3]);
+
+      g1._deleteEdgeDefinition(ec1, false);
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+
+      g1._deleteEdgeDefinition(ec2, true);
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertTrue(db._collection(vc3) === null);
+      assertFalse(db._collection(vc4) === null);
+      assertFalse(db._collection(vc5) === null);
+
+      try {
+        graph._drop(gN1);
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
     }
-
   };
-
 }
 
 // -----------------------------------------------------------------------------
@@ -2150,16 +2186,16 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[3][v4][2]._id  , v7);
       assertEqual(actual[4][v5][0]._id  , v6);
       assertEqual(actual[5][v6][0]._id  , v4);
-      assertEqual(actual[5][v6][1]._id  , v5);
-      assertEqual(actual[5][v6][2]._id  , v8);
-      assertEqual(actual[5][v6][3]._id  , v7);
+      assertEqual(actual[5][v6][1]._id  , v8);
+      assertEqual(actual[5][v6][2]._id  , v7);
+      assertEqual(actual[5][v6][3]._id  , v5);
       assertEqual(actual[6][v7][0]._id  , v4);
       assertEqual(actual[6][v7][1]._id  , v6);
       assertEqual(actual[6][v7][2]._id  , v8);
-      assertEqual(actual[7][v8][0]._id  , v3);
-      assertEqual(actual[7][v8][1]._id  , v4);
-      assertEqual(actual[7][v8][2]._id  , v6);
-      assertEqual(actual[7][v8][3]._id  , v7);
+      assertEqual(actual[7][v8][0]._id  , v4);
+      assertEqual(actual[7][v8][1]._id  , v6);
+      assertEqual(actual[7][v8][2]._id  , v7);
+      assertEqual(actual[7][v8][3]._id  , v3);
 
       actual = testGraph._amountCommonProperties({} ,{} ,{});
       assertEqual(actual, [

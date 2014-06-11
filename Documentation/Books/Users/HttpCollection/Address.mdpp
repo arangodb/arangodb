@@ -10,8 +10,8 @@ collection name should be used, i.e.:
 
     http://server:port/_api/collection/collection-name
 
-For example: Assume that the collection identifier is `7254820` and
-the collection name is `demo`, then the URL of that collection is:
+For example: Assume that the collection identifier is *7254820* and
+the collection name is *demo*, then the URL of that collection is:
 
     http://localhost:8529/_api/collection/demo
 

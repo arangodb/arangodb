@@ -60,5 +60,5 @@ When creating a collection with the auto increment key generator and an incremen
 1, 6, 11, 16, 21, ...
 
 The basic operations (create, read, update, delete) for documents are mapped
-to the standard HTTP methods (`POST`, `GET`, `PUT`, `DELETE`). 
+to the standard HTTP methods (*POST*, *GET*, *PUT*, *DELETE*). 
 

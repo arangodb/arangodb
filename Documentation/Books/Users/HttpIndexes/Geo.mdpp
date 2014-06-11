@@ -1,0 +1,363 @@
+!CHAPTER Working with Geo Indexes
+
+`POST /_api/index`*(creates a geo-spatial index)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`index-details (json,required)`
+
+!SUBSECTION Description
+
+Creates a geo-spatial index in the collection collection-name, if it does not already exist. Expects an object containing the index details.
+
+* type: must be equal to "geo".
+* fields: A list with one or two attribute paths.
+
+If it is a list with one attribute path location, then a geo-spatial index on all documents is created using location as path to the coordinates. The value of the attribute must be a list with at least two double values. The list must contain the latitude (first value) and the longitude (second value). All documents, which do not have the attribute path or with value that are not suitable, are ignored.
+
+If it is a list with two attribute paths latitude and longitude, then a geo-spatial index on all documents is created using latitude and longitude as paths the latitude and the longitude. The value of the attribute latitude and of the attribute longitude must a double. All documents, which do not have the attribute paths or which values are not suitable, are ignored.
+
+* geoJson: If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude. This corresponds to the format described in http://geojson.org/geojson-spec.html#positions
+* constraint: If constraint is true, then a geo-spatial constraint is created. The constraint is a non-unique variant of the index. Note that it is also possible to set the unique attribute instead of the constraint attribute.
+* ignoreNull: If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.
+
+*Note*: unique indexes on non-shard keys are not supported in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then a HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then a HTTP 201 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Creating a geo index with a location attribute:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type": "geo", "fields" : [ "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/170255329", 
+  "type" : "geo1", 
+  "unique" : false, 
+  "geoJson" : false, 
+  "constraint" : false, 
+  "ignoreNull" : false, 
+  "fields" : [ 
+    "b" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Creating a geo index with latitude and longitude attributes:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type": "geo", "fields" : [ "e", "f" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/170648545", 
+  "type" : "geo2", 
+  "unique" : false, 
+  "constraint" : false, 
+  "ignoreNull" : false, 
+  "fields" : [ 
+    "e", 
+    "f" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/near`*(executes a near query)*
+
+!SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+The default will find at most 100 documents near the given coordinate. The returned list is sorted according to the distance, with the nearest document being first in the list. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached.
+
+In order to use the near operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo field to select a particular index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* latitude: The latitude of the coordinate.
+* longitude: The longitude of the coordinate.
+* distance: If given, the attribute key used to return the distance to the given coordinate. (optional). If specified, distances are returned in meters.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. The default is 100. (optional)
+* geo: If given, the identifier of the geo-index to use. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Without distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/180478945", 
+      "_rev" : "180478945", 
+      "_key" : "180478945", 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/180085729", 
+      "_rev" : "180085729", 
+      "_key" : "180085729", 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+With distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/182969313", 
+      "_rev" : "182969313", 
+      "_key" : "182969313", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/183362529", 
+      "_rev" : "183362529", 
+      "_key" : "183362529", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/182772705", 
+      "_rev" : "182772705", 
+      "_key" : "182772705", 
+      "distance" : 444.779706578235, 
+      "name" : "Name/-0.004/", 
+      "loc" : [ 
+        -0.004, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 3, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/within`*(executes a within query)*
+
+!SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+This will find all documents within a given radius around the coordinate (latitude, longitude). The returned list is sorted by distance.
+
+In order to use the within operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo field to select a particular index.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* latitude: The latitude of the coordinate.
+* longitude: The longitude of the coordinate.
+* radius: The maximal radius (in meters).
+* distance: If given, the attribute key used to return the distance to the given coordinate. (optional). If specified, distances are returned in meters.
+* skip: The number of documents to skip in the query. (optional)
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. The default is 100. (optional)
+* geo: If given, the identifier of the geo-index to use. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Without distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 2, "radius" : 500 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/186246113", 
+      "_rev" : "186246113", 
+      "_key" : "186246113", 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/185852897", 
+      "_rev" : "185852897", 
+      "_key" : "185852897", 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+With distance:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/188736481", 
+      "_rev" : "188736481", 
+      "_key" : "188736481", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/189129697", 
+      "_rev" : "189129697", 
+      "_key" : "189129697", 
+      "distance" : 222.38985328911744, 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/188539873", 
+      "_rev" : "188539873", 
+      "_key" : "188539873", 
+      "distance" : 444.779706578235, 
+      "name" : "Name/-0.004/", 
+      "loc" : [ 
+        -0.004, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 3, 
+  "error" : false, 
+  "code" : 201 
+}
+```

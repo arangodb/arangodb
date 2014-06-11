@@ -66,9 +66,8 @@ static unsigned long SeedRandom (void) {
 
 #ifdef TRI_HAVE_GETTIMEOFDAY
   struct timeval tv;
-  int result;
 
-  result = gettimeofday(&tv, 0);
+  /* ignore result */ gettimeofday(&tv, 0);
 
   seed = (unsigned long)(tv.tv_sec);
   seed ^= (unsigned long)(tv.tv_usec);
