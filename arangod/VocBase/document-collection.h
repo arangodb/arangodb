@@ -427,14 +427,22 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
 private:
   TRI_shaper_t*                _shaper;
+
 public:
-  TRI_shaper_t* getShaper () {
+  // We do some assertions with barriers and transactions in maintainer mode:
+#ifndef TRI_ENABLE_MAINTAINER_MODE
+  TRI_shaper_t* getShaper () const {
     return _shaper;
   }
+#else
+  TRI_shaper_t* getShaper () const;
+#endif
+
   void setShaper (TRI_shaper_t* s) {
     _shaper = s;
   }
-  TRI_barrier_list_t           _barrierList;
+
+  mutable TRI_barrier_list_t   _barrierList;
   TRI_associative_pointer_t    _datafileInfo;
 
   TRI_primary_index_t          _primaryIndex;

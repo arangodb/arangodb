@@ -343,7 +343,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
     try {
       begin = new TRI_doc_mptr_t[blockSize];
     }
-    catch (std::exception e) {
+    catch (std::exception& e) {
       begin = nullptr;
     }
 
