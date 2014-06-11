@@ -2432,6 +2432,7 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   var self = this;
+  var err;
   //check if edgeCollection not already used
   var eC = edgeDefinition.collection;
   // ... in same graph
@@ -2450,7 +2451,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
           var col = sGED.collection;
           if (col === eC) {
             if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
-              var err = new ArangoError();
+              err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
@@ -2512,14 +2513,15 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections) {
   var self = this;
+  var dropCandidates;
   var currentEdgeDefinition = {};
+
 
   //check, if in graphs edge definition
   if (this.__edgeCollections[edgeDefinition.collection] === undefined) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
-    err.errorMessage = col
-      + arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
     throw err;
   }
 
@@ -2550,7 +2552,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
 
   if (dropCollections !== false) {
     //eval collection to be dropped
-    var dropCandidates = currentEdgeDefinition.from;
+    dropCandidates = currentEdgeDefinition.from;
     currentEdgeDefinition.to.forEach(
       function (col) {
         if (dropCandidates.indexOf(col) === -1) {
@@ -2558,7 +2560,6 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
         }
       }
     );
-    var graphs = getGraphCollection().toArray();
     dropCandidates.forEach(
       function(dc) {
         if (checkIfMayBeDropped(dc, null, graphs)) {
@@ -2606,14 +2607,14 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
     }
   );
 
-}
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
 /// Deletes an edge definition defined by the edge collection of a graph. If the
 /// collections defined in the edge definition (collection, from, to) are not used
-/// in another graph, the
+/// in another graph, they will be removed.
 ///
 /// `general-graph._deleteEdgeDefinition(edgeCollectionName, dropCollections)`
 ///
@@ -2680,6 +2681,33 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections
   }
 
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph__addVertexCollection
+/// Adds a vertex collection to the graph. If the collection does not exist, it will be created.
+///
+/// `general-graph._addVertexCollection(vertexCollectionName, createCollection)`
+///
+/// *vertexCollectionName* - string : name of vertex collection.
+/// *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addeleteVertexCollection}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = examples._create("myGraph", [ed1, ed2]);
+///   g._addVertexCollection("myVC3", true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._addVertexCollection = function(edgeCollection, dropCollections) {
+
+};
+
 
 
 
