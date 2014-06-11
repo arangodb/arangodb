@@ -107,9 +107,9 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 TRI_shaper_t* TRI_document_collection_t::getShaper () const {
-  //if (! TRI_ContainsBarrierList(&_barrierList, TRI_BARRIER_ELEMENT)) {
-  //  TransactionBase::assertSomeTrxInScope();
-  //}
+  if (! TRI_ContainsBarrierList(&_barrierList, TRI_BARRIER_ELEMENT)) {
+    TransactionBase::assertSomeTrxInScope();
+  }
   return _shaper;
 }
 #endif
@@ -2260,8 +2260,11 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
   TRI_DestroyPrimaryIndex(&document->_primaryIndex);
 
-  if (document->getShaper() != nullptr) {
-    TRI_FreeVocShaper(document->getShaper());
+  {
+    TransactionBase trx(true);  // just to protect the following getShaper call
+    if (document->getShaper() != nullptr) {
+      TRI_FreeVocShaper(document->getShaper());
+    }
   }
   
   size_t const n = document->_datafileInfo._nrAlloc;
@@ -2532,6 +2535,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  TransactionBase trx(true);  // just to protect the following getShaper call
   TRI_ASSERT(document->getShaper() != nullptr);
 
   return document;
@@ -3098,6 +3102,7 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
 
+  TransactionBase trx(true);  // just to protect the getShaper call
   TRI_FreeVocShaper(document->getShaper());
   document->setShaper(nullptr);
 
