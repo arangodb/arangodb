@@ -1,3 +1,9 @@
+v2.1.2 (XXXX-XX-XX)
+-------------------
+
+* fixed check-version for empty directory
+
+
 v2.1.1 (2014-06-06)
 -------------------
 
