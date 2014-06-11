@@ -2019,6 +2019,16 @@ div .tile, div .bigtile {
     padding: 4px 8px;
     text-overflow: ellipsis !important;
     white-space: nowrap !important; }
+  div .tile div.tileSelects, div .bigtile div.tileSelects {
+    margin-left: 40px;
+    position: relative;
+    z-index: 9999; }
+    div .tile div.tileSelects select, div .bigtile div.tileSelects select {
+      float: right;
+      height: 20px;
+      margin-right: 5px;
+      margin-top: 16px;
+      width: 70px; }
   div .tile div.iconSet, div .bigtile div.iconSet {
     position: absolute;
     right: 5px;

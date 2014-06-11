@@ -2,6 +2,112 @@
 
 This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 
+`GET /_api/version`*(returns the server version)*
+
+!SUBSECTION Query parameters
+
+`details (boolean,optional)`
+
+If set to true, the response will contain a details attribute with additional information about included components and their versions. The attribute names and internals of the details object may vary depending on platform and ArangoDB version.
+
+!SUBSECTION Description
+
+* Returns the server name and version number. The response is a JSON object with the following attributes:
+* server: will always contain arango
+* version: the server version string. The string has the format "<tt>major</tt>.<tt>minor</tt>.<tt>sub</tt>". major and minor will be numeric, and sub may contain a number or a textual version.
+* details: an optional JSON object with additional details. This is returned only if the details URL parameter is set to true in the request.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned in all cases.
+
+*Examples*
+
+Returns the version information.
+
+```
+unix> curl --dump - http://localhost:8529/_api/version
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "server" : "arango", 
+  "version" : "2.1.0" 
+}
+```
+
+Returns the version information with details.
+
+```
+unix> curl --dump - http://localhost:8529/_api/version?details=true
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "server" : "arango", 
+  "version" : "2.1.0", 
+  "details" : { 
+    "build-date" : "May 29 2014 17:00:47", 
+    "configure" : "'./configure' '--enable-maintainer-mode' '--enable-all-in-one-v8' '--enable-all-...", 
+    "icu-version" : "52.1", 
+    "libev-version" : "4.11", 
+    "openssl-version" : "OpenSSL 1.0.1e 11 Feb 2013", 
+    "server-version" : "2.1.0", 
+    "sizeof int" : "4", 
+    "sizeof void*" : "8", 
+    "v8-version" : "3.16.14.1" 
+  } 
+}
+```
+
+`GET /_admin/time`*(returns the system time)*
+
+!SUBSECTION Description
+
+The call returns an object with the attribute time. This contains the current system time as a Unix timestamp with microsecond precision.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Time was returned successfully.
+
+`GET /_admin/echo`*(returns the current request)*
+
+!SUBSECTION Description
+
+The call returns an object with the following attributes:
+
+* headers: a list of HTTP headers received
+* requestType: the HTTP request method (e.g. GET)
+* parameters: list of URL parameters received
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+Echo was returned successfully.
+
+initiates the shutdown sequence
+
+`GET /_admin/shutdown`*(initiates the shutdown sequence)*
+
+!SUBSECTION Description
+
+This call initiates a clean shutdown sequence.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned in all cases.
+
+
+<!--
 @CLEARPAGE
 @anchor HttpMiscVersion
 @copydetails triagens::admin::RestVersionHandler::execute
@@ -17,4 +123,4 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 @CLEARPAGE
 @anchor HttpMiscShutdown
 @copydetails triagens::admin::RestShutdownHandler::execute
-
+-->

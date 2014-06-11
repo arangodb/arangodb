@@ -1120,7 +1120,6 @@ AQLGenerator.prototype.execute = function() {
     query += " RETURN [" + this._path + "]";
   } else if (this.stack[this.stack.length-1].isPathVerticesQuery()) {
     query += " RETURN FLATTEN([" + this._pathVertices + "])";
-    require("internal").print(query);
   } else if (this.stack[this.stack.length-1].isPathEdgesQuery()) {
     query += " RETURN FLATTEN([" + this._pathEdges + "])";
   } else {
@@ -1284,9 +1283,9 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelationDefinition
-/// Define an undirected relation.
-/// 
+///
 /// `general-graph._undirectedRelationDefinition(relationName, vertexCollections)`
+/// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
 /// list of *vertexCollections*. This relation allows the user to store
@@ -1337,6 +1336,27 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Define an directed relation.
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_directedRelationDefinition
+///
+/// `general-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections)`
+/// *Define a directed relation.*
+///
+/// The *relationName* defines the name of this relation and references to the underlying edge collection.
+/// The *fromVertexCollections* is an Array of document collections holding the start vertices.
+/// The *toVertexCollections* is an Array of document collections holding the target vertices.
+/// Relations are only allowed in the direction from any collection in *fromVertexCollections*
+/// to any collection in *toVertexCollections*.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1398,6 +1418,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
     edgeDefinition.push(args[x]);
   });
 };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -1406,20 +1427,20 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 var _create = function (graphName, edgeDefinitions) {
 
   var gdb = getGraphCollection(),
-    g,
+    err,
     graphAlreadyExists = true,
-    collections,
-    err;
+    collections;
   if (!graphName) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
     throw err;
   }
-  if (!Array.isArray(edgeDefinitions) || edgeDefinitions.length === 0) {
+  edgeDefinitions = edgeDefinitions || [];
+  if (!Array.isArray(edgeDefinitions)) {
     err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION.message;
+    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
     throw err;
   }
   //check, if a collection is already used in a different edgeDefinition
@@ -1429,7 +1450,7 @@ var _create = function (graphName, edgeDefinitions) {
     function(edgeDefinition) {
       var col = edgeDefinition.collection;
       if (tmpCollections.indexOf(col) !== -1) {
-        var err = new ArangoError();
+        err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
         err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
         throw err;
@@ -1446,7 +1467,7 @@ var _create = function (graphName, edgeDefinitions) {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
-              var err = new ArangoError();
+              err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
@@ -1468,7 +1489,10 @@ var _create = function (graphName, edgeDefinitions) {
   }
 
   if (graphAlreadyExists) {
-    throw "graph " + graphName + " already exists.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_DUPLICATE.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_DUPLICATE.message;
+    throw err;
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
@@ -1886,7 +1910,10 @@ var _graph = function(graphName) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
-    throw "graph " + graphName + " does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
+    throw err;
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
@@ -1932,6 +1959,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
       }
     }
   );
+
   return result;
 };
 
@@ -1944,7 +1972,10 @@ var _drop = function(graphId, dropCollections) {
   var gdb = getGraphCollection();
 
   if (!gdb.exists(graphId)) {
-    throw "Graph " + graphId + " does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
+    throw err;
   }
 
   if (dropCollections !== false) {
@@ -2380,6 +2411,284 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
   });
   return returnHash;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
+/// Extends the edge definitions of a graph. If the edge collection of the edge definition
+/// to add is already used in the graph or used in a different graph with different from
+/// an to collections an error is thrown.
+///
+/// `general-graph._extendEdgeDefinitions(edgeDefinition)`
+///
+/// *edgeDefinition* - [string] : the edge definition to extend the graph
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = examples._create("myGraph", [ed1]);
+///   g._extendEdgeDefinitions(ed2);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+  var self = this;
+  //check if edgeCollection not already used
+  var eC = edgeDefinition.collection;
+  // ... in same graph
+  if (this.__edgeCollections[eC]  !== undefined) {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
+    throw err;
+  }
+  //in different graph
+  db._graphs.toArray().forEach(
+    function(singleGraph) {
+      var sGEDs = singleGraph.edgeDefinitions;
+      sGEDs.forEach(
+        function(sGED) {
+          var col = sGED.collection;
+          if (col === eC) {
+            if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
+              var err = new ArangoError();
+              err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
+              err.errorMessage = col
+                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+              throw err;
+            }
+          }
+        }
+      );
+    }
+  );
+
+  findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+
+  this.__edgeDefinitions.push(edgeDefinition);
+  this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
+  edgeDefinition.from.forEach(
+    function(vc) {
+      if (self.__vertexCollections[vc] === undefined) {
+        self.__vertexCollections[vc] = db[vc];
+      }
+    }
+  );
+  edgeDefinition.to.forEach(
+    function(vc) {
+      if (self.__vertexCollections[vc] === undefined) {
+        self.__vertexCollections[vc] = db[vc];
+      }
+    }
+  );
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph__editEdgeDefinition
+/// Edits the edge definitions of a graph. The edge definition used as argument will
+/// replace the existing edge definition the corresponding edge definition in graphs
+/// edge definitions. Other graphs with the same edge definition will be modified, too.
+///
+/// `general-graph._editEdgeDefinition(edgeDefinition, dropCollections)`
+///
+/// *edgeDefinition* - [string] : the edge definition to replace the existing edge
+/// definition with the same attribut *collection*.
+/// *dropCollections* - bool : True, all collections that are not used anymore in any
+/// graph will be removed. Default: true.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = examples._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
+///   var g = examples._create("myGraph", [ed1, ed2]);
+///   g._editEdgeDefinition(ed2, true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections) {
+  var self = this;
+  var currentEdgeDefinition = {};
+
+  //check, if in graphs edge definition
+  if (this.__edgeCollections[edgeDefinition.collection] === undefined) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
+    err.errorMessage = col
+      + arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
+    throw err;
+  }
+
+  //change definition for ALL graphs
+  var graphs = getGraphCollection().toArray();
+  graphs.forEach(
+    function(graph) {
+      var eDs = graph.edgeDefinitions;
+      eDs.forEach(
+        function(eD, id) {
+          if(eD.collection === edgeDefinition.collection) {
+            currentEdgeDefinition.from = eD.from;
+            currentEdgeDefinition.to = eD.to;
+            eDs[id].from = edgeDefinition.from;
+            eDs[id].to = edgeDefinition.to;
+            db._graphs.update(graph._key, {edgeDefinitions: eDs});
+            if (graph._key === self.__name) {
+              self.__edgeDefinitions[id].from = edgeDefinition.from;
+              self.__edgeDefinitions[id].to = edgeDefinition.to;
+            }
+          }
+        }
+      );
+    }
+  );
+
+  findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+
+  if (dropCollections !== false) {
+    //eval collection to be dropped
+    var dropCandidates = currentEdgeDefinition.from;
+    currentEdgeDefinition.to.forEach(
+      function (col) {
+        if (dropCandidates.indexOf(col) === -1) {
+          dropCandidates.push(col);
+        }
+      }
+    );
+    var graphs = getGraphCollection().toArray();
+    dropCandidates.forEach(
+      function(dc) {
+        if (checkIfMayBeDropped(dc, null, graphs)) {
+          db._drop(dc);
+        }
+      }
+    );
+  }
+
+
+  //push "new" collections into vertexCollections
+  edgeDefinition.from.forEach(
+    function(vc) {
+      if (self.__vertexCollections[vc] === undefined) {
+        self.__vertexCollections[vc] = db[vc];
+      }
+    }
+  );
+  edgeDefinition.to.forEach(
+    function(vc) {
+      if (self.__vertexCollections[vc] === undefined) {
+        self.__vertexCollections[vc] = db[vc];
+      }
+    }
+  );
+
+  //remove "old" collections from vertexCollections
+  dropCandidates.forEach(
+    function(dropCanditate) {
+      var drop = true;
+      self.__edgeDefinitions.forEach(
+        function(eD) {
+          eD.from.forEach(
+            function(vC) {
+              if (vC === dropCanditate) {
+                drop = false;
+              }
+            }
+          );
+        }
+      );
+      if (drop) {
+        delete self.__vertexCollections[dropCanditate];
+      }
+    }
+  );
+
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
+/// Deletes an edge definition defined by the edge collection of a graph. If the
+/// collections defined in the edge definition (collection, from, to) are not used
+/// in another graph, the
+///
+/// `general-graph._deleteEdgeDefinition(edgeCollectionName, dropCollections)`
+///
+/// *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
+/// definition.
+/// *dropCollections* - bool : True, all collections are removed, if not used in another edge
+/// definition (including other graphs). Default: true.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = examples._create("myGraph", [ed1, ed2]);
+///   g._deleteEdgeDefinition("myEC1", true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections) {
+  var edgeDefinitions = this.__edgeDefinitions,
+    vertexCollections = [],
+    definitionFound = false,
+    index;
+
+  edgeDefinitions.forEach(
+    function(edgeDefinition, idx) {
+      if (edgeDefinition.collection === edgeCollection) {
+        definitionFound = true;
+          if (dropCollections !== false) {
+          //get all vertex collections
+          var vertexCols = edgeDefinition.from.concat(edgeDefinition.to);
+          vertexCols.forEach(
+            function(vertexCol) {
+              if (vertexCollections.indexOf(vertexCol) === -1) {
+                vertexCollections.push(vertexCol);
+              }
+            }
+          );
+        }
+      }
+    }
+  );
+  if (definitionFound) {
+    edgeDefinitions.splice(index, 1);
+    this.__edgeDefinitions = edgeDefinitions;
+    db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
+  }
+  if (dropCollections !== false) {
+    if (checkIfMayBeDropped(edgeCollection, this.__name, getGraphCollection().toArray())) {
+      db._drop(edgeCollection);
+    }
+    vertexCollections.forEach(
+      function(vC) {
+        if (checkIfMayBeDropped(vC, this.__name, getGraphCollection().toArray())) {
+          db._drop(vC);
+        }
+      }
+    );
+
+  }
+
+};
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print basic information for the graph

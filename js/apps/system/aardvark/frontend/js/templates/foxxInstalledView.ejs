@@ -10,6 +10,12 @@
     </p> -->
     <div class="tileBadge">
       <button class="button-success install">Install</button>
+        <% if (attributes.isSystem === false) { %>
+          <button class="button-danger purge">Remove</button>
+        <% } %>
+        <% if (attributes.manifest.git) { %>
+          <button class="button-warning update">Update</button>
+        <% } %>
     </div>
   <h5 class="collectionName"><%= attributes.name %><%= attributes.isSystem ? " (system)" : "" %> - v: <%= attributes.version %></h5>
 </script>

@@ -52,4 +52,9 @@
         {{ htmlSnippet("body:end")|default("") }}
     </body>
     {{ htmlSnippet("html:end")|default("") }}
+    <script type="text/javascript">
+      jQuery(".summary>li").each(function(){
+      	jQuery('ul',this).hide();
+      });
+    </script>
 </html>

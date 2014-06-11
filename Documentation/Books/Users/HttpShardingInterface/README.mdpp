@@ -1,0 +1,187 @@
+!CHAPTER HTTP Interface for Sharding 
+
+`GET /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Description
+
+Executes a cluster roundtrip from a coordinator to a DB server and back. This call only works in a coordinator node in a cluster. One can and should append an arbitrary path to the URL and the part after /_admin/cluster-test is used as the path of the HTTP request which is sent from the coordinator to a DB node. Likewise, any form data appended to the URL is forwarded in the request to the DB node. This handler takes care of all request types (see below) and uses the same request type in its request to the DB node.
+
+The following HTTP headers are interpreted in a special way:
+
+* X-Shard-ID: This specifies the ID of the shard to which the cluster request is sent and thus tells the system to which DB server to send the cluster request. Note that the mapping from the shard ID to the responsible server has to be defined in the agency under Current/ShardLocation/<shardID>. One has to give this header, otherwise the system does not know where to send the request.
+* X-Client-Transaction-ID: the value of this header is taken as the client transaction ID for the request
+* X-Timeout: specifies a timeout in seconds for the cluster operation. If the answer does not arrive within the specified timeout, an corresponding error is returned and any subsequent real answer is ignored. The default if not given is 24 hours.
+* X-Synchronous-Mode: If set to true the test function uses synchronous mode, otherwise the default asynchronous operation mode is used. This is mainly for debugging purposes.
+* Host: This header is ignored and not forwarded to the DB server.
+* User-Agent: This header is ignored and not forwarded to the DB server.
+
+All other HTTP headers and the body of the request (if present, see other HTTP methods below) are forwarded as given in the original request.
+
+In asynchronous mode the DB server answers with an HTTP request of its own, in synchronous mode it sends a HTTP response. In both cases the headers and the body are used to produce the HTTP response of this API call.
+
+!SUBSECTION Return codes
+
+The return code can be anything the cluster request returns, as well as:
+
+`HTTP 200`
+
+is returned when everything went well, or if a timeout occurred. In the latter case a body of type application/json indicating the timeout is returned.
+
+`HTTP 403`
+
+is returned if ArangoDB is not running in cluster mode.
+
+`HTTP 404`
+
+is returned if ArangoDB was not compiled for cluster operation.
+
+`POST /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Body parameters
+
+`body (anything,required)`
+
+!SUBSECTION Description
+
+See GET method. The body can be any type and is simply forwarded.
+
+`PUT /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Body parameters
+
+`body (anything,required)`
+
+!SUBSECTION Description
+
+See GET method. The body can be any type and is simply forwarded.
+
+`DELETE /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Description
+
+See GET method. The body can be any type and is simply forwarded.
+
+`PATCH /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Body parameters
+
+`body (anything,required)`
+
+!SUBSECTION Description
+
+See GET method. The body can be any type and is simply forwarded.
+
+`HEAD /_admin/cluster-test`*(executes a cluster roundtrip)*
+
+!SUBSECTION Description
+
+See GET method. The body can be any type and is simply forwarded.
+
+`POST /_admin/clusterPlanner(produce a cluster startup plan)`
+
+!SUBSECTION Body parameters
+
+`body (json,required)`
+
+!SUBSECTION Description
+
+Given a description of a cluster, this plans the details of a cluster and returns a JSON description of a plan to start up this cluster. See JSF_Cluster_Planner_Constructor for details.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when everything went well.
+
+`HTTP 400`
+
+the posted body was not valid JSON.
+
+`POST /_admin/clusterDispatch`*(execute startup commands)*
+
+!SUBSECTION Query parameters
+
+!SUBSECTION Body parameters
+
+`body (json,required)`
+
+!SUBSECTION Description
+
+The body must be an object with the following properties:
+
+* clusterPlan: is a cluster plan (see JSF_cluster_planner_POST),
+* myname: is the ID of this dispatcher, this is used to decide which commands are executed locally and which are forwarded to other dispatchers
+* action: can be one of the following:
+
+* "launch": the cluster is launched for the first time, all data directories and log files are cleaned and created
+* "shutdown": the cluster is shut down, the additional property runInfo (see below) must be bound as well
+* "relaunch": the cluster is launched again, all data directories and log files are untouched and need to be there already
+* "cleanup": use this after a shutdown to remove all data in the data directories and all log files, use with caution
+* "isHealthy": checks whether or not the processes involved in the cluster are running or not. The additional property runInfo (see above) must be bound as well
+* "upgrade": performs an upgrade of a cluster, to this end, the agency is started, and then every server is once started with the "&ndash;upgrade" option, and then normally. Finally, the script "verion-check.js" is run on one of the coordinators for the cluster.
+* `runInfo": this is needed for the "shutdown" and "isHealthy" actions only and should be the structure that "launch", "relaunch" or "upgrade" returned. It contains runtime information like process IDs.
+
+This call executes the plan by either doing the work personally or by delegating to other dispatchers.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when everything went well.
+
+`HTTP 400`
+
+the posted body was not valid JSON, or something went wrong with the startup.
+
+`GET /_admin/clusterCheckPort`*(check whether a given port is usable)*
+
+!SUBSECTION Query parameters
+
+`port (integer,required)`
+
+!SUBSECTION Description
+
+Checks whether the requested port is usable.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when everything went well.
+
+`HTTP 400`
+
+the parameter port was not given or is no integer.
+
+
+<!--
+@NAVIGATE_HttpSharding
+@EMBEDTOC{HttpShardingTOC}
+
+@anchor HttpShardingClusterTestGET
+@copydetails JSF_cluster_test_GET
+
+@anchor HttpShardingClusterTestPOST
+@copydetails JSF_cluster_test_POST
+
+@anchor HttpShardingClusterTestPUT
+@copydetails JSF_cluster_test_PUT
+
+@anchor HttpShardingClusterTestDELETE
+@copydetails JSF_cluster_test_DELETE
+
+@anchor HttpShardingClusterTestPATCH
+@copydetails JSF_cluster_test_PATCH
+
+@anchor HttpShardingClusterTestHEAD
+@copydetails JSF_cluster_test_HEAD
+
+@anchor HttpShardingClusterPlannerPOST
+@copydetails JSF_cluster_planner_POST
+
+@anchor HttpShardingClusterDispatcherPOST
+@copydetails JSF_cluster_dispatcher_POST
+
+@anchor HttpShardingClusterCheckPortGET
+@copydetails JSF_cluster_check_port_GET
+-->

@@ -42,46 +42,11 @@ To add further edge definitions to the array one must call:
 
 !SUBSUBSECTION Undirected Relation
 
-```js
-graph._undirectedRelationDefinition(relationName, vertexCollections);
-```
-
-Define an undirected relation.
-The *relationName* defines the name of this relation and references to the underlying edge collection.
-The *vertexCollections* is an Array of document collections holding the vertices.
-Relations are allowed in both directions among all collections in *vertexCollections*.
-
-Example Call:
-```js
-> graph._undirectedRelationDefinition("eats", ["Human", "Animal"]);
-{
-  collection: "eats",
-  from: ["Human", "Animal"],
-  to: ["Human", "Animal"]
-}
-```
+<!-- @startDocuBlock JSF_general_graph_undirectedRelationDefinition -->
 
 !SUBSUBSECTION Directed Relation
 
-```js
-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections);
-```
-
-Define a directed relation.
-The *relationName* defines the name of this relation and references to the underlying edge collection.
-The *fromVertexCollections* is an Array of document collections holding the start vertices.
-The *toVertexCollections* is an Array of document collections holding the target vertices.
-Relations are only allowed in the direction from any collection in *fromVertexCollections* to any collection in *toVertexCollections*.
-
-Example Call:
-```js
-> graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
-{
-  collection: "has_bought",
-  from: ["Customer", "Company"],
-  to: ["Groceries", "Electronics"]
-}
-```
+<!-- @startDocuBlock JSF_general_graph_undirectedRelationDefinition -->
 
 
 !SUBSUBSECTION Complete Example to create a graph
