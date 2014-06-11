@@ -229,7 +229,6 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     TRI_shape_sid_t const* sids = reinterpret_cast<TRI_shape_sid_t const*>(shape_spec + 1);
     TRI_shape_aid_t const* aids = reinterpret_cast<TRI_shape_aid_t const*>(sids + (shape_spec->_fixedEntries + shape_spec->_variableEntries));
     TRI_shape_size_t const* offsets = reinterpret_cast<TRI_shape_size_t const*>(data);
-    char const* base = reinterpret_cast<char const*>(offsets); 
     uint64_t i;
     for (i = 0; res == TRI_ERROR_NO_ERROR && 
                 i < shape_spec->_fixedEntries + shape_spec->_variableEntries;
@@ -244,7 +243,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_variableEntries;
          i++) {
       addShape(sids[i + shape_spec->_fixedEntries],
-               base + offsets[i], offsets[i + 1] - offsets[i]);
+               data + offsets[i], offsets[i + 1] - offsets[i]);
     }
   }
 
