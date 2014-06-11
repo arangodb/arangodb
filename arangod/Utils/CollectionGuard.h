@@ -55,11 +55,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionGuard (TRI_vocbase_t* vocbase,
-                         TRI_voc_cid_t id)
+                         TRI_voc_cid_t id,
+                         bool restoreOriginalStatus = false)
           : _vocbase(vocbase),
-            _collection(nullptr) {
+            _collection(nullptr),
+            _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
+            _restoreOriginalStatus(restoreOriginalStatus) {
   
-          _collection = TRI_UseCollectionByIdVocBase(_vocbase, id);
+          _collection = TRI_UseCollectionByIdVocBase(_vocbase, id, _originalStatus);
 
           if (_collection == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -71,11 +74,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionGuard (TRI_vocbase_t* vocbase,
-                         char const* name)
+                         char const* name,
+                         bool restoreOriginalStatus = false)
           : _vocbase(vocbase),
-            _collection(nullptr) {
+            _collection(nullptr),
+            _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
+            _restoreOriginalStatus(restoreOriginalStatus) {
 
-          _collection = TRI_UseCollectionByNameVocBase(_vocbase, name);
+          _collection = TRI_UseCollectionByNameVocBase(_vocbase, name, _originalStatus);
+          
+          if (_collection == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +95,12 @@ namespace triagens {
         ~CollectionGuard () {
           if (_collection != nullptr) {
             TRI_ReleaseCollectionVocBase(_vocbase, _collection);
+
+            if (_restoreOriginalStatus && 
+                (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING || 
+                 _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
+              TRI_UnloadCollectionVocBase(_vocbase, _collection, false);
+            }
           }
         }
 
@@ -100,6 +116,14 @@ namespace triagens {
 
         inline TRI_vocbase_col_t* collection () const {
           return _collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the status of the collection at the time of using the guard
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_vocbase_col_status_e originalStatus () const {
+          return _originalStatus;
         }
 
 // -----------------------------------------------------------------------------
@@ -119,6 +143,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_col_t* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status of collection when invoking the guard
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_col_status_e _originalStatus;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to restore the original collection status
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _restoreOriginalStatus;
 
     };
   }

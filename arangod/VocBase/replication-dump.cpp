@@ -999,8 +999,9 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   TRI_vocbase_col_t* col;
   TRI_barrier_t* b;
   int res;
-
-  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+ 
+  TRI_vocbase_col_status_e status;
+  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION, status);
 
   if (col == NULL || col->_collection == NULL) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

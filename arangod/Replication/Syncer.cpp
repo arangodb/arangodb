@@ -506,12 +506,14 @@ int Syncer::createIndex (TRI_json_t const* json) {
   TRI_vocbase_col_t* col = 0;
 
   if (! cname.empty()) {
-    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str());
+    TRI_vocbase_col_status_e status;
+    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str(), status);
   }
 
   if (col == 0) {
     TRI_voc_cid_t cid = getCid(json);
-    col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+    TRI_vocbase_col_status_e status;
+    col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
   }
 
   if (col == 0 || col->_collection == 0) {
@@ -553,12 +555,14 @@ int Syncer::dropIndex (TRI_json_t const* json) {
   TRI_vocbase_col_t* col = 0;
 
   if (! cname.empty()) {
-    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str());
+    TRI_vocbase_col_status_e status;
+    col = TRI_UseCollectionByNameVocBase(_vocbase, cname.c_str(), status);
   }
 
   if (col == 0) {
     TRI_voc_cid_t cid = getCid(json);
-    col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+    TRI_vocbase_col_status_e status;
+    col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
   }
 
   if (col == 0 || col->_collection == 0) {

@@ -544,7 +544,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UseCollectionVocBase (TRI_vocbase_t*, 
-                              TRI_vocbase_col_t*);
+                              TRI_vocbase_col_t*,
+                              TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by id
@@ -555,7 +556,8 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*, 
-                                                 const TRI_voc_cid_t);
+                                                 TRI_voc_cid_t,
+                                                 TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by name
@@ -566,7 +568,8 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*, 
-                                                   char const*);
+                                                   char const*,
+                                                   TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a (document) collection from usage
