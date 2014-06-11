@@ -48,6 +48,7 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-shaper.h"
+#include "VocBase/barrier.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -97,6 +98,19 @@ void const* TRI_doc_mptr_copy_t::getDataPtr () const {
 void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
   TransactionBase::assertSomeTrxInScope();
   _dataptr = d;
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the shaper
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+TRI_shaper_t* TRI_document_collection_t::getShaper () const {
+  //if (! TRI_ContainsBarrierList(&_barrierList, TRI_BARRIER_ELEMENT)) {
+  //  TransactionBase::assertSomeTrxInScope();
+  //}
+  return _shaper;
 }
 #endif
 
@@ -2455,7 +2469,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   try {
     document = new TRI_document_collection_t();
   }
-  catch (std::exception e) {
+  catch (std::exception& e) {
     document = nullptr;
   }
 
@@ -2471,7 +2485,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (collection == nullptr) {
     TRI_FreeKeyGenerator(keyGenerator);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+    delete document;
     LOG_ERROR("cannot create document collection");
 
     return nullptr;
@@ -2484,8 +2498,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection); // will free document
-
+    TRI_DestroyCollection(collection);
+    delete document;
     return nullptr;
   }
 
@@ -2496,8 +2510,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
     TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection); // will free document
-
+    TRI_DestroyCollection(collection);
+    delete document;
     return nullptr;
   }
 
@@ -2513,8 +2527,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
               TRI_last_error());
 
     TRI_CloseCollection(collection);
-    TRI_FreeCollection(collection); // will free document
-
+    TRI_DestroyCollection(collection);
+    delete document;
     return nullptr;
   }
 
@@ -2992,7 +3006,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   try {
     document = new TRI_document_collection_t();
   }
-  catch (std::exception e) {
+  catch (std::exception& e) {
     document = nullptr;
   }
 
@@ -3003,7 +3017,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   collection = TRI_OpenCollection(vocbase, document, path);
 
   if (collection == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+    delete document;
     LOG_ERROR("cannot open document collection from path '%s'", path);
 
     return nullptr;
