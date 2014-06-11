@@ -158,7 +158,7 @@ static int CmpElmElm (void* sli,
   }
   
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->_shaper;
+  shaper = skiplistindex->_collection->getShaper();
   int compareResult;
   
   for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
@@ -213,7 +213,7 @@ static int CmpKeyElm (void* sli,
   TRI_ASSERT(nullptr != right);
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->_shaper;
+  shaper = skiplistindex->_collection->getShaper();
   
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to

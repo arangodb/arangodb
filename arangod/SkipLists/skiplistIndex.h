@@ -41,7 +41,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        skiplistIndex public types
@@ -51,7 +51,7 @@ typedef struct {
   TRI_skiplist_t* skiplist;
   bool unique;
   bool sparse;
-  struct TRI_document_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
   size_t _numFields;
 } 
 SkiplistIndex;
@@ -135,7 +135,7 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_s*,
+SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool, bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, 

@@ -417,17 +417,23 @@ TRI_doc_collection_info_t;
 /// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_document_collection_s {
-  TRI_collection_t             base;
-
-  // .............................................................................
+struct TRI_document_collection_t : public TRI_collection_t {
+  // ...........................................................................
   // this lock protects the _primaryIndex plus the _allIndexes
   // and _headers attributes in derived types
-  // .............................................................................
+  // ...........................................................................
 
   TRI_read_write_lock_t        _lock;
 
+private:
   TRI_shaper_t*                _shaper;
+public:
+  TRI_shaper_t* getShaper () {
+    return _shaper;
+  }
+  void setShaper (TRI_shaper_t* s) {
+    _shaper = s;
+  }
   TRI_barrier_list_t           _barrierList;
   TRI_associative_pointer_t    _datafileInfo;
 
@@ -444,9 +450,9 @@ typedef struct TRI_document_collection_s {
   TRI_read_write_lock_t        _compactionLock;
   double                       _lastCompaction;
 
-  // .............................................................................
+  // ...........................................................................
   // this condition variable protects the _journalsCondition
-  // .............................................................................
+  // ...........................................................................
 
   TRI_condition_t          _journalsCondition;
 
@@ -456,21 +462,21 @@ typedef struct TRI_document_collection_s {
   // the collection's indexes that support cleanup
   bool                     _cleanupIndexes;
 
-  int (*beginRead) (struct TRI_document_collection_s*);
-  int (*endRead) (struct TRI_document_collection_s*);
+  int (*beginRead) (struct TRI_document_collection_t*);
+  int (*endRead) (struct TRI_document_collection_t*);
 
-  int (*beginWrite) (struct TRI_document_collection_s*);
-  int (*endWrite) (struct TRI_document_collection_s*);
+  int (*beginWrite) (struct TRI_document_collection_t*);
+  int (*endWrite) (struct TRI_document_collection_t*);
   
-  int (*beginReadTimed) (struct TRI_document_collection_s*, uint64_t, uint64_t);
-  int (*beginWriteTimed) (struct TRI_document_collection_s*, uint64_t, uint64_t);
+  int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
+  int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  void (*dump) (struct TRI_document_collection_s*);
+  void (*dump) (struct TRI_document_collection_t*);
 #endif 
  
-  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_s* collection);
-  TRI_voc_size_t (*size) (struct TRI_document_collection_s* collection);
+  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
+  TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
 
   
   // WAL-based CRUD methods
@@ -480,9 +486,14 @@ typedef struct TRI_document_collection_s {
   int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_copy_t*, bool);
 
   // function that is called to garbage-collect the collection's indexes
-  int (*cleanupIndexes)(struct TRI_document_collection_s*);
-}
-TRI_document_collection_t;
+  int (*cleanupIndexes)(struct TRI_document_collection_t*);
+
+  TRI_document_collection_t () {
+  }
+
+  ~TRI_document_collection_t () {
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions

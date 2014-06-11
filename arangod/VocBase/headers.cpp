@@ -339,8 +339,20 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
     size_t blockSize = GetBlockSize(headers->_blocks._length);
     TRI_ASSERT(blockSize > 0);
 
-    TRI_doc_mptr_t* begin = new TRI_doc_mptr_t[blockSize];
+    TRI_doc_mptr_t* begin;
+    try {
+      begin = new TRI_doc_mptr_t[blockSize];
+    }
+    catch (std::exception e) {
+      begin = nullptr;
+    }
 
+    // out of memory
+    if (begin == nullptr) {
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return nullptr;
+    }
+    
     TRI_doc_mptr_t* ptr = begin + (blockSize - 1);
 
     header = nullptr;

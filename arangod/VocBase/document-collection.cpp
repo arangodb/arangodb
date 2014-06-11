@@ -201,7 +201,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   TRI_df_marker_t* position;
   int res;
 
-  collection = &document->base;
+  collection = document;
 
   if (collection->_info._isVolatile) {
     // in-memory collection
@@ -292,7 +292,7 @@ static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
   TRI_vector_pointer_t* vector;
   int res;
 
-  collection = &document->base;
+  collection = document;
 
   // either use a journal or a compactor
   if (compactor) {
@@ -387,7 +387,7 @@ static TRI_voc_size_t Count (TRI_document_collection_t* document) {
 static inline void SetRevision (TRI_document_collection_t* document,
                                 TRI_voc_rid_t rid,
                                 bool force) {
-  TRI_col_info_t* info = &document->base._info;
+  TRI_col_info_t* info = &document->_info;
 
   if (force || rid > info->_revision) {
     info->_revision = rid;
@@ -601,7 +601,7 @@ static void SetIndexCleanupFlag (TRI_document_collection_t* document,
   document->_cleanupIndexes = value;
 
   LOG_DEBUG("setting cleanup indexes flag for collection '%s' to %d",
-             document->base._info._name,
+             document->_info._name,
              (int) value);
 }
 
@@ -617,7 +617,7 @@ static int AddIndex (TRI_document_collection_t* document,
 
   LOG_DEBUG("adding index of type %s for collection '%s'",
             TRI_TypeNameIndex(idx->_type),
-            document->base._info._name);
+            document->_info._name);
 
   int res = TRI_PushBackVectorPointer(&document->_allIndexes, idx);
 
@@ -819,7 +819,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
 
   // construct a legend for the shaped json
-  triagens::basics::JsonLegend legend(document->_shaper);
+  triagens::basics::JsonLegend legend(document->getShaper());
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -832,8 +832,8 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     // document
     TRI_ASSERT(edge == nullptr);
 
-    marker = new triagens::wal::DocumentMarker(document->base._vocbase->_id,
-                                               document->base._info._cid,
+    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
+                                               document->_info._cid,
                                                rid,
                                                trxCollection->_transaction->_id,
                                                keyString,
@@ -844,8 +844,8 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
     // edge
     TRI_ASSERT(edge != nullptr);
 
-    marker = new triagens::wal::EdgeMarker(document->base._vocbase->_id,
-                                           document->base._info._cid,
+    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
+                                           document->_info._cid,
                                            rid,
                                            trxCollection->_transaction->_id,
                                            keyString,
@@ -1041,7 +1041,7 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
   // create legend  
-  triagens::basics::JsonLegend legend(document->_shaper);
+  triagens::basics::JsonLegend legend(document->getShaper());
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1067,8 +1067,8 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
       // create a WAL document marker
     
       marker = triagens::wal::DocumentMarker::clone(original,
-                                                    document->base._vocbase->_id,
-                                                    document->base._info._cid,
+                                                    document->_vocbase->_id,
+                                                    document->_info._cid,
                                                     rid,
                                                     trxCollection->_transaction->_id,
                                                     legend,
@@ -1079,8 +1079,8 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
       // create a WAL edge marker
 
       marker = triagens::wal::EdgeMarker::clone(original,
-                                                document->base._vocbase->_id,
-                                                document->base._info._cid,
+                                                document->_vocbase->_id,
+                                                document->_info._cid,
                                                 rid,
                                                 trxCollection->_transaction->_id,
                                                 legend,
@@ -1122,8 +1122,8 @@ static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection
  
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->base._vocbase->_id,
-                                                                  document->base._info._cid,
+  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
+                                                                  document->_info._cid,
                                                                   rid,
                                                                   trxCollection->_transaction->_id,
                                                                   std::string(key));
@@ -1826,7 +1826,7 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
                                           TRI_datafile_t* datafile,
                                           open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
-  int res = TRI_InsertShapeVocShaper(document->_shaper, marker);
+  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker);
   
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -1852,7 +1852,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
                                               open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertAttributeVocShaper(document->_shaper, marker); 
+  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker); 
 
   if (res == TRI_ERROR_NO_ERROR) { 
     if (state->_fid != datafile->_fid) {
@@ -2044,8 +2044,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
   }
 
   TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
-  if (document->base._tickMax < tick) {
-    document->base._tickMax = tick;
+  if (document->_tickMax < tick) {
+    document->_tickMax = tick;
   }
 
 
@@ -2147,7 +2147,7 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
   }
 
   // add the file sizes for datafiles and journals
-  TRI_collection_t* base = &document->base;
+  TRI_collection_t* base = document;
 
   for (size_t i = 0; i < base->_datafiles._length; ++i) {
     TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
@@ -2196,7 +2196,7 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 
 static int InitBaseDocumentCollection (TRI_document_collection_t* document,
                                        TRI_shaper_t* shaper) {
-  document->_shaper             = shaper;
+  document->setShaper(shaper);
   document->_capConstraint      = nullptr;
   document->_keyGenerator       = nullptr;
   document->_numberDocuments    = 0;
@@ -2246,8 +2246,8 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
   TRI_DestroyPrimaryIndex(&document->_primaryIndex);
 
-  if (document->_shaper != nullptr) {
-    TRI_FreeVocShaper(document->_shaper);
+  if (document->getShaper() != nullptr) {
+    TRI_FreeVocShaper(document->getShaper());
   }
   
   size_t const n = document->_datafileInfo._nrAlloc;
@@ -2264,7 +2264,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   
   TRI_DestroyBarrierList(&document->_barrierList);
 
-  TRI_DestroyCollection(&document->base);
+  TRI_DestroyCollection(document);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2281,7 +2281,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   int res = InitBaseDocumentCollection(document, shaper);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyCollection(&document->base);
+    TRI_DestroyCollection(document);
     TRI_set_errno(res);
 
     return false;
@@ -2327,10 +2327,10 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   }
 
   // create edges index
-  if (document->base._info._type == TRI_COL_TYPE_EDGE) {
+  if (document->_info._type == TRI_COL_TYPE_EDGE) {
     TRI_index_t* edgesIndex;
 
-    edgesIndex = TRI_CreateEdgeIndex(document, document->base._info._cid);
+    edgesIndex = TRI_CreateEdgeIndex(document, document->_info._cid);
 
     if (edgesIndex == nullptr) {
       TRI_FreeIndex(primaryIndex);
@@ -2452,7 +2452,12 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
 
   // first create the document collection
-  document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
+  try {
+    document = new TRI_document_collection_t();
+  }
+  catch (std::exception e) {
+    document = nullptr;
+  }
 
   if (document == nullptr) {
     TRI_FreeKeyGenerator(keyGenerator);
@@ -2462,7 +2467,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  collection = TRI_CreateCollection(vocbase, &document->base, path, parameter);
+  collection = TRI_CreateCollection(vocbase, document, path, parameter);
 
   if (collection == nullptr) {
     TRI_FreeKeyGenerator(keyGenerator);
@@ -2513,7 +2518,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->_shaper != nullptr);
+  TRI_ASSERT(document->getShaper() != nullptr);
 
   return document;
 }
@@ -2553,7 +2558,7 @@ void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
 
 void TRI_FreeDocumentCollection (TRI_document_collection_t* document) {
   TRI_DestroyDocumentCollection(document);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
+  delete document;
 }
 
 // -----------------------------------------------------------------------------
@@ -2615,7 +2620,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
   TRI_voc_fid_t fid;
   int res;
 
-  collection = &document->base;
+  collection = document;
 
   fid = (TRI_voc_fid_t) TRI_NewTickServer();
 
@@ -2983,13 +2988,19 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   char const* path = col->_path;
 
   // first open the document collection
-  TRI_document_collection_t* document = static_cast<TRI_document_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_document_collection_t), false));
+  TRI_document_collection_t* document;
+  try {
+    document = new TRI_document_collection_t();
+  }
+  catch (std::exception e) {
+    document = nullptr;
+  }
 
   if (document == nullptr) {
     return nullptr;
   }
  
-  collection = TRI_OpenCollection(vocbase, &document->base, path);
+  collection = TRI_OpenCollection(vocbase, document, path);
 
   if (collection == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, document);
@@ -3052,9 +3063,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->_shaper != nullptr);
+  TRI_ASSERT(document->getShaper() != nullptr);
 
-  TRI_InitVocShaper(document->_shaper);
+  TRI_InitVocShaper(document->getShaper());
 
   // fill internal indexes (this is, the edges index at the moment) 
   FillInternalIndexes(document);
@@ -3071,10 +3082,10 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
 int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   // closes all open compactors, journals, datafiles
-  int res = TRI_CloseCollection(&document->base);
+  int res = TRI_CloseCollection(document);
 
-  TRI_FreeVocShaper(document->_shaper);
-  document->_shaper = nullptr;
+  TRI_FreeVocShaper(document->getShaper());
+  document->setShaper(nullptr);
 
   return res;
 }
@@ -3232,7 +3243,7 @@ static bool DropIndex (TRI_document_collection_t* document,
 
   TRI_index_t* found = nullptr;
   
-  TRI_vocbase_t* vocbase = document->base._vocbase;
+  TRI_vocbase_t* vocbase = document->_vocbase;
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
   // .............................................................................
@@ -3281,8 +3292,8 @@ static bool DropIndex (TRI_document_collection_t* document,
 
       // it is safe to use _name as we hold a read-lock on the collection status
       TRI_LogDropIndexReplication(vocbase,
-                                  document->base._info._cid, 
-                                  document->base._info._name, 
+                                  document->_info._cid, 
+                                  document->_info._name, 
                                   iid,
                                   generatingServer);
     }
@@ -3327,7 +3338,7 @@ static int FillIndex (TRI_document_collection_t* document,
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("failed to insert document '%llu/%s' for index %llu",
-                    (unsigned long long) document->base._info._cid,
+                    (unsigned long long) document->_info._cid,
                     (char*) TRI_EXTRACT_MARKER_KEY(mptr),  // ONLY IN INDEX
                     (unsigned long long) idx->_iid);
   
@@ -3340,7 +3351,7 @@ static int FillIndex (TRI_document_collection_t* document,
 
         LOG_TRACE("indexed %llu documents of collection %llu", 
                  (unsigned long long) (LoopSize * loops),
-                 (unsigned long long) document->base._info._cid);
+                 (unsigned long long) document->_info._cid);
       }
     }
   }
@@ -3727,7 +3738,7 @@ void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t* document
     SetRevision(document, rid, force);
   }
 
-  if (! document->base._info._isVolatile) {
+  if (! document->_info._isVolatile) {
     // only count logfileEntries if the collection is durable
     document->_uncollectedLogfileEntries += logfileEntries;
   }
@@ -4051,7 +4062,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   // inside write-lock
   // .............................................................................
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
@@ -4073,7 +4084,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -4111,7 +4122,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   loc = 0;
   idx = NULL;
 
-  shaper = document->_shaper;
+  shaper = document->getShaper();
 
   if (location != NULL) {
     loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
@@ -4365,7 +4376,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
 
-  shaper = document->_shaper;
+  shaper = document->getShaper();
     
   loc = shaper->lookupAttributePathByName(shaper, location);
 
@@ -4408,7 +4419,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
   
-  shaper = document->_shaper;
+  shaper = document->getShaper();
   
   lat = shaper->lookupAttributePathByName(shaper, latitude);
   lon = shaper->lookupAttributePathByName(shaper, longitude);
@@ -4456,7 +4467,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock
@@ -4482,7 +4493,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -4501,7 +4512,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock
@@ -4527,7 +4538,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -4558,7 +4569,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  true,
@@ -4666,7 +4677,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  true, 
@@ -4697,7 +4708,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock
@@ -4724,7 +4735,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -4752,7 +4763,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -4854,7 +4865,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 
   // determine the unsorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -4885,7 +4896,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock the collection
@@ -4911,7 +4922,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -5137,7 +5148,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
                                                         TRI_server_id_t generatingServer) {
   TRI_index_t* idx;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock the collection
@@ -5163,7 +5174,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   return idx;
 }
@@ -5194,7 +5205,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -5328,7 +5339,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // ...........................................................................
 
   result = PidNamesByAttributeNames(attributes, 
-                                    document->_shaper,
+                                    document->getShaper(),
                                     &paths, 
                                     &fields, 
                                     false,
@@ -5368,7 +5379,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   *errorCode = TRI_ERROR_NO_ERROR;
   *errorStr  = NULL;
 
-  TRI_ReadLockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // inside write-lock the collection
@@ -5401,7 +5412,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   // outside write-lock
   // .............................................................................
 
-  TRI_ReadUnlockReadWriteLock(&document->base._vocbase->_inventoryLock);
+  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
   // Index already exists so simply return it
@@ -5488,7 +5499,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;

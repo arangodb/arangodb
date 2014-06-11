@@ -1032,7 +1032,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   v8::Handle<v8::Object> err;
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1233,7 +1233,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   // .............................................................................
   // Create the json object result which stores documents located
@@ -1840,7 +1840,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   v8::Handle<v8::Object> example = argv[0]->ToObject();
 
@@ -1988,7 +1988,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
   TRI_index_search_value_t searchValue;
   
   TRI_document_collection_t* document = trx.documentCollection();
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2191,7 +2191,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
 
-    TRI_StringifyArrayShapedJson(document->_shaper, &helper->_buffer, &shaped, false);
+    TRI_StringifyArrayShapedJson(document->getShaper(), &helper->_buffer, &shaped, false);
     localCrc += TRI_Crc32HashPointer(TRI_BeginStringBuffer(&helper->_buffer), TRI_LengthStringBuffer(&helper->_buffer));
     TRI_ResetStringBuffer(&helper->_buffer);
   }
@@ -2269,7 +2269,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   trx.lockRead();
   // get last tick
-  const string rid = StringUtils::itoa(document->base._info._revision);
+  const string rid = StringUtils::itoa(document->_info._revision);
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);

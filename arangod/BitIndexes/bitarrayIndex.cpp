@@ -1016,7 +1016,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // and what values the document has sent.
   // ...........................................................................
 
-  shaper      = ((TRI_document_collection_t*) (element->collection))->_shaper;
+  shaper = ((TRI_document_collection_t*) (element->collection))->getShaper();
   mask->_mask = 0;
   shiftLeft   = 0;
 

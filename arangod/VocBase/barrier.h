@@ -36,8 +36,8 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_document_collection_s;
-struct TRI_collection_s;
+struct TRI_document_collection_t;
+struct TRI_collection_t;
 struct TRI_datafile_s;
 
 // -----------------------------------------------------------------------------
@@ -140,9 +140,9 @@ TRI_barrier_datafile_rename_cb_t;
 typedef struct TRI_barrier_collection_cb_s {
   TRI_barrier_t base;
 
-  struct TRI_collection_s* _collection;
+  struct TRI_collection_t* _collection;
   void* _data;
-  bool (*callback) (struct TRI_collection_s*, void*);
+  bool (*callback) (struct TRI_collection_t*, void*);
 }
 TRI_barrier_collection_cb_t;
 
@@ -151,7 +151,7 @@ TRI_barrier_collection_cb_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_barrier_list_s {
-  struct TRI_document_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
 
   TRI_spin_t _lock;
 
@@ -171,7 +171,7 @@ TRI_barrier_list_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitBarrierList (TRI_barrier_list_t* container, 
-                          struct TRI_document_collection_s* collection);
+                          struct TRI_document_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a barrier list
@@ -231,8 +231,8 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
-                                                  struct TRI_collection_s* collection,
-                                                  bool (*callback) (struct TRI_collection_s*, void*),
+                                                  struct TRI_collection_t* collection,
+                                                  bool (*callback) (struct TRI_collection_t*, void*),
                                                   void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,8 +240,8 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
-                                                struct TRI_collection_s* collection,
-                                                bool (*callback) (struct TRI_collection_s*, void*),
+                                                struct TRI_collection_t* collection,
+                                                bool (*callback) (struct TRI_collection_t*, void*),
                                                 void* data);
 
 ////////////////////////////////////////////////////////////////////////////////

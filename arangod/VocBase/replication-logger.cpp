@@ -245,7 +245,7 @@ static size_t BufferSize = 256;
 static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type,
                                                                TRI_document_collection_t const* document) {
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT || type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    const bool isEdgeCollection = (document->base._info._type == TRI_COL_TYPE_EDGE);
+    const bool isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
 
     return isEdgeCollection ? MARKER_EDGE : MARKER_DOCUMENT;
   }
@@ -508,8 +508,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
   lock = isStandaloneOperation;
   
   TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
-  zone = document->_shaper->_memoryZone;
-  shaped = TRI_ShapedJsonJson(document->_shaper, &json, true, ! lock);
+  zone = document->getShaper()->_memoryZone;
+  shaped = TRI_ShapedJsonJson(document->getShaper(), &json, true, ! lock);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
   ReturnBuffer(logger, buffer);
@@ -753,7 +753,7 @@ static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
   APPEND_CHAR(buffer, '{');
   
   if (withCid) {
-    if (! StringifyCollection(buffer, document->base._info._cid, document->base._info._name)) {
+    if (! StringifyCollection(buffer, document->_info._cid, document->_info._name)) {
       return false;
     }
     APPEND_CHAR(buffer, ',');
@@ -826,7 +826,7 @@ static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->_shaper, buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);
 
     APPEND_STRING(buffer, "}}");
   }
@@ -878,10 +878,10 @@ static bool StringifyMetaTransaction (TRI_string_buffer_t* buffer,
     }
   
     APPEND_STRING(buffer, "{\"cid\":\"");
-    APPEND_UINT64(buffer, (uint64_t) document->base._info._cid);
+    APPEND_UINT64(buffer, (uint64_t) document->_info._cid);
     APPEND_STRING(buffer, "\",\"name\":\"");
     // no escaping needed for collection name
-    APPEND_STRING(buffer, document->base._info._name);
+    APPEND_STRING(buffer, document->_info._name);
     APPEND_STRING(buffer, "\",\"operations\":");
     APPEND_UINT64(buffer, (uint64_t) trxCollection->_operations->size());
     APPEND_CHAR(buffer, '}');
@@ -1104,7 +1104,7 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
 
   TRI_document_collection_t* document = col->_collection;
 
-  dst->_lastLogTick  = document->base._info._revision;
+  dst->_lastLogTick  = document->_info._revision;
   dst->_totalEvents  = 0;
   dst->_active       = false;
 
@@ -2184,7 +2184,7 @@ int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
   char* name;
   int res;
 
-  name = document->base._info._name;
+  name = document->_info._name;
   
   if (TRI_ExcludeCollectionReplication(name)) {
     return TRI_ERROR_NO_ERROR;

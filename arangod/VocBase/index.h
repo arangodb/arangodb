@@ -48,10 +48,10 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_collection_s;
+struct TRI_collection_t;
 struct TRI_doc_mptr_t;
 struct TRI_shaped_json_s;
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 struct TRI_transaction_collection_s;
 
 // -----------------------------------------------------------------------------
@@ -96,7 +96,7 @@ TRI_index_geo_variant_e;
 typedef struct TRI_index_s {
   TRI_idx_iid_t   _iid;
   TRI_idx_type_e  _type;
-  struct TRI_document_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
 
   TRI_vector_string_t _fields;
   bool _unique;
@@ -104,7 +104,7 @@ typedef struct TRI_index_s {
 
   size_t (*memory) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s const*);
-  void (*removeIndex) (struct TRI_index_s*, struct TRI_document_collection_s*);
+  void (*removeIndex) (struct TRI_index_s*, struct TRI_document_collection_t*);
   
   // .........................................................................................
   // the following functions are called for document/collection administration
@@ -272,7 +272,7 @@ TRI_index_search_value_t;
 void TRI_InitIndex (TRI_index_t*,
                     TRI_idx_iid_t, 
                     TRI_idx_type_e, 
-                    struct TRI_document_collection_s*,
+                    struct TRI_document_collection_t*,
                     bool);
 
 // -----------------------------------------------------------------------------
@@ -320,14 +320,14 @@ void TRI_FreeIndex (TRI_index_t*);
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (struct TRI_document_collection_s*, 
+bool TRI_RemoveIndexFile (struct TRI_document_collection_t*, 
                           TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (struct TRI_document_collection_s*, 
+int TRI_SaveIndex (struct TRI_document_collection_t*, 
                    TRI_index_t*,
                    TRI_server_id_t);
 
@@ -335,7 +335,7 @@ int TRI_SaveIndex (struct TRI_document_collection_s*,
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_s*, 
+TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_t*, 
                               TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +385,7 @@ char const** TRI_FieldListByPathList (TRI_shaper_t const*,
 /// @brief create the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_document_collection_s*);
+TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a primary index
@@ -401,7 +401,7 @@ void TRI_FreePrimaryIndex (TRI_index_t*);
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_document_collection_s*,
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +431,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_document_collection_s*,
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
@@ -464,7 +464,7 @@ struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*,
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_document_collection_s*,
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       const char*,
                                       const bool,
@@ -503,7 +503,7 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_document_collection_s*,
+  TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,

@@ -60,7 +60,7 @@
 /// @brief creates a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateCapConstraint (struct TRI_document_collection_s*,
+TRI_index_t* TRI_CreateCapConstraint (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       size_t,
                                       int64_t);
