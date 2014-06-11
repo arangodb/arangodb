@@ -534,7 +534,7 @@ int LogfileManager::flush () {
     return slotInfo.errorCode;
   }
   
-  finalise(slotInfo, true);
+  _slots->returnUsed(slotInfo, true);
   
   return TRI_ERROR_NO_ERROR;
 }

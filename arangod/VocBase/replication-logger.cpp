@@ -1092,8 +1092,9 @@ static int GetStateInactive (TRI_replication_logger_t* logger,
     dst->_active       = false;
     return TRI_ERROR_NO_ERROR;
   }
- 
-  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+
+  TRI_vocbase_col_status_e status; 
+  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION, status);
 
   if (col == NULL || col->_collection == NULL) {
     LOG_ERROR("could not open collection '" TRI_COL_NAME_REPLICATION "'");

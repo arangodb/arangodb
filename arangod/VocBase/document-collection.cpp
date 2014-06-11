@@ -3033,13 +3033,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT(keyGenerator != nullptr);
   document->_keyGenerator = keyGenerator;
 
-  {
-    // create a fake transaction for loading the collection
-    TransactionBase trx(true);
+  // create a fake transaction for loading the collection
+  TransactionBase trx(true);
 
-    // iterate over all markers of the collection
-    res = IterateMarkersCollection(collection);
-  }
+  // iterate over all markers of the collection
+  res = IterateMarkersCollection(collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (document->_failedTransactions != nullptr) {
@@ -3745,7 +3743,6 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document
   int64_t uncollected = document->_uncollectedLogfileEntries;
   
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
   return (uncollected == 0);
 }
 

@@ -403,8 +403,9 @@ static int UseCollections (TRI_transaction_t* trx,
       // open the collection
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
         // use and usage-lock
+        TRI_vocbase_col_status_e status;
         LOG_TRX(trx, nestingLevel, "using collection %llu", (unsigned long long) trxCollection->_cid);
-        trxCollection->_collection = TRI_UseCollectionByIdVocBase(trx->_vocbase, trxCollection->_cid);
+        trxCollection->_collection = TRI_UseCollectionByIdVocBase(trx->_vocbase, trxCollection->_cid, status);
       }
       else {
         // use without usage-lock (lock already set externally)
