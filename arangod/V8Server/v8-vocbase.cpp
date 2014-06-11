@@ -54,6 +54,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
+#include "Wal/LogfileManager.h"
 #include "VocBase/auth.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
@@ -3765,6 +3766,22 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
   }
   
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush the currently open WAL logfile
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Flush (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  int res = triagens::wal::LogfileManager::instance()->flush();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10484,6 +10501,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "LIST_ENDPOINTS", JS_ListEndpoints, true);
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
+  TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_Flush, true);
 
   // .............................................................................
   // create global variables

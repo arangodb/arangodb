@@ -251,9 +251,17 @@ namespace triagens {
 /// this is a convenience function that combines allocate, memcpy and finalise
 ////////////////////////////////////////////////////////////////////////////////
 
-        StandaloneSlotInfo allocateAndWrite (void*,
-                                             uint32_t,
-                                             bool);
+        SlotInfoCopy allocateAndWrite (void*,
+                                       uint32_t,
+                                       bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalise and seal the currently open logfile
+/// this is useful to ensure that any open writes up to this point have made
+/// it into a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        int flush ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief re-inserts a logfile back into the inventory only

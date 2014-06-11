@@ -121,6 +121,8 @@ Slot::TickType Slots::lastCommittedTick () {
 SlotInfo Slots::nextUnused (uint32_t size) {
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
+  // a size of 0 indicates a logfile flush request
+  bool isFlushRequest = (size == 0);
   
   bool hasWaited = false;
 
@@ -145,9 +147,15 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
         // cycle until we have a valid logfile
         while (_logfile == nullptr ||
+               isFlushRequest ||
                _logfile->freeSize() < static_cast<uint64_t>(alignedSize)) {
 
           if (_logfile != nullptr) {
+            if (isFlushRequest && _logfile->status() == Logfile::StatusType::EMPTY) {
+              // an empty logfile does not need to be flushed
+              return SlotInfo(TRI_ERROR_ARANGO_DATAFILE_EMPTY);
+            }
+
             // seal existing logfile by creating a footer marker
             int res = writeFooter(slot);
 
@@ -156,6 +164,9 @@ SlotInfo Slots::nextUnused (uint32_t size) {
             }
 
             _logfileManager->setLogfileSealRequested(_logfile);
+
+            // if this variable isn't reset, we'll spin forever in this loop
+            isFlushRequest = false;
 
             // advance to next slot 
             slot = _slots[_handoutIndex];
@@ -167,7 +178,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
           if (_logfile == nullptr) {
             LOG_WARNING("unable to acquire writeable wal logfile!");
-            usleep(1000);
+            usleep(10 * 1000);
           }
           else if (status == Logfile::StatusType::EMPTY) {
             // inititialise the empty logfile by writing a header marker
@@ -216,7 +227,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
     }
     
     if (mustWait) {
-      guard.wait(100000000);
+      guard.wait(10 * 1000);
     }
   }
 }
