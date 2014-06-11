@@ -23,7 +23,13 @@ existing collection named "users" on the server.
 Let's further assume the import at hand is encoded in JSON. We'll be using these
 example user records to import:
 
-@verbinclude arangoimp-data-json
+```
+{ "name" : { "first" : "John", "last" : "Connor" }, "active" : true, "age" : 25, "likes" : [ "swimming"] }
+{ "name" : { "first" : "Jim", "last" : "O'Brady" }, "age" : 19, "likes" : [ "hiking", "singing" ] }
+{ "name" : { "first" : "Lisa", "last" : "Jones" }, "dob" : "1981-04-09", "likes" : [ "running" ] }
+```
+
+<!--@verbinclude arangoimp-data-json-->
 
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
