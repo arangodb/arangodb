@@ -1428,6 +1428,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 var _create = function (graphName, edgeDefinitions) {
 
   var gdb = getGraphCollection(),
+    err,
     g,
     graphAlreadyExists = true,
     collections,
@@ -1451,7 +1452,7 @@ var _create = function (graphName, edgeDefinitions) {
     function(edgeDefinition) {
       var col = edgeDefinition.collection;
       if (tmpCollections.indexOf(col) !== -1) {
-        var err = new ArangoError();
+        err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
         err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
         throw err;
@@ -1468,7 +1469,7 @@ var _create = function (graphName, edgeDefinitions) {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
-              var err = new ArangoError();
+              err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
@@ -1490,7 +1491,10 @@ var _create = function (graphName, edgeDefinitions) {
   }
 
   if (graphAlreadyExists) {
-    throw "graph " + graphName + " already exists.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_DUPLICATE.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_DUPLICATE.message;
+    throw err;
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
@@ -1908,7 +1912,10 @@ var _graph = function(graphName) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
-    throw "graph " + graphName + " does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
+    throw err;
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
@@ -1966,7 +1973,10 @@ var _drop = function(graphId, dropCollections) {
   var gdb = getGraphCollection();
 
   if (!gdb.exists(graphId)) {
-    throw "Graph " + graphId + " does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
+    throw err;
   }
 
   if (dropCollections !== false) {
