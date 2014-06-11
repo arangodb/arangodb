@@ -306,14 +306,20 @@ void LogfileManager::stop () {
   }
 
   _shutdown = 1;
+  
+  LOG_INFO("shutting down WAL");
+ 
+  // set WAL to read-only mode
+  _slots->setReadOnly();
 
   // stop threads
+  LOG_TRACE("stopping allocator thread");
+  stopAllocatorThread();
   
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
-  
-  LOG_TRACE("stopping allocator thread");
-  stopAllocatorThread();
+
+  flush();
   
   LOG_TRACE("stopping synchroniser thread");
   stopSynchroniserThread();
@@ -914,8 +920,11 @@ int LogfileManager::readShutdownInfo () {
   }
 
   // read last assigned tick (may be 0)
-  uint64_t lastTick = basics::JsonHelper::stringUInt64(json, "lastTick");
-  _slots->setLastAssignedTick(static_cast<Slot::TickType>(lastTick));
+  uint64_t lastMarkerTick = basics::JsonHelper::stringUInt64(json, "lastMarkerTick");
+  _slots->setLastAssignedTick(static_cast<Slot::TickType>(lastMarkerTick));
+
+  // TODO
+  //uint64_t lastSystemTick = basics::JsonHelper::stringUInt64(json, "lastSystemTick");
   
   // read id of last collected logfile (maybe 0)
   uint64_t lastCollectedId = basics::JsonHelper::stringUInt64(json, "lastCollected");
@@ -947,13 +956,17 @@ int LogfileManager::writeShutdownInfo () {
   std::string const filename = shutdownFilename();
 
   std::string content;
-  content.append("{\"lastTick\":\"");
+  content.append("{\"lastMarkerTick\":\"");
   content.append(basics::StringUtils::itoa(_slots->lastAssignedTick()));
+  content.append("\",\"lastSystemTick\":\"");
+  content.append(basics::StringUtils::itoa(TRI_CurrentTickServer()));
   content.append("\",\"lastCollected\":\"");
   content.append(basics::StringUtils::itoa(_lastCollectedId));
   content.append("\",\"lastSealed\":\"");
   content.append(basics::StringUtils::itoa(_lastSealedId));
-  content.append("\"}");
+  content.append("\",\"shutdownTime\":");
+  content.append(basics::StringUtils::itoa((uint64_t) TRI_microtime()));
+  content.append("}");
 
   // TODO: spit() doesn't return success/failure. FIXME!
   basics::FileUtils::spit(filename, content);

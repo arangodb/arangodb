@@ -1060,7 +1060,7 @@ void ArangoServer::openDatabases () {
   defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
   defaults.authenticateSystemOnly           = _authenticateSystemOnly;
 
-  TRI_ASSERT(_server != 0);
+  TRI_ASSERT(_server != nullptr);
 
   int res = TRI_InitServer(_server,
                            _applicationEndpointServer,
@@ -1075,7 +1075,7 @@ void ArangoServer::openDatabases () {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  const bool isUpgrade = _applicationServer->programOptions().has("upgrade");
+  bool const isUpgrade = _applicationServer->programOptions().has("upgrade");
   res = TRI_StartServer(_server, isUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1090,12 +1090,13 @@ void ArangoServer::openDatabases () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabases () {
-  TRI_ASSERT(_server != 0);
+  TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
 
-  TRI_StopServer(_server);
+  wal::LogfileManager::instance()->stop();
 
+  TRI_StopServer(_server);
 
   LOG_INFO("ArangoDB has been shut down");
 }

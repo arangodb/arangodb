@@ -233,8 +233,8 @@ std::string Version::getVerboseVersionString () {
           << getServerVersion()
           << " -- "
           << "ICU " << getICUVersion() << ", "
-          << "V8 version " << getV8Version() << ", "
-          << "SSL engine " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", "
+          << getOpenSSLVersion();
 
   return version.str();
 }
