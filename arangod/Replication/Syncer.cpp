@@ -277,7 +277,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
         if (type == MARKER_EDGE) {
           // edge
-          if (document->base._info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -306,7 +306,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
         }
         else {
           // document
-          if (document->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {

@@ -417,13 +417,11 @@ TRI_doc_collection_info_t;
 /// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_document_collection_t {
-  TRI_collection_t             base;
-
-  // .............................................................................
+struct TRI_document_collection_t : public TRI_collection_t {
+  // ...........................................................................
   // this lock protects the _primaryIndex plus the _allIndexes
   // and _headers attributes in derived types
-  // .............................................................................
+  // ...........................................................................
 
   TRI_read_write_lock_t        _lock;
 
@@ -444,9 +442,9 @@ struct TRI_document_collection_t {
   TRI_read_write_lock_t        _compactionLock;
   double                       _lastCompaction;
 
-  // .............................................................................
+  // ...........................................................................
   // this condition variable protects the _journalsCondition
-  // .............................................................................
+  // ...........................................................................
 
   TRI_condition_t          _journalsCondition;
 
@@ -481,6 +479,12 @@ struct TRI_document_collection_t {
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
+
+  TRI_document_collection_t () {
+  }
+
+  ~TRI_document_collection_t () {
+  }
 };
 
 // -----------------------------------------------------------------------------

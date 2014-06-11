@@ -206,6 +206,12 @@ struct TRI_collection_t {
   TRI_vector_pointer_t _journals;    // all journals
   TRI_vector_pointer_t _compactors;  // all compactor files
   TRI_vector_string_t  _indexFiles;  // all index filenames
+
+  TRI_collection_t () {
+  }
+
+  ~TRI_collection_t () {
+  }
 };
 
 // -----------------------------------------------------------------------------

@@ -318,8 +318,8 @@ static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
 
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  IterateDatafiles(&document->base._datafiles, &datafiles, dataMin, dataMax, false);
-  IterateDatafiles(&document->base._journals, &datafiles, dataMin, dataMax, true);
+  IterateDatafiles(&document->_datafiles, &datafiles, dataMin, dataMax, false);
+  IterateDatafiles(&document->_journals, &datafiles, dataMin, dataMax, true);
   
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -607,7 +607,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool ignoreMarkers;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) document->base._info._cid,
+            (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
@@ -805,7 +805,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
   bool bufferFull;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) document->base._info._cid,
+            (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);

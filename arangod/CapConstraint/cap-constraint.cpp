@@ -124,8 +124,8 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     TRI_voc_cid_t cid;
     int res;
 
-    vocbase = document->base._vocbase;
-    cid = document->base._info._cid;
+    vocbase = document->_vocbase;
+    cid = document->_info._cid;
 
     trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), true, 0.0, false);
 

@@ -48,7 +48,7 @@
 
 static TRI_edge_index_t* FindEdgesIndex (
                          TRI_document_collection_t* const document) {
-  if (document->base._info._type == TRI_COL_TYPE_EDGE) {
+  if (document->_info._type == TRI_COL_TYPE_EDGE) {
     size_t const n = document->_allIndexes._length;
 
     for (size_t i = 0; i < n; ++i) {

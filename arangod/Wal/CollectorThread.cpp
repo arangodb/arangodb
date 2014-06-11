@@ -490,13 +490,13 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
   // try to acquire the write lock on the collection
   if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
-    LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->base._info._cid);
+    LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->_info._cid);
 
     return TRI_ERROR_LOCK_TIMEOUT;
   }
     
   // now we have the write lock on the collection
-  LOG_TRACE("wal collector processing operations for collection '%s'", document->base._info._name);
+  LOG_TRACE("wal collector processing operations for collection '%s'", document->_info._name);
 
   for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
     auto operation = (*it);
@@ -582,7 +582,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   }
 
   // finally update all datafile statistics
-  LOG_TRACE("updating datafile statistics for collection '%s'", document->base._info._name);
+  LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
   updateDatafileStatistics(document, cache);
 
   // TODO: the following assertion is only true in a running system
@@ -595,7 +595,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   
-  LOG_TRACE("wal collector successfully processed operations for collection '%s'", document->base._info._name);
+  LOG_TRACE("wal collector successfully processed operations for collection '%s'", document->_info._name);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -732,7 +732,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
-  if (collection->_collection->base._info._isVolatile) {
+  if (collection->_collection->_info._isVolatile) {
     // don't need to collect data for volatile collections
     return TRI_ERROR_NO_ERROR;
   }
@@ -781,7 +781,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
                                              CollectorCache* cache,
                                              OperationsType const& operations) {
 
-  TRI_voc_tick_t const minTransferTick = document->base._tickMax;
+  TRI_voc_tick_t const minTransferTick = document->_tickMax;
  
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
     TRI_df_marker_t const* source = (*it2);
@@ -1039,7 +1039,7 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document) {
-  TRI_collection_t* collection = &document->base;
+  TRI_collection_t* collection = document;
   int res = TRI_ERROR_NO_ERROR;
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
@@ -1088,7 +1088,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
                                                TRI_df_marker_type_e type,
                                                TRI_voc_size_t size,
                                                CollectorCache* cache) {
-  TRI_collection_t* collection = &document->base;
+  TRI_collection_t* collection = document;
   size = TRI_DF_ALIGN_BLOCK(size);
  
   char* dst = nullptr;
@@ -1096,7 +1096,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
   
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   // start with configured journal size
-  TRI_voc_size_t targetSize = document->base._info._maximalSize;
+  TRI_voc_size_t targetSize = document->_info._maximalSize;
 
   while (collection->_state == TRI_COL_STATE_WRITE) {
     size_t const n = collection->_journals._length;
@@ -1195,8 +1195,8 @@ void CollectorThread::finishMarker (char const* walPosition,
   crc = TRI_BlockCrc32(crc, const_cast<char*>(datafilePosition), marker->_size);
   marker->_crc = TRI_FinalCrc32(crc);
 
-  TRI_ASSERT(document->base._tickMax < tick);
-  document->base._tickMax = tick;
+  TRI_ASSERT(document->_tickMax < tick);
+  document->_tickMax = tick;
 
   cache->operations->emplace_back(CollectorOperation(datafilePosition, walPosition, cache->lastFid));
 }

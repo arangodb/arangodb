@@ -597,7 +597,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     return NULL;
   }
 
-  col = &document->base;
+  col = document;
 
   // add collection container
   collection = AddCollection(vocbase,
@@ -626,7 +626,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = document;
   TRI_CopyString(collection->_path,
-                 document->base._directory,
+                 document->_directory,
                  sizeof(collection->_path) - 1);
 
   json = TRI_CreateJsonCollectionInfo(&col->_info);
@@ -725,7 +725,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
            collection->_status == TRI_VOC_COL_STATUS_UNLOADING ||
            collection->_status == TRI_VOC_COL_STATUS_LOADING) {
 
-    res = TRI_RenameCollection(&collection->_collection->base, newName);
+    res = TRI_RenameCollection(collection->_collection, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1115,7 +1115,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
     collection->_collection = document;
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
-    TRI_CopyString(collection->_path, document->base._directory, sizeof(collection->_path) - 1);
+    TRI_CopyString(collection->_path, document->_directory, sizeof(collection->_path) - 1);
 
     // release the WRITE lock and try again
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1969,7 +1969,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // added callback for unload
   TRI_CreateBarrierUnloadCollection(&collection->_collection->_barrierList,
-                                    &collection->_collection->base,
+                                    collection->_collection,
                                     UnloadCollectionCallback,
                                     collection);
 
@@ -2100,9 +2100,9 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
-    collection->_collection->base._info._deleted = true;
+    collection->_collection->_info._deleted = true;
 
-    res = TRI_UpdateCollectionInfo(vocbase, &collection->_collection->base, nullptr);
+    res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2122,7 +2122,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     // added callback for dropping
     TRI_CreateBarrierDropCollection(&collection->_collection->_barrierList,
-                                    &collection->_collection->base,
+                                    collection->_collection,
                                     DropCollectionCallback,
                                     collection);
 

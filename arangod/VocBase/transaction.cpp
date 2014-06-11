@@ -174,7 +174,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
     }
   
     if (mustRollback) { 
-      document->base._info._revision = trxCollection->_originalRevision; 
+      document->_info._revision = trxCollection->_originalRevision; 
     }
 
     delete trxCollection->_operations;
@@ -418,7 +418,7 @@ static int UseCollections (TRI_transaction_t* trx,
       }
 
       // store the waitForSync property
-      trxCollection->_waitForSync = trxCollection->_collection->_collection->base._info._waitForSync;
+      trxCollection->_waitForSync = trxCollection->_collection->_collection->_info._waitForSync;
     }
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
@@ -434,7 +434,7 @@ static int UseCollections (TRI_transaction_t* trx,
   
     if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && trxCollection->_originalRevision == 0) {
       // store original revision at transaction start
-      trxCollection->_originalRevision = trxCollection->_collection->_collection->base._info._revision;
+      trxCollection->_originalRevision = trxCollection->_collection->_collection->_info._revision;
     }
         
     shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);

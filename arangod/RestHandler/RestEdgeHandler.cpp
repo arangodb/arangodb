@@ -250,7 +250,7 @@ bool RestEdgeHandler::createDocument () {
  
   TRI_document_collection_t* primary = trx.documentCollection();
  
-  if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+  if (primary->_info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection    
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
