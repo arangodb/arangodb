@@ -30,11 +30,16 @@
 
 var Controller = require("org/arangodb/foxx/controller").Controller,
   Model = require("org/arangodb/foxx/model").Model,
-  Repository = require("org/arangodb/foxx/repository").Repository;
+  Repository = require("org/arangodb/foxx/repository").Repository,
+  manager = require("org/arangodb/foxx/manager"),
+  arangodb = require("org/arangodb");
 
 exports.Controller = Controller;
 exports.Model = Model;
 exports.Repository = Repository;
+exports.app = function(path) {
+  return manager.mountedApp(arangodb.normalizeURL('/' + path));
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
