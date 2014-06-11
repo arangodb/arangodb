@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* moved try/catch block to the top of routing chain
+
 * added mountedApp function for foxx-manager
 
 * fixed issue #883: arango 2.1 - when starting multi-machine cluster, UI web 
@@ -36,6 +38,7 @@ v2.2.0 (XXXX-XX-XX)
   of attributes was only used in one particular and unlikely case, so it
   was removed. Collections with many different attribute names should 
   benefit from this change by faster inserts and slightly less memory usage.
+
 
 v2.1.1 (2014-06-06)
 -------------------

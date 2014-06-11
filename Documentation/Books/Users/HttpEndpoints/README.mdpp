@@ -1,15 +1,10 @@
 !CHAPTER HTTP Interface for Endpoints 
 
-@NAVIGATE_HttpEndpoint
-@EMBEDTOC{HttpEndpointTOC}
-
-!SUBSECTION Endpoints
-
 The ArangoDB server can listen for incoming requests on multiple *endpoints*.
 
 The endpoints are normally specified either in ArangoDB's configuration file or on
 the command-line, using the @ref CommandLineArangoEndpoint "--server.endpoint" option.
-The default endpoint for ArangoDB is `tcp://127.0.0.1:8529` or `tcp://localhost:8529`.
+The default endpoint for ArangoDB is *tcp://127.0.0.1:8529* or *tcp://localhost:8529*.
 
 The number of endpoints can also be changed at runtime using the API described
 below. Each endpoint can optionally be restricted to a specific list of databases
@@ -24,10 +19,225 @@ optionally restrict them for use with specific databases. The interface also can
 be used to update existing endpoints or remove them at runtime.
 
 Please note that all endpoint management operations can only be accessed via
-the default database (`_system`) and none of the other databases.
+the default database (*_system*) and none of the other databases.
 
 !SECTION Managing Endpoints via HTTP
 
+`POST /_api/endpoint`*(adds a new endpoint or reconfigures an existing endpoint)*
+
+!SUBSECTION Body parameters
+
+`description (json,required)`
+
+A JSON object describing the endpoint.
+
+!SUBSECTION Description
+
+The request body must be JSON hash with the following attributes:
+
+* endpoint: the endpoint specification, e.g. tcp://127.0.0.1:8530
+* databases: a list of database names the endpoint is responsible for.
+
+If databases is an empty list, all databases present in the server will become accessible via the endpoint, with the _system database being the default database.
+
+If databases is non-empty, only the specified databases will become available via the endpoint. The first database name in the databases list will also become the default database for the endpoint. The default database will always be used if a request coming in on the endpoint does not specify the database name explicitly.
+
+*Note*: adding or reconfiguring endpoints is allowed in the system database only. Calling this action in any other database will make the server return an error.
+
+Adding SSL endpoints at runtime is only supported if the server was started with SSL properly configured (e.g. --server.keyfile must have been set).
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the endpoint was added or changed successfully.
+
+`HTTP 400`
+
+is returned if the request is malformed or if the action is not carried out in the system database.
+
+`HTTP 405`
+
+The server will respond with HTTP 405 if an unsupported HTTP method is used.
+
+*Examples*
+
+```
+Adding an endpoint tcp://127.0.0.1:8532 with two mapped databases (mydb1 and mydb2). mydb1 will become the default database for the endpoint.
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8532","databases":["mydb1","mydb2"]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Adding an endpoint tcp://127.0.0.1:8533 with no database names specified. This will allow access to all databases on this endpoint. The _system database will become the default database for requests that come in on this endpoint and do not specify the database name explicitly.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8533","databases":[]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Adding an endpoint tcp://127.0.0.1:8533 without any databases first, and then updating the databases for the endpoint to testdb1, testdb2, and testdb3.
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8533","databases":[]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8533","databases":[],"database":["testdb1","testdb2","testdb3"]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`DELETE /_api/endpoint/{endpoint}`*(deletes and disconnects an existing endpoint)*
+
+!SUBSECTION URL parameters
+
+`endpoint (string,required)`
+
+The endpoint to delete, e.g. tcp://127.0.0.1:8529.
+
+!SUBSECTION Description
+
+This operation deletes an existing endpoint from the list of all endpoints, and makes the server stop listening on the endpoint.
+Note: deleting and disconnecting an endpoint is allowed in the system database only. Calling this action in any other database will make the server return an error.
+
+Furthermore, the last remaining endpoint cannot be deleted as this would destroy the server.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the endpoint was deleted and disconnected successfully.
+
+`HTTP 400`
+
+is returned if the request is malformed or if the action is not carried out in the system database.
+
+`HTTP 404`
+
+is returned if the endpoint is not found.
+
+`HTTP 405`
+
+The server will respond with HTTP 405 if an unsupported HTTP method is used.
+
+*Examples*
+
+Deleting an existing endpoint
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/endpoint/tcp%3A%2F%2F127.0.0.1%3A8532
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+Deleting a non-existing endpoint
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/endpoint/tcp%3A%2F%2F127.0.0.1%3A8532
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1231, 
+  "errorMessage" : "endpoint not found" 
+}
+```
+
+`GET /_api/endpoint`*(returns a list of all endpoints)*
+
+!SUBSECTION Description
+
+Returns a list of all configured endpoints the server is listening on. For each endpoint, the list of allowed databases is returned too if set.
+The result is a JSON hash which has the endpoints as keys, and the list of mapped database names as values for each endpoint.
+
+If a list of mapped databases is empty, it means that all databases can be accessed via the endpoint. If a list of mapped databases contains more than one database name, this means that any of the databases might be accessed via the endpoint, and the first database in the list will be treated as the default database for the endpoint. The default database will be used when an incoming request does not specify a database name in the request explicitly.
+
+*Note*: retrieving the list of all endpoints is allowed in the system database only. Calling this action in any other database will make the server return an error.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the list of endpoints can be determined successfully.
+
+`HTTP 400`
+
+is returned if the action is not carried out in the system database.
+
+`HTTP 405`
+
+The server will respond with HTTP 405 if an unsupported HTTP method is used.
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/endpoint
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ 
+  { 
+    "endpoint" : "tcp://127.0.0.1:31653", 
+    "databases" : [ ] 
+  }, 
+  { 
+    "endpoint" : "tcp://127.0.0.1:8532", 
+    "databases" : [ 
+      "mydb1", 
+      "mydb2" 
+    ] 
+  } 
+]
+```
+
+
+
+<!--
 @anchor HttpEndpointPost
 @copydetails JSF_post_api_endpoint
 
@@ -38,3 +248,4 @@ the default database (`_system`) and none of the other databases.
 @CLEARPAGE
 @anchor HttpEndpointGet
 @copydetails JSF_get_api_endpoint
+-->
