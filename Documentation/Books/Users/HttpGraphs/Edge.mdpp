@@ -1,3 +1,573 @@
+!CHAPTER Edge
+
+`POST /_api/graph/graph-name/edge-name`*(create edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`edge-name (string,required)`
+
+The name of the edge
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until edge has been sync to disk.
+
+!SUBSECTION Body parameters
+
+`edge (json,required)`
+
+The call expects a JSON hash array as body with the edge properties:
+!SUBSECTION Description
+
+Creates an edge in a graph.
+The call expects a JSON hash array as body with the edge properties:
+
+* _key: The name of the edge (optional, if edge collection allows user defined keys).
+* _from: The name of the from vertex.
+* _to: The name of the to vertex.
+* $label: A label for the edge (optional).
+
+Returns an object with an attribute edge containing the list of all edge properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the edge was created successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the edge was created successfully and waitForSync was false.
+
+*Examples*
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge
+{"_key":"edge1","_from":"vert2","_to":"vert1","optional1":"val1"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 144630753
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_rev" : "144630753", 
+    "_key" : "edge1", 
+    "_from" : "vertices/vert2", 
+    "_to" : "vertices/vert1", 
+    "$label" : null, 
+    "optional1" : "val1" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`GET /_api/graph/graph-name/edge`*(get edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`edge-name (string,required)`
+
+The name of the edge
+
+!SUBSECTION Query parameters
+
+`rev (string,optional)`
+
+Revision of an edge
+
+!SUBSECTION HTTP header parameters
+
+`if-none-match (string,optional)`
+
+If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+if-match (string,optional)
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+!SUBSECTION Description
+
+Returns an object with an attribute edge containing a list of all edge properties.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the edge was found
+
+`HTTP 304`
+
+"If-Match" header is given and the current edge has not a different version
+
+`HTTP 404`
+
+is returned if the graph or edge was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-None-Match" header or rev is given and the current edge has a different version
+
+*Examples*
+
+```
+unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: 147579873
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_rev" : "147579873", 
+    "_key" : "edge1", 
+    "_from" : "vertices/vert1", 
+    "_to" : "vertices/vert2", 
+    "$label" : null, 
+    "optional1" : "val1" 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+`PUT /_api/graph/graph-name/edge-name`*(update edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`edge-name (string,required)`
+
+The name of the edge
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until edge has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of an edge
+
+!SUBSECTION Body parameters
+
+`edge (json,required)`
+
+The call expects a JSON hash array as body with the new edge properties.
+
+!SUBSECTION HTTP header parameters
+
+`if-match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+!SUBSECTION Description
+
+Replaces the optional edge properties.
+The call expects a JSON hash array as body with the new edge properties.
+
+Returns an object with an attribute edge containing a list of all edge properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the edge was updated successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the edge was updated successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the edge was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current edge has a different version
+*Examples*
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+{"optional1":"val2"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 154526689
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_rev" : "154526689", 
+    "_key" : "edge1", 
+    "_from" : "vertices/vert1", 
+    "_to" : "vertices/vert2", 
+    "$label" : null, 
+    "optional1" : "val2" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`PATCH /_api/graph/graph-name/edge-name`*(update edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`edge-name (string,required)`
+
+The name of the edge
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until edge has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of an edge
+
+`keepNull (boolean,optional)`
+
+Modify the behavior of the patch command to remove any attribute
+
+!SUBSECTION Body parameters
+
+`edge-properties (json,required)`
+
+The call expects a JSON hash array as body with the properties to patch.
+
+!SUBSECTION HTTP header parameters
+
+`if-match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Partially updates the edge properties.
+Setting an attribute value to null in the patch document will cause a value of null be saved for the attribute by default. If the intention is to delete existing attributes with the patch command, the URL parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
+
+Returns an object with an attribute edge containing a list of all edge properties.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the edge was updated successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the edge was updated successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the edge was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current edge has a different version
+
+*Examples*
+
+```
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+{"optional3":"val3"}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 158065633
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_rev" : "158065633", 
+    "_key" : "edge1", 
+    "_from" : "vertices/vert1", 
+    "_to" : "vertices/vert2", 
+    "$label" : null, 
+    "optional1" : "val1", 
+    "optional3" : "val3" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+`DELETE /_api/graph/graph-name/edge-name`*(delete edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`edge-name (string,required)`
+
+The name of the edge
+
+!SUBSECTION Query parameters
+
+`waitForSync (boolean,optional)`
+
+Wait until edge has been sync to disk.
+
+`rev (string,optional)`
+
+Revision of an edge
+
+!SUBSECTION HTTP header parameters
+
+`if-match (string,optional)`
+
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
+!SUBSECTION Description
+
+Deletes an edge of the graph
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the edge was deleted successfully and waitForSync was true.
+
+`HTTP 202`
+
+is returned if the edge was deleted successfully and waitForSync was false.
+
+`HTTP 404`
+
+is returned if the graph or the edge was not found. The response body contains an error document in this case.
+
+`HTTP 412`
+
+"If-Match" header or rev is given and the current edge has a different version
+
+*Examples*
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : true, 
+  "error" : false, 
+  "code" : 202 
+}
+```
+
+
+`POST /_api/graph/graph-name/vertices/vertice-name`*(get vertices)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+!SUBSECTION Body parameters
+
+`graph (json,required)`
+
+The call expects a JSON hash array as body to filter the result:
+
+!SUBSECTION Description
+
+Returns a cursor.
+The call expects a JSON hash array as body to filter the result:
+
+* batchSize: the batch size of the returned cursor
+* limit: limit the result size
+* count: return the total number of results (default "false")
+* filter: a optional filter
+
+The attributes of filter
+
+* direction: Filter for inbound (value "in") or outbound (value "out") neighbors. Default value is "any".
+* labels: filter by an array of edge labels (empty array means no restriction)
+* properties: filter neighbors by an array of edge properties
+
+The attributes of a property filter
+
+* key: filter the result vertices by a key value pair
+* value: the value of the key
+* compare: a compare operator
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the cursor was created
+
+*Examples*
+
+Select all vertices
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2
+{"batchSize" : 100, "filter" : {"direction" : "any", "properties":[] }}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "vertices/v1", 
+      "_rev" : "132637665", 
+      "_key" : "v1", 
+      "optional1" : "val1" 
+    }, 
+    { 
+      "_id" : "vertices/v4", 
+      "_rev" : "133620705", 
+      "_key" : "v4", 
+      "optional1" : "val1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Select vertices by direction and property filter
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2
+{"batchSize" : 100, "filter" : {"direction" : "out", "properties":[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "vertices/v4", 
+      "_rev" : "139125729", 
+      "_key" : "v4", 
+      "optional1" : "val2" 
+    }, 
+    { 
+      "_id" : "vertices/v1", 
+      "_rev" : "138142689", 
+      "_key" : "v1", 
+      "optional1" : "val1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`POST /_api/graph/graph-name/edges/vertex-name`*(get edges)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string,required)`
+
+The name of the graph
+
+`vertex-name (string,required)`
+
+The name of the vertex
+
+!SUBSECTION Body parameters
+
+`edge-properties (json,required)`
+
+The call expects a JSON hash array as body to filter the result:
+
+!SUBSECTION Description
+
+Returns a cursor.
+
+The call expects a JSON hash array as body to filter the result:
+
+* batchSize: the batch size of the returned cursor
+* limit: limit the result size
+* count: return the total number of results (default "false")
+* filter: a optional filter
+
+The attributes of filter
+
+* direction: Filter for inbound (value "in") or outbound (value "out") neighbors. Default value is "any".
+* labels: filter by an array of edge labels
+* properties: filter neighbors by an array of properties
+
+The attributes of a property filter
+
+* key: filter the result vertices by a key value pair
+* value: the value of the key
+* compare: a compare operator
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the cursor was created
+
+*Examples*
+
+Select all edges
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges/v2
+{"batchSize" : 100, "filter" : { "direction" : "any" }}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "edges/edge1", 
+      "_rev" : "167568353", 
+      "_key" : "edge1", 
+      "_from" : "vertices/v1", 
+      "_to" : "vertices/v2", 
+      "$label" : null, 
+      "optional1" : "val1" 
+    }, 
+    { 
+      "_id" : "edges/edge3", 
+      "_rev" : "168485857", 
+      "_key" : "edge3", 
+      "_from" : "vertices/v2", 
+      "_to" : "vertices/v4", 
+      "$label" : null, 
+      "optional1" : "val1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+<!--
 @CLEARPAGE
 @anchor A_JSF_POST_graph_edge
 @copydetails JSF_post_graph_edge
@@ -35,3 +605,4 @@
 @copydetails JSF_post_graph_vertex_edges
 
 @BNAVIGATE_HttpGraph
+-->

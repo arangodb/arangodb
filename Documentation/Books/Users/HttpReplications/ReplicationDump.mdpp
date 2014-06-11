@@ -1,16 +1,482 @@
 !CHAPTER Replication Dump Commands
 
-The `inventory` method can be used to query an ArangoDB database's current
+The *inventory* method can be used to query an ArangoDB database's current
 set of collections plus their indexes. Clients can use this method to get an 
 overview of which collections are present in the database. They can use this information
 to either start a full or a partial synchronization of data, e.g. to initiate a backup
 or the incremental data synchronization.
 
+returns the server inventory
+
+return the inventory (current replication and collection state)
+
+`GET /_api/replication/inventory`*(returns an inventory of collections and indexes)*
+
+!SUBSECTION Query parameters
+
+`includeSystem (boolean,optional)`
+
+Include system collections in the result. The default value is false.
+
+!SUBSECTION Description
+
+Returns the list of collections and indexes available on the server. This list can be used by replication clients to initiate an initial sync with the server.
+The response will contain a JSON hash array with the collection and state attributes.
+
+collections is a list of collections with the following sub-attributes:
+
+* parameters: the collection properties
+* indexes: a list of the indexes of a the collection. Primary indexes and edges indexes are not included in this list.
+* tick: the system-wide tick value at the start of the dump
+
+The state attribute contains the current state of the replication logger. It contains the following sub-attributes:
+
+* running: whether or not the replication logger is currently active
+* lastLogTick: the value of the last tick the replication logger has written
+* time: the current time on the server
+
+Replication clients should note the lastLogTick value returned. They can then fetch collections' data using the dump method up to the value of lastLogTick, and query the continuous replication log for log events after this tick value.
+
+To create a full copy of the collections on the logger server, a replication client can execute these steps:
+
+call the /inventory API method. This returns the lastLogTick value and the list of collections and indexes from the logger server.
+for each collection returned by /inventory, create the collection locally and call /dump to stream the collection data to the client, up to the value of lastLogTick. After that, the client can create the indexes on the collections as they were reported by /inventory.
+If the clients wants to continuously stream replication log events from the logger server, the following additional steps need to be carried out:
+
+The client should call /logger-follow initially to fetch the first batch of replication events that were logged after the client's call to /inventory.
+
+The call to /logger-follow should use a from parameter with the value of the lastLogTick as reported by /inventory. The call to /logger-follow will return the x-arango-replication-lastincluded which will contain the last tick value included in the response.
+
+The client can then continuously call /logger-follow to incrementally fetch new replication events that occurred after the last transfer.
+
+Calls should use a from parameter with the value of the x-arango-replication-lastincluded header of the previous response. If there are no more replication events, the response will be empty and clients can go to sleep for a while and try again later.
+
+*Note*: on a coordinator, this request must have the URL parameter DBserver which must be an ID of a DBserver. The very same request is forwarded synchronously to that DBserver. It is an error if this attribute is not bound in the coordinator case.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+Examples
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/inventory
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "collections" : [ 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "19915745", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "animals", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "19063777", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "demo", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "106750945", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "vertices1", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 3, 
+        "cid" : "108061665", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "edges2", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    } 
+  ], 
+  "state" : { 
+    "running" : false, 
+    "lastLogTick" : "305390561", 
+    "totalEvents" : 22, 
+    "time" : "2014-05-29T15:03:52Z" 
+  }, 
+  "tick" : "305456097" 
+}
+```
+
+With some additional indexes:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/inventory
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "collections" : [ 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "19915745", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "animals", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "19063777", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "demo", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "305521633", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "IndexedCollection1", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ 
+        { 
+          "id" : "305783777", 
+          "type" : "hash", 
+          "unique" : false, 
+          "fields" : [ 
+            "name" 
+          ] 
+        }, 
+        { 
+          "id" : "306045921", 
+          "type" : "skiplist", 
+          "unique" : true, 
+          "fields" : [ 
+            "a", 
+            "b" 
+          ] 
+        }, 
+        { 
+          "id" : "306176993", 
+          "type" : "cap", 
+          "unique" : false, 
+          "size" : 500, 
+          "byteSize" : 0 
+        } 
+      ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "306242529", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "IndexedCollection2", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ 
+        { 
+          "id" : "306504673", 
+          "type" : "fulltext", 
+          "unique" : false, 
+          "minLength" : 10, 
+          "fields" : [ 
+            "text" 
+          ] 
+        }, 
+        { 
+          "id" : "306701281", 
+          "type" : "skiplist", 
+          "unique" : false, 
+          "fields" : [ 
+            "a" 
+          ] 
+        }, 
+        { 
+          "id" : "306832353", 
+          "type" : "cap", 
+          "unique" : false, 
+          "size" : 0, 
+          "byteSize" : 1048576 
+        } 
+      ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 2, 
+        "cid" : "106750945", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "vertices1", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    }, 
+    { 
+      "parameters" : { 
+        "version" : 5, 
+        "type" : 3, 
+        "cid" : "108061665", 
+        "deleted" : false, 
+        "doCompact" : true, 
+        "maximalSize" : 1048576, 
+        "name" : "edges2", 
+        "isVolatile" : false, 
+        "waitForSync" : false 
+      }, 
+      "indexes" : [ ] 
+    } 
+  ], 
+  "state" : { 
+    "running" : false, 
+    "lastLogTick" : "305390561", 
+    "totalEvents" : 22, 
+    "time" : "2014-05-29T15:03:52Z" 
+  }, 
+  "tick" : "306832353" 
+}
+```
+
+The dump method can be used to fetch data from a specific collection. As the results of the dump command can be huge, dump may not return all data from a collection at once. Instead, the dump command may be called repeatedly by replication clients until there is no more data to fetch. The dump command will not only return the current documents in the collection, but also document updates and deletions.
+
+To get to an identical state of data, replication clients should apply the individual parts of the dump results in the same order as they are served to them.
+
+restores the data of a collection, coordinator case
+
+handle a dump command for a specific collection
+
+dumps the data of a collection
+
+`GET /_api/replication/dump`*(returns the data of a collection)*
+
+!SUBSECTION Query parameters
+
+`collection (string,required)`
+
+The name or id of the collection to dump.
+
+`from (number,optional)`
+
+Lower bound tick value for results.
+
+`to (number,optional)`
+
+Upper bound tick value for results.
+
+`chunkSize (number,optional)`
+
+Approximate maximum size of the returned result.
+
+`ticks (boolean,optional)`
+
+Whether or not to include tick values in the dump. Default value is true.
+
+!SUBSECTION Description
+
+Returns the data from the collection for the requested range.
+When the from URL parameter is not used, collection events are returned from the beginning. When the from parameter is used, the result will only contain collection entries which have higher tick values than the specified from value (note: the log entry with a tick value equal to from will be excluded).
+
+The to URL parameter can be used to optionally restrict the upper bound of the result to a certain tick value. If used, the result will only contain collection entries with tick values up to (including) to.
+
+The chunkSize URL parameter can be used to control the size of the result. It must be specified in bytes. The chunkSize value will only be honored approximately. Otherwise a too low chunkSize value could cause the server to not be able to put just one entry into the result and return it. Therefore, the chunkSize value will only be consulted after an entry has been written into the result. If the result size is then bigger than chunkSize, the server will respond with as many entries as there are in the response already. If the result size is still smaller than chunkSize, the server will try to return more data if there's more data left to return.
+
+If chunkSize is not specified, some server-side default value will be used.
+
+The Content-Type of the result is application/x-arango-dump. This is an easy-to-process format, with all entries going onto separate lines in the response body.
+
+Each line itself is a JSON hash, with at least the following attributes:
+
+* type: the type of entry. Possible values for type are:
+* 2300: document insertion/update
+* 2301: edge insertion/update
+* 2302: document/edge deletion
+* key: the key of the document/edge or the key used in the deletion operation
+* rev: the revision id of the document/edge or the deletion operation
+* data: the actual document/edge data for types 2300 and 2301. The full document/edge data will be returned even for updates.
+
+A more detailed description of the different entry types and their data structures can be found in Replication Event Types.
+
+*Note*: there will be no distinction between inserts and updates when calling this method.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 400`
+
+is returned if either the from or to values are invalid.
+
+`HTTP 404`
+
+is returned when the collection could not be found.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred while assembling the response.
+
+!SUBSECTION Examples
+
+Empty collection:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
+
+HTTP/1.1 204 No Content
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 0
+```
+
+Non-empty collection:
+
+```
+unix> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
+
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 308798433
+
+{"tick":"307422177","type":2300,"key":"abcdef","rev":"307356641","data":{"_key":"abcdef","_rev":"307356641","test":true,"a":"abc"}}
+{"tick":"307815393","type":2300,"key":"123456","rev":"307749857","data":{"_key":"123456","_rev":"307749857","c":false,"b":1}}
+{"tick":"308143073","type":2300,"key":"123456","rev":"308077537","data":{"_key":"123456","_rev":"308077537","c":false,"b":1,"d":"additional value"}}
+{"tick":"308405217","type":2300,"key":"foobar","rev":"308339681","data":{"_key":"foobar","_rev":"308339681"}}
+{"tick":"308601825","type":2302,"key":"foobar","rev":"308536289"}
+{"tick":"308798433","type":2302,"key":"abcdef","rev":"308732897"}
+```
+
+The sync method can be used by replication clients to connect an ArangoDB database to a remote endpoint, fetch the remote list of collections and indexes, and collection data. It will thus create a local backup of the state of data at the remote ArangoDB database. sync works on a database level.
+
+sync will first fetch the list of collections and indexes from the remote endpoint. It does so by calling the inventory API of the remote database. It will then purge data in the local ArangoDB database, and after start will transfer collection data from the remote database to the local ArangoDB database. It will extract data from the remote database by calling the remote database's dump API until all data are fetched.
+
+As mentioned, sync will remove data from the local instance, and thus must be handled with caution.
+
+synchronises data from a remote endpoint
+
+`PUT /_api/replication/sync`*(synchronises data from a remote endpoint)*
+!SUBSECTION Body parameters
+
+`configuration (json,required)`
+
+A JSON representation of the configuration.
+
+!SUBSECTION Description
+
+Starts a full data synchronisation from a remote endpoint into the local ArangoDB database.
+The body of the request must be JSON hash with the configuration. The following attributes are allowed for the configuration:
+
+* endpoint: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+* database: the database name on the master (if not specified, defaults to the name of the local current database).
+* username: an optional ArangoDB username to use when connecting to the endpoint.
+* password: the password to use when connecting to the endpoint.
+* restrictType: an optional string value for collection filtering. When specified, the allowed values are include or exclude.
+* restrictCollections: an optional list of collections for use with restrictType. If restrictType is include, only the specified collections will be sychronised. If restrictType is exclude, all but the specified collections will be synchronised.
+
+In case of success, the body of the response is a JSON hash with the following attributes:
+
+* collections: a list of collections that were transferred from the endpoint
+* lastLogTick: the last log tick on the endpoint at the time the transfer was started. Use this value as the from value when starting the continuous synchronisation later.
+**WARNING**: calling this method will sychronise data from the collections found on the remote endpoint to the local ArangoDB database. All data in the local collections will be purged and replaced with data from the endpoint.
+
+Use with caution!
+
+*Note*: this method is not supported on a coordinator in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned if the request was executed successfully.
+
+`HTTP 400`
+
+is returned if the configuration is incomplete or malformed.
+
+`HTTP 405`
+
+is returned when an invalid HTTP method is used.
+
+`HTTP 500`
+
+is returned if an error occurred during sychronisation.
+
+`HTTP 501`
+
+is returned when this operation is called on a coordinator in a cluster.
+
+<!--
 @anchor HttpReplicationInventory
 @copydetails triagens::arango::RestReplicationHandler::handleCommandInventory
 
-The `dump` method can be used to fetch data from a specific collection. As the
-results of the dump command can be huge, `dump` may not return all data from a collection
+The *dump* method can be used to fetch data from a specific collection. As the
+results of the dump command can be huge, *dump* may not return all data from a collection
 at once. Instead, the dump command may be called repeatedly by replication clients
 until there is no more data to fetch. The dump command will not only return the
 current documents in the collection, but also document updates and deletions. 
@@ -21,22 +487,23 @@ parts of the dump results in the same order as they are served to them.
 @anchor HttpReplicationDump
 @copydetails triagens::arango::RestReplicationHandler::handleCommandDump
 
-The `sync` method can be used by replication clients to connect an ArangoDB database 
+The *sync* method can be used by replication clients to connect an ArangoDB database 
 to a remote endpoint, fetch the remote list of collections and indexes, and collection
 data. 
 It will thus create a local backup of the state of data at the remote ArangoDB database.
-`sync` works on a database level. 
+*sync* works on a database level. 
 
-`sync` will first fetch the list of collections and indexes from the remote endpoint.
-It does so by calling the `inventory` API of the remote database. It will then purge
+*sync* will first fetch the list of collections and indexes from the remote endpoint.
+It does so by calling the *inventory* API of the remote database. It will then purge
 data in the local ArangoDB database, and after start will transfer collection data 
 from the remote database to the local ArangoDB database. It will extract data from the
-remote database by calling the remote database's `dump` API until all data are fetched.
+remote database by calling the remote database's *dump* API until all data are fetched.
 
-As mentioned, `sync` will remove data from the local instance, and thus must be handled
+As mentioned, *sync* will remove data from the local instance, and thus must be handled
 with caution.
 
 @anchor HttpReplicationSync
 @copydetails triagens::arango::RestReplicationHandler::handleCommandSync
 
 
+-->

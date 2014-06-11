@@ -158,7 +158,7 @@
 
     uninstall: function () {
       if (!this.model.get("isSystem")) {
-        this.model.destroy({ wait: true });
+        this.model.destroy({ async: false });
         window.modalView.hide();
         this.appsView.reload();
       }

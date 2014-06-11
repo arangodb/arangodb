@@ -1,0 +1,328 @@
+
+!CHAPTER Working with Hash Indexes
+
+If a suitable hash index exists, then */_api/simple/by-example* will use this index to execute a query-by-example.
+
+`POST /_api/index`*(creates a hash index)*
+
+!SUBSECTION Query parameters
+
+`collection-name (string,required)`
+
+The collection name.
+
+!SUBSECTION Body parameters
+
+`index-details (json,required)`
+
+!SUBSECTION Description
+
+Creates a hash index for the collection collection-name, if it does not already exist. The call expects an object containing the index details.
+
+* type: must be equal to "hash".
+* fields: A list of attribute paths.
+* unique: If true, then create a unique index.
+
+*Note*: unique indexes on non-shard keys are not supported in a cluster.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+If the index already exists, then a HTTP 200 is returned.
+
+`HTTP 201`
+
+If the index does not already exist and could be created, then a HTTP 201 is returned.
+
+`HTTP 400`
+
+If the collection already contains documents and you try to create a unique hash index in such a way that there are documents violating the uniqueness, then a HTTP 400 is returned.
+
+`HTTP 404`
+
+If the collection-name is unknown, then a HTTP 404 is returned.
+
+*Examples*
+
+Creating an unique constraint:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type": "hash", "unique" : true, "fields" : [ "a", "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/171041761", 
+  "type" : "hash", 
+  "unique" : true, 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Creating a hash index:
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type": "hash", "unique" : false, "fields" : [ "a", "b" ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/171434977", 
+  "type" : "hash", 
+  "unique" : false, 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/by-example`*(executes simple query by-example)*
+
+!SUBSECTION Body parameters
+
+`query (string,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+This will find all documents matching a given example.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* example: The example document.
+* skip: The number of documents to skip in the query (optional).
+* limit: The maximal amount of documents to return. The skip is applied before the limit restriction. (optional)
+
+Returns a cursor containing the result, see HTTP Interface for AQL Query Cursors for details.
+
+!SUBSECTION Return codes
+
+`HTTP 201`
+
+is returned if the query was executed successfully.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+Matching an attribute:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" :  { "i" : 1 }  }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/192013281", 
+      "_rev" : "192013281", 
+      "_key" : "192013281", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/192340961", 
+      "_rev" : "192340961", 
+      "_key" : "192340961", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/192603105", 
+      "_rev" : "192603105", 
+      "_key" : "192603105", 
+      "i" : 1 
+    }, 
+    { 
+      "_id" : "products/192799713", 
+      "_rev" : "192799713", 
+      "_key" : "192799713", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 2, 
+        "j" : 2 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 4, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Matching an attribute which is a sub-document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" : { "a.j" : 1 } }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/194307041", 
+      "_rev" : "194307041", 
+      "_key" : "194307041", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/193979361", 
+      "_rev" : "193979361", 
+      "_key" : "193979361", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+Matching an attribute within a sub-document:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } } }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/196273121", 
+      "_rev" : "196273121", 
+      "_key" : "196273121", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 1, 
+  "error" : false, 
+  "code" : 201 
+}
+```
+
+`PUT /_api/simple/first-example`*(returns a document matching an example)*
+
+!SUBSECTION Body parameters
+
+`query (json,required)`
+
+Contains the query.
+
+!SUBSECTION Description
+
+This will return the first document matching a given example.
+
+The call expects a JSON object as body with the following attributes:
+
+* collection: The name of the collection to query.
+* example: The example document.
+
+Returns a result containing the document or HTTP 404 if no document matched the example.
+
+If more than one document in the collection matches the specified example, only one of these documents will be returned, and it is undefined which of the matching documents is returned.
+
+!SUBSECTION Return codes
+
+`HTTP 200`
+
+is returned when the query was successfully executed.
+
+`HTTP 400`
+
+is returned if the body does not contain a valid JSON representation of a query. The response body contains an error document in this case.
+
+`HTTP 404`
+
+is returned if the collection specified by collection is unknown. The response body contains an error document in this case.
+
+*Examples*
+
+If a matching document was found:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example
+{ "collection": "products", "example" :  { "i" : 1 }  }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "document" : { 
+    "_id" : "products/197911521", 
+    "_rev" : "197911521", 
+    "_key" : "197911521", 
+    "i" : 1, 
+    "a" : { 
+      "k" : 1, 
+      "j" : 1 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
+```
+
+If no document was found:
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example
+{ "collection": "products", "example" :  { "l" : 1 }  }
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 404, 
+  "errorMessage" : "no match" 
+}
+```

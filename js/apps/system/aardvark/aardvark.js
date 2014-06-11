@@ -39,6 +39,7 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   db = require("internal").db;
   
 var foxxes = new (require("lib/foxxes").Foxxes)();
+var FoxxManager = require("org/arangodb/foxx/manager");
 var docus = new (require("lib/swagger").Swagger)();
   
 controller.get("/whoAmI", function(req, res) {
@@ -96,10 +97,74 @@ controller.put("/foxxes/install", function (req, res) {
     name = content.name,
     mount = content.mount,
     version = content.version;
-  res.json(foxxes.install(name, mount, version));
+    res.json(foxxes.install(name, mount, version));
 }).summary("Installs a new foxx")
-  .notes("This function is used to install a new foxx.");
-  
+.notes("This function is used to install a new foxx.");
+
+/** Install a Foxx from Github
+ *
+ * Install a Foxx with URL and .....
+ */
+
+controller.post("/foxxes/gitinstall", function (req, res) {
+
+  var content = JSON.parse(req.requestBody),
+  name = content.name,
+  url = content.url,
+  version = content.version;
+
+  var appID = FoxxManager.fetchFromGithub(url, name, version);
+
+  res.json(appID);
+}).summary("Installs a foxx or update existing")
+.notes("This function is used to install or update a (new) foxx.");
+
+/** Remove an uninstalled Foxx
+ *
+ * Remove the Foxx with the given key.
+ */
+
+controller.del("/foxxes/purge/:key", function (req, res) {
+  res.json(FoxxManager.purge(req.params("key")));
+}).pathParam("key", {
+  description: "The _key attribute, where the information of this Foxx-Install is stored.",
+  type: "string",
+  required: true,
+  allowMultiple: false
+}).summary("Remove a Foxx.")
+.notes("This function is used to remove a foxx.");
+
+/** Get info about mount points of an installed Foxx
+ *
+ * Returns mount points of Foxx
+ */
+
+controller.get("/foxxes/mountinfo/:key", function (req, res) {
+  res.json(FoxxManager.mountinfo(req.params("key")));
+}).pathParam("key", {
+  description: "The _key attribute, where the information of this Foxx-Install is stored.",
+  type: "string",
+  required: true,
+  allowMultiple: false
+}).summary("List mount points of a Foxx")
+.notes("This function is used to display all available mount points of a foxx");
+
+/** Get info about all mount points of all installed Foxx
+ *
+ * Returns mount points of all Foxxes
+ */
+
+controller.get("/foxxes/mountinfo/", function (req, res) {
+  res.json(FoxxManager.mountinfo());
+}).pathParam("key", {
+  description: "The _key attribute, where the information of this Foxx-Install is stored.",
+  type: "string",
+  required: true,
+  allowMultiple: false
+}).summary("List mount points of all Foxx")
+.notes("This function is used to display all available mount points of all foxxes");
+
+
 /** Uninstall a Foxx
  *
  * Uninstall the Foxx with the given key.
@@ -113,8 +178,8 @@ controller.del("/foxxes/:key", function (req, res) {
   required: true,
   allowMultiple: false
 }).summary("Uninstall a Foxx.")
-  .notes("This function is used to uninstall a foxx.");
-  
+.notes("This function is used to uninstall a foxx.");
+
 /** Update a Foxx
  *
  * Update the Foxx with the given information.
