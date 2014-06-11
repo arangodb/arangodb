@@ -425,7 +425,15 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   TRI_read_write_lock_t        _lock;
 
+private:
   TRI_shaper_t*                _shaper;
+public:
+  TRI_shaper_t* getShaper () {
+    return _shaper;
+  }
+  void setShaper (TRI_shaper_t* s) {
+    _shaper = s;
+  }
   TRI_barrier_list_t           _barrierList;
   TRI_associative_pointer_t    _datafileInfo;
 

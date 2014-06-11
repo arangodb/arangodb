@@ -819,7 +819,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
 
   // construct a legend for the shaped json
-  triagens::basics::JsonLegend legend(document->_shaper);
+  triagens::basics::JsonLegend legend(document->getShaper());
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1041,7 +1041,7 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
   // create legend  
-  triagens::basics::JsonLegend legend(document->_shaper);
+  triagens::basics::JsonLegend legend(document->getShaper());
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1826,7 +1826,7 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
                                           TRI_datafile_t* datafile,
                                           open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
-  int res = TRI_InsertShapeVocShaper(document->_shaper, marker);
+  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker);
   
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -1852,7 +1852,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
                                               open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertAttributeVocShaper(document->_shaper, marker); 
+  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker); 
 
   if (res == TRI_ERROR_NO_ERROR) { 
     if (state->_fid != datafile->_fid) {
@@ -2196,7 +2196,7 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 
 static int InitBaseDocumentCollection (TRI_document_collection_t* document,
                                        TRI_shaper_t* shaper) {
-  document->_shaper             = shaper;
+  document->setShaper(shaper);
   document->_capConstraint      = nullptr;
   document->_keyGenerator       = nullptr;
   document->_numberDocuments    = 0;
@@ -2246,8 +2246,8 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
   TRI_DestroyPrimaryIndex(&document->_primaryIndex);
 
-  if (document->_shaper != nullptr) {
-    TRI_FreeVocShaper(document->_shaper);
+  if (document->getShaper() != nullptr) {
+    TRI_FreeVocShaper(document->getShaper());
   }
   
   size_t const n = document->_datafileInfo._nrAlloc;
@@ -2518,7 +2518,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->_shaper != nullptr);
+  TRI_ASSERT(document->getShaper() != nullptr);
 
   return document;
 }
@@ -3065,9 +3065,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->_shaper != nullptr);
+  TRI_ASSERT(document->getShaper() != nullptr);
 
-  TRI_InitVocShaper(document->_shaper);
+  TRI_InitVocShaper(document->getShaper());
 
   // fill internal indexes (this is, the edges index at the moment) 
   FillInternalIndexes(document);
@@ -3086,8 +3086,8 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
 
-  TRI_FreeVocShaper(document->_shaper);
-  document->_shaper = nullptr;
+  TRI_FreeVocShaper(document->getShaper());
+  document->setShaper(nullptr);
 
   return res;
 }
@@ -4125,7 +4125,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   loc = 0;
   idx = NULL;
 
-  shaper = document->_shaper;
+  shaper = document->getShaper();
 
   if (location != NULL) {
     loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
@@ -4379,7 +4379,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
 
-  shaper = document->_shaper;
+  shaper = document->getShaper();
     
   loc = shaper->lookupAttributePathByName(shaper, location);
 
@@ -4422,7 +4422,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
   
-  shaper = document->_shaper;
+  shaper = document->getShaper();
   
   lat = shaper->lookupAttributePathByName(shaper, latitude);
   lon = shaper->lookupAttributePathByName(shaper, longitude);
@@ -4572,7 +4572,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  true,
@@ -4680,7 +4680,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  true, 
@@ -4766,7 +4766,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -4868,7 +4868,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 
   // determine the unsorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -5208,7 +5208,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->_shaper,
+                                 document->getShaper(),
                                  &paths,
                                  &fields,
                                  false,
@@ -5342,7 +5342,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // ...........................................................................
 
   result = PidNamesByAttributeNames(attributes, 
-                                    document->_shaper,
+                                    document->getShaper(),
                                     &paths, 
                                     &fields, 
                                     false,
@@ -5502,7 +5502,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;

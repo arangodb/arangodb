@@ -564,7 +564,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   res = trx.finish(res);
 
@@ -1325,7 +1325,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_voc_rid_t rid = 0;
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   string const cidString = StringUtils::itoa(document->_info._planId);
 

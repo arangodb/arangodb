@@ -421,7 +421,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->_shaper, buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);
 
     APPEND_STRING(buffer, "}}\n");
   }
@@ -556,7 +556,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
   TRI_shaped_json_t shaped;
   
   TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
-  shaper = document->_shaper;
+  shaper = document->getShaper();
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
