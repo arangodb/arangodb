@@ -227,7 +227,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
   // invalid database name specified, database not found etc.
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     return false;
   }
 
@@ -239,7 +239,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
 
-  if (ctx == 0) {
+  if (ctx == nullptr) {
     // out of memory
     return false;
   }
@@ -266,13 +266,13 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
-    _applicationScheduler(0),
-    _applicationDispatcher(0),
-    _applicationEndpointServer(0),
-    _applicationAdminServer(0),
-    _applicationCluster(0),
-    _jobManager(0),
-    _applicationV8(0),
+    _applicationScheduler(nullptr),
+    _applicationDispatcher(nullptr),
+    _applicationEndpointServer(nullptr),
+    _applicationAdminServer(nullptr),
+    _applicationCluster(nullptr),
+    _jobManager(nullptr),
+    _applicationV8(nullptr),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _disableAuthenticationUnixSockets(false),
@@ -286,7 +286,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnDrop(true),
-    _server(0) {
+    _server(nullptr) {
 
   char* p = TRI_GetTempPath();
   // copy the string
@@ -307,7 +307,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   _server = TRI_CreateServer();
 
-  if (_server == 0) {
+  if (_server == nullptr) {
     LOG_FATAL_AND_EXIT("could not create server instance");
   }
 }
@@ -317,11 +317,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoServer::~ArangoServer () {
-  if (_jobManager != 0) {
+  if (_jobManager != nullptr) {
     delete _jobManager;
   }
 
-  if (_server != 0) {
+  if (_server != nullptr) {
     TRI_FreeServer(_server);
   }
 
@@ -343,7 +343,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
 
-  if (_applicationServer == 0) {
+  if (_applicationServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -367,7 +367,7 @@ void ArangoServer::buildApplicationServer () {
   
   _applicationDispatcher = new ApplicationDispatcher();
 
-  if (_applicationDispatcher == 0) {
+  if (_applicationDispatcher == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -379,7 +379,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
 
-  if (_applicationScheduler == 0) {
+  if (_applicationScheduler == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -396,7 +396,7 @@ void ArangoServer::buildApplicationServer () {
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
-  if (_applicationV8 == 0) {
+  if (_applicationV8 == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -420,7 +420,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  if (_applicationAdminServer == 0) {
+  if (_applicationAdminServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -509,7 +509,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
 
-  if (_applicationCluster == 0) {
+  if (_applicationCluster == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -564,7 +564,7 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
-  if (_applicationEndpointServer == 0) {
+  if (_applicationEndpointServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -739,11 +739,11 @@ int ArangoServer::startupServer () {
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
   }
 
-  TRI_ASSERT(vocbase != 0);
+  TRI_ASSERT(vocbase != nullptr);
 
   // initialise V8
   size_t concurrency = _dispatcherThreads;

@@ -47,8 +47,6 @@ typedef struct TRI_primary_index_s {
   uint32_t _nrUsed;      // the number of used entries
 
   void** _table;         // the table itself
-
-  TRI_memory_zone_t* _memoryZone;
 }
 TRI_primary_index_t;
 
@@ -60,8 +58,7 @@ TRI_primary_index_t;
 /// @brief initialises the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitPrimaryIndex (TRI_primary_index_t*,
-                          TRI_memory_zone_t*);
+int TRI_InitPrimaryIndex (TRI_primary_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index, but does not free the pointer
