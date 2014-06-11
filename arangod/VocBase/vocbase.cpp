@@ -927,16 +927,17 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             return TRI_set_errno(res);
           }
           else {
-            LOG_INFO("upgrading collection '%s'", info._name);
-
-            res = TRI_ERROR_NO_ERROR;
-
             if (info._version < TRI_COL_VERSION_13) {
-              res = TRI_UpgradeCollection13(vocbase, file, &info);
+              LOG_ERROR("collection '%s' is too old to be upgraded with this ArangoDB version.", info._name);
+              res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
+            }
+            else {
+              LOG_INFO("upgrading collection '%s'", info._name);
+              res = TRI_ERROR_NO_ERROR;
             }
 
-            if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_15) {
-              res = TRI_UpgradeCollection15(vocbase, file, &info);
+            if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_20) {
+              res = TRI_UpgradeCollection20(vocbase, file, &info);
             }
 
             if (res != TRI_ERROR_NO_ERROR) {

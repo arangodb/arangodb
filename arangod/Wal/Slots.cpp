@@ -130,7 +130,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
     {
       MUTEX_LOCKER(_lock);
 
-      if (_readOnly) {
+      if (_readOnly && ! isFlushRequest) {
         return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
       }
 
