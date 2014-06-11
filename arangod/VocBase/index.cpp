@@ -341,7 +341,7 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
     return false;
   }
 
-  filename = TRI_Concatenate2File(collection->base._directory, name);
+  filename = TRI_Concatenate2File(collection->_directory, name);
 
   if (filename == NULL) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -391,12 +391,12 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   // construct filename
   number   = TRI_StringUInt64(idx->_iid);
   name     = TRI_Concatenate3String("index-", number, ".json");
-  filename = TRI_Concatenate2File(document->base._directory, name);
+  filename = TRI_Concatenate2File(document->_directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  vocbase = document->base._vocbase;
+  vocbase = document->_vocbase;
 
   // and save
   ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
@@ -412,8 +412,8 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 
   // it is safe to use _name as we hold a read-lock on the collection status
   TRI_LogCreateIndexReplication(vocbase, 
-                                document->base._info._cid, 
-                                document->base._info._name, 
+                                document->_info._cid, 
+                                document->_info._name, 
                                 idx->_iid, 
                                 json,
                                 generatingServer);
@@ -1131,7 +1131,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->_shaper, jsonObject, false, false);
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);
 
           if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
@@ -1228,7 +1228,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     // Determine if document has that particular shape 
     // ..........................................................................
 
-    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->_shaper, shapedJson._sid, shape);
+    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->getShaper(), shapedJson._sid, shape);
 
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
@@ -1377,7 +1377,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
-    const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
+    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);
 
     if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -1617,7 +1617,7 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
 
   // extract the shape
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX
-  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->_shaper, &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
+  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->getShaper(), &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
 
   if (! ok || shape == nullptr) {
     return nullptr;
@@ -1723,7 +1723,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
   TRI_document_collection_t* document = idx->_collection;
 
   // convert attribute to string
-  path = document->_shaper->lookupAttributePathByPid(document->_shaper, fulltextIndex->_attribute);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), fulltextIndex->_attribute);
 
   if (path == 0) {
     return nullptr;
@@ -1797,7 +1797,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
   TRI_shape_pid_t attribute;
 
   // look up the attribute
-  shaper = document->_shaper;
+  shaper = document->getShaper();
   attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
@@ -2022,7 +2022,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape
       // ..........................................................................
 
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedDoc->_sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedDoc->_sid, shape);
 
       if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
@@ -2065,7 +2065,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
 
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
 
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->_shaper, shapedJson._sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedJson._sid, shape);
 
       if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
@@ -2229,7 +2229,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
   for (j = 0; j < baIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
-    const TRI_shape_path_t* path = document->_shaper->lookupAttributePathByPid(document->_shaper, shape);
+    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);

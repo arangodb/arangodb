@@ -247,7 +247,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   TRI_document_collection_t* document = idx->_collection;
 
   // convert location to string
-  path = document->_shaper->lookupAttributePathByPid(document->_shaper, geo->_location);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_location);
 
   if (path == 0) {
     return nullptr;
@@ -292,7 +292,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   TRI_document_collection_t* document = idx->_collection;
 
   // convert latitude to string
-  path = document->_shaper->lookupAttributePathByPid(document->_shaper, geo->_latitude);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_latitude);
 
   if (path == 0) {
     return nullptr;
@@ -301,7 +301,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   latitude = TRI_NAME_SHAPE_PATH(path);
 
   // convert longitude to string
-  path = document->_shaper->lookupAttributePathByPid(document->_shaper, geo->_longitude);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_longitude);
 
   if (path == 0) {
     return nullptr;
@@ -348,7 +348,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
   int res;
 
   geo = (TRI_geo_index_t*) idx;
-  shaper = geo->base._collection->_shaper;
+  shaper = geo->base._collection->getShaper();
 
   // lookup latitude and longitude
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->getDataPtr());  // ONLY IN INDEX
@@ -428,7 +428,7 @@ static int RemoveGeoIndex (TRI_index_t* idx,
   double longitude;
 
   geo = (TRI_geo_index_t*) idx;
-  shaper = geo->base._collection->_shaper;
+  shaper = geo->base._collection->getShaper();
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->getDataPtr());  // ONLY IN INDEX
 
   // lookup OLD latitude and longitude

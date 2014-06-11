@@ -241,7 +241,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool found;
   bool mustChange;
   
-  TRI_shaper_t* shaper = document->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();
 
   // extract username
   user = ExtractStringShapedJson(shaper, shapedJson, "user");

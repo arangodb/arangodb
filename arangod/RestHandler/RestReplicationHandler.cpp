@@ -2444,8 +2444,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_ASSERT(json != 0);
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = document->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->_shaper, json, true, true);
+    TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true, true);
 
     if (shaped != 0) {
       TRI_doc_mptr_copy_t mptr;
@@ -2457,7 +2457,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
         if (type == MARKER_EDGE) {
           // edge
-          if (document->base._info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -2485,7 +2485,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         }
         else {
           // document
-          if (document->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {

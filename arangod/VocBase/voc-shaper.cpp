@@ -178,7 +178,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
   TRI_document_collection_t* document = s->_collection;
 
-  triagens::wal::AttributeMarker marker(document->base._vocbase->_id, document->base._info._cid, aid, std::string(name));
+  triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
   
   // lock the index and check that the element is still missing
   {
@@ -323,7 +323,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   shape->_sid = sid;
 
   TRI_document_collection_t* document = s->_collection;
-  triagens::wal::ShapeMarker marker(document->base._vocbase->_id, document->base._info._cid, shape);
+  triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
   
 
   TRI_shape_t const* result;
@@ -722,7 +722,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
 
   if (f != nullptr) {
-    char const* name = shaper->_collection->base._info._name;
+    char const* name = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_WARNING("found duplicate attribute name '%s' in collection '%s'", p, name);
@@ -734,7 +734,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, false);
   
   if (f != nullptr) {
-    char const* name = shaper->_collection->base._info._name;
+    char const* name = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_WARNING("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);

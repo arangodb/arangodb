@@ -191,7 +191,7 @@ TRI_col_info_t;
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_collection_s {
+struct TRI_collection_t {
   TRI_col_info_t       _info;
 
   TRI_vocbase_t*       _vocbase;
@@ -206,8 +206,13 @@ typedef struct TRI_collection_s {
   TRI_vector_pointer_t _journals;    // all journals
   TRI_vector_pointer_t _compactors;  // all compactor files
   TRI_vector_string_t  _indexFiles;  // all index filenames
-}
-TRI_collection_t;
+
+  TRI_collection_t () {
+  }
+
+  ~TRI_collection_t () {
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
