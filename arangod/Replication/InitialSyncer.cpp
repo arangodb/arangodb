@@ -779,7 +779,8 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
         TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
-        TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+        TRI_vocbase_col_status_e status;
+        TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
 
         if (col == 0) {
           res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

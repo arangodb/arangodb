@@ -690,7 +690,8 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  int res = TRI_UseCollectionVocBase(_vocbase, col);
+  TRI_vocbase_col_status_e status;
+  int res = TRI_UseCollectionVocBase(_vocbase, col, status);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

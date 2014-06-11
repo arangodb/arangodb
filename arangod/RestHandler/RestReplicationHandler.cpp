@@ -2303,7 +2303,8 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  int res = TRI_UseCollectionVocBase(_vocbase, col);
+  TRI_vocbase_col_status_e status;
+  int res = TRI_UseCollectionVocBase(_vocbase, col, status);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -3211,7 +3212,8 @@ void RestReplicationHandler::handleCommandDump () {
              (unsigned long long) tickStart,
              (unsigned long long) tickEnd);
 
-  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_status_e status;
+  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
 
   if (col == 0) {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

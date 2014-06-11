@@ -32,6 +32,7 @@ var arangodb = require("org/arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var wait = require("internal").wait;
+var flushWal = require("internal").flushWal;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -39,12 +40,14 @@ var wait = require("internal").wait;
       
 function waitUnload (collection) {      
   collection.unload();
-  /*
-  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) { 
+  flushWal();
+   
+  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) {
+    collection.unload();
     wait(1);
   }
+
   assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
-  */
 }
 
 // -----------------------------------------------------------------------------
