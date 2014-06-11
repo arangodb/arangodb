@@ -210,6 +210,7 @@
     "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : " is already used by another graph in a different edge definition." },
     "ERROR_GRAPH_CREATE_MISSING_NAME" : { "code" : 1922, "message" : "a graph name is required to create a graph." },
     "ERROR_GRAPH_CREATE_MISSING_EDGE_DEFINITION" : { "code" : 1923, "message" : "at least one edge definition is required to create a graph." },
+    "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1924, "message" : "The edge collection is not used in the edge definitions." },
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
