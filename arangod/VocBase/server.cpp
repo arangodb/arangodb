@@ -290,12 +290,16 @@ static int WriteServerId (char const* filename) {
 /// @brief read / create the server id on startup
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DetermineServerId (TRI_server_t* server) {
+static int DetermineServerId (TRI_server_t* server, bool checkVersion) {
   int res;
 
   res = ReadServerId(server->_serverIdFilename);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
+    if (checkVersion) {
+      return TRI_ERROR_ARANGO_EMPTY_DATADIR;
+    }
+
     // id file does not yet exist. now create it
     res = GenerateServerId();
 
@@ -1390,7 +1394,8 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitDatabases (TRI_server_t* server,
-                          bool isUpgrade) {
+                          bool checkVersion,
+                          bool performUpgrade) {
   TRI_vector_string_t names;
   int res;
 
@@ -1404,7 +1409,7 @@ static int InitDatabases (TRI_server_t* server,
     if (names._length == 0) {
       char* name;
 
-      if (! isUpgrade && HasOldCollections(server)) {
+      if (! performUpgrade && HasOldCollections(server)) {
         LOG_ERROR("no databases found. Please start the server with the --upgrade option");
 
         return TRI_ERROR_ARANGO_DATADIR_INVALID;
@@ -1422,7 +1427,7 @@ static int InitDatabases (TRI_server_t* server,
       }
     }
 
-    if (res == TRI_ERROR_NO_ERROR && isUpgrade) {
+    if (res == TRI_ERROR_NO_ERROR && performUpgrade) {
       char const* systemName;
 
       assert(names._length > 0);
@@ -1782,7 +1787,8 @@ TRI_server_id_t TRI_GetIdServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StartServer (TRI_server_t* server,
-                     bool isUpgrade) {
+                     bool checkVersion,
+                     bool performUpgrade) {
   int res;
 
   if (! TRI_IsDirectory(server->_basePath)) {
@@ -1832,7 +1838,11 @@ int TRI_StartServer (TRI_server_t* server,
   // read the server id
   // .............................................................................
 
-  res = DetermineServerId(server);
+  res = DetermineServerId(server, checkVersion);
+
+  if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+    return res;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("reading/creating server file failed: %s",
@@ -1894,7 +1904,11 @@ int TRI_StartServer (TRI_server_t* server,
   // perform an eventual migration of the databases.
   // .............................................................................
 
-  res = InitDatabases(server, isUpgrade);
+  res = InitDatabases(server, checkVersion, performUpgrade);
+
+  if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+    return res;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to initialise databases: %s",
@@ -1909,7 +1923,7 @@ int TRI_StartServer (TRI_server_t* server,
   if (server->_appPath != NULL &&
       strlen(server->_appPath) > 0 &&
       ! TRI_IsDirectory(server->_appPath)) {
-    if (! isUpgrade) {
+    if (! performUpgrade) {
       LOG_ERROR("specified --javascript.app-path directory '%s' does not exist. "
                 "Please start again with --upgrade option to create it.",
                 server->_appPath);
@@ -1929,7 +1943,7 @@ int TRI_StartServer (TRI_server_t* server,
   if (server->_devAppPath != NULL &&
       strlen(server->_devAppPath) > 0 &&
       ! TRI_IsDirectory(server->_devAppPath)) {
-    if (! isUpgrade) {
+    if (! performUpgrade) {
       LOG_ERROR("specified --javascript.dev-app-path directory '%s' does not exist. "
                 "Please start again with --upgrade option to create it.",
                 server->_devAppPath);
@@ -1979,7 +1993,7 @@ int TRI_StartServer (TRI_server_t* server,
   // .............................................................................
 
   // scan all databases
-  res = OpenDatabases(server, isUpgrade);
+  res = OpenDatabases(server, performUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not iterate over all databases: %s",
@@ -2685,6 +2699,10 @@ bool TRI_MSync (int fd,
 
   return true;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
