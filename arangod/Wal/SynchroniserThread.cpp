@@ -44,7 +44,7 @@ using namespace triagens::wal;
 /// @brief wait interval for the synchroniser thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint64_t SynchroniserThread::Interval = 500000;
+const uint64_t SynchroniserThread::Interval = 500 * 1000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

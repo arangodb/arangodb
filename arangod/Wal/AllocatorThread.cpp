@@ -41,7 +41,7 @@ using namespace triagens::wal;
 /// @brief wait interval for the allocator thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint64_t AllocatorThread::Interval = 500000;
+const uint64_t AllocatorThread::Interval = 500 * 1000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -93,13 +93,12 @@ void AllocatorThread::stop () {
 /// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-void AllocatorThread::signal (uint32_t size) {
-  TRI_ASSERT(size > 0);
-  
+void AllocatorThread::signal (uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
-  if (_requestedSize == 0 || size > _requestedSize) {
-    _requestedSize = size;
+  if (_requestedSize == 0 || markerSize > _requestedSize) {
+    // logfile must be as big as the requested marker
+    _requestedSize = markerSize;
   }
 
   guard.signal();

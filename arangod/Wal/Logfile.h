@@ -185,10 +185,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       bool isWriteable (uint32_t size) const {
-        if (isSealed()) {
-          return false;
-        }
-        if (freeSize() < static_cast<uint64_t>(size)) {
+        if (isSealed() || freeSize() < static_cast<uint64_t>(size)) {
           return false;
         }
 
