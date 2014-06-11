@@ -151,7 +151,8 @@ TRI_server_id_t TRI_GetIdServer (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StartServer (TRI_server_t*,
-                     bool);
+                     bool checkVersion,
+                     bool performUpgrade);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the server
