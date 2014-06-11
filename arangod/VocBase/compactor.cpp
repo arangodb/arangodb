@@ -540,7 +540,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->_shaper, result);
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -560,7 +560,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
     
-    res = TRI_MoveMarkerVocShaper(document->_shaper, result);
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");

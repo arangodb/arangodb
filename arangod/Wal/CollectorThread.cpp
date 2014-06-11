@@ -570,11 +570,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     }
     else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
       // move the pointer to the attribute from WAL to the datafile
-      TRI_MoveMarkerVocShaper(document->_shaper, const_cast<TRI_df_marker_t*>(marker));
+      TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));
     }
     else if (marker->_type == TRI_DF_MARKER_SHAPE) {
       // move the pointer to the shape from WAL to the datafile
-      TRI_MoveMarkerVocShaper(document->_shaper, const_cast<TRI_df_marker_t*>(marker));
+      TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));
     }
     else {
       // a marker we won't care about (e.g. shapes and attributes)
