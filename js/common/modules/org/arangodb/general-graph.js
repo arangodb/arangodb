@@ -2558,6 +2558,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
   findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
 
   if (dropCollections !== false) {
+    graphs = getGraphCollection().toArray();
     //eval collection to be dropped
     dropCandidates = currentEdgeDefinition.from;
     currentEdgeDefinition.to.forEach(
@@ -2727,8 +2728,8 @@ Graph.prototype._addVertexCollection = function(vertexCollection, createCollecti
   } else if (ec.type !== 3) {
     //TODO
     err = new ArangoError();
-    err.errorNum = 1927;
-    err.errorMessage = "";
+    err.errorNum = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message;
     throw err;
   }
 

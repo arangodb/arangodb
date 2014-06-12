@@ -2497,7 +2497,7 @@ function GeneralGraphCommonNeighborsSuite() {
   };
 }
 
-function VertexCollectionChainedFluentAQLResultsSuite() {
+function VertexCollectionSuite() {
   var prefix = "UnitTestGraphVertexCollection",
     g1,
     g2,
@@ -2563,6 +2563,17 @@ function VertexCollectionChainedFluentAQLResultsSuite() {
     },
 
     test_addVertexCollection3: function() {
+      try {
+        g1._addVertexCollection(eC1, false);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message);
+      }
+      assertTrue(db._collection(vC4) === null);
+      assertEqual(g1._getVertexCollections(), []);
+    },
+
+    test_addVertexCollection4: function() {
       g1._addVertexCollection(vC4);
       assertEqual(g1._getVertexCollections(), [vC4]);
       assertTrue(db._collection(vC4) !== null);
@@ -2588,7 +2599,7 @@ jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
-jsunity.run(VertexCollectionChainedFluentAQLResultsSuite);
+//jsunity.run(VertexCollectionSuite);
 
 return jsunity.done();
 
