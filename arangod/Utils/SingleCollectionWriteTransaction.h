@@ -194,10 +194,9 @@ namespace triagens {
           return this->create(this->trxCollection(), 
                               key, 
                               0, 
-                              TRI_DOC_MARKER_KEY_DOCUMENT, 
                               mptr, 
                               shaped, 
-                              0, 
+                              nullptr, 
                               forceSync);
         }
 
@@ -219,7 +218,6 @@ namespace triagens {
           return this->create(this->trxCollection(), 
                               key, 
                               0, 
-                              TRI_DOC_MARKER_KEY_EDGE, 
                               mptr, 
                               shaped, 
                               data, 
