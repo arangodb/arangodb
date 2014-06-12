@@ -494,6 +494,8 @@ extern "C" {
 ///   a graph with this name already exists.
 /// - 1926: @LIT{collection does not exist}
 ///    does not exist.
+/// - 1927: @LIT{not a vertex collection}
+///   the collection is not a vertex collection.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2613,6 +2615,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
+///
+/// not a vertex collection
+///
+/// the collection is not a vertex collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      (1927)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
