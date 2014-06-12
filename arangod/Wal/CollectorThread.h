@@ -82,7 +82,8 @@ namespace triagens {
           totalOperationsCount(totalOperationsCount),
           operations(new std::vector<CollectorOperation>()),
           dfi(),
-          lastFid(0) {
+          lastFid(0),
+          lastDatafile(nullptr) {
 
         operations->reserve(operationsSize);
       }
@@ -134,6 +135,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_voc_fid_t lastFid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last datafile written to
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_datafile_t* lastDatafile;
     };
 
 // -----------------------------------------------------------------------------

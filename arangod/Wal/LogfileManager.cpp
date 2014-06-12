@@ -210,6 +210,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _allocatorThread(nullptr),
     _collectorThread(nullptr),
     _logfilesLock(),
+    _lastOpenedId(0),
     _lastCollectedId(0),
     _lastSealedId(0),
     _logfiles(),
@@ -459,11 +460,13 @@ void LogfileManager::stop () {
   // set WAL to read-only mode
   allowWrites(false);
 
+  this->flush(true, true, false);
+
+//  waitForCollector(30.0);
+  
   // stop threads
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
-
-  this->flush(true, false);
   
   LOG_TRACE("stopping allocator thread");
   stopAllocatorThread();
@@ -715,14 +718,27 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::flush (bool waitForSync,
+                           bool waitForCollector,
                            bool writeShutdownFile) {
   LOG_TRACE("about to flush active WAL logfile");
 
+  Logfile::IdType currentLogfileId;
+  {
+    READ_LOCKER(_logfilesLock);
+    currentLogfileId = _lastOpenedId;
+  }
+
   int res = _slots->flush(waitForSync);
 
-  if (res == TRI_ERROR_NO_ERROR && writeShutdownFile) {
-    // update the file with the last tick, last sealed etc.  
-    return writeShutdownInfo(false);
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (waitForCollector) {
+      this->waitForCollector(currentLogfileId); 
+    }
+
+    if (writeShutdownFile) {
+      // update the file with the last tick, last sealed etc.  
+      return writeShutdownInfo(false);
+    }
   }
 
   return res;
@@ -911,6 +927,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
         
         if (logfile->isWriteable(size)) {
           // found a logfile, update the status variable and return the logfile
+          _lastOpenedId = logfile->id();
           status = logfile->status();
           return logfile;
         }
@@ -1076,6 +1093,50 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait until a specific logfile has been collected
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
+  LOG_TRACE("waiting for collector thread to collect logfile %llu", (unsigned long long) logfileId);
+
+  // wait for the collector thread to finish the collection
+  while (true) {
+    {
+      READ_LOCKER(_logfilesLock);
+
+      if (_lastCollectedId >= logfileId) {
+        return;
+      }
+    }
+
+    LOG_TRACE("waiting for collector");
+    usleep(100 * 1000);
+  }
+}
+/*
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the collector thread to finish its work
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::waitForCollector (double maxWaitTime) {
+  double const end = TRI_microtime() + maxWaitTime;
+  LOG_TRACE("waiting for collector thread to finish");
+
+  // wait for the collector thread to finish the collection
+  while (true) {
+    if (! _collectorThread->hasQueuedOperations()) {
+      return true;
+    }
+
+    if (TRI_microtime() >= end) {
+      return false;
+    }
+
+    usleep(100 * 1000);
+  }
+}
+*/
+////////////////////////////////////////////////////////////////////////////////
 /// @brief scan a single logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1148,15 +1209,13 @@ bool LogfileManager::runRecovery () {
   TRI_ASSERT(_collectorThread != nullptr);
   
   // flush any open logfiles so the collector can copy over everything
-  this->flush(true, false);
+  this->flush(true, true, false);
   
-  
-  // wait for the collector thread to finish the collection
-  while (_collectorThread->hasQueuedOperations()) {
-    LOG_INFO("waiting for collector thread to finish");
-    usleep(100 * 1000);
-  }
-  
+ /*
+  if (! waitForCollector(24 * 3600.0)) {
+    LOG_FATAL_AND_EXIT("waited too long for collector to finish");
+  } 
+  */
   {
     // reset the list of failed transactions
     WRITE_LOCKER(_logfilesLock);

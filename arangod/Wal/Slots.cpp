@@ -84,11 +84,17 @@ int Slots::flush (bool waitForSync) {
   int res = closeLogfile(lastTick, worked);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _logfileManager->signalSync();
-
     if (worked && waitForSync) {
+      _logfileManager->signalSync();
+
       // wait until data has been committed to disk
       waitForTick(lastTick);
+    }
+    else if (! worked) {
+      // logfile to flush was still empty and thus not flushed
+
+      // not really an error, but used to indicate the specific condition
+      res = TRI_ERROR_ARANGO_DATAFILE_EMPTY;
     }
   }
 

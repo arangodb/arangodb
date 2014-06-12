@@ -118,7 +118,9 @@ actions.defineHttp({
       return;
     }
 
-    internal.flushWal();
+    /*jslint node: true, stupid: true */
+    internal.flushWal(req.parameters.waitForSync === "true", 
+                      req.parameters.waitForCollector === "true");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
