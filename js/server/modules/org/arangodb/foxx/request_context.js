@@ -143,7 +143,7 @@ RequestContext = function (executionBuffer, models, route) {
   this.typeToRegex = {
     "int": "/[0-9]+/",
     "integer": "/[0-9]+/",
-    "string": "/.+/"
+    "string": "/[^/]+/"
   };
 
   this.docs = new SwaggerDocs(this.route.docs, models);
