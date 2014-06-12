@@ -312,6 +312,23 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       }
       break;
     }
+    
+    case TRI_AQL_NODE_REMOVE:
+    case TRI_AQL_NODE_SAVE:
+    case TRI_AQL_NODE_UPDATE:
+    case TRI_AQL_NODE_REPLACE: {
+      TRI_json_t* row;
+
+      row = GetRowProtoType(explain, node->_type);
+
+      if (row != NULL) {
+        TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 0);
+
+        AddNodeValue(row, expressionNode);
+        AddRow(explain, row);
+      }
+      break;
+    }
 
     case TRI_AQL_NODE_FOR: {
       TRI_json_t* row;
