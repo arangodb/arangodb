@@ -2497,7 +2497,7 @@ function GeneralGraphCommonNeighborsSuite() {
   };
 }
 
-function VertexCollectionSuite() {
+function OrphanCollectionSuite() {
   var prefix = "UnitTestGraphVertexCollection",
     g1,
     g2,
@@ -2543,41 +2543,65 @@ function VertexCollectionSuite() {
     tearDown : function() {
       graph._drop(gN1);
       graph._drop(gN2);
+      try {db[vC1].drop()} catch (e) {}
       try {db[vC4].drop()} catch (e) {}
     },
 
-    test_addVertexCollection1: function() {
-      g1._addVertexCollection(vC1, false);
-      assertEqual(g1._getVertexCollections(), [vC1]);
+    test_getOrphanCollection: function() {
+      assertEqual(g1._getOrphanCollections(), []);
     },
 
-    test_addVertexCollection2: function() {
+    test_addOrphanCollection1: function() {
+      g1._addOrphanCollection(vC1, false);
+      assertEqual(g1._getOrphanCollections(), [vC1]);
+    },
+
+    test_addOrphanCollection2: function() {
       try {
-        g1._addVertexCollection(vC4, false);
+        g1._addOrphanCollection(vC4, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
         assertEqual(e.errorMessage, vC4 + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getVertexCollections(), []);
+      assertEqual(g1._getOrphanCollections(), []);
     },
 
-    test_addVertexCollection3: function() {
+    test_addOrphanCollection3: function() {
       try {
-        g1._addVertexCollection(eC1, false);
+        g1._addOrphanCollection(eC1, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getVertexCollections(), []);
+      assertEqual(g1._getOrphanCollections(), []);
     },
 
-    test_addVertexCollection4: function() {
-      g1._addVertexCollection(vC4);
-      assertEqual(g1._getVertexCollections(), [vC4]);
-      assertTrue(db._collection(vC4) !== null);
+    test_removeOrphanCollection1: function() {
+      var name = "completelyNonsenseNameForACollectionBLUBBBBB"
+      try {
+        g1._removeOrphanCollection(name);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+      }
+    },
+
+    test_removeOrphanCollection2: function() {
+      g1._addOrphanCollection(vC4, true);
+      g1._addOrphanCollection(vC5, true);
+      assertEqual(g1._getOrphanCollections(), [vC4, vC5]);
+      g1._removeOrphanCollection(vC4, false);
+      assertEqual(g1._getOrphanCollections(), [vC5]);
+      try {
+        g1._removeOrphanCollection(vC4);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
+      }
     }
+
 
   };
 
@@ -2599,7 +2623,7 @@ jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
-//jsunity.run(VertexCollectionSuite);
+jsunity.run(OrphanCollectionSuite);
 
 return jsunity.done();
 

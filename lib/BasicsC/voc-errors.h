@@ -496,6 +496,8 @@ extern "C" {
 ///    does not exist.
 /// - 1927: @LIT{not a vertex collection}
 ///   the collection is not a vertex collection.
+/// - 1928: @LIT{not in orphan collection}
+///   Vertex collection not in orphan collection of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2625,6 +2627,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      (1927)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
+///
+/// not in orphan collection
+///
+/// Vertex collection not in orphan collection of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          (1928)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
