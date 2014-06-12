@@ -283,7 +283,7 @@ function DocumentationAndConstraintsSpec () {
 
       assertEqual(routes.length, 1);
 
-      assertEqual(routes[0].url.constraint.foxx, "/.+/");
+      assertEqual(routes[0].url.constraint.foxx, "/[^/]+/");
       assertEqual(routes[0].docs.parameters[0].paramType, "path");
       assertEqual(routes[0].docs.parameters[0].name, "foxx");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
@@ -309,7 +309,7 @@ function DocumentationAndConstraintsSpec () {
 
       assertEqual(routes.length, 1);
 
-      assertEqual(routes[0].url.constraint.foxxParam, "/.+/");
+      assertEqual(routes[0].url.constraint.foxxParam, "/[^/]+/");
       assertEqual(routes[0].docs.parameters[0].paramType, "path");
       assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
       assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
