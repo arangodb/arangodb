@@ -1207,39 +1207,6 @@ bool TRI_IsValidMarkerDatafile (TRI_df_marker_t const* marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
-/// @deprecated this function is deprecated. do not use for new code
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
-                                   TRI_df_marker_t* marker,
-                                   TRI_voc_size_t markerSize,
-                                   void const* keyBody,
-                                   TRI_voc_size_t keyBodySize,
-                                   void const* body,
-                                   TRI_voc_size_t bodySize) {
-  marker->_crc = 0;
-
-  // crc values only need to be generated for physical files
-  if (datafile->isPhysical(datafile)) {
-    TRI_voc_crc_t crc;
-
-    crc = TRI_InitialCrc32();
-    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
-
-    if (keyBody != NULL && 0 < keyBodySize) {
-      crc = TRI_BlockCrc32(crc, static_cast<char const*>(keyBody), keyBodySize);
-    }
-
-    if (body != NULL && 0 < bodySize) {
-      crc = TRI_BlockCrc32(crc, static_cast<char const*>(body), bodySize);
-    }
-
-    marker->_crc = TRI_FinalCrc32(crc);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
 ///
 /// note: maximalJournalSize is the collection's maximalJournalSize property,
@@ -1350,30 +1317,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     }
 #endif
 
-    // set data tick values (for documents and edge markers)
-    if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-        type == TRI_DOC_MARKER_KEY_EDGE) {
-
-      if (datafile->_dataMin == 0) {
-        datafile->_dataMin = tick;
-      }
-
-      if (datafile->_dataMax < tick) {
-        datafile->_dataMax = tick;
-      }
-    }
-  }
-
-  if (type != TRI_DF_MARKER_ATTRIBUTE &&
-      type != TRI_DF_MARKER_SHAPE) {
-
-    if (datafile->_tickMin == 0) {
-      datafile->_tickMin = tick;
-    }
-
-    if (datafile->_tickMax < tick) {
-      datafile->_tickMax = tick;
-    }
+    TRI_UpdateTicksDatafile(datafile, marker);
   }
    
   TRI_ASSERT(markerSize > 0);
@@ -1430,6 +1374,47 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update tick values for a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
+                              TRI_df_marker_t const* marker) {
+  TRI_df_marker_type_e type = (TRI_df_marker_type_e) marker->_type;
+
+  if (type == TRI_DF_MARKER_HEADER || 
+      type == TRI_DF_MARKER_FOOTER ||
+      type == TRI_COL_MARKER_HEADER ||
+      type == TRI_DF_MARKER_ATTRIBUTE ||
+      type == TRI_DF_MARKER_SHAPE) {
+    // ignore these markers
+    return;
+  }
+
+  if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+      type == TRI_DOC_MARKER_KEY_EDGE) {
+    if (datafile->_dataMin == 0) {
+      datafile->_dataMin = marker->_tick;
+    }
+
+    if (datafile->_dataMax < marker->_tick) {
+      datafile->_dataMax = marker->_tick;
+    }
+  }
+
+  if (type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
+
+    if (datafile->_tickMin == 0) {
+      datafile->_tickMin = marker->_tick;
+    }
+
+    if (datafile->_tickMax < marker->_tick) {
+      datafile->_tickMax = marker->_tick;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

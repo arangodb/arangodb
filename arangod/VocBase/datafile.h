@@ -653,19 +653,6 @@ int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t*,
 bool TRI_IsValidMarkerDatafile (TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
-/// @deprecated this function is deprecated. do not use for new code.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
-                                   TRI_df_marker_t* marker,
-                                   TRI_voc_size_t markerSize,
-                                   void const* keyBody,
-                                   TRI_voc_size_t keyBodySize,
-                                   void const* body,
-                                   TRI_voc_size_t bodySize);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -696,6 +683,13 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  TRI_df_marker_t* marker,
                                  TRI_voc_size_t markerSize,
                                  bool sync) TRI_WARN_UNUSED_RESULT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update tick values for a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateTicksDatafile (TRI_datafile_t*,
+                              TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile

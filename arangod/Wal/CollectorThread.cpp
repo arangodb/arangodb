@@ -1159,6 +1159,7 @@ leave:
 
     if (datafile->_fid != cache->lastFid) {
       // datafile has changed
+      cache->lastDatafile = datafile;
       cache->lastFid = datafile->_fid;
 
       // create a local datafile info struct
@@ -1202,6 +1203,12 @@ void CollectorThread::finishMarker (char const* walPosition,
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, const_cast<char*>(datafilePosition), marker->_size);
   marker->_crc = TRI_FinalCrc32(crc);
+
+  TRI_datafile_t* datafile = cache->lastDatafile;
+  TRI_ASSERT(datafile != nullptr);
+
+  // update ticks
+  TRI_UpdateTicksDatafile(datafile, marker);
 
   TRI_ASSERT(document->_tickMax < tick);
   document->_tickMax = tick;

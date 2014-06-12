@@ -3781,7 +3781,12 @@ static v8::Handle<v8::Value> JS_Flush (v8::Arguments const& argv) {
     waitForSync = TRI_ObjectToBoolean(argv[0]);
   }
 
-  int res = triagens::wal::LogfileManager::instance()->flush(waitForSync);
+  bool waitForCollector = false; 
+  if (argv.Length() > 1) {
+    waitForCollector = TRI_ObjectToBoolean(argv[1]);
+  }
+
+  int res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);

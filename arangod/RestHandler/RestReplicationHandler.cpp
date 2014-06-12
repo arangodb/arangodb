@@ -2703,6 +2703,9 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     // TODO: waitForSync disabled here. use for initial replication, too
     // sync at end of trx
     trxCollection->_waitForSync = false;
+
+    // create a fake transaction to avoid assertion failures. TODO: use proper transaction here
+    TransactionBase fake(true);
     res = processRestoreDataBatch(resolver, trxCollection, generatingServer, useRevision, force, errorMsg);
   }
 
