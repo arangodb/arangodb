@@ -1480,7 +1480,7 @@ var _create = function (graphName, edgeDefinitions) {
   );
 
   try {
-    g = gdb.document(graphName);
+    var g = gdb.document(graphName);
   } catch (e) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;

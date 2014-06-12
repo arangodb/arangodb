@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* fixed check-version for empty directory
+
 * moved try/catch block to the top of routing chain
 
 * added mountedApp function for foxx-manager

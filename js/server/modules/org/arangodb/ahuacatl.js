@@ -4970,7 +4970,7 @@ function IS_EXAMPLE_SET (example) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
 ///
 /// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-/// *The GRAPH\_SHORTEST\_PATH function returns all paths of a graph.*
+/// *The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
 ///
 /// This function determines all shortest paths in a graph identified by *graphName*.
 /// The function accepts an id, an example, a list of examples
@@ -4978,7 +4978,7 @@ function IS_EXAMPLE_SET (example) {
 /// start and end vertex. If one wants to calls this function to receive nearly all
 /// shortest paths for a graph the
 /// option *algorithm* should be set to *Floyd-Warshall* to increase performance.
-/// If no algorithm is given in the options the function chooses the appropriate
+/// If no algorithm is provided in the options the function chooses the appropriate
 /// one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
 /// The length of a path is by default the amount of edges from one start vertex to
 /// an end vertex. The option weight allows the user to define an edge attribute
@@ -5224,6 +5224,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+/// It does not return the actual path but only the distance between two vertices.
 ///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
@@ -5529,7 +5530,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+/// @startDocuBlock JSF_ahuacatl_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
 /// *The GRAPH\_EDGES function returns all edges of vertices.*
@@ -5704,7 +5705,7 @@ function GENERAL_GRAPH_VERTICES (
 function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
   var ret = {};
   result.forEach(function (r) {
-    var v = JSON.stringify(r.vertex)
+    var v = JSON.stringify(r.vertex);
     if (! ret[v]) {
       ret[v] = [];
     }
@@ -5718,7 +5719,8 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
 ///
-/// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
+/// optionsVertex1, optionsVertex2)`
 /// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
 /// defined by the examples.*
 ///
@@ -5758,28 +5760,27 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// @EXAMPLES
 ///
-/// A route planner example, all neighbors of locations with a distance of
-/// either 700 or 600.:
+/// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// |+"'routeplanner', {}) RETURN e"
+/// |+"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound neighbors of munich with a maximal
-/// depth of 2 :
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// |+"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
-/// |" : 'city'}) RETURN e"
+/// |+"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
+/// | "{direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5797,8 +5798,8 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
   var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
     GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
   ), neighbors2;
-  if (vertex1Examples == vertex2Examples) {
-    neighbors2 == CLONE(neighbors1);
+  if (vertex1Examples === vertex2Examples) {
+    neighbors2 = CLONE(neighbors1);
   } else {
     neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
       GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
@@ -5835,7 +5836,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
     });
   });
   Object.keys(res2).forEach(function (r) {
-    var e = {}
+    var e = {};
     e[r] = res2[r];
     res3.push(e);
   });
@@ -5988,7 +5989,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the vertices defined by the examples.
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
@@ -6011,8 +6012,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// * String|Object|Array  *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (see below).
 /// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
+/// the shortest paths.
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6100,7 +6100,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 ///
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 /// *The GRAPH\_ECCENTRICITY function returns the normalized
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the graphs vertices
 ///
 /// * String               *graphName*          : The name of the graph.
@@ -6110,8 +6110,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// * String               *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 /// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
+/// the shortest paths.
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6202,8 +6201,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// * String|Object|Array  *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (see below).
 /// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
+/// the shortest paths.
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6300,8 +6298,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// * String               *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 /// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
+/// the shortest paths.
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6396,9 +6393,6 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// Possible options and there defaults:
 /// * String               *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6507,9 +6501,6 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// Possible options and there defaults:
 /// * String               *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-/// used, otherwise the default is *Dijkstra*
 /// * String               *weight*                           : The name of the attribute of
 /// the edges containing the length.
 /// * Number               *defaultWeight*                    : Only used with the option *weight*.
@@ -6582,7 +6573,68 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the radius of the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_radius
+///
+/// `GRAPH_RADIUS (graphName, options)`
+/// *The GRAPH\_RADIUS function returns the
+/// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
+/// of a graph.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths.
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the radius of the graph.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_RADIUS("
+/// |+"'routeplanner')"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the radius of the graph.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_RADIUS("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the cradius of the graph regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_RADIUS("
+/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_RADIUS (graphName, options) {
 
@@ -6613,7 +6665,68 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the diameter of the graph
+/// @startDocuBlock JSF_ahuacatl_general_graph_diameter
+///
+/// `GRAPH_DIAMETER (graphName, options)`
+/// *The GRAPH\_DIAMETER function returns the
+/// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
+/// of a graph.
+///
+/// * String               *graphName*          : The name of the graph.
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the edges.
+/// Possible values are *outbound*, *inbound* and *any* (default).
+/// * String               *algorithm*                        : The algorithm to calculate
+/// the shortest paths.
+/// * String               *weight*                           : The name of the attribute of
+/// the edges containing the length.
+/// * Number               *defaultWeight*                    : Only used with the option *weight*.
+/// If an edge does not have the attribute named as defined in option *weight* this default
+/// is used as length.
+/// If no default is supplied the default would be positive Infinity so the path and
+/// hence the eccentricity can not be calculated.
+///
+/// @EXAMPLES
+///
+/// A route planner example, the diameter of the graph.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_DIAMETER("
+/// |+"'routeplanner')"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, tthe diameter of the graph.
+/// This considers the actual distances.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_DIAMETER("
+/// |+"'routeplanner', {weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, the diameter of the graph regarding only
+/// outbound pathes.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter3}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("RETURN GRAPH_DIAMETER("
+/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DIAMETER (graphName, options) {
 
