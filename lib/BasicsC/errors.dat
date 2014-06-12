@@ -295,6 +295,7 @@ ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not b
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",
 ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the collection is not a vertex collection.",
+ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
 
 ################################################################################
 ## Session errors
