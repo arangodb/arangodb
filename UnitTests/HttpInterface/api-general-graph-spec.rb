@@ -84,7 +84,7 @@ def create_edge (graph_name, collection, from, to, body)
   cmd = edge_endpoint(graph_name, collection)
   body["_from"] = from
   body["_to"] = to
-  doc = ArangoDB.post(cmd, :body => body)
+  doc = ArangoDB.post(cmd, :body => JSON.dump(body))
   return doc
 end
 
@@ -99,7 +99,7 @@ def update_edge (graph_name, collection, key, body, keepNull)
   if keepNull != '' then
     cmd = cmd + "?keepNull=" + keepNull
   end
-  doc = ArangoDB.patch(cmd, :body => body)
+  doc = ArangoDB.patch(cmd, :body => JSON.dump(body))
   return doc
 end
 
@@ -354,7 +354,7 @@ describe ArangoDB do
         doc = create_edge(graph_name, friend_collection, v1, v2, {"type" => type}) 
         key = doc.parsed_response['edge']['_key']
 
-        doc = get_edge(graph_name, user_collection, key) 
+        doc = get_edge(graph_name, friend_collection, key) 
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
@@ -375,14 +375,14 @@ describe ArangoDB do
         oldTag.should eq(doc.headers['etag'])
         type = "divorced"
 
-        doc = replace_edge(graph_name, user_collection, key, {"type2" => type}) 
+        doc = replace_edge(graph_name, friend_collection, key, {"type2" => type}) 
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['edge']['_key'].should eq(key)
 
-        doc = get_edge(graph_name, user_collection, key) 
+        doc = get_edge(graph_name, friend_collection, key) 
         doc.parsed_response['edge']['type'].should eq(nil)
         doc.parsed_response['edge']['type2'].should eq(type)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
@@ -400,14 +400,14 @@ describe ArangoDB do
         key = doc.parsed_response['edge']['_key']
         type2 = "divorced"
 
-        doc = update_edge(graph_name, user_collection, key, {"type2" => type2}) 
+        doc = update_edge(graph_name, friend_collection, key, {"type2" => type2}) 
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['edge']['_key'].should eq(key)
 
-        doc = get_edge(graph_name, user_collection, key) 
+        doc = get_edge(graph_name, friend_collection, key) 
         doc.parsed_response['edge']['type'].should eq(name)
         doc.parsed_response['edge']['type2'].should eq(name2)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
@@ -423,7 +423,7 @@ describe ArangoDB do
         doc = create_edge(graph_name, friend_collection, v1, v2, {"type" => type}) 
         key = doc.parsed_response['edge']['_key']
 
-        doc = delete_edge(graph_name, user_collection, key) 
+        doc = delete_edge(graph_name, friend_collection, key) 
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)

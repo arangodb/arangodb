@@ -221,6 +221,178 @@
     }
   );
 
+  ///////////////////////////////////////////////// Edges //////////
+  
+  /** Create a new edge.
+   *
+   * Stores a new edge with the information contained
+   * within the body into the given collection.
+   */
+  controller.post("/:graph/edge/:collection", function(req, res) {
+    var name = req.params("graph");
+    var collection = req.params("collection");
+    require("internal").print(collection);
+    var body = req.params("edge");
+    var g = Graph._graph(name);
+    require("internal").print(_.keys(g));
+    setResponse(res, "edge", g[collection].save(body.forDB()));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the edge collection."
+  })
+  .bodyParam("edge", "The edge to be stored. Has to contain _from and _to attributes.", Model);
+
+  /** Load an edge.
+   *
+   * Loads an edge with the given id if it is contained
+   * within your graph.
+   */
+  controller.get("/:graph/edge/:collection/:key", function(req, res) {
+    var name = req.params("graph");
+    var collection = req.params("collection");
+    var key = req.params("key");
+    var id = toId(collection, key);
+    var g = Graph._graph(name);
+    setResponse(res, "edge", g[collection].document(id));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the edge collection."
+  })
+  .pathParam("key", {
+    type: "string",
+    description: "_key attribute of one specific edge."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Replace an edge.
+   *
+   * Replaces an edge with the given id by the content in the body.
+   * This will only run successfully if the edge is contained
+   * within the graph.
+   */
+  controller.put("/:graph/edge/:collection/:key", function(req, res) {
+    var name = req.params("graph");
+    var collection = req.params("collection");
+    var key = req.params("key");
+    var id = toId(collection, key);
+    var body = req.params("edge");
+    var g = Graph._graph(name);
+    setResponse(res, "edge", g[collection].replace(id, body.forDB()));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the edge collection."
+  })
+  .pathParam("key", {
+    type: "string",
+    description: "_key attribute of one specific edge."
+  })
+  .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Update an edge.
+   *
+   * Updates an edge with the given id by adding the content in the body.
+   * This will only run successfully if the edge is contained
+   * within the graph.
+   */
+  controller.patch("/:graph/edge/:collection/:key", function(req, res) {
+    var name = req.params("graph");
+    var collection = req.params("collection");
+    var key = req.params("key");
+    var id = toId(collection, key);
+    var body = req.params("edge");
+    var g = Graph._graph(name);
+    setResponse(res, "edge", g[collection].update(id, body.forDB()));
+  })
+  .bodyParam(
+    "edge", "The values that should be modified. _from and _to attributes are ignored", Model
+  )
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the edge collection."
+  })
+  .pathParam("key", {
+    type: "string",
+    description: "_key attribute of one specific edge."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Delete an edge.
+   *
+   * Deletes an edge with the given id, if it is contained
+   * within the graph.
+   */
+  controller.del("/:graph/edge/:collection/:key", function(req, res) {
+    var name = req.params("graph");
+    var collection = req.params("collection");
+    var key = req.params("key");
+    var id = toId(collection, key);
+    var g = Graph._graph(name);
+    setResponse(res, "edge", g[collection].remove(id));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the edge collection."
+  })
+  .pathParam("key", {
+    type: "string",
+    description: "_key attribute of one specific edge."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+///////////////// GRAPH /////////////////////////////////
+
   /** Creates a new graph
    *
    * Creates a new graph object
