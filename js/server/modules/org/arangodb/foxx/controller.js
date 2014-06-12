@@ -300,7 +300,7 @@ extend(Controller.prototype, {
 ///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
-/// 
+///
 /// @warning Do not forget that `delete` is a reserved word in JavaScript and
 /// therefore needs to be called as app['delete']. There is also an alias `del`
 /// for this very reason.
