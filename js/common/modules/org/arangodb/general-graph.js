@@ -2745,14 +2745,14 @@ Graph.prototype._addOrphanCollection = function(vertexCollection, createCollecti
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__getOrphanCollection
+/// @startDocuBlock JSF_general_graph__getOrphanCollections
 /// Returns all vertex collections of the graph, that are not used in an edge definition.
 ///
 /// `general-graph._getOrphanCollections()`
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getVertexCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = examples._create("myGraph", [ed1]);
@@ -2787,7 +2787,7 @@ Graph.prototype._getOrphanCollections = function() {
 ///   var g = examples._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3, true);
 ///   g._addOrphanCollection("myVC4, true);
-///   g._getVertexCollections();
+///   g._getOrphanCollections();
 ///   g._removeOrphanCollection("myVC3");
 ///   g._getOrphanCollections();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
