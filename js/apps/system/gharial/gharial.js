@@ -56,51 +56,6 @@
       }
     };
 
-  /** Creates a new graph
-   *
-   * Creates a new graph object
-   */
-  controller.post("/", function(req, res) {
-    var infos = req.params("graph");
-    var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
-    setResponse(res, "graph", {
-      name: g.__name,
-      edgeDefinitions: g.__edgeDefinitions
-    }, actions.HTTP_CREATED);
-  }).errorResponse(
-    ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
-      return {
-        code: actions.HTTP_CONFLICT,
-        error: e.errorMessage
-      };
-    }
-  ).bodyParam("graph", "The required information for a graph", Model);
-
-  /** Drops an existing graph
-   *
-   * Drops an existing graph object by name.
-   * By default all collections not used by other graphs will be dropped as
-   * well. It can be optionally configured to not drop the collections.
-   */
-  controller.del("/:graph", function(req, res) {
-    var name = req.params("graph");
-    Graph._drop(name);
-    setResponse(res);
-  })
-  .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
-  })
-  .errorResponse(
-    ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
-    }
-  );
-
-
   /** Create a new vertex.
    *
    * Stores a new vertex with the information contained
@@ -265,6 +220,53 @@
       };
     }
   );
+
+  /** Creates a new graph
+   *
+   * Creates a new graph object
+   */
+  controller.post("/", function(req, res) {
+    var infos = req.params("graph");
+    var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
+    setResponse(res, "graph", {
+      name: g.__name,
+      edgeDefinitions: g.__edgeDefinitions
+    }, actions.HTTP_CREATED);
+  }).errorResponse(
+    ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
+      return {
+        code: actions.HTTP_CONFLICT,
+        error: e.errorMessage
+      };
+    }
+  ).bodyParam("graph", "The required information for a graph", Model);
+
+  /** Drops an existing graph
+   *
+   * Drops an existing graph object by name.
+   * By default all collections not used by other graphs will be dropped as
+   * well. It can be optionally configured to not drop the collections.
+   */
+  controller.del("/:graph", function(req, res) {
+    var name = req.params("graph");
+    Graph._drop(name);
+    setResponse(res);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+
+
 
 }());
 
