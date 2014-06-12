@@ -70,10 +70,10 @@ static TRI_edge_index_t* FindEdgesIndex (
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
       char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
@@ -83,7 +83,7 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
     }
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+    triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
       char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;

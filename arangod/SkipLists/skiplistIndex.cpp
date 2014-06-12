@@ -158,7 +158,7 @@ static int CmpElmElm (void* sli,
   }
   
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->getShaper();
+  shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   int compareResult;
   
   for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
@@ -186,8 +186,8 @@ static int CmpElmElm (void* sli,
   }
 
   // We break this tie in the key comparison by looking at the key: 
-  compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),    // ONLY IN INDEX
-                         TRI_EXTRACT_MARKER_KEY(rightElement->_document));  // ONLY IN INDEX
+  compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),    // ONLY IN INDEX, PROTECTED by RUNTIME
+                         TRI_EXTRACT_MARKER_KEY(rightElement->_document));  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (compareResult < 0) {
     return -1;
@@ -213,7 +213,7 @@ static int CmpKeyElm (void* sli,
   TRI_ASSERT(nullptr != right);
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->getShaper();
+  shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to

@@ -40,6 +40,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
@@ -421,7 +422,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true); // ONLY IN DUMP, PROTECTED by fake trx above
 
     APPEND_STRING(buffer, "}}\n");
   }
@@ -556,7 +557,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
   TRI_shaped_json_t shaped;
   
   TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
-  shaper = document->getShaper();
+  shaper = document->getShaper();  // ONLY IN DUMP, PROTECTED by a fake trx from above
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
@@ -606,6 +607,14 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool bufferFull;
   bool ignoreMarkers;
     
+  // The following fake transaction allows us to access data pointers
+  // and shapers, essentially disabling the runtime checks. This is OK,
+  // since the dump only considers data files (and not WAL files), so 
+  // the collector has no trouble. Also, the data files of the collection
+  // are protected from the compactor by a barrier and the dump only goes
+  // until a certain tick.
+  triagens::arango::TransactionBase trx(true);
+
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
             (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,

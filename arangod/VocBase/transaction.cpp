@@ -139,7 +139,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) { 
           TRI_voc_fid_t fid = op->oldHeader._fid;
-          TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(op->oldHeader.getDataPtr());
+          TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(op->oldHeader.getDataPtr());  // PROTECTED by trx from above
 
           auto it2 = stats.find(fid);
 
@@ -900,7 +900,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       // the old header might point to the WAL. in this case, there'll be no stats update
 
       if (dfi != nullptr) {
-        TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(operation.oldHeader.getDataPtr());
+        TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
         dfi->_numberDead += 1;
         dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(marker->_size);
       }
