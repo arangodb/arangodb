@@ -359,6 +359,9 @@ void CollectorThread::run () {
     // next iteration
   }
 
+  // all queues are empty, so we can exit
+  TRI_ASSERT(! hasQueuedOperations());
+
   _stop = 2;
 }
 

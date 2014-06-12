@@ -3776,7 +3776,12 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_Flush (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  int res = triagens::wal::LogfileManager::instance()->flush();
+  bool waitForSync = false; 
+  if (argv.Length() > 0) {
+    waitForSync = TRI_ObjectToBoolean(argv[0]);
+  }
+
+  int res = triagens::wal::LogfileManager::instance()->flush(waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
