@@ -102,6 +102,7 @@
         "frontend/js/bootstrap/module-internal.js",
         "frontend/js/client/bootstrap/module-internal.js",
         "frontend/js/client/client.js",
+        "frontend/js/bootstrap/module-console.js",
         "frontend/js/models/arangoCollectionModel.js",
         "frontend/js/models/arangoDatabase.js",
         "frontend/js/models/arangoDocument.js",

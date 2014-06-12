@@ -15,7 +15,9 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-query-cursor.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arangosh.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/general-graph.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-blueprint.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
 	\
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb-common.js \
@@ -31,6 +33,7 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/bootstrap/errors.js \
 	js/apps/system/aardvark/frontend/js/bootstrap/monkeypatches.js \
 	js/apps/system/aardvark/frontend/js/bootstrap/module-internal.js \
+	js/apps/system/aardvark/frontend/js/bootstrap/module-console.js \
 	\
 	js/apps/system/aardvark/frontend/js/client/client.js \
 	js/apps/system/aardvark/frontend/js/client/bootstrap/module-internal.js
