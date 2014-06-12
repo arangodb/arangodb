@@ -1709,6 +1709,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
+  createHiddenProperty(this, "__singleVertexCollections", []);
 
   // fills this.__idsToRemove and this.__collectionsToLock
   var removeEdge = function (edgeId, options) {
@@ -2710,10 +2711,30 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._addVertexCollection = function(edgeCollection, dropCollections) {
+Graph.prototype._addVertexCollection = function(vertexCollection, createCollection) {
+  //check edgeCollection
+  var ec = db._collection(vertexCollection);
+  var err;
+  if (ec === null) {
+    if (createCollection !== false) {
+      db._create(vertexCollection);
+    } else {
+      err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+      err.errorMessage = vertexCollection + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      throw err;
+    }
+  } else if (ec.type !== 3) {
+
+  }
+
+  this.__singleVertexCollections.push(vertexCollection);
 
 };
 
+Graph.prototype._getVertexCollections = function() {
+  return this.__singleVertexCollections;
+};
 
 
 

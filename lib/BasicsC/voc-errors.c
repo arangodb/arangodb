@@ -202,6 +202,13 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
   REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
   REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE, "multi use of edge collection in edge def");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
+  REG_ERROR(ERROR_GRAPH_CREATE_MISSING_NAME, "missing graph name");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge def");
+  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
+  REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
+  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "collection does not exist");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

@@ -477,6 +477,21 @@ extern "C" {
 /// - 1910: @LIT{invalid filter result}
 ///   Will be raised when an invalid filter result is returned in a graph
 ///   traversal.
+/// - 1920: @LIT{multi use of edge collection in edge def}
+///   an edge collection may only be used once in one edge definition of a
+///   graph.
+/// - 1921: @LIT{edge collection already used in edge def}
+///    is already used by another graph in a different edge definition.
+/// - 1922: @LIT{missing graph name}
+///   a graph name is required to create a graph.
+/// - 1923: @LIT{malformed edge def}
+///   the edge definition is malformed. It has to be an array of objects.
+/// - 1924: @LIT{graph not found}
+///   a graph with this name could not be found.
+/// - 1925: @LIT{graph already exists}
+///   a graph with this name already exists.
+/// - 1926: @LIT{collection does not exist}
+///    does not exist.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2516,6 +2531,76 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT                             (1910)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1920: ERROR_GRAPH_COLLECTION_MULTI_USE
+///
+/// multi use of edge collection in edge def
+///
+/// an edge collection may only be used once in one edge definition of a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_MULTI_USE                              (1920)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1921: ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS
+///
+/// edge collection already used in edge def
+///
+///  is already used by another graph in a different edge definition.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    (1921)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1922: ERROR_GRAPH_CREATE_MISSING_NAME
+///
+/// missing graph name
+///
+/// a graph name is required to create a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               (1922)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
+///
+/// malformed edge def
+///
+/// the edge definition is malformed. It has to be an array of objects.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  (1923)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1924: ERROR_GRAPH_NOT_FOUND
+///
+/// graph not found
+///
+/// a graph with this name could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NOT_FOUND                                         (1924)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1925: ERROR_GRAPH_DUPLICATE
+///
+/// graph already exists
+///
+/// a graph with this name already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_DUPLICATE                                         (1925)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
+///
+/// collection does not exist
+///
+///  does not exist.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
