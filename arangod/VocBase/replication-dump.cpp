@@ -40,6 +40,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
@@ -612,7 +613,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   // the collector has no trouble. Also, the data files of the collection
   // are protected from the compactor by a barrier and the dump only goes
   // until a certain tick.
-  TransactionBase trx(true);
+  triagens::arango::TransactionBase trx(true);
 
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
             (unsigned long long) document->_info._cid,
