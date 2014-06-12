@@ -2725,7 +2725,11 @@ Graph.prototype._addVertexCollection = function(vertexCollection, createCollecti
       throw err;
     }
   } else if (ec.type !== 3) {
-
+    //TODO
+    err = new ArangoError();
+    err.errorNum = 1927;
+    err.errorMessage = "";
+    throw err;
   }
 
   this.__singleVertexCollections.push(vertexCollection);
