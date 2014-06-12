@@ -36,6 +36,8 @@
 #include "BasicsC/vector.h"
 #include "ShapedJson/json-shaper.h"
 
+using namespace triagens;
+
 // #define DEBUG_JSON_SHAPER 1
 
 // -----------------------------------------------------------------------------
