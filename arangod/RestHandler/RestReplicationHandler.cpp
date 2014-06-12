@@ -2282,7 +2282,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  const string name = JsonHelper::getStringValue(parameters, "name", "");
+  string const name = JsonHelper::getStringValue(parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2312,13 +2312,17 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
   TRI_document_collection_t* document = col->_collection;
 
+  // create a fake transaction for creating the indexes
+  // this is necessary because otherwise we'll have an assertion fail
+  TransactionBase trx(true);
+
   TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-    TRI_index_t* idx = 0;
+    TRI_index_t* idx = nullptr;
 
     // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
@@ -2329,7 +2333,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
       break;
     }
     else {
-      TRI_ASSERT(idx != 0);
+      TRI_ASSERT(idx != nullptr);
 
       res = TRI_SaveIndex(document, idx, remoteServerId);
 
