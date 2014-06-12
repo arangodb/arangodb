@@ -342,126 +342,6 @@ static inline void UpdateTick (TRI_voc_tick_t tick) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads shutdown information file
-/// this is called at server startup. if the file is present, the last tick
-/// value used by the server will be read from the file.
-////////////////////////////////////////////////////////////////////////////////
-
-static int ReadShutdownInfo (char const* filename) {
-  TRI_json_t* json;
-  TRI_json_t* shutdownTime;
-  TRI_json_t* tickString;
-  uint64_t foundTick;
-
-  TRI_ASSERT(filename != nullptr);
-
-  if (! TRI_ExistsFile(filename)) {
-    return TRI_ERROR_FILE_NOT_FOUND;
-  }
-
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
-
-  if (json == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  shutdownTime = TRI_LookupArrayJson(json, "shutdownTime");
-
-  if (TRI_IsStringJson(shutdownTime)) {
-    LOG_DEBUG("server was shut down cleanly last time at '%s'", shutdownTime->_value._string.data);
-  }
-
-  tickString = TRI_LookupArrayJson(json, "tick");
-
-  if (! TRI_IsStringJson(tickString)) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  foundTick = TRI_UInt64String2(tickString->_value._string.data,
-                                tickString->_value._string.length - 1);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  LOG_TRACE("using existing tick from shutdown info file: %llu",
-            (unsigned long long) foundTick);
-
-  if (foundTick == 0) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  UpdateTick((TRI_voc_tick_t) foundTick);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the shutdown information file
-/// this is called after the shutdown info file is read at restart. we need
-/// to remove the file because if we don't and the server crashes, we would
-/// leave some stale data around, leading to potential inconsistencies later.
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemoveShutdownInfo (TRI_server_t* server) {
-  int res = TRI_UnlinkFile(server->_shutdownFilename);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes shutdown information file
-/// the file will contain the timestamp of the shutdown time plus the last
-/// tick value the server used. it will be read on restart of the server.
-/// if the server can find the file on restart, it can avoid scanning
-/// collections.
-////////////////////////////////////////////////////////////////////////////////
-
-static int WriteShutdownInfo (TRI_server_t* server) {
-  TRI_json_t* json;
-  char* tickString;
-  char buffer[32];
-  size_t len;
-  time_t tt;
-  struct tm tb;
-  bool ok;
-
-  // create a json object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
-    // out of memory
-    LOG_ERROR("cannot save shutdown info in file '%s': out of memory",
-              server->_shutdownFilename);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  tickString = TRI_StringUInt64((uint64_t) GetTick());
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-
-  tt = time(0);
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
-
-  // save json info to file
-  LOG_DEBUG("writing shutdown info to file '%s'", server->_shutdownFilename);
-  ok = TRI_SaveJson(server->_shutdownFilename, json, true);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-  if (! ok) {
-    LOG_ERROR("could not save shutdown info in file '%s': %s",
-              server->_shutdownFilename,
-              TRI_last_error());
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                database functions
 // -----------------------------------------------------------------------------
@@ -818,8 +698,8 @@ static int OpenDatabases (TRI_server_t* server,
                               id, 
                               databaseName, 
                               &defaults,
-                              isUpgrade, 
-                              ! server->_wasShutdownCleanly);
+                              isUpgrade,
+                              server->_iterateMarkersOnOpen);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
 
@@ -1587,10 +1467,13 @@ int TRI_InitServer (TRI_server_t* server,
                     char const* devAppPath,
                     TRI_vocbase_defaults_t const* defaults,
                     bool disableLoggers,
-                    bool disableAppliers) {
+                    bool disableAppliers,
+                    bool iterateMarkersOnOpen) {
 
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(basePath != nullptr);
+
+  server->_iterateMarkersOnOpen = iterateMarkersOnOpen;
 
   // c++ object, may be null in console mode
   server->_applicationEndpointServer = applicationEndpointServer;
@@ -1622,20 +1505,9 @@ int TRI_InitServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_shutdownFilename = TRI_Concatenate2File(server->_basePath, "SHUTDOWN");
-
-  if (server->_shutdownFilename == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
   server->_serverIdFilename = TRI_Concatenate2File(server->_basePath, "SERVER");
 
   if (server->_serverIdFilename == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
@@ -1647,7 +1519,6 @@ int TRI_InitServer (TRI_server_t* server,
 
   if (server->_appPath == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
@@ -1660,7 +1531,6 @@ int TRI_InitServer (TRI_server_t* server,
   if (server->_devAppPath == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
@@ -1702,7 +1572,6 @@ int TRI_InitServer (TRI_server_t* server,
   server->_disableReplicationLoggers  = disableLoggers;
   server->_disableReplicationAppliers = disableAppliers;
 
-  server->_wasShutdownCleanly = false;
   server->_initialised = true;
 
   return TRI_ERROR_NO_ERROR;
@@ -1725,7 +1594,6 @@ void TRI_DestroyServer (TRI_server_t* server) {
     TRI_Free(TRI_CORE_MEM_ZONE, server->_devAppPath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_shutdownFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
@@ -1835,31 +1703,6 @@ int TRI_StartServer (TRI_server_t* server,
               TRI_errno_string(res));
 
     return res;
-  }
-
-
-  // .............................................................................
-  // read information from last shutdown
-  // .............................................................................
-
-  // check if we can find a SHUTDOWN file
-  // this file will contain the last tick value issued by the server
-  // if we find the file, we can avoid scanning datafiles for the last used tick value
-
-  res = ReadShutdownInfo(server->_shutdownFilename);
-
-  if (res == TRI_ERROR_INTERNAL) {
-    LOG_ERROR("cannot read shutdown information from file '%s'",
-              server->_shutdownFilename);
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-
-  server->_wasShutdownCleanly = (res == TRI_ERROR_NO_ERROR);
-
-  if (! server->_wasShutdownCleanly) {
-    LOG_INFO("server was not shut down cleanly. scanning datafile markers");
   }
 
   // .............................................................................
@@ -1984,21 +1827,6 @@ int TRI_StartServer (TRI_server_t* server,
     return res;
   }
 
-  LOG_TRACE("last tick value found: %llu", (unsigned long long) GetTick());
-
-  // now remove SHUTDOWN file if it was present
-  if (server->_wasShutdownCleanly) {
-    res = RemoveShutdownInfo(server);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to remove shutdown information file '%s': %s",
-                server->_shutdownFilename,
-                TRI_errno_string(res));
-
-      return res;
-    }
-  }
-
   // we don't yet need the lock here as this is called during startup and no races
   // are possible. however, this may be changed in the future
   TRI_LockMutex(&server->_createLock);
@@ -2029,11 +1857,6 @@ int TRI_StopServer (TRI_server_t* server) {
 
   CloseDatabases(server);
 
-  // we are just before terminating the server. we can now write out a file with the
-  // shutdown timestamp and the last tick value the server used.
-  // if writing the file fails, it is not a problem as in this case we'll scan the
-  // collections for the tick value on startup
-  WriteShutdownInfo(server);
   TRI_DestroyLockFile(server->_lockFilename);
 
   return res;

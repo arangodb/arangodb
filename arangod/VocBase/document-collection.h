@@ -486,13 +486,6 @@ public:
   TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
   TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
 
-  
-  // WAL-based CRUD methods
-  int (*updateDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_shaped_json_t const*, TRI_doc_update_policy_t const*, bool, bool);
-  int (*removeDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_update_policy_t const*, bool, bool);
-  int (*insertDocument) (struct TRI_transaction_collection_s*, TRI_voc_key_t, TRI_voc_rid_t, TRI_doc_mptr_copy_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, struct TRI_document_edge_s const*, bool, bool, bool);
-  int (*readDocument) (struct TRI_transaction_collection_s*, const TRI_voc_key_t, TRI_doc_mptr_copy_t*, bool);
-
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
 
@@ -1022,6 +1015,59 @@ int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RotateJournalDocumentCollection (TRI_document_collection_t*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      CRUD methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads an element from the document collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+                                          const TRI_voc_key_t,
+                                          TRI_doc_mptr_copy_t*,
+                                          bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a shaped-json document (or edge)
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+                                            const TRI_voc_key_t,
+                                            TRI_voc_rid_t,
+                                            TRI_doc_update_policy_t const*,
+                                            bool,
+                                            bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a shaped-json document (or edge)
+/// note: key might be NULL. in this case, a key is auto-generated
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+                                            const TRI_voc_key_t,
+                                            TRI_voc_rid_t,
+                                            TRI_doc_mptr_copy_t*,
+                                            TRI_df_marker_type_e,
+                                            TRI_shaped_json_t const*,
+                                            TRI_document_edge_t const*,
+                                            bool,
+                                            bool,
+                                            bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in the collection from shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+                                            const TRI_voc_key_t,
+                                            TRI_voc_rid_t,
+                                            TRI_doc_mptr_copy_t*,
+                                            TRI_shaped_json_t const*,
+                                            TRI_doc_update_policy_t const*,
+                                            bool,
+                                            bool);
 
 #endif
 

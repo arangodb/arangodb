@@ -62,7 +62,6 @@ typedef struct TRI_server_s {
   char*                       _basePath;
   char*                       _databasePath;
   char*                       _lockFilename;
-  char*                       _shutdownFilename;
   char*                       _serverIdFilename;
 
   char*                       _appPath;
@@ -70,8 +69,7 @@ typedef struct TRI_server_s {
 
   bool                        _disableReplicationLoggers;
   bool                        _disableReplicationAppliers;
-
-  bool                        _wasShutdownCleanly;
+  bool                        _iterateMarkersOnOpen;
 
   bool                        _initialised;
 }
@@ -104,7 +102,8 @@ int TRI_InitServer (TRI_server_t* server,
                     char const* devappPath,
                     TRI_vocbase_defaults_t const*,
                     bool disableReplicationLogger,
-                    bool disableReplicationApplier);
+                    bool disableReplicationApplier,
+                    bool iterateMarkersOnOpen);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a server instance

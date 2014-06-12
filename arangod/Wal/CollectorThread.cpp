@@ -269,7 +269,8 @@ CollectorThread::CollectorThread (LogfileManager* logfileManager,
     _logfileManager(logfileManager),
     _server(server),
     _condition(),
-    _stop(0) {
+    _stop(0),
+    _inRecovery(true) {
   
   allowAsynchronousCancelation();
 }
@@ -633,6 +634,11 @@ int CollectorThread::collect (Logfile* logfile) {
   // create a state for the collector, beginning with the list of failed transactions 
   CollectorState state;
   state.failedTransactions = _logfileManager->getFailedTransactions();
+ 
+  if (_inRecovery) { 
+    state.droppedCollections = _logfileManager->getDroppedCollections();
+    state.droppedDatabases   = _logfileManager->getDroppedDatabases();
+  }
 
   // scan all markers in logfile, this will fill the state
   bool result = TRI_IterateDatafile(df, &ScanMarker, static_cast<void*>(&state));
