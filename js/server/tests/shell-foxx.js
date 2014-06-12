@@ -3,7 +3,9 @@ require("internal").flushModuleCache();
 var jsunity = require("jsunity"),
   FoxxController = require("org/arangodb/foxx").Controller,
   db = require("org/arangodb").db,
+  _ = require("underscore"),
   fakeContext,
+  fakeContextWithRootElement,
   stub_and_mock = require("org/arangodb/stub_and_mock"),
   stub = stub_and_mock.stub,
   allow = stub_and_mock.allow,
@@ -13,6 +15,21 @@ fakeContext = {
   prefix: "",
   foxxes: [],
   comments: [],
+  manifest: {
+    rootElement: false
+  },
+  clearComments: function () {},
+  comment: function () {},
+  collectionName: function () {}
+};
+
+fakeContextWithRootElement = {
+  prefix: "",
+  foxxes: [],
+  comments: [],
+  manifest: {
+    rootElement: true
+  },
   clearComments: function () {},
   comment: function () {},
   collectionName: function () {}
@@ -362,6 +379,27 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
     },
 
+    testAddBodyParamWithMultipleItems: function () {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, description, [ModelPrototype]);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
     testDefineBodyParamAddsJSONSchemaToModels: function () {
       var paramName = stub(),
         description = stub(),
@@ -399,6 +437,34 @@ function DocumentationAndConstraintsSpec () {
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);
       }).bodyParam(paramName, description, ModelPrototype);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testSetParamForBodyParamWithMultipleItems: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        rawElement = stub(),
+        requestBody = [rawElement],
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(rawElement);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, [ModelPrototype]);
 
       routes[0].action.callback(req, res);
 
@@ -767,6 +833,73 @@ function SetupAuthorization () {
   };
 }
 
+function FoxxControllerWithRootElement () {
+  var app;
+
+  return {
+    setUp: function () {
+      app = new FoxxController(fakeContextWithRootElement);
+      routes = app.routingInfo.routes;
+    },
+
+    testBodyParamWithOneElement: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'myBodyParam',
+        description = stub(),
+        rawElement = stub(),
+        requestBody = { myBodyParam: rawElement },
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(rawElement);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, ModelPrototype);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testBodyParamWithMultipleElement: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'myBodyParam',
+        description = stub(),
+        rawElement = stub(),
+        requestBody = { myBodyParam: [rawElement] },
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(rawElement);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, [ModelPrototype]);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    }
+  };
+}
+
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
@@ -774,5 +907,6 @@ jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
 jsunity.run(HelperFunctionSpec);
 jsunity.run(SetupAuthorization);
+jsunity.run(FoxxControllerWithRootElement);
 
 return jsunity.done();
