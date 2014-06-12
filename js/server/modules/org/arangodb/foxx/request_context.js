@@ -284,6 +284,16 @@ extend(RequestContext.prototype, {
 /// For information about how to annotate your models, see the Model section.
 /// If you provide the Model in an array, the response will take multiple models
 /// instead of one.
+///
+/// If you wrap the provided model in an array, the body param is always an array
+/// and accordingly the return value of the `params` for the body call will also
+/// return an array of models.
+///
+/// The behavior of `bodyParam` changes depending on the `rootElement` option
+/// set in the manifest. If it is set to true, it is expected that the body is an
+/// object with a key of the same name as the `paramName` argument.
+/// The value of this object is either a single object or in the case of a multi
+/// element an array of objects.
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, description, Proto) {
