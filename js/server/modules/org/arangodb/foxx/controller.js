@@ -123,8 +123,8 @@ extend(Controller.prototype, {
 
   collection: function (name) {
     'use strict';
-    require('console').log('Controller#collection is deprecated, use appContext#collection instead')
-    return context.collection(name);
+    require('console').log('Controller#collection is deprecated, use appContext#collection instead');
+    return this.applicationContext.collection(name);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
