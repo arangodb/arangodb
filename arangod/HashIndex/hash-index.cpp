@@ -124,14 +124,14 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   TRI_shaped_json_t shapedJson;         // the object behind document
   TRI_shaped_sub_t shapedSub;           // the relative sub-object
 
-  shaper = hashIndex->base._collection->getShaper();
+  shaper = hashIndex->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // .............................................................................
   // Assign the document to the TRI_hash_index_element_t structure - so that it
   // can later be retreived.
   // .............................................................................
 
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   hashElement->_document = const_cast<TRI_doc_mptr_t*>(document);
   char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX
@@ -447,7 +447,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
   // Allocate sufficent memory for the field list
   // .............................................................................
 
-  char const** fieldList = TRI_FieldListByPathList(document->getShaper(), &hashIndex->_paths);
+  char const** fieldList = TRI_FieldListByPathList(document->getShaper(), &hashIndex->_paths);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (fieldList == nullptr) {
     return nullptr;

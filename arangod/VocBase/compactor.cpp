@@ -490,8 +490,8 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     }
 
     TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found); 
-    TRI_ASSERT(found2->getDataPtr() != nullptr);
-    TRI_ASSERT(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);
+    TRI_ASSERT(found2->getDataPtr() != nullptr);  // ONLY in COMPACTIFIER, PROTECTED by fake trx outside
+    TRI_ASSERT(((TRI_df_marker_t*) found2->getDataPtr())->_size > 0);  // ONLY in COMPACTIFIER, PROTECTED by fake trx outside
 
     // the fid might change
     if (found->_fid != context->_compactor->_fid) {
@@ -539,7 +539,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -559,7 +559,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
     
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");

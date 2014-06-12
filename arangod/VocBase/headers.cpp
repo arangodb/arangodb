@@ -122,10 +122,10 @@ static void MoveBackHeader (TRI_headers_t* h,
   TRI_ASSERT(header->_next != header);
   
   TRI_ASSERT(old != nullptr);
-  TRI_ASSERT(old->getDataPtr() != nullptr);  // ONLY IN HEADERS
+  TRI_ASSERT(old->getDataPtr() != nullptr);  // ONLY IN HEADERS, PROTECTED by RUNTIME
  
-  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size);  // ONLY IN HEADERS
-  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS
+  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
 
   // we must adjust the size of the collection
   headers->_totalSize += TRI_DF_ALIGN_BLOCK(newSize);
@@ -175,11 +175,11 @@ static void UnlinkHeader (TRI_headers_t* h,
   int64_t size;
 
   TRI_ASSERT(header != nullptr); 
-  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS
+  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
   
-  size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS
+  size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
 
   // unlink the header
@@ -239,13 +239,13 @@ static void MoveHeader (TRI_headers_t* h,
   TRI_ASSERT(headers->_nrAllocated > 0);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
-  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS
-  TRI_ASSERT(((TRI_df_marker_t*) header->getDataPtr())->_size > 0); // ONLY IN HEADERS
+  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
+  TRI_ASSERT(((TRI_df_marker_t*) header->getDataPtr())->_size > 0); // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(old != nullptr);
-  TRI_ASSERT(old->getDataPtr() != nullptr); // ONLY IN HEADERS
+  TRI_ASSERT(old->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
   
-  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS
-  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS
+  int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
+  int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
 
   headers->_totalSize -= TRI_DF_ALIGN_BLOCK(newSize);
   headers->_totalSize += TRI_DF_ALIGN_BLOCK(oldSize);
@@ -307,9 +307,9 @@ static void RelinkHeader (TRI_headers_t* h,
     return;
   }
 
-  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS
+  TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
 
-  int64_t size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS
+  int64_t size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
 
   TRI_ASSERT(headers->_begin != header);
@@ -373,7 +373,7 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
   TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(headers->_freelist); 
   TRI_ASSERT(result != nullptr);
 
-  headers->_freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr()); // ONLY IN HEADERS
+  headers->_freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr()); // ONLY IN HEADERS, PROTECTED by RUNTIME
   result->setDataPtr(nullptr); // ONLY IN HEADERS
 
   // put new header at the end of the list

@@ -241,7 +241,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool found;
   bool mustChange;
   
-  TRI_shaper_t* shaper = document->getShaper();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   // extract username
   user = ExtractStringShapedJson(shaper, shapedJson, "user");

@@ -658,17 +658,17 @@ static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetFromKey;
 
       hash = edge->_fromCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetFromKey;
 
       hash = edge->_fromCid;
@@ -693,17 +693,17 @@ static uint64_t HashElementEdgeTo (TRI_multi_pointer_t* array,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetToKey;
 
       hash = edge->_toCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetToKey;
 
       hash = edge->_toCid;
@@ -727,15 +727,15 @@ static bool IsEqualKeyEdgeFrom (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -756,15 +756,15 @@ static bool IsEqualKeyEdgeTo (TRI_multi_pointer_t* array,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
@@ -791,15 +791,15 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
     TRI_voc_cid_t rCid;
 
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
   
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetFromKey;
       lCid = lEdge->_fromCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetFromKey;
       lCid = lEdge->_fromCid;
     }
@@ -808,15 +808,15 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
     }
 
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) rEdge + rEdge->_offsetFromKey;
       rCid = rEdge->_fromCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       rKey = (char const*) rEdge + rEdge->_offsetFromKey;
       rCid = rEdge->_fromCid;
     }
@@ -847,15 +847,15 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
     TRI_voc_cid_t rCid;
 
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+    marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
   
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetToKey;
       lCid = lEdge->_toCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetToKey;
       lCid = lEdge->_toCid;
     }
@@ -864,15 +864,15 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
     }
 
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+    marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) rEdge + rEdge->_offsetToKey;
       rCid = rEdge->_toCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX
+      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
       rKey = (char const*) rEdge + rEdge->_offsetToKey;
       rCid = rEdge->_toCid;
     }
@@ -1131,7 +1131,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
           if (shapedObject != NULL) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
@@ -1207,10 +1207,10 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   // ..........................................................................
     
   TRI_ASSERT(document != nullptr); 
-  TRI_ASSERT(document->getDataPtr() != nullptr);   // ONLY IN INDEX
+  TRI_ASSERT(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
     
   TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (shapedJson._sid == 0) {
     LOG_WARNING("encountered invalid marker with shape id 0");
@@ -1219,7 +1219,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   }
 
   skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
-  char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX
+  char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
     
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths, j)));
@@ -1228,7 +1228,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     // Determine if document has that particular shape 
     // ..........................................................................
 
-    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->getShaper(), shapedJson._sid, shape);
+    TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->getShaper(), shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
@@ -1377,7 +1377,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
-    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);
+    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -1616,8 +1616,8 @@ static TRI_fulltext_wordlist_t* GetWordlist (TRI_index_t* idx,
   fulltextIndex = (TRI_fulltext_index_t*) idx;
 
   // extract the shape
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX
-  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->getShaper(), &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  ok = TRI_ExtractShapedJsonVocShaper(fulltextIndex->base._collection->getShaper(), &shaped, 0, fulltextIndex->_attribute, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! ok || shape == nullptr) {
     return nullptr;
@@ -1723,7 +1723,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
   TRI_document_collection_t* document = idx->_collection;
 
   // convert attribute to string
-  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), fulltextIndex->_attribute);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), fulltextIndex->_attribute);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (path == 0) {
     return nullptr;
@@ -1797,7 +1797,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
   TRI_shape_pid_t attribute;
 
   // look up the attribute
-  shaper = document->getShaper();
+  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
@@ -2022,7 +2022,7 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape
       // ..........................................................................
 
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedDoc->_sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedDoc->_sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
       if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
@@ -2063,9 +2063,9 @@ static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
       // Determine if document has that particular shape
       // ..........................................................................
 
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedJson._sid, shape);
+      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
       if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
         return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
@@ -2229,7 +2229,7 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
   for (j = 0; j < baIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
-    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);
+    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (path == NULL) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
