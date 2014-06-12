@@ -727,8 +727,7 @@ int ArangoServer::startupServer () {
   LOG_TRACE("starting WAL logfile manager");
 
   if (! wal::LogfileManager::instance()->prepare() ||
-      ! wal::LogfileManager::instance()->start() ||
-      ! wal::LogfileManager::instance()->open()) {
+      ! wal::LogfileManager::instance()->start()) {
     // unable to initialise & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
@@ -747,11 +746,13 @@ int ArangoServer::startupServer () {
   if (iterateMarkersOnOpen) {
     LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
   }
-  openDatabases(iterateMarkersOnOpen);
-  
-  // from now on, we allow writes to the logfile
-  wal::LogfileManager::instance()->allowWrites(true);
 
+  openDatabases(iterateMarkersOnOpen);
+      
+  if (! wal::LogfileManager::instance()->open()) {
+    LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+  }
+  
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 

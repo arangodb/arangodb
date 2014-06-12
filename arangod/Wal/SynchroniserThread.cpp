@@ -40,12 +40,6 @@ using namespace triagens::wal;
 // --SECTION--                                          class SynchroniserThread
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait interval for the synchroniser thread when idle
-////////////////////////////////////////////////////////////////////////////////
-
-const uint64_t SynchroniserThread::Interval = 500 * 1000;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -54,12 +48,14 @@ const uint64_t SynchroniserThread::Interval = 500 * 1000;
 /// @brief create the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager)
+SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
+                                        uint64_t syncInterval)
   : Thread("WalSynchroniser"),
     _logfileManager(logfileManager),
     _condition(),
     _waiting(0),
     _stop(0),
+    _syncInterval(syncInterval),
     _logfileCache() {
 
   allowAsynchronousCancelation();
@@ -146,7 +142,7 @@ void SynchroniserThread::run () {
 
     if (_waiting == 0 && stop == 0) {
       // sleep if nothing to do
-      guard.wait(Interval);
+      guard.wait(_syncInterval);
     }
 
     if (stop > 0 && _waiting == 0) {
@@ -173,40 +169,42 @@ int SynchroniserThread::doSync () {
   SyncRegion region = _logfileManager->slots()->getSyncRegion();
   Logfile::IdType const id = region.logfileId;
 
-  if (id != 0) {
-    // now perform the actual syncing
-    Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
-    TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
-
-    // get the logfile's file descriptor
-    int fd = getLogfileDescriptor(region.logfileId);
-    TRI_ASSERT(fd >= 0);
-    void** mmHandle = NULL;
-    bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
-         
-    LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
-              (unsigned long long) id,
-              region.mem, 
-              region.mem + region.size, 
-              (unsigned long) region.size,
-              region.waitForSync ? "true" : "false");
-
-    if (! result) {
-      LOG_ERROR("unable to sync wal logfile region");
-
-      return TRI_ERROR_ARANGO_MSYNC_FAILED;
-    }
-
-    // all ok
-
-    if (status == Logfile::StatusType::SEAL_REQUESTED) {
-      // additionally seal the logfile
-      _logfileManager->setLogfileSealed(id);
-    }
-      
-    _logfileManager->slots()->returnSyncRegion(region);
+  // an id of 0 means an empty region...
+  if (id == 0) {
+    return TRI_ERROR_NO_ERROR;
   }
- 
+
+  // now perform the actual syncing
+  Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
+  TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
+
+  // get the logfile's file descriptor
+  int fd = getLogfileDescriptor(region.logfileId);
+  TRI_ASSERT(fd >= 0);
+  void** mmHandle = NULL;
+  bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+         
+  LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
+            (unsigned long long) id,
+            region.mem, 
+            region.mem + region.size, 
+            (unsigned long) region.size,
+            region.waitForSync ? "true" : "false");
+
+  if (! result) {
+    LOG_ERROR("unable to sync wal logfile region");
+
+    return TRI_ERROR_ARANGO_MSYNC_FAILED;
+  }
+
+  // all ok
+
+  if (status == Logfile::StatusType::SEAL_REQUESTED) {
+    // additionally seal the logfile
+    _logfileManager->setLogfileSealed(id);
+  }
+      
+  _logfileManager->slots()->returnSyncRegion(region);
   return TRI_ERROR_NO_ERROR;
 }
 

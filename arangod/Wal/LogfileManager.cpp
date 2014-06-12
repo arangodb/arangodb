@@ -200,6 +200,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _historicLogfiles(10),
     _maxOpenLogfiles(10),
     _numberOfSlots(1048576),
+    _syncInterval(100),
     _allowOversizeEntries(true),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
@@ -286,6 +287,7 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
+    ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
   ;
 }
 
@@ -294,9 +296,21 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::prepare () {
+  static bool Prepared = false;
+
+  if (Prepared) {
+    return true;
+  }
+
+  Prepared = true;
+
   if (_directory.empty()) {
     // use global configuration variable
     _directory = (*_databasePath);
+
+    if (! basics::FileUtils::isDirectory(_directory)) {
+      LOG_FATAL_AND_EXIT("database directory '%s' does not exist.", _directory.c_str());
+    }
 
     // append "/journals"
     if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -326,6 +340,14 @@ bool LogfileManager::prepare () {
     // invalid number of slots
     LOG_FATAL_AND_EXIT("invalid slots size. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
   }
+
+  if (_syncInterval < 5) {
+    LOG_FATAL_AND_EXIT("invalid sync interval.");
+  } 
+
+  // sync interval is specified in milliseconds by the user, but internally
+  // we use microseconds
+  _syncInterval = _syncInterval * 1000;
 
   _slots = new Slots(this, _numberOfSlots, 0);
 
@@ -365,7 +387,7 @@ bool LogfileManager::start () {
     }
   }
 
-  res = openLogfiles(shutdownFileExists);
+  res = openLogfiles();
   
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not open WAL logfiles: %s", TRI_errno_string(res));
@@ -386,18 +408,13 @@ bool LogfileManager::start () {
     return false;
   }
 
-
-  // always run the recovery procedure...
-  if (! runRecovery()) {
-    return false;
-  }
-  
   started = true;
 
-  LOG_TRACE("WAL logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu",
+  LOG_TRACE("WAL logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu, sync interval: %lu",
             (unsigned long) _historicLogfiles,
             (unsigned long) _reserveLogfiles,
-            (unsigned long) _filesize);
+            (unsigned long) _filesize,
+            (unsigned long) _syncInterval);
 
   return true;
 }
@@ -407,7 +424,16 @@ bool LogfileManager::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open () {
-  return true;
+  static bool opened = false;
+  
+  if (opened) {
+    // we were already started
+    return true;
+  }
+
+  opened = true;
+  
+  return runRecovery();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -622,8 +648,7 @@ void LogfileManager::signalSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo LogfileManager::allocate (uint32_t size) {
-  if (! _allowWrites && size > 0) {
-    // still allow flush requests
+  if (! _allowWrites) {
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -666,13 +691,21 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 
   TRI_ASSERT(slotInfo.slot != nullptr);
 
-  slotInfo.slot->fill(src, size);
+  try {
+    slotInfo.slot->fill(src, size);
  
-  // we must copy the slotinfo because finalise() will set its internal to 0 again
-  SlotInfoCopy copy(slotInfo.slot);
-
-  finalise(slotInfo, waitForSync);
-  return copy;
+    // we must copy the slotinfo because finalise() will set its internal to 0 again
+    SlotInfoCopy copy(slotInfo.slot);
+  
+    finalise(slotInfo, waitForSync);
+    return copy;
+  }
+  catch (...) {
+    // if we don't return the slot we'll run into serious problems later
+    finalise(slotInfo, false);
+    
+    return SlotInfoCopy(TRI_ERROR_INTERNAL);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -862,6 +895,8 @@ int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
 
 Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
                                               Logfile::StatusType& status) {
+  static const uint64_t SleepTime = 10 * 1000;
+  static const uint64_t MaxIterations = 1000;
   size_t iterations = 0;
 
   while (++iterations < 1000) {
@@ -900,9 +935,11 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
 
     // signal & sleep outside the lock
     _allocatorThread->signal(size);
-    usleep(10 * 1000);
+    usleep(SleepTime);
   }
   
+  LOG_WARNING("unable to acquire writeable WAL logfile after %llu ms", (unsigned long long) (MaxIterations * SleepTime) / 1000);
+
   return nullptr;
 }
 
@@ -1063,6 +1100,8 @@ bool LogfileManager::runRecovery () {
   RecoverState state;
   state.lastTick = 0;
 
+  int logfilesToCollect = 0;
+
   // we're the only ones that access the logfiles at this point
   // nevertheless, get the read-lock
   {
@@ -1074,6 +1113,11 @@ bool LogfileManager::runRecovery () {
       Logfile* logfile = (*it).second;
 
       if (logfile != nullptr) {
+        if (logfile->status() == Logfile::StatusType::OPEN ||
+            logfile->status() == Logfile::StatusType::SEALED) {
+          ++logfilesToCollect;
+        }
+
         if (! scanLogfile(logfile, state)) {
           LOG_TRACE("WAL recovery failed when scanning logfile '%s'", logfile->filename().c_str());
           return false;
@@ -1110,7 +1154,7 @@ bool LogfileManager::runRecovery () {
   // wait for the collector thread to finish the collection
   while (_collectorThread->hasQueuedOperations()) {
     LOG_INFO("waiting for collector thread to finish");
-    usleep(1000 * 1000);
+    usleep(100 * 1000);
   }
   
   {
@@ -1124,8 +1168,14 @@ bool LogfileManager::runRecovery () {
   // tell the collector that the recovery is over now
   _inRecovery = false;
   _collectorThread->recoveryDone();
+  _allocatorThread->recoveryDone();
+  
+  // from now on, we allow writes to the logfile
+  allowWrites(true);
 
-  LOG_TRACE("WAL recovery finished successfully");
+  if (logfilesToCollect > 0) {
+    LOG_INFO("WAL recovery finished successfully");
+  }
 
   return true;
 }
@@ -1229,7 +1279,7 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::startSynchroniserThread () {
-  _synchroniserThread = new SynchroniserThread(this);
+  _synchroniserThread = new SynchroniserThread(this, _syncInterval);
 
   if (_synchroniserThread == nullptr) {
     return TRI_ERROR_INTERNAL;
@@ -1372,7 +1422,7 @@ int LogfileManager::inventory () {
 /// @brief scan the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::openLogfiles (bool wasCleanShutdown) {
+int LogfileManager::openLogfiles () {
   WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
@@ -1385,7 +1435,7 @@ int LogfileManager::openLogfiles (bool wasCleanShutdown) {
 
     if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       if (basics::FileUtils::remove(filename, 0)) {
-        LOG_INFO("removing empty WAL logfile '%s'", filename.c_str());
+        LOG_TRACE("removing empty WAL logfile '%s'", filename.c_str());
       }
       _logfiles.erase(it++);
       continue;

@@ -79,8 +79,8 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        LogfileManager (LogfileManager const&);
-        LogfileManager& operator= (LogfileManager const&);
+        LogfileManager (LogfileManager const&) = delete;
+        LogfileManager& operator= (LogfileManager const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -490,7 +490,7 @@ struct RecoverState {
 /// @brief open the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
         
-        int openLogfiles (bool);
+        int openLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate a new reserve logfile
@@ -581,6 +581,12 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _numberOfSlots;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interval for automatic, non-requested disk syncs
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _syncInterval;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allow entries that are bigger than a single logfile
