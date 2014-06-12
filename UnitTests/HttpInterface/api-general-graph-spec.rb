@@ -175,7 +175,7 @@ describe ArangoDB do
         edge_definition = [first_def]
         create_graph( graph_name, edge_definition )
         second_def = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
-        doc = additional_edge_definition( graph_name, [second_def] )
+        doc = additional_edge_definition( graph_name, second_def )
         edge_definition.push(second_def)
 
         doc.code.should eq(200)

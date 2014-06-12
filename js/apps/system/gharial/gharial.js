@@ -55,6 +55,13 @@
       if (code) {
         res.status(code);
       }
+    },
+    setGraphResponse = function(res, g, code) {
+      code = code || actions.HTTP_OK;
+      setResponse(res, "graph", {
+        name: g.__name,
+        edgeDefinitions: g.__edgeDefinitions
+      }, code);
     };
 
   /** Create a new vertex.
@@ -224,6 +231,36 @@
 
   ///////////////////////////////////////////////// Edges //////////
   
+  /** Create a new edge definition.
+   *
+   * Stores a new edge definition with the information contained
+   * within the body.
+   * This has to contain the edge-collection name, as well as set of from and to
+   * collections-names respectively. 
+   */
+  controller.post("/:graph/edge", function(req, res) {
+    var name = req.params("graph");
+    var body = req.params("edgeDefinition");
+    var g = Graph._graph(name);
+    g._extendEdgeDefinitions(body.forDB());
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .bodyParam(
+    "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
+      return {
+        code: actions.HTTP_BAD,
+        error: e.errorMessage
+      };
+    }
+  );
+
   /** Create a new edge.
    *
    * Stores a new edge with the information contained
@@ -418,10 +455,7 @@
   controller.post("/", function(req, res) {
     var infos = req.params("graph");
     var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
-    setResponse(res, "graph", {
-      name: g.__name,
-      edgeDefinitions: g.__edgeDefinitions
-    }, actions.HTTP_CREATED);
+    setGraphResponse(res, g, actions.HTTP_CREATED);
   }).errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
       return {
