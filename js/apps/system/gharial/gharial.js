@@ -36,6 +36,7 @@
     actions = require("org/arangodb/actions"),
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
+    errors = require("internal").errors,
     toId = function(c, k) {
       return c + "/" + k;
     },
@@ -231,11 +232,18 @@
   controller.post("/:graph/edge/:collection", function(req, res) {
     var name = req.params("graph");
     var collection = req.params("collection");
-    require("internal").print(collection);
     var body = req.params("edge");
+    var from = body.get("_from");
+    var to = body.get("_to");
+    var err;
+    if (!from || !to) {
+      err = new ArangoError();
+      err.errorNum = errors.ERROR_GRAPH_INVALID_EDGE.code;
+      err.errorMessage = errors.ERROR_GRAPH_INVALID_EDGE.message;
+      throw err;
+    }
     var g = Graph._graph(name);
-    require("internal").print(_.keys(g));
-    setResponse(res, "edge", g[collection].save(body.forDB()));
+    setResponse(res, "edge", g[collection].save(from, to, body.forDB()));
   })
   .pathParam("graph", {
     type: "string",
@@ -245,7 +253,17 @@
     type: "string",
     description: "Name of the edge collection."
   })
-  .bodyParam("edge", "The edge to be stored. Has to contain _from and _to attributes.", Model);
+  .bodyParam(
+    "edge", "The edge to be stored. Has to contain _from and _to attributes.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD_REQUEST, "The edge could not be created.", function(e) {
+      return {
+        code: actions.HTTP_BAD_REQUEST,
+        error: e.errorMessage
+      };
+    }
+  );
 
   /** Load an edge.
    *
