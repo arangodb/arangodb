@@ -56,7 +56,8 @@ AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
     _logfileManager(logfileManager),
     _condition(),
     _requestedSize(0),
-    _stop(0) {
+    _stop(0),
+    _inRecovery(true) {
   
   allowAsynchronousCancelation();
 }
@@ -96,7 +97,8 @@ void AllocatorThread::stop () {
 void AllocatorThread::signal (uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
-  if (_requestedSize == 0 || markerSize > _requestedSize) {
+  if (_requestedSize == 0 || 
+      markerSize > _requestedSize) {
     // logfile must be as big as the requested marker
     _requestedSize = markerSize;
   }
@@ -133,19 +135,23 @@ void AllocatorThread::run () {
     }
 
     try {
-      if (requestedSize == 0 && ! _logfileManager->hasReserveLogfiles()) {
+      if (requestedSize == 0 && 
+          ! _inRecovery &&
+          ! _logfileManager->hasReserveLogfiles()) {
+        // only create reserve files if we are not in the recovery mode
         if (createReserveLogfile(0)) {
           continue;
         }
 
-        LOG_ERROR("unable to create new wal reserve logfile");
+        LOG_ERROR("unable to create new WAL reserve logfile");
       }
-      else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
+      else if (requestedSize > 0 && 
+               _logfileManager->logfileCreationAllowed(requestedSize)) {
         if (createReserveLogfile(requestedSize)) {
           continue;
         }
       
-        LOG_ERROR("unable to create new wal reserve logfile");
+        LOG_ERROR("unable to create new WAL reserve logfile");
       }
     }
     catch (triagens::arango::Exception const& ex) {

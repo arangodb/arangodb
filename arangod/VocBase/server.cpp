@@ -2287,7 +2287,7 @@ TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
                                           TRI_voc_tick_t id) {
   DatabaseReadLocker locker(&server->_databasesLock);
   size_t const n = server->_databases._nrAlloc;
- 
+
   for (size_t i = 0; i < n; ++i) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
 

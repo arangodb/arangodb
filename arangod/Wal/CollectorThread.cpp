@@ -336,7 +336,10 @@ void CollectorThread::run () {
       worked |= this->processQueuedOperations();
 
       // step 3: delete a logfile if any qualifies
-      worked |= this->removeLogfiles();
+      if (! _inRecovery) {
+        // don't delete files while we are in the recovery
+        worked |= this->removeLogfiles();
+      }
     }
     catch (triagens::arango::Exception const& ex) {
       int res = ex.code();
