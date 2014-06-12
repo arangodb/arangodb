@@ -508,8 +508,8 @@ static int LogEvent (TRI_replication_logger_t* logger,
   lock = isStandaloneOperation;
   
   TRI_document_collection_t* document = logger->_trxCollection->_collection->_collection;
-  zone = document->getShaper()->_memoryZone;
-  shaped = TRI_ShapedJsonJson(document->getShaper(), &json, true, ! lock);
+  zone = document->getShaper()->_memoryZone;  // ONLY IN INDEX, PROTECTED by RUNTIME
+  shaped = TRI_ShapedJsonJson(document->getShaper(), &json, true, ! lock);  // ONLY IN INDEX, PROTECTED by RUNTIME
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
   
   ReturnBuffer(logger, buffer);
@@ -826,7 +826,7 @@ static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
 
     // the actual document data
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);
+    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);  // PROTECTED by trx in logger
 
     APPEND_STRING(buffer, "}}");
   }

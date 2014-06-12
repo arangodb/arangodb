@@ -268,7 +268,7 @@ namespace triagens {
                                          TRI_voc_cid_t cid,
                                          TRI_doc_mptr_copy_t const& mptr,
                                          TRI_voc_rid_t rid) {
-          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
+          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by RUNTIME
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,7 +279,7 @@ namespace triagens {
                                          TRI_voc_cid_t cid,
                                          TRI_doc_mptr_copy_t const& mptr,
                                          TRI_voc_rid_t rid) {
-          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);
+          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by RUNTIME
         }
 
 ////////////////////////////////////////////////////////////////////////////////
