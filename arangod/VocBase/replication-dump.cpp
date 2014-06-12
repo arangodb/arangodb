@@ -41,6 +41,9 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
 #include "Utils/transactions.h"
+#include "Wal/Marker.h"
+
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
@@ -336,10 +339,17 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
                                  TRI_df_marker_t const* marker,
                                  bool withTicks,
                                  bool translateCollectionIds) {
+  // This covers two cases:
+  //   1. document is not nullptr and marker points into a data file
+  //   2. document is a nullptr and marker points into a WAL file
+  // no other combinations are allowed.
+
   TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
+  bool haveData = true;
+  bool isWal = false;
 
   buffer = dump->_buffer; 
 
@@ -347,26 +357,63 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     return false;
   }
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-    TRI_doc_deletion_key_marker_t const* m = (TRI_doc_deletion_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_REMOVE;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_DOCUMENT;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_EDGE;
-    rid = m->_rid;
-  }
-  else {
-    return false;
+  switch (marker->_type) {
+    case TRI_DOC_MARKER_KEY_DELETION: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_REMOVE;
+      rid = m->_rid;
+      haveData = false;
+      break;
+    }
+    case TRI_DOC_MARKER_KEY_DOCUMENT: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_DOCUMENT;
+      rid = m->_rid;
+      break;
+    }
+    case TRI_DOC_MARKER_KEY_EDGE: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_EDGE;
+      rid = m->_rid;
+      break;
+    }
+    case TRI_WAL_MARKER_REMOVE: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::remove_marker_t const*>(marker);
+      key = ((char*) m) + sizeof(wal::remove_marker_t);
+      type = MARKER_REMOVE;
+      rid = m->_revisionId;
+      haveData = false;
+      isWal = true;
+      break;
+    }
+    case TRI_WAL_MARKER_DOCUMENT: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::document_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_DOCUMENT;
+      rid = m->_revisionId;
+      isWal = true;
+      break;
+    }
+    case TRI_WAL_MARKER_EDGE: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::edge_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_EDGE;
+      rid = m->_revisionId;
+      isWal = true;
+      break;
+    }
+    default: {
+      return false;
+    }
   }
   
   if (withTicks) {
@@ -386,11 +433,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
   APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    TRI_shaped_json_t shaped;
-    
+  if (haveData) {
     APPEND_STRING(buffer, "\",\"data\":{");
     
     // common document meta-data
@@ -400,19 +443,37 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
-      TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
-      TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
+    // Is it an edge marker?
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+        marker->_type == TRI_WAL_MARKER_EDGE) {
+      TRI_voc_key_t fromKey;
+      TRI_voc_key_t toKey;
+      TRI_voc_cid_t fromCid;
+      TRI_voc_cid_t toCid;
+
+      if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+        auto e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
+        fromKey = ((char*) e) + e->_offsetFromKey;
+        toKey = ((char*) e) + e->_offsetToKey;
+        fromCid = e->_fromCid;
+        toCid = e->_toCid;
+      }
+      else {  // TRI_WAL_MARKER_EDGE
+        auto e = reinterpret_cast<wal::edge_marker_t const*>(marker);
+        fromKey = ((char*) e) + e->_offsetFromKey;
+        toKey = ((char*) e) + e->_offsetToKey;
+        fromCid = e->_fromCid;
+        toCid = e->_toCid;
+      }
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, fromCid, translateCollectionIds)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(dump, e->_toCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, toCid, translateCollectionIds)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
@@ -421,15 +482,25 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     }
 
     // the actual document data
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true); // ONLY IN DUMP, PROTECTED by fake trx above
+    TRI_shaped_json_t shaped;
+    if (! isWal) {
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
+      TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true); // ONLY IN DUMP, PROTECTED by fake trx above
+    }
+    else {   // isWal == true
+      auto m = static_cast<wal::document_marker_t const*>(marker);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
+      basics::LegendReader legendReader
+                 (reinterpret_cast<char const*>(m) + m->_offsetLegend);
+      TRI_StringifyArrayShapedJson(&legendReader, buffer, &shaped, true);
+    }
 
     APPEND_STRING(buffer, "}}\n");
   }
-  else {
+  else {  // deletion marker, so no data
     APPEND_STRING(buffer, "\"}\n");
   }
-  
   return true;
 }
 

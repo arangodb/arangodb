@@ -40,6 +40,34 @@
 namespace triagens {
   namespace basics {
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief one entry in the table of attribute IDs
+////////////////////////////////////////////////////////////////////////////////
+
+    struct AttributeId {
+      TRI_shape_aid_t aid;
+      TRI_shape_size_t offset;
+
+      AttributeId (TRI_shape_aid_t a, TRI_shape_size_t o)
+        : aid(a), offset(o) {}
+
+    };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief one entry in the table of shapes
+////////////////////////////////////////////////////////////////////////////////
+
+    struct Shape {
+      TRI_shape_sid_t sid;
+      TRI_shape_size_t offset;
+      TRI_shape_size_t size;
+
+      Shape (TRI_shape_sid_t sid, TRI_shape_size_t o, TRI_shape_size_t siz)
+        : sid(sid), offset(o), size(siz) {}
+
+    };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a legend for one or more shaped json objects
@@ -128,19 +156,6 @@ namespace triagens {
         TRI_shaper_t* _shaper;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief one entry in the table of attribute IDs
-////////////////////////////////////////////////////////////////////////////////
-
-        struct AttributeId {
-          TRI_shape_aid_t aid;
-          TRI_shape_size_t offset;
-
-          AttributeId (TRI_shape_aid_t a, TRI_shape_size_t o)
-            : aid(a), offset(o) {}
-
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief used to sort attribute ID table by attribute ID
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,20 +164,6 @@ namespace triagens {
             return a.aid < b.aid;
           }
         } AttributeComparerObject;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief one entry in the table of shapes
-////////////////////////////////////////////////////////////////////////////////
-
-        struct Shape {
-          TRI_shape_sid_t sid;
-          TRI_shape_size_t offset;
-          TRI_shape_size_t size;
-
-          Shape (TRI_shape_sid_t sid, TRI_shape_size_t o, TRI_shape_size_t siz)
-            : sid(sid), offset(o), size(siz) {}
-
-        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief used to sort shapes by shape ID
@@ -211,6 +212,164 @@ namespace triagens {
         StringBuffer _shape_data;
 
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief some functions to let function pointers point to
+////////////////////////////////////////////////////////////////////////////////
+
+    static TRI_shape_aid_t FailureFunction (TRI_shaper_t*, char const*) {
+      TRI_ASSERT(false);
+    }
+
+    static TRI_shape_t const* FailureFunction (TRI_shaper_t*, TRI_shape_t*, bool) {
+      TRI_ASSERT(false);
+    }
+
+    static int64_t FailureFunction (TRI_shaper_t*, TRI_shape_aid_t) {
+      TRI_ASSERT(false);
+    }
+
+    static TRI_shape_path_t const* FailureFunction2 (TRI_shaper_t*, TRI_shape_pid_t) {
+      TRI_ASSERT(false);
+    }
+
+    static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*, bool) {
+      TRI_ASSERT(false);
+    }
+
+    static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*) {
+      TRI_ASSERT(false);
+    }
+
+    static char const* lookupAttributeIdFunction (TRI_shaper_t* s, 
+                                                  TRI_shape_aid_t a);
+
+    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s, 
+                                                     TRI_shape_sid_t x);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a class to read a legend
+////////////////////////////////////////////////////////////////////////////////
+
+
+    class LegendReader : public TRI_shaper_t {
+        // This inherits from TRI_shaper_t, note however, that at least
+        // for the time being it only implements lookupAttributeId and
+        // lookupShapeId.
+
+        char const* _legend;
+        TRI_shape_size_t _numberAttributes;
+        AttributeId const* _aids;
+        TRI_shape_size_t _numberShapes;
+        Shape const* _shapes;
+
+      public:
+        LegendReader (char const* l) : _legend(l) {
+          auto p = reinterpret_cast<TRI_shape_size_t const*>(l);
+          _numberAttributes = *p++;
+          _aids = reinterpret_cast<AttributeId const*>(p);
+          p = reinterpret_cast<TRI_shape_size_t const*>
+                              (_aids + _numberAttributes);
+          _numberShapes = *p++;
+          _shapes = reinterpret_cast<Shape const*>(p);
+
+          // Now disable unimplemented methods of the base class:
+          findOrCreateAttributeByName = FailureFunction;
+          lookupAttributeByName = FailureFunction;
+          lookupAttributeId = lookupAttributeIdFunction;
+          findShape = FailureFunction;
+          lookupShapeId = lookupShapeIdFunction;
+          lookupAttributeWeight = FailureFunction;
+          lookupAttributePathByPid = FailureFunction2;
+          findOrCreateAttributePathByName = FailureFunction2;
+          lookupAttributePathByName = FailureFunction2;
+        }
+
+        ~LegendReader () {
+          // nothing to do
+        }
+
+        char const* lookupAttributeIdMethod (TRI_shape_aid_t const aid) {
+          // binary search in AttributeIds
+          TRI_shape_size_t low = 0;
+          TRI_shape_size_t high = _numberAttributes;
+          TRI_shape_size_t mid;
+
+          while (low < high) {
+            // at the beginning of the loop we always have:
+            //   0 <= low < high <= _numberAttributes
+            // thus 0 <= mid < _numberAttributes, so access is allowed
+            // and for ind (index of element to be found):
+            //      low <= ind <= high
+            // Once low == high, we have either found it or found nothing
+            mid = (low + high) / 2;
+            if (_aids[mid].aid < aid) {
+              low = mid+1;
+            }
+            else {  // Note: aids[mid].aid == aid possible, 
+                    //       thus ind == high possible as well
+              high = mid;
+            }
+          }
+          if (low == high && high < _numberAttributes && 
+              _aids[low].aid == aid) {
+            return _legend + _aids[low].offset;
+          }
+          else {
+            return nullptr;
+          }
+        }
+
+        TRI_shape_t const* lookupShapeIdMethod (TRI_shape_sid_t const sid) {
+          // Is it a builtin basic one?
+          if (sid < TRI_FirstCustomShapeIdShaper()) {
+            return TRI_LookupSidBasicShapeShaper(sid);
+          }
+
+          // binary search in Shapes
+          TRI_shape_size_t low = 0;
+          TRI_shape_size_t high = _numberShapes;
+          TRI_shape_size_t mid;
+
+          while (low < high) {
+            // at the beginning of the loop we always have:
+            //   0 <= low < high <= _numberShapes
+            // thus 0 <= mid < _numberShapes, so access is allowed
+            // and for ind (index of element to be found):
+            //      low <= ind <= high
+            // Once low == high, we have either found it or found nothing
+            mid = (low + high) / 2;
+            if (_shapes[mid].sid < sid) {
+              low = mid+1;
+            }
+            else {  // Note: _shapes[mid].sid == sid possible, 
+                    //       thus ind == high possible as well
+              high = mid;
+            }
+          }
+          if (low == high && high < _numberShapes && 
+              _shapes[low].sid == sid) {
+            return reinterpret_cast<TRI_shape_t const*>
+                                   (_legend + _shapes[low].offset);
+          }
+          else {
+            return nullptr;
+          }
+        }
+        
+    };
+
+    static char const* lookupAttributeIdFunction (TRI_shaper_t* s, 
+                                                         TRI_shape_aid_t a) {
+      LegendReader* me = static_cast<LegendReader*>(s);
+      return me->lookupAttributeIdMethod(a);
+    }
+
+    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s, 
+                                                     TRI_shape_sid_t x) {
+      LegendReader* me = static_cast<LegendReader*>(s);
+      return me->lookupShapeIdMethod(x);
+    }
 
   }
 }

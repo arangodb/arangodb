@@ -68,7 +68,7 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shaper, but does not free the pointer
+/// @brief initialises a vocshaper
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVocShaper (TRI_shaper_t*);
