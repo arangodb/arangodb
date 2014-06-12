@@ -358,7 +358,9 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
 
+  // initialise the server's write ahead log
   wal::LogfileManager::initialise(&_databasePath, _server);
+  // and add the feature to the application server
   _applicationServer->addFeature(wal::LogfileManager::instance());
 
   // .............................................................................
@@ -666,11 +668,6 @@ void ArangoServer::buildApplicationServer () {
   // now run arangod
   // .............................................................................
   
-  // make sure the logfile manager is ready
-  wal::LogfileManager::instance()->prepare();
-  wal::LogfileManager::instance()->start();
-
-
   // dump version details
   LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
 
@@ -723,6 +720,17 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
+  }
+
+  // special treatment for the write-ahead log
+  // the log must exist before all other server operations can start
+  LOG_TRACE("starting WAL logfile manager");
+
+  if (! wal::LogfileManager::instance()->prepare() ||
+      ! wal::LogfileManager::instance()->start() ||
+      ! wal::LogfileManager::instance()->open()) {
+    // unable to initialise & start WAL logfile manager
+    LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
 
   // .............................................................................
@@ -1094,6 +1102,8 @@ void ArangoServer::closeDatabases () {
 
   TRI_CleanupActions();
 
+  // enfore logfile manager shutdown so we are sure no one else will 
+  // write to the logs
   wal::LogfileManager::instance()->stop();
 
   TRI_StopServer(_server);
