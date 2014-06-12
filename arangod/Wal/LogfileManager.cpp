@@ -58,8 +58,8 @@ static LogfileManager* Instance = nullptr;
 /// @brief minimum logfile size
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint32_t LogfileManager::MinFilesize = 8 * 1024 * 1024;
-
+uint32_t const LogfileManager::MinFilesize = 8 * 1024 * 1024;
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -79,6 +79,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _historicLogfiles(10),
     _maxOpenLogfiles(10),
     _allowOversizeEntries(true),
+    _allowWrites(false), // start in read-only mode
     _slots(nullptr),
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
@@ -92,7 +93,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _filenameRegex(),
     _shutdown(0) {
   
-  LOG_TRACE("creating wal logfile manager");
+  LOG_TRACE("creating WAL logfile manager");
 
   int res = regcomp(&_filenameRegex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
 
@@ -108,7 +109,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager::~LogfileManager () {
-  LOG_TRACE("shutting down wal logfile manager");
+  LOG_TRACE("shutting down WAL logfile manager");
 
   stop();
 
@@ -180,7 +181,7 @@ bool LogfileManager::prepare () {
   }
     
   if (_directory.empty()) {
-    LOG_FATAL_AND_EXIT("no directory specified for write-ahead logs. Please use the --wal.directory option");
+    LOG_FATAL_AND_EXIT("no directory specified for WAL logfiles. Please use the --wal.directory option");
   }
 
   if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -203,7 +204,9 @@ bool LogfileManager::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::start () {
-  if (_allocatorThread != nullptr) {
+  static bool started = false;
+  
+  if (started) {
     // we were already started
     return true;
   }
@@ -211,7 +214,7 @@ bool LogfileManager::start () {
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not create wal logfile inventory: %s", TRI_errno_string(res));
+    LOG_ERROR("could not create WAL logfile inventory: %s", TRI_errno_string(res));
     return false;
   }
  
@@ -232,41 +235,25 @@ bool LogfileManager::start () {
               (unsigned long long) _slots->lastAssignedTick(),
               (unsigned long long) _lastCollectedId);
   }
-  else {
-    // need to run the recovery procedure here
-  }
 
   res = openLogfiles(shutdownFileExists);
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not open wal logfiles: %s", 
-              TRI_errno_string(res));
+    LOG_ERROR("could not open WAL logfiles: %s", TRI_errno_string(res));
     return false;
   }
 
-  res = startSynchroniserThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start wal synchroniser thread: %s", TRI_errno_string(res));
-    return false;
-  }
-
-  res = startAllocatorThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start wal allocator thread: %s", TRI_errno_string(res));
+  // always run the recovery procedure...
+  if (! runRecovery()) {
     return false;
   }
   
-  if (shutdownFileExists) {
-    // delete the shutdown file if it existed
-    if (! basics::FileUtils::remove(shutdownFile, &res)) {
-      LOG_ERROR("could not remove shutdown file '%s': %s", shutdownFile.c_str(), TRI_errno_string(res));
-      return false;
-    }
-  }
+  // now we allow writes to the WAL
+  allowWrites(true);
+  
+  started = true;
 
-  LOG_TRACE("wal logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu",
+  LOG_TRACE("WAL logfile manager configuration: historic logfiles: %lu, reserve logfiles: %lu, filesize: %lu",
             (unsigned long) _historicLogfiles,
             (unsigned long) _reserveLogfiles,
             (unsigned long) _filesize);
@@ -279,12 +266,36 @@ bool LogfileManager::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::open () {
-  int res = startCollectorThread();
+  static bool opened = false;
+ 
+  if (opened) {
+    return true;
+  }
+
+  int res;
+
+  res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start wal collector thread: %s", TRI_errno_string(res));
+    LOG_ERROR("could not start WAL allocator thread: %s", TRI_errno_string(res));
     return false;
   }
+  
+  res = startSynchroniserThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL synchroniser thread: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  res = startCollectorThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL collector thread: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  opened = true;
 
   return true;
 }
@@ -307,19 +318,19 @@ void LogfileManager::stop () {
 
   _shutdown = 1;
   
-  LOG_INFO("shutting down WAL");
+  LOG_TRACE("shutting down WAL");
  
   // set WAL to read-only mode
-  _slots->setReadOnly();
+  allowWrites(false);
 
   // stop threads
-  LOG_TRACE("stopping allocator thread");
-  stopAllocatorThread();
-  
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
 
-  flush();
+  this->flush(true);
+  
+  LOG_TRACE("stopping allocator thread");
+  stopAllocatorThread();
   
   LOG_TRACE("stopping synchroniser thread");
   stopSynchroniserThread();
@@ -331,7 +342,7 @@ void LogfileManager::stop () {
   int res = writeShutdownInfo();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not write wal shutdown info: %s", TRI_errno_string(res));
+    LOG_ERROR("could not write WAL shutdown info: %s", TRI_errno_string(res));
   }
 }
 
@@ -351,8 +362,6 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t id) {
     TRI_ASSERT(_lastCollectedId <= _lastSealedId);
   }
 
-  // LOG_TRACE("acquired protector for transaction %llu", (unsigned long long) id);
-
   return true;
 }
 
@@ -370,8 +379,6 @@ void LogfileManager::unregisterTransaction (TRI_voc_tid_t id,
       _failedTransactions.insert(id);
     }
   }
-
-  // LOG_TRACE("release protector for transaction %llu", (unsigned long long) id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,11 +480,16 @@ void LogfileManager::signalSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo LogfileManager::allocate (uint32_t size) {
+  if (! _allowWrites && size > 0) {
+    // still allow flush requests
+    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+  }
+
   if (size > maxEntrySize()) {
     // entry is too big
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
-
+      
   if (size > _filesize && ! _allowOversizeEntries) {
     // entry is too big for a logfile
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
@@ -527,7 +539,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 /// it into a logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::flush () {
+int LogfileManager::flush (bool waitForSync) {
   LOG_TRACE("about to flush active write-ahead logfile");
 
   SlotInfo slotInfo = _slots->nextUnused(0);
@@ -541,6 +553,8 @@ int LogfileManager::flush () {
 
     return slotInfo.errorCode;
   }
+
+  // TODO: use waitForSync
  
   // do not sync here, because otherwise the operation might never finish 
   // as we're writing 0 bytes to the logfile! 
@@ -889,6 +903,18 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief run the recovery procedure
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::runRecovery () {
+  LOG_INFO("running WAL recovery");
+
+  // TODO
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief closes all logfiles
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -937,13 +963,13 @@ int LogfileManager::readShutdownInfo () {
     lastSealedId = lastCollectedId;
   }
   
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
   {
     WRITE_LOCKER(_logfilesLock);
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
   }
-  
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   return TRI_ERROR_NO_ERROR; 
 }
@@ -964,12 +990,18 @@ int LogfileManager::writeShutdownInfo () {
   content.append(basics::StringUtils::itoa(_lastCollectedId));
   content.append("\",\"lastSealed\":\"");
   content.append(basics::StringUtils::itoa(_lastSealedId));
-  content.append("\",\"shutdownTime\":");
-  content.append(basics::StringUtils::itoa((uint64_t) TRI_microtime()));
-  content.append("}");
+  content.append("\",\"shutdownTime\":\"");
+  
+  content.append(getTimeString());
+  content.append("\"}");
 
-  // TODO: spit() doesn't return success/failure. FIXME!
-  basics::FileUtils::spit(filename, content);
+  try {
+    basics::FileUtils::spit(filename, content);
+  }
+  catch (std::exception& ex) {
+    LOG_ERROR("unable to write shutdown info file '%s'", filename.c_str());
+    return TRI_ERROR_CANNOT_WRITE_FILE;
+  }
   
   return TRI_ERROR_NO_ERROR; 
 }
@@ -999,13 +1031,13 @@ int LogfileManager::startSynchroniserThread () {
 
 void LogfileManager::stopSynchroniserThread () {
   if (_synchroniserThread != nullptr) {
-    LOG_TRACE("stopping wal synchroniser thread");
+    LOG_TRACE("stopping WAL synchroniser thread");
 
     _synchroniserThread->stop();
     _synchroniserThread->shutdown();
 
     delete _synchroniserThread;
-    _synchroniserThread = 0;
+    _synchroniserThread = nullptr;
   }
 }
 
@@ -1034,13 +1066,13 @@ int LogfileManager::startAllocatorThread () {
 
 void LogfileManager::stopAllocatorThread () {
   if (_allocatorThread != nullptr) {
-    LOG_TRACE("stopping wal allocator thread");
+    LOG_TRACE("stopping WAL allocator thread");
 
     _allocatorThread->stop();
     _allocatorThread->shutdown();
 
     delete _allocatorThread;
-    _allocatorThread = 0;
+    _allocatorThread = nullptr;
   }
 }
 
@@ -1069,13 +1101,13 @@ int LogfileManager::startCollectorThread () {
 
 void LogfileManager::stopCollectorThread () {
   if (_collectorThread != nullptr) {
-    LOG_TRACE("stopping wal collector thread");
+    LOG_TRACE("stopping WAL collector thread");
 
     _collectorThread->stop();
     _collectorThread->shutdown();
 
     delete _collectorThread;
-    _collectorThread = 0;
+    _collectorThread = nullptr;
   }
 }
 
@@ -1090,7 +1122,7 @@ int LogfileManager::inventory () {
     return res;
   }
 
-  LOG_TRACE("scanning wal directory: '%s'", _directory.c_str());
+  LOG_TRACE("scanning WAL directory: '%s'", _directory.c_str());
 
   std::vector<std::string> files = basics::FileUtils::listFiles(_directory);
 
@@ -1135,7 +1167,7 @@ int LogfileManager::openLogfiles (bool wasCleanShutdown) {
 
     if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       if (basics::FileUtils::remove(filename, 0)) {
-        LOG_INFO("removing empty wal logfile '%s'", filename.c_str());
+        LOG_INFO("removing empty WAL logfile '%s'", filename.c_str());
       }
       _logfiles.erase(it++);
       continue;
@@ -1213,16 +1245,16 @@ int LogfileManager::ensureDirectory () {
   if (! basics::FileUtils::isDirectory(_directory)) {
     int res;
     
-    LOG_INFO("wal directory '%s' does not exist. creating it...", _directory.c_str());
+    LOG_INFO("WAL directory '%s' does not exist. creating it...", _directory.c_str());
 
     if (! basics::FileUtils::createDirectory(_directory, &res)) {
-      LOG_ERROR("could not create wal directory: '%s': %s", _directory.c_str(), TRI_errno_string(res));
+      LOG_ERROR("could not create WAL directory: '%s': %s", _directory.c_str(), TRI_errno_string(res));
       return res;
     }
   }
 
   if (! basics::FileUtils::isDirectory(_directory)) {
-    LOG_ERROR("wal directory '%s' does not exist", _directory.c_str());
+    LOG_ERROR("WAL directory '%s' does not exist", _directory.c_str());
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
@@ -1243,6 +1275,21 @@ std::string LogfileManager::shutdownFilename () const {
 
 std::string LogfileManager::logfileName (Logfile::IdType id) const {
   return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) + std::string(".db");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current time as a string
+////////////////////////////////////////////////////////////////////////////////
+  
+std::string LogfileManager::getTimeString () {
+  char buffer[32];
+  size_t len;
+  time_t tt = time(0);
+  struct tm tb;
+  TRI_gmtime(tt, &tb);
+  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  return std::string(buffer, len);
 }
 
 // Local Variables:
