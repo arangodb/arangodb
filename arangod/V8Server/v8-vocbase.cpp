@@ -9640,12 +9640,13 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   TRI_ASSERT(barrier != nullptr);
     
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
   void const* marker = document->getDataPtr();
+  TRI_ASSERT(marker != nullptr);  // PROTECTED by trx from above
+
   bool const doCopy = TRI_IsWalDataMarkerDatafile(marker);
     
   if (doCopy) {
