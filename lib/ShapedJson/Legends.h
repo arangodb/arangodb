@@ -321,6 +321,11 @@ namespace triagens {
         }
 
         TRI_shape_t const* lookupShapeIdMethod (TRI_shape_sid_t const sid) {
+          // Is it a builtin basic one?
+          if (sid < TRI_FirstCustomShapeIdShaper()) {
+            return TRI_LookupSidBasicShapeShaper(sid);
+          }
+
           // binary search in Shapes
           TRI_shape_size_t low = 0;
           TRI_shape_size_t high = _numberShapes;
