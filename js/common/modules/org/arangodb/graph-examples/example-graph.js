@@ -46,6 +46,31 @@
     return g;
   };
 
+  var createRoutePlannerGraph = function() {
+    var edgeDefinition = [];
+    edgeDefinition.push(Graph._directedRelationDefinition("highway", ["city"], ["city"]));
+    edgeDefinition.push(Graph._directedRelationDefinition(
+      "road", ["village", "city"], ["village", "city"])
+    );
+    var g = Graph._create("routeplanner", edgeDefinition);
+    var berlin = g.city.save({_key: "Berlin", population : 3000000, isCapital : true});
+    var cologne = g.city.save({_key: "Cologne", population : 1000000, isCapital : false});
+    var munich = g.city.save({_key: "Munich", population : 1000000, isCapital : true});
+    var olpe = g.village.save({_key: "Olpe", population : 80000, isCapital : false});
+    var rosenheim = g.village.save({_key: "Rosenheim", population : 80000, isCapital : false});
+    g.highway.save(berlin._id, cologne._id, {distance: 850});
+    g.highway.save(berlin._id, munich._id, {distance: 600});
+    g.highway.save(munich._id, cologne._id, {distance: 650});
+    g.road.save(berlin._id, olpe._id, {distance: 700});
+    g.road.save(berlin._id, rosenheim._id, {distance: 800});
+    g.road.save(munich._id, rosenheim._id, {distance: 80});
+    g.road.save(munich._id, olpe._id, {distance: 600});
+    g.road.save(cologne._id, olpe._id, {distance: 100});
+    g.road.save(cologne._id, rosenheim._id, {distance: 750});
+    return g;
+  };
+
+
   var dropGraph = function(name) {
     return Graph._drop(name);
   };
@@ -55,6 +80,8 @@
       dropGraph(name);
     }
     switch (name) {
+      case "routeplanner":
+        return createRoutePlannerGraph();
       case "social":
         return createSocialGraph();
     }

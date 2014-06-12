@@ -22,6 +22,7 @@ Truncates a collection, removing all documents but keeping all its indexes.
 
 Truncates a collection:
 
+```
 arango> col = db.examples;
 [ArangoCollection 91022, "examples" (status new born)]
 arango> col.save({ "Hello" : "World" });
@@ -31,6 +32,7 @@ arango> col.count();
 arango> col.truncate();
 arango> col.count();
 0
+```
 
 `collection.properties()`
 
