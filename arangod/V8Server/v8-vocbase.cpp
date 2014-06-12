@@ -9640,20 +9640,22 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   TRI_ASSERT(barrier != nullptr);
     
   TRI_ASSERT(document != nullptr);
-  TRI_ASSERT(document->getDataPtr() != nullptr);  // PROTECTED by trx from above
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
-  bool doCopy = trx.mustCopyShapedJson();
-  
+  void const* marker = document->getDataPtr();
+  TRI_ASSERT(marker != nullptr);  // PROTECTED by trx from above
+
+  bool const doCopy = TRI_IsWalDataMarkerDatafile(marker);
+    
   if (doCopy) {
     // we'll create a full copy of the document
     TRI_document_collection_t* collection = trx.documentCollection();
     TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx from above
   
     TRI_shaped_json_t json;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(json, document->getDataPtr());  // PROTECTED by trx from above
+    TRI_EXTRACT_SHAPED_JSON_MARKER(json, marker);  // PROTECTED by trx from above
   
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
@@ -9692,7 +9694,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     return scope.Close(result);
   }
 
-  void* data = const_cast<void*>(document->getDataPtr());  // PROTECTED by trx from above
+  void* data = const_cast<void*>(marker);  // PROTECTED by trx from above
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
