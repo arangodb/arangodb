@@ -121,7 +121,7 @@ function checkManifest (filename, mf) {
     "assets":             [ false, "object" ],
     "author":             [ false, "string" ],
     "contributors":       [ false, "array" ],
-    "controllers":        [ true, "object" ],
+    "controllers":        [ false, "object" ],
     "defaultDocument":    [ false, "string" ],
     "description":        [ true, "string" ],
     "engines":            [ false, "object" ],
