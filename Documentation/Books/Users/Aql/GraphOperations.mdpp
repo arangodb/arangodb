@@ -7,25 +7,2878 @@ This chapter describe graph related aql functions.
 
 <!-- @startDocuBlock JSF_ahuacatl_general_graph_paths -->
 
+<br />
+`GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
+*The GRAPH\_PATHS function returns all paths of a graph.*
+<br />
+This function determines all available paths in a graph identified by *graphName*.
+Except for *graphName* every other parameter is optional.
+<br />
+* String  *graphName*     : The name of the graph.
+* String  *direction*     : The direction of the edges.
+Possible values are *any*, *inbound* and *outbound* (default).
+* Boolean *followCycles*  : If set to *true* the query follows cycles in the graph,
+default is false.
+* Number *minLength*      : Defines the minimal length a path must
+have to be returned (default is 0).
+* Number *maxLength*      : Defines the maximal length a path must
+have to be returned (default is 10).
+<br />
+@EXAMPLES
+<br />
+Return all paths of the graph "social":
+<br />
+
+```
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   db._query("RETURN GRAPH_PATHS('social')").toArray();
+[ 
+  [ 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "196719176", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "196719176", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "197112392", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "197898824", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "197112392", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "196719176", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "197112392", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "197505608", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "197898824", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        }, 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "198554184", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "196719176", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "197309000", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "198160968", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "197309000", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "196719176", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "197309000", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "197505608", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "198160968", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        }, 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "198357576", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "196719176", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "197505608", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "197112392", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "197112392", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "197112392", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "197112392", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "197505608", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "198554184", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "197112392", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "197309000", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "197309000", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "197309000", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "197309000", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "197505608", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "198357576", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "197309000", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "197505608", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    } 
+  ] 
+]
+```
+<br />
+Return all inbound paths of the graph "social" with a maximal
+length of 1 and a minimal length of 2:
+<br />
+
+```
+arangosh>   ~require("internal").db;
+-1
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
+[ 
+  [ 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "128496200", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "128299592", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "129348168", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "128496200", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "128299592", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "128496200", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "128299592", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "127709768", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "129348168", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "129151560", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "128496200", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "127709768", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "128496200", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "128102984", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "129544776", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "128496200", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "128102984", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "128496200", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "128102984", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "127709768", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "129544776", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "128889416", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "128496200", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "127709768", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "128102984", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "127709768", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "128889416", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "128102984", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "127709768", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "128299592", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "127709768", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "129151560", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "128299592", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "127709768", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    } 
+  ] 
+]
+```
+
 !SUBSECTION GRAPH_SHORTEST_PATH
 
 <!-- @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths -->
 
-!SUBSECTION_GRAPH_DISTANCE_TO
+<br />
+`GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
+*The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
+<br />
+This function determines all shortest paths in a graph identified by *graphName*.
+The function accepts an id, an example, a list of examples
+or even an empty example as parameter for
+start and end vertex. If one wants to calls this function to receive nearly all
+shortest paths for a graph the
+option *algorithm* should be set to *Floyd-Warshall* to increase performance.
+If no algorithm is provided in the options the function chooses the appropriate
+one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
+The length of a path is by default the amount of edges from one start vertex to
+an end vertex. The option weight allows the user to define an edge attribute
+representing the length.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *startVertexExample* : An example for the desired
+start Vertices (see below).
+* String|Object|Array  *endVertexExample*   : An example for the desired
+end Vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple edge
+collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example for the
+edges in the shortest paths (see below).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+used, otherwise the default is *Dijkstra*
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path could
+not be calculated.
+<br />
+Examples for startVertexExample/endVertexExample:
+* {}                : Returns all possible start/end vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
+the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, shortest distance from all villages to other cities:
+<br />
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_distance -->
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
+........> +"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
+........> "startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+........>  "e.distance, LENGTH(e.paths)]"
+........> ).toArray();
+[ 
+  [ 
+    "village/Rosenheim", 
+    "city/Cologne", 
+    730, 
+    1 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Berlin", 
+    680, 
+    1 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Munich", 
+    80, 
+    1 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Berlin", 
+    700, 
+    1 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Munich", 
+    600, 
+    1 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Cologne", 
+    100, 
+    1 
+  ] 
+]
+```
+<br />
+A route planner example, shortest distance from Munich and Cologne to Olpe:
+<br />
 
-!SUBSECTION_GRAPH_TRAVERSAL
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
+........> +"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+........>  "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
+........> ).toArray();
+[ 
+  [ 
+    "city/Cologne", 
+    "village/Olpe", 
+    100, 
+    1 
+  ], 
+  [ 
+    "city/Munich", 
+    "village/Olpe", 
+    600, 
+    1 
+  ] 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_TRAVERSAL
 
 <!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal -->
 
-!SUBSECTION_GRAPH_TRAVERSAL_TREE
+<br />
+`GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
+*The GRAPH\_TRAVERSAL function traverses through the graph.*
+<br />
+This function performs traversals on the given graph.
+For a more detailed documentation on the optional parameters see
+[Traversals](../Traversals/README.md).
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *startVerte*         : The ID of the start vertex of the traversal.
+* String|Object|Array  *direction*          : The direction of the edges. Possible values
+are *outbound*, *inbound* and *any* (default).
+* Object               *options*            : Optional options, see below:
+<br />
+@EXAMPLES
+<br />
+A route planner example, start a traversal from Munich :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+........>  " 'outbound') RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "113553992", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Cologne", 
+      "_rev" : "113357384", 
+      "_key" : "Cologne", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "114012744", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "114209352", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "114209352", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "114012744", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  } 
+]
+```
+<br />
+A route planner example, start a traversal from Munich with a max depth of 1
+so only the direct neighbors of munich are returned:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+........> " 'outbound', {maxDepth : 1}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "118600264", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Cologne", 
+      "_rev" : "118403656", 
+      "_key" : "Cologne", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "119255624", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "119059016", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_TRAVERSAL_TREE
 
 <!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree -->
 
-!SUBSECTION_GRAPH_NEIGHBORS
+<br />
+`GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
+*The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
+This function creates a tree format from the result for a better visualization of
+the path.
+This function performs traversals on the given graph.
+For a more detailed documentation on the optional parameters see
+[Traversals](../Traversals/README.md).
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *startVerte*         : The ID of the start vertex
+of the traversal.
+* String|Object|Array  *direction*          : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Object|Array  *connectName*        : The result attribute which
+contains the connection.
+* Object               *options*            : Optional options, see below:
+<br />
+@EXAMPLES
+<br />
+A route planner example, start a traversal from Munich :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'," +
+........>  " 'outbound', 'connnection') RETURN e"
+........> ).toArray();
+[ 
+  [ 
+    { 
+      "_id" : "city/Munich", 
+      "_rev" : "157004360", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000, 
+      "connnection" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "156807752", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000, 
+          "connnection" : [ 
+            { 
+              "_id" : "village/Olpe", 
+              "_rev" : "157463112", 
+              "_key" : "Olpe", 
+              "isCapital" : false, 
+              "population" : 80000 
+            }, 
+            { 
+              "_id" : "village/Rosenheim", 
+              "_rev" : "157659720", 
+              "_key" : "Rosenheim", 
+              "isCapital" : false, 
+              "population" : 80000 
+            } 
+          ] 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "157659720", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "157463112", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  ] 
+]
+```
+<br />
+A route planner example, start a traversal from Munich with a max depth of 1 so
+only the direct neighbors of munich are returned:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich',"+
+........>  " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
+........> ).toArray();
+[ 
+  [ 
+    { 
+      "_id" : "city/Munich", 
+      "_rev" : "162050632", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000, 
+      "connnection" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "161854024", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "162705992", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "162509384", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  ] 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_DISTANCE_TO
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_distance -->
+
+<br />
+`GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+/// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
+///
+/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+/// It does not return the actual path but only the distance between two vertices.
+<br />
+
+!SUBSECTION GRAPH_NEIGHBORS
 
 <!-- @startDocuBlock JSF_ahuacatl_general_graph_neighbors -->
+
+<br />
+`GRAPH_NEIGHBORS (graphName, vertexExample, options)`
+*The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction
+of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Object|Array  *edgeExamples*                     : A filter example
+for the edges to the neighbors (see below).
+* String|Object|Array  *neighborExamples*                 : An example for
+the desired neighbors (see below).
+* String|Array         *edgeCollectionRestriction*        : One or multiple
+edge collections that should be considered.
+* String|Array         *vertexCollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* Number               *minDepth*                         : Defines the minimal
+depth a path to a neighbor must have to be returned (default is 1).
+* Number               *maxDepth*                         : Defines the maximal
+depth a path to a neighbor must have to be returned (default is 1).
+<br />
+Examples for edgeExamples/neighborExamples:
+* {}                : Returns all possible edges/neighbors for this graph.
+* *idString*        : Returns the edge/vertex with the id *idString*.
+* {*key* : *value*} : Returns the edges/vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all neighbors of locations with a distance of either
+700 or 600.:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
+........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "78230088", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "highway/79475272", 
+          "_rev" : "79475272", 
+          "_key" : "79475272", 
+          "_from" : "city/Berlin", 
+          "_to" : "city/Munich", 
+          "distance" : 600 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Berlin", 
+          "_rev" : "77836872", 
+          "_key" : "Berlin", 
+          "isCapital" : true, 
+          "population" : 3000000 
+        }, 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "78230088", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Berlin" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "78688840", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/80065096", 
+          "_rev" : "80065096", 
+          "_key" : "80065096", 
+          "_from" : "city/Berlin", 
+          "_to" : "village/Olpe", 
+          "distance" : 700 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Berlin", 
+          "_rev" : "77836872", 
+          "_key" : "Berlin", 
+          "isCapital" : true, 
+          "population" : 3000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "78688840", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Berlin" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Berlin", 
+      "_rev" : "77836872", 
+      "_key" : "Berlin", 
+      "isCapital" : true, 
+      "population" : 3000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "highway/79475272", 
+          "_rev" : "79475272", 
+          "_key" : "79475272", 
+          "_from" : "city/Berlin", 
+          "_to" : "city/Munich", 
+          "distance" : 600 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "78230088", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "city/Berlin", 
+          "_rev" : "77836872", 
+          "_key" : "Berlin", 
+          "isCapital" : true, 
+          "population" : 3000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "78688840", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/80654920", 
+          "_rev" : "80654920", 
+          "_key" : "80654920", 
+          "_from" : "city/Munich", 
+          "_to" : "village/Olpe", 
+          "distance" : 600 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "78230088", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "78688840", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Berlin", 
+      "_rev" : "77836872", 
+      "_key" : "Berlin", 
+      "isCapital" : true, 
+      "population" : 3000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/80065096", 
+          "_rev" : "80065096", 
+          "_key" : "80065096", 
+          "_from" : "city/Berlin", 
+          "_to" : "village/Olpe", 
+          "distance" : 700 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "78688840", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "city/Berlin", 
+          "_rev" : "77836872", 
+          "_key" : "Berlin", 
+          "isCapital" : true, 
+          "population" : 3000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "village/Olpe" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "78230088", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/80654920", 
+          "_rev" : "80654920", 
+          "_key" : "80654920", 
+          "_from" : "city/Munich", 
+          "_to" : "village/Olpe", 
+          "distance" : 600 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "78688840", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "78230088", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "village/Olpe" 
+  } 
+]
+```
+<br />
+A route planner example, all outbound neighbors of munich with a maximal depth of 2 :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
+........> +"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Cologne", 
+      "_rev" : "131576392", 
+      "_key" : "Cologne", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "highway/133214792", 
+          "_rev" : "133214792", 
+          "_key" : "133214792", 
+          "_from" : "city/Munich", 
+          "_to" : "city/Cologne", 
+          "distance" : 650 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "131773000", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "131576392", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "132231752", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "highway/133214792", 
+          "_rev" : "133214792", 
+          "_key" : "133214792", 
+          "_from" : "city/Munich", 
+          "_to" : "city/Cologne", 
+          "distance" : 650 
+        }, 
+        { 
+          "_id" : "road/134394440", 
+          "_rev" : "134394440", 
+          "_key" : "134394440", 
+          "_from" : "city/Cologne", 
+          "_to" : "village/Olpe", 
+          "distance" : 100 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "131773000", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "131576392", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "132231752", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "132428360", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "highway/133214792", 
+          "_rev" : "133214792", 
+          "_key" : "133214792", 
+          "_from" : "city/Munich", 
+          "_to" : "city/Cologne", 
+          "distance" : 650 
+        }, 
+        { 
+          "_id" : "road/134591048", 
+          "_rev" : "134591048", 
+          "_key" : "134591048", 
+          "_from" : "city/Cologne", 
+          "_to" : "village/Rosenheim", 
+          "distance" : 750 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "131773000", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "131576392", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "132428360", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "132428360", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/134001224", 
+          "_rev" : "134001224", 
+          "_key" : "134001224", 
+          "_from" : "city/Munich", 
+          "_to" : "village/Rosenheim", 
+          "distance" : 80 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "131773000", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "132428360", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "132231752", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "road/134197832", 
+          "_rev" : "134197832", 
+          "_key" : "134197832", 
+          "_from" : "city/Munich", 
+          "_to" : "village/Olpe", 
+          "distance" : 600 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "city/Munich", 
+          "_rev" : "131773000", 
+          "_key" : "Munich", 
+          "isCapital" : true, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "132231752", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "city/Munich" 
+  } 
+]
+```
+<br />
+
+
+
+!SUBSECTION GRAPH_EDGES
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_edges -->
+
+<br />
+`GRAPH_EDGES (graphName, vertexExample, options)`
+*The GRAPH\_EDGES function returns all edges of vertices.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction
+of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple
+edge collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple
+vertex collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example
+for the edges (see below).
+* String|Object|Array  *neighborExamples*                 : An example for
+the desired neighbors (see below).
+* Number               *minDepth*                         : Defines the minimal
+depth a path to a neighbor must have to be returned (default is 1).
+* Number               *maxDepth*                         : Defines the maximal
+depth a path to a neighbor must have to be returned (default is 1).
+<br />
+Examples for edgeExamples/neighborExamples:
+* {}                : Returns all possible edges/neighbors for this graph.
+* *idString*        : Returns the edge/vertex with the id *idString*.
+* {*key* : *value*} : Returns the edges/vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all edges to locations with a distance of either 700 or 600.:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "highway/29012552", 
+    "_rev" : "29012552", 
+    "_key" : "29012552", 
+    "_from" : "city/Berlin", 
+    "_to" : "city/Munich", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/29602376", 
+    "_rev" : "29602376", 
+    "_key" : "29602376", 
+    "_from" : "city/Berlin", 
+    "_to" : "village/Olpe", 
+    "distance" : 700 
+  }, 
+  { 
+    "_id" : "highway/29012552", 
+    "_rev" : "29012552", 
+    "_key" : "29012552", 
+    "_from" : "city/Berlin", 
+    "_to" : "city/Munich", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/30192200", 
+    "_rev" : "30192200", 
+    "_key" : "30192200", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/29602376", 
+    "_rev" : "29602376", 
+    "_key" : "29602376", 
+    "_from" : "city/Berlin", 
+    "_to" : "village/Olpe", 
+    "distance" : 700 
+  }, 
+  { 
+    "_id" : "road/30192200", 
+    "_rev" : "30192200", 
+    "_key" : "30192200", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  } 
+]
+```
+<br />
+A route planner example, all outbound edges of munich with a maximal depth of 2 :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> +"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "highway/34255432", 
+    "_rev" : "34255432", 
+    "_key" : "34255432", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "highway/34255432", 
+    "_rev" : "34255432", 
+    "_key" : "34255432", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "road/35435080", 
+    "_rev" : "35435080", 
+    "_key" : "35435080", 
+    "_from" : "city/Cologne", 
+    "_to" : "village/Olpe", 
+    "distance" : 100 
+  }, 
+  { 
+    "_id" : "highway/34255432", 
+    "_rev" : "34255432", 
+    "_key" : "34255432", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "road/35631688", 
+    "_rev" : "35631688", 
+    "_key" : "35631688", 
+    "_from" : "city/Cologne", 
+    "_to" : "village/Rosenheim", 
+    "distance" : 750 
+  }, 
+  { 
+    "_id" : "road/35041864", 
+    "_rev" : "35041864", 
+    "_key" : "35041864", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Rosenheim", 
+    "distance" : 80 
+  }, 
+  { 
+    "_id" : "road/35238472", 
+    "_rev" : "35238472", 
+    "_key" : "35238472", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  } 
+]
+```
+<br />
+
+
+
+!SUBSECTION GRAPH_VERTICES
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_vertices -->
+
+<br />
+`GRAPH_VERTICES (graphName, vertexExample, options)`
+*The GRAPH\_VERTICES function returns all vertices.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
+According to the optional filters it will only return vertices that have
+outbound, onbound or any (default) edges.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the
+edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *vertexCollectionRestriction*      : One or multiple
+vertex collections that should be considered.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all vertices of the graph
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', {}) RETURN e"
+........> ).toArray();
+[ArangoError 1541: invalid number of arguments for function '_AQL:GRAPH_COMMON_NEIGHBORS()']
+```
+<br />
+A route planner example, all vertices from collection *city*.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
+........> " : 'city'}) RETURN e"
+........> ).toArray();
+[ ]
+```
+<br />
+
+
+!SUBSECTION GRAPH_COMMON_NEIGHBORS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors -->
+
+<br />
+`GRAPH_VERTICES (graphName, vertexExample, options)`
+*The GRAPH\_VERTICES function returns all vertices.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
+According to the optional filters it will only return vertices that have
+outbound, onbound or any (default) edges.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the
+edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *vertexCollectionRestriction*      : One or multiple
+vertex collections that should be considered.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all vertices of the graph
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : { 
+      "city/Munich" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "214651185", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "215306545", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "215503153", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  }, 
+  { 
+    "city/Munich" : { 
+      "city/Berlin" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "214651185", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "215306545", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "215503153", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  } 
+]
+```
+<br />
+A route planner example, all vertices from collection *city*.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
+........>  "{direction : 'outbound', maxDepth : 2}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : { 
+      "city/Berlin" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "204558641", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "205214001", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "205410609", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ], 
+      "city/Cologne" : [ 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "205214001", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "205410609", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  } 
+]
+```
+<br />
+
+
+
+!SUBSECTION GRAPH_COMMON_PROPERTIES
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_common_properties -->
+
+<br />
+`GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
+*The GRAPH\_COMMON\_PROPERTIES function returns all vertices
+defined by the examples that share common properties
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex1Example and vertex2Example.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertex1Example*     : An example for the desired
+vertices (see below).
+* String|Object|Array  *vertex2Example*     : An example for the desired
+vertices (see below).
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *vertex2CollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *ignoreProperties* : One or multiple
+attributes of a document that should be ignored.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all locations with the same properties:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+........> +"'routeplanner', {}, {}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : [ 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "77156657", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Munich" : [ 
+      { 
+        "_id" : "city/Berlin", 
+        "_rev" : "76763441", 
+        "_key" : "Berlin", 
+        "isCapital" : true, 
+        "population" : 3000000 
+      }, 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "76960049", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Cologne" : [ 
+      { 
+        "_id" : "village/Rosenheim", 
+        "_rev" : "77812017", 
+        "_key" : "Rosenheim", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      { 
+        "_id" : "village/Olpe", 
+        "_rev" : "77615409", 
+        "_key" : "Olpe", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "77156657", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "village/Rosenheim" : [ 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "76960049", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "village/Olpe", 
+        "_rev" : "77615409", 
+        "_key" : "Olpe", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    ] 
+  }, 
+  { 
+    "village/Olpe" : [ 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "76960049", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "village/Rosenheim", 
+        "_rev" : "77812017", 
+        "_key" : "Rosenheim", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    ] 
+  } 
+]
+```
+<br />
+A route planner example, all cities which share same properties except for population.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+........> +"'routeplanner', {}, {}, {vertex1CollectionRestriction : 'city', " +
+........>  "vertex2CollectionRestriction : 'city'" +
+........> " ,ignoreProperties: 'population'}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : [ 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "67064113", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Munich" : [ 
+      { 
+        "_id" : "city/Berlin", 
+        "_rev" : "66670897", 
+        "_key" : "Berlin", 
+        "isCapital" : true, 
+        "population" : 3000000 
+      } 
+    ] 
+  } 
+]
+```
+<br />
+
+
+
+!SUBSECTION GRAPH_ABSOLUTE_ECCENTRICITY
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity -->
+
+<br />
+`GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
+*The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
+[eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+of the vertices defined by the examples.
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertexExample.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*     : An example for the desired
+vertices (see below).
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple edge
+collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example for the
+edges in the shortest paths (see below).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the absolute eccentricity of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+........> +"'routeplanner', {})"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : 1, 
+    "city/Cologne" : 1, 
+    "city/Berlin" : 1, 
+    "village/Olpe" : 2, 
+    "village/Rosenheim" : 2 
+  } 
+]
+```
+<br />
+A route planner example, the absolute eccentricity of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+........> +"'routeplanner', {}, {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 800, 
+    "city/Munich" : 650, 
+    "city/Cologne" : 800, 
+    "village/Rosenheim" : 730, 
+    "village/Olpe" : 700 
+  } 
+]
+```
+<br />
+A route planner example, the absolute eccentricity of all cities regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+........>  + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+........>  "direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : 650, 
+    "city/Berlin" : 850, 
+    "city/Cologne" : 750 
+  } 
+]
+```
+<br />
+
+
+!SUBSECTION GRAPH_ECCENTRICITY
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_eccentricity -->
+
+<br />
+`GRAPH_ECCENTRICITY (graphName, options)`
+*The GRAPH\_ECCENTRICITY function returns the normalized
+[eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+of the graphs vertices
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the eccentricity of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ECCENTRICITY("
+........> +"'routeplanner')"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 1, 
+    "city/Munich" : 1, 
+    "city/Cologne" : 1, 
+    "village/Rosenheim" : 0.5, 
+    "village/Olpe" : 0.5 
+  } 
+]
+```
+<br />
+A route planner example, the eccentricity of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ECCENTRICITY("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : 1, 
+    "city/Cologne" : 0.8125, 
+    "city/Berlin" : 0.8125, 
+    "village/Olpe" : 0.9285714285714286, 
+    "village/Rosenheim" : 0.8904109589041096 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_ABSOLUTE_CLOSENESS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness -->
+
+<br />
+`GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
+*The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
+[closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+of the vertices defined by the examples.
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertexExample.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*     : An example for the desired
+vertices (see below).
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple edge
+collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example for the
+edges in the shortest paths (see below).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the absolute closeness of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+........> +"'routeplanner', {})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 4, 
+    "city/Cologne" : 4, 
+    "city/Munich" : 4, 
+    "village/Rosenheim" : 5, 
+    "village/Olpe" : 5 
+  } 
+]
+```
+<br />
+A route planner example, the absolute closeness of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+........> +"'routeplanner', {}, {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 2780, 
+    "city/Cologne" : 2280, 
+    "city/Munich" : 1930, 
+    "village/Olpe" : 2080, 
+    "village/Rosenheim" : 2170 
+  } 
+]
+```
+<br />
+A route planner example, the absolute closeness of all cities regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
+........>  + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+........>  "direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 2830, 
+    "city/Munich" : 1330, 
+    "city/Cologne" : 850 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_CLOSENESS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_closeness -->
+
+<br />
+`GRAPH_CLOSENESS (graphName, options)`
+*The GRAPH\_CLOSENESS function returns the normalized
+[closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+of graphs vertices.
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the closeness of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_CLOSENESS("
+........> +"'routeplanner')"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 1, 
+    "city/Munich" : 1, 
+    "city/Cologne" : 1, 
+    "village/Rosenheim" : 0.8, 
+    "village/Olpe" : 0.8 
+  } 
+]
+```
+<br />
+A route planner example, the closeness of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_CLOSENESS("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : 1, 
+    "city/Cologne" : 0.8464912280701755, 
+    "city/Berlin" : 0.6942446043165468, 
+    "village/Rosenheim" : 0.8894009216589862, 
+    "village/Olpe" : 0.9278846153846155 
+  } 
+]
+```
+<br />
+A route planner example, the absolute closeness of all cities regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_CLOSENESS("
+........>  + "'routeplanner',{direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0.3656319670725433, 
+    "city/Munich" : 1, 
+    "city/Cologne" : 0.7216326530612246, 
+    "village/Rosenheim" : 0, 
+    "village/Olpe" : 0 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_ABSOLUTE_BETWEENNESS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness -->
+
+<br />
+`GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
+*The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
+[betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
+of all vertices in the graph.
+<br />
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the absolute betweenness of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+........> +"'routeplanner', {})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0.6666666666666666, 
+    "city/Cologne" : 0.6666666666666666, 
+    "city/Munich" : 0.6666666666666666, 
+    "village/Olpe" : 0, 
+    "village/Rosenheim" : 0 
+  } 
+]
+```
+<br />
+A route planner example, the absolute closeness of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0, 
+    "city/Munich" : 6, 
+    "city/Cologne" : 0, 
+    "village/Olpe" : 2, 
+    "village/Rosenheim" : 0 
+  } 
+]
+```
+<br />
+A route planner example, the absolute closeness of all cities regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
+........>  + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0, 
+    "city/Munich" : 1, 
+    "city/Cologne" : 0, 
+    "village/Rosenheim" : 0, 
+    "village/Olpe" : 0 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_BETWEENNESS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_betweenness -->
+
+<br />
+`GRAPH_BETWEENNESS (graphName, options)`
+*The GRAPH\_BETWEENNESS function returns the
+[betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
+of graphs vertices.
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the betweenness of all locations.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_BETWEENNESS("
+........> +"'routeplanner')"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : 1, 
+    "city/Cologne" : 1, 
+    "city/Berlin" : 1, 
+    "village/Olpe" : 0, 
+    "village/Rosenheim" : 0 
+  } 
+]
+```
+<br />
+A route planner example, the closeness of all locations.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_BETWEENNESS("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0, 
+    "city/Cologne" : 0, 
+    "village/Olpe" : 0.3333333333333333, 
+    "city/Munich" : 1, 
+    "village/Rosenheim" : 0 
+  } 
+]
+```
+<br />
+A route planner example, the closeness of all cities regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_BETWEENNESS("
+........>  + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : 0, 
+    "city/Munich" : 1, 
+    "city/Cologne" : 0, 
+    "village/Rosenheim" : 0, 
+    "village/Olpe" : 0 
+  } 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_RADIUS
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_radius -->
+
+<br />
+`GRAPH_RADIUS (graphName, options)`
+*The GRAPH\_RADIUS function returns the
+[radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
+of a graph.
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the radius of the graph.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_RADIUS("
+........> +"'routeplanner')"
+........> ).toArray();
+[ 
+  1 
+]
+```
+<br />
+A route planner example, the radius of the graph.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_RADIUS("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  650 
+]
+```
+<br />
+A route planner example, the cradius of the graph regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_RADIUS("
+........>  + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  650 
+]
+```
+<br />
+
+!SUBSECTION GRAPH_DIAMETER
+
+<!-- @startDocuBlock JSF_ahuacatl_general_graph_diameter -->
+
+<br />
+`GRAPH_DIAMETER (graphName, options)`
+*The GRAPH\_DIAMETER function returns the
+[diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
+of a graph.
+<br />
+* String               *graphName*          : The name of the graph.
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths.
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path and
+hence the eccentricity can not be calculated.
+<br />
+@EXAMPLES
+<br />
+A route planner example, the diameter of the graph.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_DIAMETER("
+........> +"'routeplanner')"
+........> ).toArray();
+[ 
+  2 
+]
+```
+<br />
+A route planner example, tthe diameter of the graph.
+This considers the actual distances.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_DIAMETER("
+........> +"'routeplanner', {weight : 'distance'})"
+........> ).toArray();
+[ 
+  800 
+]
+```
+<br />
+A route planner example, the diameter of the graph regarding only
+outbound pathes.
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_DIAMETER("
+........>  + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  850 
+]
+```
+<br />
+
+
 
 
 
