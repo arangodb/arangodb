@@ -5348,7 +5348,6 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             const TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
                                             TRI_doc_mptr_copy_t* mptr,
-                                            TRI_df_marker_type_e markerType,
                                             TRI_shaped_json_t const* shaped,
                                             TRI_document_edge_t const* edge,
                                             bool lock,
@@ -5398,7 +5397,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   triagens::wal::Marker* marker = nullptr;
 
-  if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
+  if (edge == nullptr) {
     // document
     TRI_ASSERT(edge == nullptr);
 
@@ -5410,10 +5409,8 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                                legend,
                                                shaped);
   }
-  else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
+  else {
     // edge
-    TRI_ASSERT(edge != nullptr);
-
     marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
                                            document->_info._cid,
                                            rid,
@@ -5422,10 +5419,6 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                            edge,
                                            legend,
                                            shaped);
-  }
-  else {
-    // invalid marker type
-    return TRI_ERROR_INTERNAL;
   }
 
 
