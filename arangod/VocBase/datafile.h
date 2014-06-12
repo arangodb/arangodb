@@ -609,6 +609,16 @@ void TRI_FreeDatafile (TRI_datafile_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a marker is a data marker in the WAL
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_IsWalDataMarkerDatafile (void const* marker) {
+  TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(marker);
+
+  return (m->_type == TRI_WAL_MARKER_DOCUMENT || m->_type == TRI_WAL_MARKER_EDGE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
