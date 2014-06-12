@@ -29,15 +29,19 @@ def edge_endpoint(graph_name, collection)
 end
 
 
-def additional_edge_definition (name, edge_definitions) 
-  throw "Not implemented"
+def additional_edge_definition (graph_name, edge_definitions) 
+  cmd = URLPREFIX + "/" + graph_name + "/edge"
+  doc = ArangoDB.post(cmd, :body => JSON.dump(edge_definitions))
+  return doc
 end
 
-def change_edge_definition (name, definition_name, edgeDefinitions) 
-  throw "Not implemented"
+def change_edge_definition (graph_name, definition_name, edge_definitions) 
+  cmd = edge_endpoint(graph_name, definition_name)
+  doc = ArangoDB.put(cmd, :body => JSON.dump(edge_definitions))
+  return doc
 end
 
-def delete_edge_definition (name, definition_name) 
+def delete_edge_definition (graph_name, definition_name) 
   cmd = edge_endpoint(graph_name, definition_name)
   doc = ArangoDB.delete(cmd)
   return doc
@@ -154,7 +158,7 @@ describe ArangoDB do
       end
 
       it "can create a graph with definitions" do
-        first_def = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         edge_definition = [first_def]
         doc = create_graph( graph_name, edge_definition )
 
@@ -167,10 +171,10 @@ describe ArangoDB do
       end
 
       it "can add additional edge definitions" do
-        first_def = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         edge_definition = [first_def]
         create_graph( graph_name, edge_definition )
-        second_def = { "name" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
+        second_def = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
         doc = additional_edge_definition( graph_name, [second_def] )
         edge_definition.push(second_def)
 
@@ -183,9 +187,9 @@ describe ArangoDB do
       end
 
       it "can modify existing edge definitions" do
-        first_def = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph( graph_name, [first_def] )
-        second_def = { "name" => friend_collection, "from" => [product_collection], "to" => [user_collection] }
+        second_def = { "collection" => friend_collection, "from" => [product_collection], "to" => [user_collection] }
         edge_definition = [second_def]
 
         doc = change_edge_definition( graph_name, friend_collection, second_def )
@@ -199,7 +203,7 @@ describe ArangoDB do
       end
 
       it "can delete a graph again" do
-        definition = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph(graph_name, [definition])
         doc = drop_graph(graph_name)
         doc.code.should eq(200)
@@ -208,21 +212,21 @@ describe ArangoDB do
       end
 
       it "can not delete a graph twice" do
-        definition = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph(graph_name, [definition])
         drop_graph(graph_name)
         doc = drop_graph(graph_name)
         doc.code.should eq(404)
-        doc.parsed_response['error'].should eq("a graph with this name could not be found.")
+        doc.parsed_response['error'].should eq("graph not found")
         doc.parsed_response['code'].should eq(404)
       end
 
       it "can not create a graph twice" do
-        definition = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph(graph_name, [definition])
         doc = create_graph(graph_name, [definition])
         doc.code.should eq(409)
-        doc.parsed_response['error'].should eq("a graph with this name already exists.")
+        doc.parsed_response['error'].should eq("graph already exists")
         doc.parsed_response['code'].should eq(409)
       end
     end
@@ -230,7 +234,7 @@ describe ArangoDB do
     context "check vertex operations" do
       before do
         drop_graph(graph_name)
-        definition = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph(graph_name, [definition])
       end
 
@@ -323,9 +327,10 @@ describe ArangoDB do
     end
 
     context "check edge operations" do
+
       before do
         drop_graph(graph_name)
-        definition = { "name" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
         create_graph(graph_name, [definition])
       end
 
@@ -400,7 +405,7 @@ describe ArangoDB do
         key = doc.parsed_response['edge']['_key']
         type2 = "divorced"
 
-        doc = update_edge(graph_name, friend_collection, key, {"type2" => type2}) 
+        doc = update_edge(graph_name, friend_collection, key, {"type2" => type2}, "") 
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
@@ -408,8 +413,8 @@ describe ArangoDB do
         doc.parsed_response['edge']['_key'].should eq(key)
 
         doc = get_edge(graph_name, friend_collection, key) 
-        doc.parsed_response['edge']['type'].should eq(name)
-        doc.parsed_response['edge']['type2'].should eq(name2)
+        doc.parsed_response['edge']['type'].should eq(type)
+        doc.parsed_response['edge']['type2'].should eq(type2)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['edge']['_key'].should eq(key)
       end
