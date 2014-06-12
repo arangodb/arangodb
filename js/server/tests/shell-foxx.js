@@ -639,36 +639,6 @@ function CommentDrivenDocumentationSpec () {
   };
 }
 
-function HelperFunctionSpec () {
-  var app;
-
-  return {
-    setUp: function () {
-      fakeContext.collectionPrefix = "fancy";
-      app = new FoxxController(fakeContext);
-    },
-
-    testGetACollection: function () {
-      db._create("fancy_pants");
-
-      assertEqual(app.collection("pants"), db._collection("fancy_pants"));
-    },
-
-    testGetACollectionThatDoesNotExist: function () {
-      var err;
-      db._drop("fancy_pants");
-
-      try {
-        app.collection("pants");
-      } catch(e) {
-        err = e;
-      }
-
-      assertEqual(err.message, "collection with name 'fancy_pants' does not exist.");
-    }
-  };
-}
-
 function SetupAuthorization () {
   var app;
 
@@ -772,7 +742,6 @@ jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
-jsunity.run(HelperFunctionSpec);
 jsunity.run(SetupAuthorization);
 
 return jsunity.done();
