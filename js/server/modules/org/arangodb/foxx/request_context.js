@@ -40,12 +40,44 @@ var RequestContext,
   createBodyParamBubbleWrap,
   addCheck;
 
-createBodyParamBubbleWrap = function (handler, paramName, Proto) {
+var elementExtractFactory = function(paramName, rootElement) {
+  var extractElement;
+
+  if (rootElement) {
+    extractElement = function (req) {
+      return req.body()[paramName];
+    };
+  } else {
+    extractElement = function (req) {
+      return req.body();
+    };
+  }
+
+  return extractElement;
+};
+
+var bubbleWrapFactory = function (handler, paramName, Proto, extractElement, multiple) {
   'use strict';
+  if (multiple) {
+    Proto = Proto[0];
+  }
+
   return function (req, res) {
-    req.parameters[paramName] = new Proto(req.body());
+    if (multiple) {
+      req.parameters[paramName] = _.map(extractElement(req), function (raw) {
+        return new Proto(raw);
+      });
+    } else {
+      req.parameters[paramName] = new Proto(extractElement(req));
+    }
     handler(req, res);
   };
+};
+
+createBodyParamBubbleWrap = function (handler, paramName, Proto, rootElement) {
+  'use strict';
+  var extractElement = elementExtractFactory(paramName, rootElement);
+  return bubbleWrapFactory(handler, paramName, Proto, extractElement, is.array(Proto));
 };
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
@@ -137,7 +169,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route) {
+RequestContext = function (executionBuffer, models, route, rootElement) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -145,6 +177,7 @@ RequestContext = function (executionBuffer, models, route) {
     "integer": "/[0-9]+/",
     "string": "/[^/]+/"
   };
+  this.rootElement = rootElement;
 
   this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
@@ -249,14 +282,30 @@ extend(RequestContext.prototype, {
 /// This will initialize a `Model` with the data and provide it to you via the
 /// params as `paramName`.
 /// For information about how to annotate your models, see the Model section.
+/// If you provide the Model in an array, the response will take multiple models
+/// instead of one.
+///
+/// If you wrap the provided model in an array, the body param is always an array
+/// and accordingly the return value of the `params` for the body call will also
+/// return an array of models.
+///
+/// The behavior of `bodyParam` changes depending on the `rootElement` option
+/// set in the manifest. If it is set to true, it is expected that the body is an
+/// object with a key of the same name as the `paramName` argument.
+/// The value of this object is either a single object or in the case of a multi
+/// element an array of objects.
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, description, Proto) {
     'use strict';
     var handler = this.route.action.callback;
 
-    this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
-    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto);
+    if (is.array(Proto)) {
+      this.docs.addBodyParam(paramName, description, Proto[0].toJSONSchema(paramName));
+    } else {
+      this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    }
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto, this.rootElement);
 
     return this;
   },
