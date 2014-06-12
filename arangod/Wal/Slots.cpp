@@ -57,8 +57,7 @@ Slots::Slots (LogfileManager* logfileManager,
     _recycleIndex(0), 
     _logfile(nullptr),
     _lastAssignedTick(tick),
-    _lastCommittedTick(0),
-    _readOnly(false) {
+    _lastCommittedTick(0)  {
 
   for (size_t i = 0; i < _numberOfSlots; ++i) {
     _slots[i] = new Slot();
@@ -129,10 +128,6 @@ SlotInfo Slots::nextUnused (uint32_t size) {
   while (true) {
     {
       MUTEX_LOCKER(_lock);
-
-      if (_readOnly && ! isFlushRequest) {
-        return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
-      }
 
       Slot* slot = _slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
