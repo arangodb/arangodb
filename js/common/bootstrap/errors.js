@@ -214,6 +214,7 @@
     "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph not found" }, 
     "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" }, 
     "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "collection does not exist" }, 
+    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" }, 
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" }, 
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
