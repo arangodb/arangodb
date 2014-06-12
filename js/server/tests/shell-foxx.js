@@ -365,6 +365,27 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
     },
 
+    testAddBodyParamWithMultipleItems: function () {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, description, [ModelPrototype]);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
     testDefineBodyParamAddsJSONSchemaToModels: function () {
       var paramName = stub(),
         description = stub(),
@@ -402,6 +423,34 @@ function DocumentationAndConstraintsSpec () {
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);
       }).bodyParam(paramName, description, ModelPrototype);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testSetParamForBodyParamWithMultipleItems: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        rawElement = stub(),
+        requestBody = [rawElement],
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(rawElement);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
+      }).bodyParam(paramName, description, [ModelPrototype]);
 
       routes[0].action.callback(req, res);
 
