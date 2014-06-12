@@ -784,129 +784,6 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a shaped-json document (or edge)
-/// note: key might be NULL. in this case, a key is auto-generated
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
-                                     TRI_voc_key_t key,
-                                     TRI_voc_rid_t rid,
-                                     TRI_doc_mptr_copy_t* mptr,
-                                     TRI_df_marker_type_e markerType,
-                                     TRI_shaped_json_t const* shaped,
-                                     TRI_document_edge_t const* edge,
-                                     bool lock,
-                                     bool forceSync,
-                                     bool isRestore) {
-
-  // TODO: isRestore is not used yet!
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-
-  rid = GetRevisionId(rid);
-  TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
-  
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(document->_keyGenerator);
-
-  std::string keyString;
-
-  if (key == nullptr) {
-    // no key specified, now generate a new one
-    keyString = keyGenerator->generateKey(keyGenerator, tick);
-
-    if (keyString.empty()) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
-    }
-  }
-  else {
-    // key was specified, now validate it
-    int res = keyGenerator->validateKey(keyGenerator, key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    keyString = key;
-  }
-
-  uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
-
-  // construct a legend for the shaped json
-  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
-  int res = legend.addShape(shaped->_sid, &shaped->_data);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  triagens::wal::Marker* marker = nullptr;
-
-  if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    // document
-    TRI_ASSERT(edge == nullptr);
-
-    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
-                                               document->_info._cid,
-                                               rid,
-                                               trxCollection->_transaction->_id,
-                                               keyString,
-                                               legend,
-                                               shaped);
-  }
-  else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
-    // edge
-    TRI_ASSERT(edge != nullptr);
-
-    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
-                                           document->_info._cid,
-                                           rid,
-                                           trxCollection->_transaction->_id,
-                                           keyString,
-                                           edge,
-                                           legend,
-                                           shaped);
-  }
-  else {
-    // invalid marker type
-    return TRI_ERROR_INTERNAL;
-  }
-
-
-  TRI_ASSERT(marker != nullptr);
-
-  // now insert into indexes
-  {
-    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
-  
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
-
-    // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(document->_headersPtr, marker->size());  // PROTECTED by trx in trxCollection
-
-    if (header == nullptr) {
-      // out of memory. no harm done here. just return the error
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    // update the header we got
-    void* mem = operation.marker->mem();
-    header->_rid  = rid;
-    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
-    header->_hash = hash;
-
-    // insert into indexes
-    res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
- 
-    if (res == TRI_ERROR_NO_ERROR) {
-      TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
-    }
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document by key
 /// the caller must make sure the read lock on the collection is held
 ////////////////////////////////////////////////////////////////////////////////
@@ -924,38 +801,6 @@ static int LookupDocument (TRI_document_collection_t* document,
   if (policy != nullptr) {
     return policy->check(header->_rid); 
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads an element from the document collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int ReadDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
-                                   const TRI_voc_key_t key,
-                                   TRI_doc_mptr_copy_t* mptr,
-                                   bool lock) {
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-
-  {
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    triagens::arango::CollectionReadLocker collectionLocker(document, lock);
-
-    TRI_doc_mptr_t* header;
-    int res = LookupDocument(document, key, nullptr, header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    // we found a document, now copy it over
-    *mptr = *header;
-  }
-
-  TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
-  TRI_ASSERT(mptr->_rid > 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1028,158 +873,6 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     RollbackUpdate(document, newHeader, &oldData);
   }
     
-  return res;
-}
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document in the collection from shaped json
-////////////////////////////////////////////////////////////////////////////////
-
-static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
-                                     TRI_voc_key_t key,
-                                     TRI_voc_rid_t rid,
-                                     TRI_doc_mptr_copy_t* mptr,
-                                     TRI_shaped_json_t const* shaped,
-                                     TRI_doc_update_policy_t const* policy,
-                                     bool lock,
-                                     bool forceSync) {
-
-  rid = GetRevisionId(rid);
-
-  TRI_ASSERT(key != nullptr);
-
-  // initialise the result
-  TRI_ASSERT(mptr != nullptr);
-  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-    
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  
-  // create legend  
-  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
-  int res = legend.addShape(shaped->_sid, &shaped->_data);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-    
-  {
-    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
-
-    // get the header pointer of the previous revision
-    TRI_doc_mptr_t* oldHeader;
-    res = LookupDocument(document, key, policy, oldHeader);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    triagens::wal::Marker* marker = nullptr;
-    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
-
-    if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
-        original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      // create a WAL document marker
-    
-      marker = triagens::wal::DocumentMarker::clone(original,
-                                                    document->_vocbase->_id,
-                                                    document->_info._cid,
-                                                    rid,
-                                                    trxCollection->_transaction->_id,
-                                                    legend,
-                                                    shaped);
-    }
-    else if (original->_type == TRI_WAL_MARKER_EDGE ||
-             original->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      // create a WAL edge marker
-
-      marker = triagens::wal::EdgeMarker::clone(original,
-                                                document->_vocbase->_id,
-                                                document->_info._cid,
-                                                rid,
-                                                trxCollection->_transaction->_id,
-                                                legend,
-                                                shaped);
-    }
-    else {
-      // invalid marker type
-      return TRI_ERROR_INTERNAL;
-    }
-  
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
-    operation.header = oldHeader;
-    operation.init();
-
-    res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync); 
-  }
-   
-  if (res == TRI_ERROR_NO_ERROR) { 
-    TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
-    TRI_ASSERT(mptr->_rid > 0);
-  }
-
-  return res;
-}
-  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a shaped-json document (or edge)
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemoveDocumentShapedJson (TRI_transaction_collection_t* trxCollection,
-                                     TRI_voc_key_t key,
-                                     TRI_voc_rid_t rid,
-                                     TRI_doc_update_policy_t const* policy,
-                                     bool lock,
-                                     bool forceSync) {
-  rid = GetRevisionId(rid);
- 
-  TRI_ASSERT(key != nullptr);
- 
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
-  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
-                                                                  document->_info._cid,
-                                                                  rid,
-                                                                  trxCollection->_transaction->_id,
-                                                                  std::string(key));
-
-  TRI_doc_mptr_t* header;
-  int res;
-  {
-    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
-  
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
-
-    res = LookupDocument(document, key, policy, header);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    
-    // we found a document to remove
-    TRI_ASSERT(header != nullptr);
-    operation.header = header;
-    operation.init();
-
-    // delete from indexes
-    res = DeleteSecondaryIndexes(document, header, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(document, header, true);
-      return res;
-    }
-  
-    res = DeletePrimaryIndex(document, header, false);
-  
-    if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(document, header, true);
-      return res;
-    }
-  
-    operation.indexed();
-
-    res = TRI_AddOperationTransaction(operation, forceSync);
-  }
-
   return res;
 }
 
@@ -2386,10 +2079,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->figures           = Figures;
 
   // crud methods
-  document->insertDocument    = InsertDocumentShapedJson;
-  document->removeDocument    = RemoveDocumentShapedJson;
-  document->updateDocument    = UpdateDocumentShapedJson;
-  document->readDocument      = ReadDocumentShapedJson;
   document->cleanupIndexes    = CleanupIndexes;
 
   return true;
@@ -5538,7 +5227,7 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return RemoveDocumentShapedJson(trxCollection, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
+  return TRI_RemoveShapedJsonDocumentCollection(trxCollection, (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5549,6 +5238,317 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
 int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
   // TODO: re-create this functionality
   return TRI_ERROR_NOT_IMPLEMENTED;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      CRUD methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads an element from the document collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+                                          const TRI_voc_key_t key,
+                                          TRI_doc_mptr_copy_t* mptr,
+                                          bool lock) {
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
+
+  {
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    triagens::arango::CollectionReadLocker collectionLocker(document, lock);
+
+    TRI_doc_mptr_t* header;
+    int res = LookupDocument(document, key, nullptr, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    // we found a document, now copy it over
+    *mptr = *header;
+  }
+
+  TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+  TRI_ASSERT(mptr->_rid > 0);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a shaped-json document (or edge)
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+                                            TRI_voc_key_t key,
+                                            TRI_voc_rid_t rid,
+                                            TRI_doc_update_policy_t const* policy,
+                                            bool lock,
+                                            bool forceSync) {
+  rid = GetRevisionId(rid);
+ 
+  TRI_ASSERT(key != nullptr);
+ 
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+
+  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
+                                                                  document->_info._cid,
+                                                                  rid,
+                                                                  trxCollection->_transaction->_id,
+                                                                  std::string(key));
+
+  TRI_doc_mptr_t* header;
+  int res;
+  {
+    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
+
+    res = LookupDocument(document, key, policy, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    // we found a document to remove
+    TRI_ASSERT(header != nullptr);
+    operation.header = header;
+    operation.init();
+
+    // delete from indexes
+    res = DeleteSecondaryIndexes(document, header, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      InsertSecondaryIndexes(document, header, true);
+      return res;
+    }
+  
+    res = DeletePrimaryIndex(document, header, false);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      InsertSecondaryIndexes(document, header, true);
+      return res;
+    }
+  
+    operation.indexed();
+
+    res = TRI_AddOperationTransaction(operation, forceSync);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a shaped-json document (or edge)
+/// note: key might be NULL. in this case, a key is auto-generated
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+                                            const TRI_voc_key_t key,
+                                            TRI_voc_rid_t rid,
+                                            TRI_doc_mptr_copy_t* mptr,
+                                            TRI_df_marker_type_e markerType,
+                                            TRI_shaped_json_t const* shaped,
+                                            TRI_document_edge_t const* edge,
+                                            bool lock,
+                                            bool forceSync,
+                                            bool isRestore) {
+
+  // TODO: isRestore is not used yet!
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
+
+  rid = GetRevisionId(rid);
+  TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
+  
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(document->_keyGenerator);
+
+  std::string keyString;
+
+  if (key == nullptr) {
+    // no key specified, now generate a new one
+    keyString = keyGenerator->generateKey(keyGenerator, tick);
+
+    if (keyString.empty()) {
+      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+    }
+  }
+  else {
+    // key was specified, now validate it
+    int res = keyGenerator->validateKey(keyGenerator, key);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    keyString = key;
+  }
+
+  uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
+
+  // construct a legend for the shaped json
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  triagens::wal::Marker* marker = nullptr;
+
+  if (markerType == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    // document
+    TRI_ASSERT(edge == nullptr);
+
+    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
+                                               document->_info._cid,
+                                               rid,
+                                               trxCollection->_transaction->_id,
+                                               keyString,
+                                               legend,
+                                               shaped);
+  }
+  else if (markerType == TRI_DOC_MARKER_KEY_EDGE) {
+    // edge
+    TRI_ASSERT(edge != nullptr);
+
+    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
+                                           document->_info._cid,
+                                           rid,
+                                           trxCollection->_transaction->_id,
+                                           keyString,
+                                           edge,
+                                           legend,
+                                           shaped);
+  }
+  else {
+    // invalid marker type
+    return TRI_ERROR_INTERNAL;
+  }
+
+
+  TRI_ASSERT(marker != nullptr);
+
+  // now insert into indexes
+  {
+    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
+
+    // create a new header
+    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(document->_headersPtr, marker->size());  // PROTECTED by trx in trxCollection
+
+    if (header == nullptr) {
+      // out of memory. no harm done here. just return the error
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    // update the header we got
+    void* mem = operation.marker->mem();
+    header->_rid  = rid;
+    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
+    header->_hash = hash;
+
+    // insert into indexes
+    res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
+ 
+    if (res == TRI_ERROR_NO_ERROR) {
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+    }
+  }
+
+  return res;
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates a document in the collection from shaped json
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+                                            TRI_voc_key_t key,
+                                            TRI_voc_rid_t rid,
+                                            TRI_doc_mptr_copy_t* mptr,
+                                            TRI_shaped_json_t const* shaped,
+                                            TRI_doc_update_policy_t const* policy,
+                                            bool lock,
+                                            bool forceSync) {
+
+  rid = GetRevisionId(rid);
+
+  TRI_ASSERT(key != nullptr);
+
+  // initialise the result
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
+    
+  TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  
+  // create legend  
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+    
+  {
+    triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
+
+    // get the header pointer of the previous revision
+    TRI_doc_mptr_t* oldHeader;
+    res = LookupDocument(document, key, policy, oldHeader);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    triagens::wal::Marker* marker = nullptr;
+    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
+
+    if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
+        original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+      // create a WAL document marker
+    
+      marker = triagens::wal::DocumentMarker::clone(original,
+                                                    document->_vocbase->_id,
+                                                    document->_info._cid,
+                                                    rid,
+                                                    trxCollection->_transaction->_id,
+                                                    legend,
+                                                    shaped);
+    }
+    else if (original->_type == TRI_WAL_MARKER_EDGE ||
+             original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      // create a WAL edge marker
+
+      marker = triagens::wal::EdgeMarker::clone(original,
+                                                document->_vocbase->_id,
+                                                document->_info._cid,
+                                                rid,
+                                                trxCollection->_transaction->_id,
+                                                legend,
+                                                shaped);
+    }
+    else {
+      // invalid marker type
+      return TRI_ERROR_INTERNAL;
+    }
+  
+    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
+    operation.header = oldHeader;
+    operation.init();
+
+    res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync); 
+  }
+   
+  if (res == TRI_ERROR_NO_ERROR) { 
+    TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+    TRI_ASSERT(mptr->_rid > 0);
+  }
+
+  return res;
 }
 
 // Local Variables:

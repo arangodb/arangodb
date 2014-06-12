@@ -1391,12 +1391,11 @@ void TRI_CompactorVocBase (void* data) {
   while (true) {
     // keep initial _state value as vocbase->_state might change during compaction loop
     int state = vocbase->_state;
- 
+
     // check if compaction is currently disallowed
     if (CheckAndLockCompaction(vocbase)) {
       // compaction is currently allowed
       double now = TRI_microtime();
-      size_t i, n;
       numCompacted = 0;
 
       // copy all collections
@@ -1404,9 +1403,9 @@ void TRI_CompactorVocBase (void* data) {
       TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
       TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-      n = collections._length;
+      size_t const n = collections._length;
 
-      for (i = 0;  i < n;  ++i) {
+      for (size_t i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection;
         bool doCompact;
         bool worked;
@@ -1441,7 +1440,7 @@ void TRI_CompactorVocBase (void* data) {
           if (document->_lastCompaction + COMPACTOR_COLLECTION_INTERVAL <= now) {
             TRI_barrier_t* ce = TRI_CreateBarrierCompaction(&document->_barrierList);
 
-            if (ce == NULL) {
+            if (ce == nullptr) {
               // out of memory
               LOG_WARNING("out of memory when trying to create a barrier element");
             }

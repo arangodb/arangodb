@@ -2454,7 +2454,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     if (shaped != 0) {
       TRI_doc_mptr_copy_t mptr;
 
-      int res = document->readDocument(trxCollection, key, &mptr, false);
+      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -2484,7 +2484,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -2493,7 +2493,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
@@ -2502,7 +2502,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
         // init the update policy
         TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-        res = document->updateDocument(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2521,8 +2521,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     // init the update policy
     TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
 
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    int res = document->removeDocument(trxCollection, key, rid, &policy, false, false);
+    int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {

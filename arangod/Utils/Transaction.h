@@ -532,12 +532,10 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          int res = document->readDocument(trxCollection,
-                                          (TRI_voc_key_t) key.c_str(), 
-                                          mptr,
-                                          ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+          int res = TRI_ReadShapedJsonDocumentCollection(trxCollection,
+                                                         (TRI_voc_key_t) key.c_str(), 
+                                                         mptr,
+                                                         ! isLocked(trxCollection, TRI_TRANSACTION_READ));
 
           return res;
         }
@@ -856,19 +854,18 @@ namespace triagens {
                            void const* data,
                            bool forceSync) {
          
-          TRI_document_collection_t* document = documentCollection(trxCollection);
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
-          int res = document->insertDocument(trxCollection,
-                                            key, 
-                                            rid, 
-                                            mptr,
-                                            markerType,
-                                            shaped,
-                                            static_cast<TRI_document_edge_t const*>(data),
-                                            lock,
-                                            forceSync,
-                                            false);
+          int res = TRI_InsertShapedJsonDocumentCollection(trxCollection,
+                                                           key, 
+                                                           rid, 
+                                                           mptr,
+                                                           markerType,
+                                                           shaped,
+                                                           static_cast<TRI_document_edge_t const*>(data),
+                                                           lock,
+                                                           forceSync,
+                                                           false);
 
           return res;
         }
@@ -934,16 +931,14 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-          
-          int res = document->updateDocument(trxCollection, 
-                                            (TRI_voc_key_t) key.c_str(),
-                                            rid, 
-                                            mptr, 
-                                            shaped, 
-                                            &updatePolicy, 
-                                            ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                            forceSync);
+          int res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, 
+                                                           (const TRI_voc_key_t) key.c_str(),
+                                                           rid, 
+                                                           mptr, 
+                                                           shaped, 
+                                                           &updatePolicy, 
+                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                                           forceSync);
           
           return res;
         }
@@ -962,14 +957,12 @@ namespace triagens {
           
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
           
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          int res = document->removeDocument(trxCollection,
-                                            (TRI_voc_key_t) key.c_str(), 
-                                            rid,
-                                            &updatePolicy, 
-                                            ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                            forceSync);
+          int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                           (TRI_voc_key_t) key.c_str(), 
+                                                           rid,
+                                                           &updatePolicy, 
+                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                                           forceSync);
 
           return res;
         }
@@ -983,8 +976,6 @@ namespace triagens {
                        bool forceSync) {
 
           std::vector<std::string> ids;
-          
-          TRI_document_collection_t* document = documentCollection(trxCollection);
           
           if (orderBarrier(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
@@ -1005,13 +996,12 @@ namespace triagens {
           }
 
           for (auto it = ids.begin(); it != ids.end(); ++it) {
-            res = document->removeDocument(trxCollection,
-                                          (TRI_voc_key_t) (*it).c_str(), 
-                                          0,
-                                          nullptr, // policy
-                                          false,
-                                          forceSync);
-
+            res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                         (TRI_voc_key_t) (*it).c_str(), 
+                                                         0,
+                                                         nullptr, // policy
+                                                         false,
+                                                         forceSync);
 
             if (res != TRI_ERROR_NO_ERROR) {
               // halt on first error

@@ -742,7 +742,15 @@ int ArangoServer::startupServer () {
   }
 
   // open all databases
-  openDatabases();
+  bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
+
+  if (iterateMarkersOnOpen) {
+    LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
+  }
+  openDatabases(iterateMarkersOnOpen);
+  
+  // from now on, we allow writes to the logfile
+  wal::LogfileManager::instance()->allowWrites(true);
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
@@ -1053,10 +1061,10 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the database
+/// @brief opens all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabases () {
+void ArangoServer::openDatabases (bool iterateMarkersOnOpen) {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
@@ -1077,7 +1085,8 @@ void ArangoServer::openDatabases () {
                            _applicationV8->devAppPath().c_str(),
                            &defaults,
                            _disableReplicationLogger,
-                           _disableReplicationApplier);
+                           _disableReplicationApplier,
+                           iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");

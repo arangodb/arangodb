@@ -237,7 +237,8 @@ namespace triagens {
         StatusType _status;
 
     };
-
+      
+    static_assert(sizeof(Slot) == 32, "invalid slot size");
   }
 }
 

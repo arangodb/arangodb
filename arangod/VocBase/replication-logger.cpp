@@ -518,7 +518,7 @@ static int LogEvent (TRI_replication_logger_t* logger,
     return TRI_ERROR_ARANGO_SHAPER_FAILED;
   }
 
-  res = document->insertDocument(logger->_trxCollection, 
+  res = TRI_InsertShapedJsonDocumentCollection(logger->_trxCollection, 
                         NULL, 
                         0,
                         &mptr, 

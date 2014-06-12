@@ -270,7 +270,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     if (shaped != 0) {
       TRI_doc_mptr_copy_t mptr;
 
-      int res = document->readDocument(trxCollection, key, &mptr, false);
+      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -301,7 +301,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -310,13 +310,13 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = document->insertDocument(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
           }
         }
       }
       else {
         // update
-        res = document->updateDocument(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
       }
       
       TRI_FreeShapedJson(zone, shaped);
@@ -333,8 +333,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
   else if (type == MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
 
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    int res = document->removeDocument(trxCollection, key, rid, &_policy, false, false);
+    int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &_policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
