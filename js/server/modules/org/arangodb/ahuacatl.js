@@ -4970,7 +4970,7 @@ function IS_EXAMPLE_SET (example) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
 ///
 /// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-/// *The GRAPH\_SHORTEST\_PATH function returns all paths of a graph.*
+/// *The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
 ///
 /// This function determines all shortest paths in a graph identified by *graphName*.
 /// The function accepts an id, an example, a list of examples
@@ -4978,7 +4978,7 @@ function IS_EXAMPLE_SET (example) {
 /// start and end vertex. If one wants to calls this function to receive nearly all
 /// shortest paths for a graph the
 /// option *algorithm* should be set to *Floyd-Warshall* to increase performance.
-/// If no algorithm is given in the options the function chooses the appropriate
+/// If no algorithm is provided in the options the function chooses the appropriate
 /// one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
 /// The length of a path is by default the amount of edges from one start vertex to
 /// an end vertex. The option weight allows the user to define an edge attribute
@@ -5224,6 +5224,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+/// It does not return the actual path but only the distance between two vertices.
 ///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
@@ -5529,7 +5530,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+/// @startDocuBlock JSF_ahuacatl_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
 /// *The GRAPH\_EDGES function returns all edges of vertices.*
@@ -5759,28 +5760,27 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// @EXAMPLES
 ///
-/// A route planner example, all neighbors of locations with a distance of
-/// either 700 or 600.:
+/// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// |+"'routeplanner', {}) RETURN e"
+/// |+"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound neighbors of munich with a maximal
-/// depth of 2 :
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// |+"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
-/// |" : 'city'}) RETURN e"
+/// |+"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
+/// | "{direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5989,7 +5989,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the vertices defined by the examples.
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
@@ -6100,7 +6100,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 ///
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 /// *The GRAPH\_ECCENTRICITY function returns the normalized
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_(graph_theory))
+/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the graphs vertices
 ///
 /// * String               *graphName*          : The name of the graph.
@@ -6577,7 +6577,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 ///
 /// `GRAPH_RADIUS (graphName, options)`
 /// *The GRAPH\_RADIUS function returns the
-/// [radius](http://en.wikipedia.org/wiki/Eccentricity_(graph_theory))
+/// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.
 ///
 /// * String               *graphName*          : The name of the graph.
@@ -6669,7 +6669,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 ///
 /// `GRAPH_DIAMETER (graphName, options)`
 /// *The GRAPH\_DIAMETER function returns the
-/// [diameter](http://en.wikipedia.org/wiki/Eccentricity_(graph_theory))
+/// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.
 ///
 /// * String               *graphName*          : The name of the graph.
