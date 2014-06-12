@@ -1205,7 +1205,7 @@ static bool ScanTrxCallback (TRI_doc_mptr_t const* mptr,
                              void* data) {
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
 
-  char const* key = TRI_EXTRACT_MARKER_KEY(mptr);
+  char const* key = TRI_EXTRACT_MARKER_KEY(mptr);  // PROTECTED by trx in caller
 
   if (vocbase->_oldTransactions == nullptr) {
     vocbase->_oldTransactions = new std::set<TRI_voc_tid_t>;

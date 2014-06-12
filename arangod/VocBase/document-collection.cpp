@@ -419,7 +419,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
   TRI_ASSERT(document != nullptr);
   TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX
+  TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
   
   // insert into primary index
   int res = TRI_InsertKeyPrimaryIndex(&document->_primaryIndex, header, (void const**) &found);
@@ -436,7 +436,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
   // we found a previous revision in the index
   // the found revision is still alive
   LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
-            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX
+            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX, PROTECTED by RUNTIME
             (unsigned long long) found->_rid,
             (unsigned long long) header->_rid);
 
@@ -484,7 +484,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   // remove from main index
   // .............................................................................
 
-  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX
+  TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -540,7 +540,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR
+  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -833,7 +833,7 @@ static int InsertDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
 
   // construct a legend for the shaped json
-  triagens::basics::JsonLegend legend(document->getShaper());
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1055,7 +1055,7 @@ static int UpdateDocumentShapedJson (TRI_transaction_collection_t* trxCollection
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
   // create legend  
-  triagens::basics::JsonLegend legend(document->getShaper());
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1478,11 +1478,11 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi = TRI_FindDatafileInfoDocumentCollection(document, oldData._fid, true);
     }
 
-    if (dfi != NULL && found->getDataPtr() != NULL) {  // ONLY IN OPENITERATOR
+    if (dfi != NULL && found->getDataPtr() != NULL) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       int64_t size;
 
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
-      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
@@ -1500,10 +1500,10 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // it is a stale update
   else {
     if (state->_dfi != NULL) {
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       state->_dfi->_numberDead++;
-      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR
+      state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
     }
   }
 
@@ -1573,9 +1573,9 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     if (dfi != NULL) {
       int64_t size;
 
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR
+      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
-      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR
+      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
@@ -1840,7 +1840,7 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
                                           TRI_datafile_t* datafile,
                                           open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
-  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker);
+  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
   
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -1866,7 +1866,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
                                               open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker); 
+  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker);   // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
 
   if (res == TRI_ERROR_NO_ERROR) { 
     if (state->_fid != datafile->_fid) {
@@ -2261,9 +2261,9 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   TRI_DestroyPrimaryIndex(&document->_primaryIndex);
 
   {
-    TransactionBase trx(true);  // just to protect the following getShaper call
-    if (document->getShaper() != nullptr) {
-      TRI_FreeVocShaper(document->getShaper());
+    TransactionBase trx(true);  // just to protect the following call
+    if (document->getShaper() != nullptr) {  // PROTECTED by trx here
+      TRI_FreeVocShaper(document->getShaper());  // PROTECTED by trx here
     }
   }
   
@@ -2535,8 +2535,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TransactionBase trx(true);  // just to protect the following getShaper call
-  TRI_ASSERT(document->getShaper() != nullptr);
+  TransactionBase trx(true);  // just to protect the following call
+  TRI_ASSERT(document->getShaper() != nullptr);  // ONLY IN COLLECTION CREATION, PROTECTED by trx here
 
   return document;
 }
@@ -3081,9 +3081,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->getShaper() != nullptr);
+  TRI_ASSERT(document->getShaper() != nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  TRI_InitVocShaper(document->getShaper());
+  TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
   // fill internal indexes (this is, the edges index at the moment) 
   FillInternalIndexes(document);
@@ -3102,8 +3102,8 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
 
-  TransactionBase trx(true);  // just to protect the getShaper call
-  TRI_FreeVocShaper(document->getShaper());
+  TransactionBase trx(true);  // just to protect the following call
+  TRI_FreeVocShaper(document->getShaper());  // ONLY IN CLOSECOLLECTION, PROTECTED by fake trx here
   document->setShaper(nullptr);
 
   return res;
@@ -4136,7 +4136,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   loc = 0;
   idx = NULL;
 
-  shaper = document->getShaper();
+  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (location != NULL) {
     loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
@@ -4390,7 +4390,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
 
-  shaper = document->getShaper();
+  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
     
   loc = shaper->lookupAttributePathByName(shaper, location);
 
@@ -4433,7 +4433,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   TRI_shaper_t* shaper;
   size_t i, n;
   
-  shaper = document->getShaper();
+  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   
   lat = shaper->lookupAttributePathByName(shaper, latitude);
   lon = shaper->lookupAttributePathByName(shaper, longitude);
@@ -4583,7 +4583,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),
+                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                  &paths,
                                  &fields,
                                  true,
@@ -4691,7 +4691,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),
+                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                  &paths,
                                  &fields,
                                  true, 
@@ -4777,7 +4777,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),
+                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                  &paths,
                                  &fields,
                                  false,
@@ -4879,7 +4879,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 
   // determine the unsorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),
+                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                  &paths,
                                  &fields,
                                  false,
@@ -5219,7 +5219,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
   int res;
 
   res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),
+                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                  &paths,
                                  &fields,
                                  false,
@@ -5353,7 +5353,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
   // ...........................................................................
 
   result = PidNamesByAttributeNames(attributes, 
-                                    document->getShaper(),
+                                    document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
                                     &paths, 
                                     &fields, 
                                     false,
@@ -5513,7 +5513,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-  TRI_shaper_t* shaper = document->getShaper();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in trxCollection
 
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;

@@ -350,7 +350,7 @@ namespace triagens {
            TRI_ASSERT(trxCollection->_collection != nullptr);
            TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 
-           return trxCollection->_collection->_collection->getShaper();
+           return trxCollection->_collection->_collection->getShaper();  // PROTECTED by trx in trxCollection
          }
 
 ////////////////////////////////////////////////////////////////////////////////
