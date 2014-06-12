@@ -136,6 +136,7 @@ function checkManifest (filename, mf) {
     "teardown":           [ false, "string" ],
     "thumbnail":          [ false, "string" ],
     "version":            [ true, "string" ],
+    "rootElement":        [ false, "boolean" ],
     "exports":            [ false, "object" ]
   };
 
@@ -527,6 +528,7 @@ function executeAppScript (app, name, mount, prefix) {
 
     appContext.isDevelopment = devel;
     appContext.isProduction = ! devel;
+    appContext.manifest = app._manifest;
 
     extendContext(appContext, app, root);
 
@@ -746,6 +748,8 @@ function routingAalApp (app, mount, options) {
 
     appContextTempl.isDevelopment = devel;
     appContextTempl.isProduction = ! devel;
+
+    appContextTempl.manifest = app._manifest;
 
     var appContext;
     var file;

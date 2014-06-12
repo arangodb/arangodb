@@ -115,6 +115,12 @@ Controller = function (context, options) {
 
   context.foxxes.push(this);
 
+  if (is.existy(context.manifest.rootElement)) {
+    this.rootElement =context.manifest.rootElement;
+  } else {
+    this.rootElement = false;
+  }
+
   this.applicationContext = context;
 };
 
@@ -156,7 +162,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(this.allRoutes, this.models, newRoute),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement),
       summary;
 
     this.routingInfo.routes.push(newRoute);
