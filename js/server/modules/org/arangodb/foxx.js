@@ -37,7 +37,8 @@ var Controller = require("org/arangodb/foxx/controller").Controller,
 exports.Controller = Controller;
 exports.Model = Model;
 exports.Repository = Repository;
-exports.requireApp = function(path) {
+exports.requireApp = function (path) {
+  "use strict";
   return manager.mountedApp(arangodb.normalizeURL('/' + path));
 };
 

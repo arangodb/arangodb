@@ -40,7 +40,8 @@ var RequestContext,
   createBodyParamBubbleWrap,
   addCheck;
 
-var elementExtractFactory = function(paramName, rootElement) {
+var elementExtractFactory = function (paramName, rootElement) {
+  "use strict";
   var extractElement;
 
   if (rootElement) {
