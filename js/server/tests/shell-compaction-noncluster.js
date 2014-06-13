@@ -591,6 +591,7 @@ function CompactionSuite () {
         c1.remove("test" + i);
       }
      
+      internal.flushWal(true, true);
       // this will create a barrier that will block compaction
       var doc = c1.document("test1"); 
 
@@ -599,9 +600,9 @@ function CompactionSuite () {
       var fig = c1.figures();
       assertEqual(n / 2, c1.count());
       assertEqual(n / 2, fig["alive"]["count"]);
-      assertEqual(n / 2, fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["size"]);
-      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(0, fig["dead"]["count"]);
+      assertEqual(0, fig["dead"]["size"]);
+      assertTrue(200, fig["dead"]["deletion"]);
       assertTrue(0 <= fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
@@ -656,13 +657,14 @@ function CompactionSuite () {
       internal.wait(0);
 
       c1.truncate();
+      internal.flushWal(true, true);
       c1.rotate();
 
       waited = 0;
 
       while (waited < maxWait) {
-        internal.wait(5);
-        waited += 5;
+        internal.wait(2);
+        waited += 2;
       
         fig = c1.figures();
         if (fig["dead"]["deletion"] == 0) {
@@ -707,7 +709,9 @@ function CompactionSuite () {
         c1.save({ value : i, payload : payload });
       }
 
+      internal.flushWal(true, true);
       var fig = c1.figures();
+
       assertEqual(n, c1.count());
       assertEqual(n, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
@@ -716,14 +720,16 @@ function CompactionSuite () {
       assertTrue(0 < fig["datafiles"]["count"]);
       
       // truncation will go fully into the journal...
+      internal.flushWal(true, true);
       c1.rotate();
 
       c1.truncate();
         
+      internal.flushWal(true, true);
       fig = c1.figures();
+      assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(n, fig["dead"]["deletion"]);
-      assertEqual(0, c1.count());
       
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
@@ -739,15 +745,14 @@ function CompactionSuite () {
       waited = 0;
 
       while (waited < maxWait) {
-        internal.wait(5);
-        waited += 5;
+        internal.wait(2);
+        waited += 2;
       
         fig = c1.figures();
         if (fig["dead"]["count"] == 0) {
           break;
         }
       }
-      
             
       assertEqual(0, c1.count());
       // all alive & dead markers should be gone
