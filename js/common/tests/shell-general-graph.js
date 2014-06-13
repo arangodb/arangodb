@@ -564,8 +564,11 @@ function GeneralGraphCreationSuite() {
         g2 = graph._create(gN2, [dr2]);
 
       assertEqual([dr1], g1.__edgeDefinitions);
+      g1._addOrphanCollection(vc3);
+      assertEqual([vc3], g1._getOrphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
+      assertEqual([], g1._getOrphanCollections());
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
 
@@ -665,7 +668,8 @@ function GeneralGraphCreationSuite() {
         vc2 = prefix + "VertexCol2",
         vc3 = prefix + "VertexCol3",
         vc4 = prefix + "VertexCol4",
-        vc5 = prefix + "VertexCol5";
+        vc5 = prefix + "VertexCol5",
+        vc6 = prefix + "VertexCol6";
       try {
         graph._drop(gN1);
       } catch(ignore) {
@@ -681,11 +685,17 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1, dr3]),
         g2 = graph._create(gN2, [dr1]);
 
+      g1._addOrphanCollection(vc4);
+      g2._addOrphanCollection(vc5);
+      g2._addOrphanCollection(vc6);
       g1._editEdgeDefinitions(dr2, true);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
       assertTrue(db._collection(vc1) === null);
       assertFalse(db._collection(vc2) === null);
+      assertEqual([], g1._getOrphanCollections());
+      g2 = graph._graph(gN2);
+      assertEqual([vc6], g2._getOrphanCollections());
 
       try {
         graph._drop(gN1);
