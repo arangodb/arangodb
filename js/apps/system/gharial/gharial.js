@@ -127,7 +127,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._vertexCollections(), function(c) {
       return c.name();
-    }));
+    }).sort());
   })
   .pathParam("graph", {
     type: "string",
@@ -206,7 +206,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._edgeCollections(), function(c) {
       return c.name();
-    }));
+    }).sort());
   })
   .pathParam("graph", {
     type: "string",

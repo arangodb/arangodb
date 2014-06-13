@@ -1403,7 +1403,20 @@ var _directedRelationDefinition = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list of all graph names
+/// @startDocuBlock JSF_general_graph_list
+///
+/// `general-graph._list()`
+/// *List all graphs.*
+///
+/// Lists all graph names stored in this database.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._list();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 var _list = function() {
