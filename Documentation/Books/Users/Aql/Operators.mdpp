@@ -698,6 +698,18 @@ AQL supports the following functions to operate on document values:
         { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
       ]
 
+- *TRANSLATE(value, lookup, defaultValue)*: Looks up the value *value* in the *lookup*
+  document. If *value* is a key in *lookup*, then *value* will be replaced with the
+  lookup value found. If *value* is not present in *lookup*, then *defaultValue* will
+  be returned if specified. If no *defaultValue* is specified, *value* will be returned:
+
+      RETURN TRANSLATE("FR", { US: "United States", UK: "United Kingdom", FR: "France" })
+
+      "France"
+
+      RETURN TRANSLATE(42, { foo: "bar", bar: "baz" }, "not found!")
+
+      "not found!"
 
 - *HAS(document, attributename)*: Returns *true* if *document* has an
   attribute named *attributename*, and *false* otherwise.
