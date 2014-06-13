@@ -1,3 +1,4 @@
+module.define("org/arangodb/general-graph", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, Graph, arguments */
 
@@ -2859,3 +2860,4 @@ exports._exists = _exists;
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+});

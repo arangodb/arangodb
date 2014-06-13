@@ -146,6 +146,7 @@ attributes are required though):
 * *license*: Short form of the license (MIT, GPL...)
 * *name*: Name of the application (Meta information)
 * *repository*: An object with information about where you can find the repository: *type* and *url*
+* *rootElement*: Do you want to have a root element in the requests bodies? Default is false.
 * *setup*: Path to a setup script
 * *teardown*: Path to a teardown script
 * *thumbnail*: Path to a thumbnail that represents the application (Meta information)
