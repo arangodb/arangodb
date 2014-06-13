@@ -525,7 +525,8 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    require("console").warn("catch error in historian: %s", err);
+    // we don't want this error to appear every x seconds
+    // require("console").warn("catch error in historian: %s", err);
   }
 };
 
@@ -576,7 +577,8 @@ exports.historianAverage = function () {
     }
   }
   catch (err) {
-    require("console").warn("catch error in historianAverage: %s", err);
+    // we don't want this error to appear every x seconds
+    // require("console").warn("catch error in historianAverage: %s", err);
   }
 };
 
