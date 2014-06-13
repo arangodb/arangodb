@@ -154,14 +154,14 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// 
 ///     var response = logCurlRequest("POST", url, { "name": "Emil" });
 /// 
-///     TRI_ASSERT(response.code === 202);
+///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var edge_id = JSON.parse(body)._id;
 ///     var response2 = logCurlRequest("GET", "/_api/edge/" + edge_id);
 /// 
-///     TRI_ASSERT(response2.code === 200);
+///     assert(response2.code === 200);
 ///
 ///     logJsonResponse(response2);
 ///     db._drop("edges");

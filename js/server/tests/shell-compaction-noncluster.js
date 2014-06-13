@@ -27,6 +27,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        compaction
@@ -267,9 +268,8 @@ function CompactionSuite () {
       c1.rotate(); 
       internal.wait(5);
       // unload the collection
-      c1.unload(); 
-      c1 = null;
-      internal.wait(5);
+      
+      testHelper.waitUnload(c1);
 
       c1 = internal.db._collection(cn);
      
