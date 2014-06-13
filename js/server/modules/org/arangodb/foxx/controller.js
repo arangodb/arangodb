@@ -116,7 +116,7 @@ Controller = function (context, options) {
   context.foxxes.push(this);
 
   if (is.existy(context.manifest.rootElement)) {
-    this.rootElement =context.manifest.rootElement;
+    this.rootElement = context.manifest.rootElement;
   } else {
     this.rootElement = false;
   }
