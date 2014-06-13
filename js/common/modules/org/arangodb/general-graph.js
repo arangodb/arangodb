@@ -2786,17 +2786,17 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._addOrphanCollection = function(vertexCollection, createCollection) {
+Graph.prototype._addOrphanCollection = function(orphanCollectionName, createCollection) {
   //check edgeCollection
-  var ec = db._collection(vertexCollection);
+  var ec = db._collection(orphanCollectionName);
   var err;
   if (ec === null) {
     if (createCollection !== false) {
-      db._create(vertexCollection);
+      db._create(orphanCollectionName);
     } else {
       err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-      err.errorMessage = vertexCollection + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      err.errorMessage = orphanCollectionName + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
     }
   } else if (ec.type() !== 2) {
@@ -2805,8 +2805,14 @@ Graph.prototype._addOrphanCollection = function(vertexCollection, createCollecti
     err.errorMessage = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message;
     throw err;
   }
+  if (this.__vertexCollections[orphanCollectionName] !== undefined) {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
+    throw err;
+  }
 
-  this.__orphanCollections.push(vertexCollection);
+  this.__orphanCollections.push(orphanCollectionName);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
 };
