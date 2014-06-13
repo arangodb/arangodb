@@ -34,7 +34,6 @@
 * [Handling Edges](Edges/README.md)
 <!-- 8 -->
 * [Simple Queries](SimpleQueries/README.md)
-	* [Queries](SimpleQueries/Queries.md)
 	* [Geo Queries](SimpleQueries/GeoQueries.md)
 	* [Fulltext Queries](SimpleQueries/FulltextQueries.md)
 	* [Pagination](SimpleQueries/Pagination.md)
@@ -68,10 +67,14 @@
 	* [Joins](AqlExamples/Join.md)
 	* [Grouping](AqlExamples/Grouping.md)
 <!-- 13 -->
-* [Graphs](Blueprint-Graphs/README.md)
+* [Blueprint Graphs](Blueprint-Graphs/README.md)
 	* [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
 	* [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)  
+<!-- 14 -->
+* [General Graphs](General-Graphs/README.md)
+  * [Functions](General-Graphs/GeneralGraphFunctions.md)
+  * [Fluent Query Interface](General-Graphs/FluentAQLInterface.md)   
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
 	* [Starting from Scratch](Traversals/StartingFromScratch.md)	
@@ -80,11 +83,13 @@
 <!-- 17 -->
 * [Foxx](Foxx/README.md)
 	* [Handling Request](Foxx/HandlingRequest.md)
+  * [Manifest](Foxx/FoxxManifest.md)
 	* [FoxxController](Foxx/FoxxController.md)
 	* [FoxxModel](Foxx/FoxxModel.md)
 	* [FoxxRepository](Foxx/FoxxRepository.md)
 	* [Developing Applications](Foxx/DevelopingAnApplication.md)
 	* [Deploying Applications](Foxx/DeployingAnApplication.md)
+  * [Optional Functionlity](Foxx/FoxxOptional.md)
 <!-- 18 -->
 * [Foxx Manager](FoxxManager/README.md)
 	* [First Steps](FoxxManager/FirstSteps.md)
