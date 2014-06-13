@@ -54,15 +54,15 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   int res;
 
   headers      = document->_headersPtr;  // PROTECTED by trx in trxCollection
-  currentCount = headers->count(headers);
-  currentSize  = headers->size(headers);
+  currentCount = headers->count();
+  currentSize  = headers->size();
 
   res = TRI_ERROR_NO_ERROR;
 
   // delete while at least one of the constraints is violated
   while ((cap->_count > 0 && currentCount > cap->_count) || 
          (cap->_size > 0 && currentSize > cap->_size)) {
-    TRI_doc_mptr_t* oldest = headers->front(headers);
+    TRI_doc_mptr_t* oldest = headers->front();
 
     if (oldest != NULL) {
       size_t oldSize;
@@ -81,7 +81,7 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
         }
       }
       else {
-        headers->unlink(headers, oldest);
+        headers->unlink(oldest);
       }
       
       currentCount--;
@@ -110,8 +110,8 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
   
   headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
-  currentCount = headers->count(headers);
-  currentSize = headers->size(headers);
+  currentCount = headers->count();
+  currentSize = headers->size();
   
   if ((cap->_count >0 && currentCount <= cap->_count) &&
       (cap->_size > 0 && currentSize <= cap->_size)) {

@@ -529,8 +529,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       }
       else {
         // update cap constraint info
-        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
-                                               TRI_DF_ALIGN_BLOCK(walMarker->_size),
+        document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
                                                TRI_DF_ALIGN_BLOCK(marker->_size));
 
         // we can safely update the master pointer's dataptr value
@@ -553,8 +552,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       }
       else {
         // update cap constraint info
-        document->_headersPtr->adjustTotalSize(document->_headersPtr, 
-                                               TRI_DF_ALIGN_BLOCK(walMarker->_size),
+        document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
                                                TRI_DF_ALIGN_BLOCK(marker->_size));
 
         // we can safely update the master pointer's dataptr value

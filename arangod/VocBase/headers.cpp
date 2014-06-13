@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief datafiles
+/// @brief headers
 ///
 /// @file
 ///
@@ -31,29 +31,6 @@
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief headers
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct simple_headers_s {
-  TRI_headers_t          base;
-
-  TRI_doc_mptr_t const*  _freelist;    // free headers
-
-  TRI_doc_mptr_t*        _begin;       // start pointer to list of allocated headers
-  TRI_doc_mptr_t*        _end;         // end pointer to list of allocated headers
-  size_t                 _nrAllocated; // number of allocated headers
-  size_t                 _nrLinked;    // number of linked headers
-  int64_t                _totalSize;   // total size of markers for linked headers
-
-  TRI_vector_pointer_t   _blocks;
-}
-simple_headers_t;
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -81,43 +58,59 @@ static inline size_t GetBlockSize (size_t blockNumber) {
   return (size_t) (BLOCK_SIZE_UNIT << 8);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors & destructors
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clears a header
+/// @brief creates the headers
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClearHeader (TRI_headers_t* h,
-                         TRI_doc_mptr_t* header) { 
-  simple_headers_t* headers = (simple_headers_t*) h;
+TRI_headers_t::TRI_headers_t () 
+  : _freelist(nullptr),
+    _begin(nullptr),
+    _end(nullptr),
+    _nrAllocated(0),
+    _nrLinked(0),
+    _totalSize(0) {
 
-  TRI_ASSERT(header != nullptr);
-
-  header->clear();
-
-  TRI_ASSERT(headers->_nrAllocated > 0);
-  headers->_nrAllocated--;
+  TRI_InitVectorPointer2(&_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the headers
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_headers_t::~TRI_headers_t () {
+  for (size_t i = 0;  i < _blocks._length;  ++i) {
+    delete[] static_cast<TRI_doc_mptr_t*>(_blocks._buffer[i]);
+  }
+
+  TRI_DestroyVectorPointer(&_blocks);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moves an existing header to the end of the list
 /// this is called when there is an update operation on a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static void MoveBackHeader (TRI_headers_t* h, 
-                            TRI_doc_mptr_t* header, 
-                            TRI_doc_mptr_t* old) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
+void TRI_headers_t::moveBack (TRI_doc_mptr_t* header, 
+                              TRI_doc_mptr_t* old) {
   if (header == nullptr) {
     return;
   }
 
-  TRI_ASSERT(headers->_nrAllocated > 0);
-  TRI_ASSERT(headers->_nrLinked > 0);
-  TRI_ASSERT(headers->_totalSize > 0);
+  TRI_ASSERT(_nrAllocated > 0);
+  TRI_ASSERT(_nrLinked > 0);
+  TRI_ASSERT(_totalSize > 0);
   
   // we have at least one element in the list
-  TRI_ASSERT(headers->_begin != nullptr);
-  TRI_ASSERT(headers->_end != nullptr);
+  TRI_ASSERT(_begin != nullptr);
+  TRI_ASSERT(_end != nullptr);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
   
@@ -128,16 +121,16 @@ static void MoveBackHeader (TRI_headers_t* h,
   int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
 
   // we must adjust the size of the collection
-  headers->_totalSize += TRI_DF_ALIGN_BLOCK(newSize);
-  headers->_totalSize -= TRI_DF_ALIGN_BLOCK(oldSize);
+  _totalSize += TRI_DF_ALIGN_BLOCK(newSize);
+  _totalSize -= TRI_DF_ALIGN_BLOCK(oldSize);
   
-  if (headers->_end == header) {
+  if (_end == header) {
     // header is already at the end
     TRI_ASSERT(header->_next == nullptr);
     return;
   }
 
-  TRI_ASSERT(headers->_begin != headers->_end);
+  TRI_ASSERT(_begin != _end);
 
   // unlink the element
   if (header->_prev != nullptr) {
@@ -147,31 +140,29 @@ static void MoveBackHeader (TRI_headers_t* h,
     header->_next->_prev = header->_prev;
   }
   
-  if (headers->_begin == header) {
+  if (_begin == header) {
     TRI_ASSERT(header->_next != nullptr);
-    headers->_begin = header->_next;
+    _begin = header->_next;
   }
 
-  header->_prev   = headers->_end;
+  header->_prev   = _end;
   header->_next   = nullptr;
-  headers->_end   = header;
+  _end            = header;
   header->_prev->_next = header;
   
-  TRI_ASSERT(headers->_begin != nullptr);
-  TRI_ASSERT(headers->_end != nullptr);
+  TRI_ASSERT(_begin != nullptr);
+  TRI_ASSERT(_end != nullptr);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
 
-  TRI_ASSERT(headers->_totalSize > 0);
+  TRI_ASSERT(_totalSize > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unlinks a header from the list, without freeing it
+/// @brief unlinks a header from the linked list, without freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
-static void UnlinkHeader (TRI_headers_t* h,
-                          TRI_doc_mptr_t* header) {
-  simple_headers_t* headers = (simple_headers_t*) h;
+void TRI_headers_t::unlink (TRI_doc_mptr_t* header) {
   int64_t size;
 
   TRI_ASSERT(header != nullptr); 
@@ -192,30 +183,30 @@ static void UnlinkHeader (TRI_headers_t* h,
   }
   
   // adjust begin & end pointers
-  if (headers->_begin == header) {
-    headers->_begin = header->_next;
+  if (_begin == header) {
+    _begin = header->_next;
   }
 
-  if (headers->_end == header) {
-    headers->_end = header->_prev;
+  if (_end == header) {
+    _end = header->_prev;
   }
 
-  TRI_ASSERT(headers->_begin != header);
-  TRI_ASSERT(headers->_end != header);
+  TRI_ASSERT(_begin != header);
+  TRI_ASSERT(_end != header);
   
-  TRI_ASSERT(headers->_nrLinked > 0);
-  headers->_nrLinked--;
-  headers->_totalSize -= TRI_DF_ALIGN_BLOCK(size);
+  TRI_ASSERT(_nrLinked > 0);
+  _nrLinked--;
+  _totalSize -= TRI_DF_ALIGN_BLOCK(size);
 
-  if (headers->_nrLinked == 0) {
-    TRI_ASSERT(headers->_begin == nullptr);
-    TRI_ASSERT(headers->_end == nullptr);
-    TRI_ASSERT(headers->_totalSize == 0);
+  if (_nrLinked == 0) {
+    TRI_ASSERT(_begin == nullptr);
+    TRI_ASSERT(_end == nullptr);
+    TRI_ASSERT(_totalSize == 0);
   }
   else {
-    TRI_ASSERT(headers->_begin != nullptr);
-    TRI_ASSERT(headers->_end != nullptr);
-    TRI_ASSERT(headers->_totalSize > 0);
+    TRI_ASSERT(_begin != nullptr);
+    TRI_ASSERT(_end != nullptr);
+    TRI_ASSERT(_totalSize > 0);
   }
   
   TRI_ASSERT(header->_prev != header);
@@ -227,16 +218,13 @@ static void UnlinkHeader (TRI_headers_t* h,
 /// (specified in "old")
 ////////////////////////////////////////////////////////////////////////////////
 
-static void MoveHeader (TRI_headers_t* h, 
-                        TRI_doc_mptr_t* header,
-                        TRI_doc_mptr_t* old) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
+void TRI_headers_t::move (TRI_doc_mptr_t* header,
+                          TRI_doc_mptr_t* old) {
   if (header == nullptr) {
     return;
   }
 
-  TRI_ASSERT(headers->_nrAllocated > 0);
+  TRI_ASSERT(_nrAllocated > 0);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
   TRI_ASSERT(header->getDataPtr() != nullptr); // ONLY IN HEADERS, PROTECTED by RUNTIME
@@ -247,28 +235,27 @@ static void MoveHeader (TRI_headers_t* h,
   int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
   int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
 
-  headers->_totalSize -= TRI_DF_ALIGN_BLOCK(newSize);
-  headers->_totalSize += TRI_DF_ALIGN_BLOCK(oldSize);
+  _totalSize -= TRI_DF_ALIGN_BLOCK(newSize);
+  _totalSize += TRI_DF_ALIGN_BLOCK(oldSize);
 
   // adjust list start and end pointers
   if (old->_prev == nullptr) {
-    headers->_begin = header;
+    _begin = header;
   }
-  else if (headers->_begin == header) {
+  else if (_begin == header) {
     if (old->_prev != nullptr) {
-      headers->_begin = old->_prev;
+      _begin = old->_prev;
     }
   }
 
   if (old->_next == nullptr) {
-    headers->_end = header;
+    _end = header;
   }
-  else if (headers->_end == header) {
+  else if (_end == header) {
     if (old->_next != nullptr) {
-      headers->_end = old->_next;
+      _end = old->_next;
     }
   }
-
 
   if (header->_prev != nullptr) {
     header->_prev->_next = header->_next;
@@ -287,8 +274,8 @@ static void MoveHeader (TRI_headers_t* h,
   header->_prev = old->_prev;
   header->_next = old->_next;
 
-  TRI_ASSERT(headers->_begin != nullptr);
-  TRI_ASSERT(headers->_end != nullptr);
+  TRI_ASSERT(_begin != nullptr);
+  TRI_ASSERT(_end != nullptr);
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
 }
@@ -298,11 +285,8 @@ static void MoveHeader (TRI_headers_t* h,
 /// (specified in "old")
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RelinkHeader (TRI_headers_t* h, 
-                          TRI_doc_mptr_t* header,
-                          TRI_doc_mptr_t* old) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
+void TRI_headers_t::relink (TRI_doc_mptr_t* header,
+                            TRI_doc_mptr_t* old) {
   if (header == nullptr) {
     return;
   }
@@ -312,13 +296,13 @@ static void RelinkHeader (TRI_headers_t* h,
   int64_t size = (int64_t) ((TRI_df_marker_t*) header->getDataPtr())->_size; // ONLY IN HEADERS, PROTECTED by RUNTIME
   TRI_ASSERT(size > 0);
 
-  TRI_ASSERT(headers->_begin != header);
-  TRI_ASSERT(headers->_end != header);
+  TRI_ASSERT(_begin != header);
+  TRI_ASSERT(_end != header);
  
-  MoveHeader(h, header, old);
-  headers->_nrLinked++;
-  headers->_totalSize += TRI_DF_ALIGN_BLOCK(size);
-  TRI_ASSERT(headers->_totalSize > 0);
+  this->move(header, old);
+  _nrLinked++;
+  _totalSize += TRI_DF_ALIGN_BLOCK(size);
+  TRI_ASSERT(_totalSize > 0);
 
   TRI_ASSERT(header->_prev != header);
   TRI_ASSERT(header->_next != header);
@@ -328,15 +312,13 @@ static void RelinkHeader (TRI_headers_t* h,
 /// @brief requests a new header
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
-                                      size_t size) {
-  simple_headers_t* headers = (simple_headers_t*) h;
+TRI_doc_mptr_t* TRI_headers_t::request (size_t size) {
   TRI_doc_mptr_t* header;
 
   TRI_ASSERT(size > 0);
   
-  if (headers->_freelist == nullptr) {
-    size_t blockSize = GetBlockSize(headers->_blocks._length);
+  if (_freelist == nullptr) {
+    size_t blockSize = GetBlockSize(_blocks._length);
     TRI_ASSERT(blockSize > 0);
 
     TRI_doc_mptr_t* begin;
@@ -362,49 +344,48 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
       header = ptr;
     }
 
-    TRI_ASSERT(headers != nullptr);
-    headers->_freelist = header;
+    _freelist = header;
 
-    TRI_PushBackVectorPointer(&headers->_blocks, begin);
+    TRI_PushBackVectorPointer(&_blocks, begin);
   }
   
-  TRI_ASSERT(headers->_freelist != nullptr);
+  TRI_ASSERT(_freelist != nullptr);
 
-  TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(headers->_freelist); 
+  TRI_doc_mptr_t* result = const_cast<TRI_doc_mptr_t*>(_freelist); 
   TRI_ASSERT(result != nullptr);
 
-  headers->_freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr()); // ONLY IN HEADERS, PROTECTED by RUNTIME
+  _freelist = static_cast<TRI_doc_mptr_t const*>(result->getDataPtr()); // ONLY IN HEADERS, PROTECTED by RUNTIME
   result->setDataPtr(nullptr); // ONLY IN HEADERS
 
   // put new header at the end of the list
-  if (headers->_begin == nullptr) {
+  if (_begin == nullptr) {
     // list of headers is empty
-    TRI_ASSERT(headers->_nrLinked == 0);
-    TRI_ASSERT(headers->_totalSize == 0);
+    TRI_ASSERT(_nrLinked == 0);
+    TRI_ASSERT(_totalSize == 0);
 
-    headers->_begin = result;
-    headers->_end   = result;
+    _begin = result;
+    _end   = result;
 
     result->_prev   = nullptr;
     result->_next   = nullptr;
   }
   else {
     // list is not empty
-    TRI_ASSERT(headers->_nrLinked > 0);
-    TRI_ASSERT(headers->_totalSize > 0);
-    TRI_ASSERT(headers->_nrAllocated > 0);
-    TRI_ASSERT(headers->_begin != nullptr);
-    TRI_ASSERT(headers->_end != nullptr);
+    TRI_ASSERT(_nrLinked > 0);
+    TRI_ASSERT(_totalSize > 0);
+    TRI_ASSERT(_nrAllocated > 0);
+    TRI_ASSERT(_begin != nullptr);
+    TRI_ASSERT(_end != nullptr);
 
-    headers->_end->_next = result;
-    result->_prev        = headers->_end;
+    _end->_next = result;
+    result->_prev        = _end;
     result->_next        = nullptr;
-    headers->_end        = result;
+    _end        = result;
   }
 
-  headers->_nrAllocated++;
-  headers->_nrLinked++;
-  headers->_totalSize += (int64_t) TRI_DF_ALIGN_BLOCK(size);
+  _nrAllocated++;
+  _nrLinked++;
+  _totalSize += (int64_t) TRI_DF_ALIGN_BLOCK(size);
 
   return result;
 }
@@ -413,67 +394,22 @@ static TRI_doc_mptr_t* RequestHeader (TRI_headers_t* h,
 /// @brief releases a header, putting it back onto the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ReleaseHeader (TRI_headers_t* h, 
-                           TRI_doc_mptr_t* header,
-                           bool unlinkHeader) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-  
+void TRI_headers_t::release (TRI_doc_mptr_t* header,
+                             bool unlinkHeader) {
   if (header == nullptr) {
     return;
   }
 
   if (unlinkHeader) {
-    UnlinkHeader(h, header);
+    this->unlink(header);
   }
 
-  ClearHeader(h, header);
+  header->clear();
+  TRI_ASSERT(_nrAllocated > 0);
+  _nrAllocated--;
 
-  header->setDataPtr(headers->_freelist); // ONLY IN HEADERS
-  headers->_freelist = header;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the element at the head of the list
-///
-/// note: the element returned might be nullptr
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t* FrontHeaders (TRI_headers_t const* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
-  return headers->_begin;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the element at the tail of the list
-///
-/// note: the element returned might be nullptr
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_mptr_t* BackHeaders (TRI_headers_t const* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
-  return headers->_end;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of linked headers
-////////////////////////////////////////////////////////////////////////////////
-
-static size_t CountHeaders (TRI_headers_t const* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
-  return headers->_nrLinked;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the total size of linked headers
-////////////////////////////////////////////////////////////////////////////////
-
-static int64_t TotalSizeHeaders (TRI_headers_t const* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
-  return (int64_t) headers->_totalSize;
+  header->setDataPtr(_freelist); // ONLY IN HEADERS
+  _freelist = header;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,83 +417,13 @@ static int64_t TotalSizeHeaders (TRI_headers_t const* h) {
 /// this is called by the collector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AdjustTotalSizeHeaders (TRI_headers_t const* h,
-                                    int64_t oldSize,
-                                    int64_t newSize) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
+void TRI_headers_t::adjustTotalSize (int64_t oldSize,
+                                     int64_t newSize) {
   // oldSize = size of marker in WAL
   // newSize = size of marker in datafile 
 
   TRI_ASSERT(oldSize >= newSize);
-  headers->_totalSize -= (oldSize - newSize);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new simple headers structures
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_headers_t* TRI_CreateSimpleHeaders () {
-  simple_headers_t* headers = static_cast<simple_headers_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(simple_headers_t), false));
-
-  if (headers == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  headers->_freelist            = nullptr;
-  headers->_begin               = nullptr;
-  headers->_end                 = nullptr;
-  headers->_nrAllocated         = 0;
-  headers->_nrLinked            = 0;
-  headers->_totalSize           = 0;
-
-  headers->base.request         = RequestHeader;
-  headers->base.release         = ReleaseHeader;
-  headers->base.moveBack        = MoveBackHeader;
-  headers->base.move            = MoveHeader;
-  headers->base.relink          = RelinkHeader;
-  headers->base.unlink          = UnlinkHeader;
-  headers->base.front           = FrontHeaders;
-  headers->base.back            = BackHeaders;
-  headers->base.count           = CountHeaders;
-  headers->base.size            = TotalSizeHeaders;
-  headers->base.adjustTotalSize = AdjustTotalSizeHeaders;
-
-  TRI_InitVectorPointer2(&headers->_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
-
-  return &headers->base;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a simple headers structures, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroySimpleHeaders (TRI_headers_t* h) {
-  simple_headers_t* headers = (simple_headers_t*) h;
-
-  for (size_t i = 0;  i < headers->_blocks._length;  ++i) {
-    delete[] static_cast<TRI_doc_mptr_t*>(headers->_blocks._buffer[i]);
-  }
-
-  headers->_nrAllocated = 0;
-  headers->_nrLinked    = 0;
-  headers->_totalSize   = 0;
-
-  TRI_DestroyVectorPointer(&headers->_blocks);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a simple headers structures, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeSimpleHeaders (TRI_headers_t* headers) {
-  TRI_DestroySimpleHeaders(headers);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, headers);
+  _totalSize -= (oldSize - newSize);
 }
 
 // Local Variables:

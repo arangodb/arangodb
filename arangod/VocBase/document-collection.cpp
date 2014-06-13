@@ -531,7 +531,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   TRI_ASSERT(markerSize > 0);
 
   // get a new header pointer
-  header = document->_headersPtr->request(document->_headersPtr, markerSize);  // ONLY IN OPENITERATOR
+  header = document->_headersPtr->request(markerSize);  // ONLY IN OPENITERATOR
 
   if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1133,7 +1133,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     if (res != TRI_ERROR_NO_ERROR) {
       // insertion failed
       LOG_ERROR("inserting document into indexes failed");
-      document->_headersPtr->release(document->_headersPtr, header, true);  // ONLY IN OPENITERATOR
+      document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
 
       return res;
     }
@@ -1161,7 +1161,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
-    document->_headersPtr->moveBack(document->_headersPtr, newHeader, &oldData);  // ONLY IN OPENITERATOR
+    document->_headersPtr->moveBack(newHeader, &oldData);  // ONLY IN OPENITERATOR
       
     // update the datafile info
     if (oldData._fid == state->_fid) {
@@ -1284,7 +1284,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     DeletePrimaryIndex(document, found, false);
 
     // free the header
-    document->_headersPtr->release(document->_headersPtr, found, true);   // ONLY IN OPENITERATOR
+    document->_headersPtr->release(found, true);   // ONLY IN OPENITERATOR
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1959,6 +1959,11 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
       TRI_FreeVocShaper(document->getShaper());  // PROTECTED by trx here
     }
   }
+
+  if (document->_headersPtr != nullptr) {
+    delete document->_headersPtr;
+    document->_headersPtr = nullptr;
+  }
   
   size_t const n = document->_datafileInfo._nrAlloc;
 
@@ -1997,7 +2002,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
     return false;
   }
 
-  document->_headersPtr = TRI_CreateSimpleHeaders();  // ONLY IN CREATE COLLECTION
+  document->_headersPtr = new TRI_headers_t;  // ONLY IN CREATE COLLECTION
 
   if (document->_headersPtr == nullptr) {  // ONLY IN CREATE COLLECTION
     DestroyBaseDocumentCollection(document);
@@ -2238,8 +2243,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
 void TRI_DestroyDocumentCollection (TRI_document_collection_t* document) {
   TRI_DestroyCondition(&document->_journalsCondition);
-
-  TRI_FreeSimpleHeaders(document->_headersPtr);  // PROTECTED because collection is already closed
 
   // free memory allocated for indexes
   size_t const n = document->_allIndexes._length;
@@ -5431,7 +5434,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(document->_headersPtr, marker->size());  // PROTECTED by trx in trxCollection
+    TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(marker->size());  // PROTECTED by trx in trxCollection
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error
