@@ -9646,10 +9646,10 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           TRI_doc_mptr_t const* document) {
   v8::HandleScope scope;
   
+  TRI_ASSERT(document != nullptr);
+  
   TRI_barrier_t* barrier = trx.barrier();
   TRI_ASSERT(barrier != nullptr);
-    
-  TRI_ASSERT(document != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());

@@ -450,6 +450,9 @@ static int LogEvent (TRI_replication_logger_t* logger,
 
     return TRI_ERROR_NO_ERROR;
   }
+  
+  // create fake transaction to prevent assertion error. TODO: FIXME
+  triagens::arango::TransactionBase fake(true);
 
   // do we have a transaction id?
   withTid = (tid > 0);
@@ -959,6 +962,8 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
   }
 
   cid = collection->_cid;
+  // create fake transaction to prevent assertion error. TODO: FIXME
+  triagens::arango::TransactionBase fake(true);
 
   trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), false, 0.0, false);
 
@@ -1016,7 +1021,7 @@ static int StartReplicationLogger (TRI_replication_logger_t* logger) {
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+ 
   res = LogEvent(logger, 0, true, REPLICATION_START, buffer); 
 
   return res;
@@ -1050,7 +1055,7 @@ static int StopReplicationLogger (TRI_replication_logger_t* logger) {
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
+  
   res = LogEvent(logger, 0, true, REPLICATION_STOP, buffer); 
   
   // destroy cap constraint

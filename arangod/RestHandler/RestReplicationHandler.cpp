@@ -460,7 +460,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///     var response = logCurlRequest('PUT', url, "");
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -525,7 +525,7 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ///
 ///     var response = logCurlRequest('PUT', url, "");
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -618,7 +618,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -634,7 +634,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///     var response = logCurlRequest('GET', url);
 ///     re.logger.stop();
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -696,7 +696,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ///     var url = "/_api/replication/logger-config";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -784,7 +784,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -801,7 +801,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -1284,7 +1284,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     TRI_ASSERT(response.code === 204);
+///     assert(response.code === 204);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1309,7 +1309,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1334,7 +1334,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     re.logger.stop();
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1524,7 +1524,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///     var url = "/_api/replication/inventory";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1547,7 +1547,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///     var url = "/_api/replication/inventory";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 ///
 ///     db._flushCache();
@@ -3125,7 +3125,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///     var url = "/_api/replication/dump?collection=" + c.name();
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 204);
+///     assert(response.code === 204);
 ///     logRawResponse(response);
 ///
 ///     c.drop();
@@ -3146,7 +3146,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///     var url = "/_api/replication/dump?collection=" + c.name();
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logRawResponse(response);
 ///
 ///     c.drop();
@@ -3482,7 +3482,7 @@ void RestReplicationHandler::handleCommandSync () {
 ///     var url = "/_api/replication/server-id";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -3556,7 +3556,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ///     var url = "/_api/replication/applier-config";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -3674,7 +3674,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -3822,7 +3822,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///     var response = logCurlRequest('PUT', url, "");
 ///     re.applier.stop();
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -3895,7 +3895,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ///     var response = logCurlRequest('PUT', url, "");
 ///     re.applier.stop();
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
@@ -4008,7 +4008,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     var url = "/_api/replication/applier-state";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -4023,7 +4023,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     var response = logCurlRequest('GET', url);
 ///     re.applier.stop();
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////

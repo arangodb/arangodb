@@ -336,11 +336,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 3);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 3);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -356,11 +356,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test", "allowed": true }\n{ "_key": "foo", "name": "baz" }\n\n{ "name": { "detailed": "detailed name", "short": "short name" } }\n';
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 3);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 1);
+///     assert(r.created === 3);
+///     assert(r.errors === 0);
+///     assert(r.empty === 1);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -381,11 +381,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 3);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 3);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -406,11 +406,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true&type=list", JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 3);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 3);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -429,11 +429,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 2);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 2);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -451,11 +451,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", JSON.stringify(body));
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 0);
-///     TRI_ASSERT(r.errors === 1);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 0);
+///     assert(r.errors === 1);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -472,11 +472,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents&details=true", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
-///     TRI_ASSERT(r.created === 1);
-///     TRI_ASSERT(r.errors === 1);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 1);
+///     assert(r.errors === 1);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -493,7 +493,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents&complete=true", body);
 ///
-///     TRI_ASSERT(response.code === 409);
+///     assert(response.code === 409);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -509,7 +509,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 ///
-///     TRI_ASSERT(response.code === 404);
+///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -525,7 +525,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", body);
 ///
-///     TRI_ASSERT(response.code === 400);
+///     assert(response.code === 400);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -832,11 +832,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
-///     TRI_ASSERT(r.created === 2);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 1);
+///     assert(r.created === 2);
+///     assert(r.errors === 0);
+///     assert(r.empty === 1);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -853,11 +853,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
-///     TRI_ASSERT(r.created === 3);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 3);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -876,11 +876,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
-///     TRI_ASSERT(r.created === 2);
-///     TRI_ASSERT(r.errors === 0);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 2);
+///     assert(r.errors === 0);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -898,11 +898,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
-///     TRI_ASSERT(r.created === 0);
-///     TRI_ASSERT(r.errors === 2);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 0);
+///     assert(r.errors === 2);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -919,11 +919,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
-///     TRI_ASSERT(response.code === 201);
+///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
-///     TRI_ASSERT(r.created === 1);
-///     TRI_ASSERT(r.errors === 1);
-///     TRI_ASSERT(r.empty === 0);
+///     assert(r.created === 1);
+///     assert(r.errors === 1);
+///     assert(r.empty === 0);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -940,7 +940,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn + "&complete=true", body);
 ///
-///     TRI_ASSERT(response.code === 409);
+///     assert(response.code === 409);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);
@@ -956,7 +956,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
 ///
-///     TRI_ASSERT(response.code === 404);
+///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -972,7 +972,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 ///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
 ///
-///     TRI_ASSERT(response.code === 400);
+///     assert(response.code === 400);
 ///
 ///     logJsonResponse(response);
 ///     db._drop(cn);

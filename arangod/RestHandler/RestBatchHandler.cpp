@@ -155,7 +155,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     var response = logCurlRequestRaw('POST', '/_api/batch', body, headers);
 ///
-///     TRI_ASSERT(response.code === 200);
+///     assert(response.code === 200);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -175,8 +175,8 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     var response = logCurlRequestRaw('POST', '/_api/batch', body);
 ///
-///     TRI_ASSERT(response.code === 200);
-///     TRI_ASSERT(response.headers['x-arango-errors'] == 2);
+///     assert(response.code === 200);
+///     assert(response.headers['x-arango-errors'] == 2);
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
