@@ -509,15 +509,12 @@ function delete_graph_graph (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a graph vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/`vertex-name`,create vertex}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/vertex,create vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
-///
-/// @RESTURLPARAM{vertex-name,string,required}
-/// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -598,7 +595,7 @@ function post_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the vertex properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`/`vertex-name`,get vertex}
+/// @RESTHEADER{GET /_api/graph/`graph-name`/vertex/`vertex-name`,get vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -692,7 +689,7 @@ function get_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/`vertex-name`,delete vertex}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/vertex/`vertex-name`,delete vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -855,7 +852,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/`vertex-name`,update vertex}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/vertex/`vertex-name`,update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -933,7 +930,7 @@ function put_graph_vertex (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/`vertex-name`,update vertex}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/vertex/`vertex-name`,update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1392,15 +1389,12 @@ function post_graph_vertex_vertices (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/`edge-name`,create edge}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/edge,create edge}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
-///
-/// @RESTURLPARAM{edge-name,string,required}
-/// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
 /// 
@@ -1498,7 +1492,7 @@ function post_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get edge properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`/edge,get edge}
+/// @RESTHEADER{GET /_api/graph/`graph-name`/edge/`edge-name`,get edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1591,7 +1585,7 @@ function get_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/`edge-name`,delete edge}
+/// @RESTHEADER{DELETE /_api/graph/`graph-name`/edge/`edge-name`,delete edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1757,7 +1751,7 @@ function update_graph_edge (req, res, g, isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/`edge-name`,update edge}
+/// @RESTHEADER{PUT /_api/graph/`graph-name`/edge/`edge-name`,update edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1839,7 +1833,7 @@ function put_graph_edge (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/`edge-name`,update edge}
+/// @RESTHEADER{PATCH /_api/graph/`graph-name`/edge/`edge-name`,update edge}
 ///
 /// @RESTURLPARAMETERS
 ///

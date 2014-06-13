@@ -1,0 +1,16 @@
+{
+  "name": "gharial",
+  "description": "ArangoDB Graph Module",
+  "author": "Michael Hackstein",
+  "version": "0.1",
+  "isSystem": true,
+
+  "controllers": {
+    "/": "gharial.js"
+  },
+
+  "defaultDocument": "",
+
+  "lib": "."
+}
+

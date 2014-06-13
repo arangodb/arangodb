@@ -9,24 +9,25 @@ This chapter describe graph related aql functions.
 
 <br />
 `GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
-*The GRAPH\_PATHS function returns all paths of a graph.*
+*returns all paths of a graph.*
 <br />
 This function determines all available paths in a graph identified by *graphName*.
 Except for *graphName* every other parameter is optional.
 <br />
-* String  *graphName*     : The name of the graph.
-* String  *direction*     : The direction of the edges.
-Possible values are *any*, *inbound* and *outbound* (default).
+* String  *graphName*     : The name of the graph
+* String  *direction*     : The direction of the edges
+Possible values are *any*, *inbound* and *outbound* (default)
 * Boolean *followCycles*  : If set to *true* the query follows cycles in the graph,
-default is false.
-* Number *minLength*      : Defines the minimal length a path must
-have to be returned (default is 0).
-* Number *maxLength*      : Defines the maximal length a path must
-have to be returned (default is 10).
+default is false
+* Integer *minLength*      : Defines the minimal length a path must
+have to be returned (default is 0)
+* Integer *maxLength*      : Defines the maximal length a path must
+have to be returned (default is 10)
+
 <br />
-@EXAMPLES
+*Examples*
 <br />
-Return all paths of the graph "social":
+Return all paths of the graph *social*:
 <br />
 
 ```
@@ -387,7 +388,7 @@ arangosh>   db._query("RETURN GRAPH_PATHS('social')").toArray();
 ]
 ```
 <br />
-Return all inbound paths of the graph "social" with a maximal
+Return all inbound paths of the graph *social* with a maximal
 length of 1 and a minimal length of 2:
 <br />
 
@@ -665,18 +666,18 @@ arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").to
 
 <br />
 `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-*The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
+*returns all shortest paths of a graph*
 <br />
 This function determines all shortest paths in a graph identified by *graphName*.
 The function accepts an id, an example, a list of examples
 or even an empty example as parameter for
-start and end vertex. If one wants to calls this function to receive nearly all
+start and end vertex. If one wants to call this function to receive nearly all
 shortest paths for a graph the
 option *algorithm* should be set to *Floyd-Warshall* to increase performance.
 If no algorithm is provided in the options the function chooses the appropriate
 one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
 The length of a path is by default the amount of edges from one start vertex to
-an end vertex. The option weight allows the user to define an edge attribute
+an end vertex. The option *weight* allows the user to define an edge attribute
 representing the length.
 <br />
 * String               *graphName*          : The name of the graph.
@@ -707,6 +708,7 @@ If an edge does not have the attribute named as defined in option *weight* this 
 is used as length.
 If no default is supplied the default would be positive Infinity so the path could
 not be calculated.
+
 <br />
 Examples for startVertexExample/endVertexExample:
 * {}                : Returns all possible start/end vertices for this graph.
@@ -715,7 +717,8 @@ Examples for startVertexExample/endVertexExample:
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
 the examples.
 <br />
-@EXAMPLES
+
+*Examples*
 <br />
 A route planner example, shortest distance from all villages to other cities:
 <br />
@@ -1083,7 +1086,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'
 
 <br />
 `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
-*The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
+*returns all neighbors of vertices.*
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
@@ -1602,7 +1605,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
 
 <br />
 `GRAPH_EDGES (graphName, vertexExample, options)`
-*The GRAPH\_EDGES function returns all edges of vertices.*
+*returns all edges of vertices.*
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
@@ -1778,7 +1781,7 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 
 <br />
 `GRAPH_VERTICES (graphName, vertexExample, options)`
-*The GRAPH\_VERTICES function returns all vertices.*
+*returns all vertices.*
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
@@ -1998,7 +2001,7 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
 
 <br />
 `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-*The GRAPH\_COMMON\_PROPERTIES function returns all vertices
+*returns all vertices
 defined by the examples that share common properties
 <br />
 The function accepts an id, an example, a list of examples or even an empty
