@@ -875,12 +875,17 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trx->_waitForSync = true;
   }
   
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("AddTransactionOperationNoSlot") {
+    return TRI_ERROR_DEBUG;
+  }
+  
   triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
   
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
     return slotInfo.errorCode;
   }
+
 
     
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
