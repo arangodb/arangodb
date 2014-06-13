@@ -707,7 +707,7 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
   for (size_t i = 0;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
-    if (idx->postInsert != NULL) {
+    if (idx->postInsert != nullptr) {
       idx->postInsert(trxCollection, idx, header);
     }
   }
@@ -5227,14 +5227,11 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
-  // no extra locking here as the collection is already locked
-  TRI_ASSERT(TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0));
-
   return TRI_RemoveShapedJsonDocumentCollection(trxCollection, 
                                                 (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 
                                                 0, 
                                                 policy, 
-                                                false, 
+                                                false,  
                                                 false);  // PROTECTED by trx in trxCollection
 }
 
@@ -5387,6 +5384,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
   
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
   TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(document->_keyGenerator);
 
   std::string keyString;
@@ -5502,6 +5500,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
     
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
   
   // create legend  
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection

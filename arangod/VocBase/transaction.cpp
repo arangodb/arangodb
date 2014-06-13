@@ -841,7 +841,8 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
                                         TRI_transaction_type_e accessType,
                                         int nestingLevel) {
 
-  if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
+  if (accessType == TRI_TRANSACTION_WRITE && 
+      trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
     LOG_WARNING("logic error. checking wrong lock type");
     return false;
