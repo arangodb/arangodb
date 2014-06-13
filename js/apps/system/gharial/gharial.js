@@ -261,6 +261,45 @@
     }
   );
 
+  /** Replace an edge definition.
+   *
+   * Replaces an existing edge definition with the information contained
+   * within the body.
+   * This has to contain the edge-collection name, as well as set of from and to
+   * collections-names respectively.
+   * This will also change the edge definitions of all other graphs using this
+   * definition as well.
+   */
+  controller.put("/:graph/edge/:definition", function(req, res) {
+    var name = req.params("graph");
+    var def_name = req.params("definition");
+    var body = req.params("edgeDefinition");
+    var g = Graph._graph(name);
+    if (def_name !== body.get("collection")) {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
+      err.errorMessage = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
+      throw err;
+    }
+    g._editEdgeDefinitions(body.forDB());
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .bodyParam(
+    "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
+      return {
+        code: actions.HTTP_BAD,
+        error: e.errorMessage
+      };
+    }
+  );
+
   /** Create a new edge.
    *
    * Stores a new edge with the information contained
