@@ -2562,8 +2562,8 @@ function OrphanCollectionSuite() {
     },
 
     test_addOrphanCollection1: function() {
-      g1._addOrphanCollection(vC1, false);
-      assertEqual(g1._getOrphanCollections(), [vC1]);
+      g1._addOrphanCollection(vC5, false);
+      assertEqual(g1._getOrphanCollections(), [vC5]);
     },
 
     test_addOrphanCollection2: function() {
@@ -2586,6 +2586,15 @@ function OrphanCollectionSuite() {
       }
       assertTrue(db._collection(vC4) === null);
       assertEqual(g1._getOrphanCollections(), []);
+    },
+
+    test_addOrphanCollection4: function() {
+      try {
+        g1._addOrphanCollection(vC1);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message);
+      }
     },
 
     test_removeOrphanCollection1: function() {

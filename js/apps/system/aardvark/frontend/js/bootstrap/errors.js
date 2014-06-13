@@ -216,6 +216,7 @@
     "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "collection does not exist" }, 
     "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" }, 
     "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" }, 
+    "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection used in edge def" }, 
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" }, 
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
