@@ -45,13 +45,12 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphCreationSuite() {
-
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
-  var vn1 = "UnitTestVerticies1";
-  var vn2 = "UnitTestVerticies2";
-  var vn3 = "UnitTestVerticies3";
-  var vn4 = "UnitTestVerticies4";
+  var vn1 = "UnitTestVertices1";
+  var vn2 = "UnitTestVertices2";
+  var vn3 = "UnitTestVertices3";
+  var vn4 = "UnitTestVertices4";
   var gn = "UnitTestGraph";
   var edgeDef = graph._edgeDefinitions(
     graph._undirectedRelationDefinition(rn, vn1),
@@ -1169,7 +1168,7 @@ function ChainedFluentAQLResultsSuite() {
 
     tearDown: dropData,
 
-    test_getAllVerticiesResultingAQL: function() {
+    test_getAllVerticesResultingAQL: function() {
       var query = g._vertices();
       var stmt = query.printQuery();
       assertEqual(stmt, plainVertexQueryStmt(0));
@@ -1177,7 +1176,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getAllVerticies: function() {
+    test_getAllVertices: function() {
       var result = g._vertices().toArray();
       assertEqual(result.length, 7);
       var sorted = _.sortBy(result, "name");
@@ -1216,7 +1215,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesById: function() {
+    test_getVerticesById: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([a_id, b_id]).toArray();
@@ -1244,7 +1243,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, uaName);
     },
 
-    test_getVerticiesByExampleResultingAQL: function() {
+    test_getVerticesByExampleResultingAQL: function() {
       var query = g._vertices([{
         name: uaName
       },{
@@ -1259,7 +1258,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesByExample: function() {
+    test_getVerticesByExample: function() {
       var result = g._vertices([{
         name: uaName
       },{
@@ -1271,7 +1270,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, p1Name);
     },
 
-    test_getVerticiesByExampleAndIdMixResultingAQL: function() {
+    test_getVerticesByExampleAndIdMixResultingAQL: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var query = g._vertices([{
         name: uaName
@@ -1290,7 +1289,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesByExampleAndIdMix: function() {
+    test_getVerticesByExampleAndIdMix: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([{
         name: uaName
