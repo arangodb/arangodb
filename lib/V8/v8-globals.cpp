@@ -94,6 +94,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     PathKey(),
     PrefixKey(),
     PortKey(),
+    PortTypeKey(),
     ProtocolKey(),
     RequestBodyKey(),
     RequestTypeKey(),
@@ -170,6 +171,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
   PortKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("port"));
+  PortTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("portType"));
   ProtocolKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("protocol"));
   RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
   RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));

@@ -417,6 +417,12 @@ static int UseCollections (TRI_transaction_t* trx,
         // something went wrong
         return TRI_errno();
       }
+      
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
+          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY &&
+          ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
+        return TRI_ERROR_ARANGO_READ_ONLY;
+      } 
 
       // store the waitForSync property
       trxCollection->_waitForSync = trxCollection->_collection->_collection->_info._waitForSync;
