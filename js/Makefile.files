@@ -18,6 +18,7 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/general-graph.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-blueprint.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/is.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/simple-query.js \
 	\
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb-common.js \
