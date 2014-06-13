@@ -977,11 +977,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   TRI_vector_t vector;
   uint64_t maxSize;
-  int64_t numAlive;
-  size_t i, n;
-  bool compactNext;
-
-  compactNext = false;
 
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchroniser,
@@ -990,7 +985,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     return false;
   }
 
-  n = document->_datafiles._length;
+  size_t const n = document->_datafiles._length;
 
   if (document->_compactors._length > 0 || n == 0) {
     // we already have created a compactor file in progress.
@@ -998,7 +993,6 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
     // additionally, if there are no datafiles, then there's no need to compact
     TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-    
     return false;
   }
 
@@ -1013,9 +1007,10 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
   // copy datafile information
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
-  numAlive = 0;
+  int64_t numAlive = 0;
+  bool compactNext = false;
 
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_doc_datafile_info_t* dfi;
     compaction_info_t compaction;
     uint64_t totalSize = 0;
@@ -1023,11 +1018,11 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   
     TRI_datafile_t* df = static_cast<TRI_datafile_t*>(document->_datafiles._buffer[i]);
 
-    TRI_ASSERT(df != NULL);
+    TRI_ASSERT(df != nullptr);
 
     dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, true);
 
-    if (dfi == NULL) {
+    if (dfi == nullptr) {
       continue;
     }
 
@@ -1071,7 +1066,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
         continue;
       }
     }
-    
+
     LOG_TRACE("found datafile eligible for compaction. fid: %llu, size: %llu "
               "numberDead: %llu, numberAlive: %llu, numberDeletion: %llu, "
               "numberShapes: %llu, numberAttributes: %llu, transactions: %llu, "
@@ -1120,14 +1115,11 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   if (vector._length == 0) {
     // cleanup local variables
     TRI_DestroyVector(&vector);
-
     return false;
   }
 
   // handle datafiles with dead objects
-  n = vector._length;
-  TRI_ASSERT(n >= 1);
-    
+  TRI_ASSERT(vector._length >= 1);
   CompactifyDatafiles(document, &vector); 
 
   // cleanup local variables
@@ -1406,11 +1398,10 @@ void TRI_CompactorVocBase (void* data) {
       size_t const n = collections._length;
 
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_vocbase_col_t* collection;
         bool doCompact;
         bool worked;
       
-        collection = (TRI_vocbase_col_t*) collections._buffer[i];
+        TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
           // if we can't acquire the read lock instantly, we continue directly

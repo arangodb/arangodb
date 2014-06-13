@@ -29,7 +29,8 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
-var wait = require("internal").wait;
+var internal = require("internal");
+var wait = internal.wait;
 var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
@@ -1244,7 +1245,9 @@ function CollectionDocumentSuite () {
       collection.save({ _key : "a2" });
       collection.save({ _key : "a3" });
 
+      internal.flushWal(true, true);
       figures = collection.figures();
+
       assertEqual(3, figures.alive.count);
       assertEqual(0, figures.dead.count);
 
@@ -1264,7 +1267,9 @@ function CollectionDocumentSuite () {
       }
 
       // we should see the same figures 
+      internal.flushWal(true, true);
       figures = collection.figures();
+
       assertEqual(3, figures.alive.count);
       assertEqual(0, figures.dead.count);
 
@@ -1273,13 +1278,18 @@ function CollectionDocumentSuite () {
       collection.remove("a3");
 
       // we should see two live docs less
+      internal.flushWal(true, true);
       figures = collection.figures();
+
       assertEqual(1, figures.alive.count);
       assertEqual(2, figures.dead.count);
 
       // replacing one document does not change alive, but increases dead!
       collection.replace("a1", { });
+      
+      internal.flushWal(true, true);
       figures = collection.figures();
+
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
 
@@ -1291,7 +1301,9 @@ function CollectionDocumentSuite () {
       catch (e3) {
       }
       
+      internal.flushWal(true, true);
       figures = collection.figures();
+
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
     },

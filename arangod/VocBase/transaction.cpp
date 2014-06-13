@@ -132,7 +132,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
       // update datafile statistics for all operations
       // pair (number of dead markers, size of dead markers)
       std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
-
+      
       for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
         triagens::wal::DocumentOperation* op = (*it);
 
@@ -156,13 +156,15 @@ static void FreeOperations (TRI_transaction_t* trx) {
       // now update the stats in one go
       for (auto it = stats.begin(); it != stats.end(); ++it) {
         TRI_voc_fid_t fid = (*it).first;
-
+      
         TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, fid, false);
         // the old header might point to the WAL. in this case, there'll be no stats update
-
+      
         if (dfi != nullptr) {
-          dfi->_numberDead += (*it).second.first; // number of dead markers
-          dfi->_sizeDead += (*it).second.second; // size of dead markers
+          dfi->_numberDead += (*it).second.first; 
+          dfi->_sizeDead += (*it).second.second; 
+          dfi->_numberAlive -= (*it).second.first; 
+          dfi->_sizeAlive -= (*it).second.second; 
         }
       }
     }
@@ -885,7 +887,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     // adjust the data position in the header
     operation.header->setDataPtr(slotInfo.mem);  // PROTECTED by ongoing trx from operation
   }
-
+      
   // set header file id
   operation.header->_fid = slotInfo.logfileId;
 
@@ -909,11 +911,13 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
         TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
         dfi->_numberDead += 1;
         dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(marker->_size);
+        dfi->_numberAlive -= 1;
+        dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(marker->_size);
       }
     }
   }
   else {
-    // operation is buffered and might be rollbacked
+    // operation is buffered and might be rolled back
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<triagens::wal::DocumentOperation*>;
       trx->_hasOperations = true;

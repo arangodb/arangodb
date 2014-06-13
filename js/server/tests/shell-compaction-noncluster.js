@@ -43,7 +43,7 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create movement of shapes
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
     testShapesMovement : function () {
       var cn = "example";
       internal.db._drop(cn);
@@ -305,7 +305,7 @@ function CompactionSuite () {
 
       internal.db._drop(cn);
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test journals
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,7 +370,7 @@ function CompactionSuite () {
       assertEqual(0, fig["compactors"]["count"]);
 
       testHelper.rotate(c1);
-      
+     
       fig = c1.figures();
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
@@ -389,11 +389,11 @@ function CompactionSuite () {
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
-      assertEqual(0, fig["dead"]["count"]);
-      assertEqual(0, fig["dead"]["size"]);
-      assertEqual(0, fig["dead"]["deletion"]);
+      assertEqual(2, fig["dead"]["count"]);
+      assertTrue(0 < fig["dead"]["size"]);
+      assertEqual(2, fig["dead"]["deletion"]);
       assertEqual(0, fig["journals"]["count"]);
-      assertEqual(1, fig["datafiles"]["count"]);
+      assertEqual(2, fig["datafiles"]["count"]);
       assertEqual(0, fig["compactors"]["count"]);
 
       c1.drop();
@@ -420,11 +420,11 @@ function CompactionSuite () {
       for (var i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
       }
-      
-      c1.unload();
-      internal.wait(7);
+     
+      testHelper.waitUnload(c1);  
 
       var fig = c1.figures();
+      c1.properties({ doCompact: false });
       assertEqual(n, c1.count());
       assertEqual(n, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
@@ -434,18 +434,20 @@ function CompactionSuite () {
       assertTrue(0 < fig["datafiles"]["count"]);
 
       c1.truncate();
-      c1.rotate();
-
       fig = c1.figures();
-      internal.wait(10);
 
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertTrue(0 <= fig["dead"]["count"]);
       assertTrue(0 <= fig["dead"]["size"]);
       assertTrue(0 <= fig["dead"]["deletion"]);
-      assertTrue(0 <= fig["journals"]["count"]);
+      assertEqual(1, fig["journals"]["count"]);
       assertTrue(0 <= fig["datafiles"]["count"]);
+      
+      internal.flushWal(true, true);
+      c1.rotate();
+      
+      c1.properties({ doCompact: true });
 
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
