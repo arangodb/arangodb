@@ -78,7 +78,7 @@
                     "nickname": "readsTheGlobalLogFromTheServer"
                 }
             ],
-            "path": "/_api/log"
+            "path": "/_admin/log"
         }
     ]
 }

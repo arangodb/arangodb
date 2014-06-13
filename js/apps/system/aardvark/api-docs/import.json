@@ -61,6 +61,13 @@
                             "dataType": "Boolean",
                             "paramType": "query",
                             "required": "false",
+                            "name": "overwrite",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then all data in the collection will be removed prior to the import. Note that any existing index definitions will be preseved. <br><br>"
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "required": "false",
                             "name": "waitForSync",
                             "description": "Wait until documents have been synced to disk before returning. <br><br>"
                         },
@@ -134,6 +141,13 @@
                             "required": "false",
                             "name": "createCollection",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. <br><br>"
+                        },
+                        {
+                            "dataType": "Boolean",
+                            "paramType": "query",
+                            "required": "false",
+                            "name": "overwrite",
+                            "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then all data in the collection will be removed prior to the import. Note that any existing index definitions will be preseved. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
