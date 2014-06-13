@@ -471,7 +471,6 @@ function CompactionSuite () {
           break;
         }
       }
-      
             
       fig = c1.figures();
       assertEqual(0, c1.count());
@@ -504,9 +503,8 @@ function CompactionSuite () {
       for (var i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
       }
-      
-      c1.unload();
-      internal.wait(5);
+     
+      testHelper.waitUnload(c1);  
 
       var fig = c1.figures();
       assertEqual(n, c1.count());
@@ -518,19 +516,19 @@ function CompactionSuite () {
       assertTrue(0 < fig["datafiles"]["count"]);
 
       c1.truncate();
+      internal.flushWal(true, true);
       c1.rotate();
-      internal.wait(5);
 
       fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
+      assertEqual(0, fig["alive"]["size"]);
+      assertEqual(n, fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
-      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(n, fig["dead"]["deletion"]);
       assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
-
+      
       // wait for compactor to run
       require("console").log("waiting for compactor to run");
 
@@ -543,18 +541,24 @@ function CompactionSuite () {
       }
 
       internal.wait(maxWait);
+
             
       fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["count"]);
+      assertEqual(0, fig["alive"]["size"]);
+      assertEqual(n, fig["dead"]["count"]);
       assertTrue(0 < fig["dead"]["size"]);
-      assertTrue(0 < fig["dead"]["deletion"]);
+      assertEqual(n, fig["dead"]["deletion"]);
       assertEqual(0, fig["journals"]["count"]);
       assertTrue(0 < fig["datafiles"]["count"]);
 
       c1.save({ "some data": true });
+      fig = c1.figures();
+      assertEqual(0, fig["journals"]["count"]);
+      
+      internal.flushWal(true, true);
+
       fig = c1.figures();
       assertEqual(1, fig["journals"]["count"]);
 
