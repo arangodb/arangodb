@@ -7,7 +7,6 @@
 FORCE = 0
 SKIP_BOOST = 0
 SKIP_GEO = 0
-SKIP_AHUACATL = 0
 SKIP_RANGES = 0
 VALGRIND = 
 NO_LOG = 
@@ -54,7 +53,6 @@ unittests-verbose:
 	@echo "## > make unittests FORCE=1                                                   ##"
 	@echo "## > make unittests SKIP_BOOST=1                                              ##"
 	@echo "## > make unittests SKIP_GEO=1                                                ##"
-	@echo "## > make unittests SKIP_AHUACATL=1                                           ##"
 	@echo "## > make unittests SKIP_RANGES=1                                             ##"
 	@echo "## > make unittests VALGRIND=valgrind                                         ##"
 	@echo "##                                                                            ##"
@@ -501,8 +499,8 @@ unittests-shell-server-ahuacatl:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 
-	@test "x$(SKIP_AHUACATL)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
-	@test "x$(SKIP_AHUACATL)" == "x1" || test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
+	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo
