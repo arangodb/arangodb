@@ -26,10 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-
 var arangodb = require("org/arangodb");
-
 var ArangoCollection = arangodb.ArangoCollection;
+var testHelper = require("org/arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
  
@@ -58,19 +57,13 @@ function CollectionSuite () {
       var f = c1.figures(); 
       assertEqual(0, f.datafiles.count);
 
-      c1.rotate();
-
-      // must wait so the synchroniser can catch up
-      require("internal").wait(5);
+      testHelper.rotate(c1);
 
       f = c1.figures();
       assertEqual(1, f.datafiles.count);
         
       c1.save({ _key: "test2" });
-      c1.rotate();
-
-      // must wait so the synchroniser can catch up
-      require("internal").wait(5);
+      testHelper.rotate(c1);
 
       f = c1.figures();
       // we may have one or two datafiles, depending on the compaction
@@ -92,7 +85,7 @@ function CollectionSuite () {
       var c1 = db._create(cn);
 
       try {
-        c1.rotate();
+        testHelper.rotate(c1);
         fail();
       }
       catch (err) {

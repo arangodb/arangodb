@@ -506,6 +506,10 @@ static int OpenDatabases (TRI_server_t* server,
   TRI_vector_string_t files;
   size_t i, n;
   int res;
+  
+  if (server->_iterateMarkersOnOpen) {
+    LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
+  }
 
   res = TRI_ERROR_NO_ERROR;
   files = TRI_FilesDirectory(server->_databasePath);
@@ -515,7 +519,7 @@ static int OpenDatabases (TRI_server_t* server,
   if (n > 1) {
     qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
   }
-
+  
   for (i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
     TRI_json_t* json;
@@ -1731,6 +1735,8 @@ int TRI_StartServer (TRI_server_t* server,
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
+
+    server->_iterateMarkersOnOpen = false;
   }
 
   if (! TRI_IsWritable(server->_databasePath)) {

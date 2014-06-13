@@ -1170,7 +1170,7 @@ int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t* datafile,
   res = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, header.base._size, false);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, false);
   }
 
   return res;
@@ -1280,54 +1280,15 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
-                              TRI_voc_size_t markerSize,
                               bool forceSync) {
 
   TRI_voc_tick_t tick       = marker->_tick;
-  TRI_df_marker_type_e type = (TRI_df_marker_type_e) (int) marker->_type;
    
   TRI_ASSERT(tick > 0);
+  TRI_ASSERT(marker->_size > 0);
 
-  if (type != TRI_DF_MARKER_HEADER && 
-      type != TRI_DF_MARKER_FOOTER &&
-      type != TRI_COL_MARKER_HEADER &&
-      type != TRI_DF_MARKER_ATTRIBUTE &&
-      type != TRI_DF_MARKER_SHAPE) {
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    // check _tick value of marker and set min/max tick values for datafile
-    if (tick <= datafile->_tickMin || tick <= (TRI_voc_tick_t) datafile->_fid) {
-      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
-          "expected tick value > tickMin %llu",
-          (unsigned long long) tick,
-          (int) marker->_type,
-          datafile->getName(datafile),
-          (unsigned long long) datafile->_tickMin);
-      TRI_ASSERT(false);
-    }
-
-    if (tick <= datafile->_tickMax) {
-      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
-          "expected tick value > tickMax %llu",
-          (unsigned long long) tick,
-          (int) marker->_type,
-          datafile->getName(datafile),
-          (unsigned long long) datafile->_tickMax);
-      TRI_ASSERT(false);
-    }
-#endif
-
-    TRI_UpdateTicksDatafile(datafile, marker);
-  }
+  TRI_UpdateTicksDatafile(datafile, marker);
    
-  TRI_ASSERT(markerSize > 0);
-
-  if (markerSize != marker->_size) {
-    LOG_ERROR("marker size is %lu, but size is %lu",
-              (unsigned long) marker->_size,
-              (unsigned long) markerSize);
-  }
-
   if (datafile->_state != TRI_DF_STATE_WRITE) {
     if (datafile->_state == TRI_DF_STATE_READ) {
       LOG_ERROR("cannot write marker, datafile is read-only");
@@ -1346,13 +1307,11 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
 
-  memcpy(position, marker, markerSize);
+  memcpy(position, marker, static_cast<size_t>(marker->_size));
 
 
   if (forceSync) {
-    bool ok;
-
-    ok = datafile->sync(datafile, static_cast<char const*>(position), ((char*) position) + markerSize);
+    bool ok = datafile->sync(datafile, static_cast<char const*>(position), ((char*) position) + marker->_size);
 
     if (! ok) {
       datafile->_state = TRI_DF_STATE_WRITE_ERROR;
@@ -1369,7 +1328,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
       return datafile->_lastError;
     }
     else {
-      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) markerSize);
+      LOG_TRACE("msync succeeded %p, size %lu", position, (unsigned long) marker->_size);
     }
   }
 
@@ -1383,24 +1342,53 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker) {
   TRI_df_marker_type_e type = (TRI_df_marker_type_e) marker->_type;
+  TRI_voc_tick_t tick = marker->_tick;
 
-  if (type == TRI_DF_MARKER_HEADER || 
-      type == TRI_DF_MARKER_FOOTER ||
-      type == TRI_COL_MARKER_HEADER ||
-      type == TRI_DF_MARKER_ATTRIBUTE ||
-      type == TRI_DF_MARKER_SHAPE) {
-    // ignore these markers
-    return;
-  }
+  if (type != TRI_DF_MARKER_HEADER && 
+      type != TRI_DF_MARKER_FOOTER &&
+      type != TRI_COL_MARKER_HEADER &&
+      type != TRI_DF_MARKER_ATTRIBUTE &&
+      type != TRI_DF_MARKER_SHAPE) {
 
-  if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      type == TRI_DOC_MARKER_KEY_EDGE) {
-    if (datafile->_dataMin == 0) {
-      datafile->_dataMin = marker->_tick;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    // check _tick value of marker and set min/max tick values for datafile
+    if (marker->_tick < datafile->_tickMin) {
+      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+          "expected tick value >= tickMin %llu",
+          (unsigned long long) tick,
+          (int) marker->_type,
+          datafile->getName(datafile),
+          (unsigned long long) datafile->_tickMin);
     }
 
-    if (datafile->_dataMax < marker->_tick) {
-      datafile->_dataMax = marker->_tick;
+    if (tick < datafile->_tickMax) {
+      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+          "expected tick value >= tickMax %llu",
+          (unsigned long long) tick,
+          (int) marker->_type,
+          datafile->getName(datafile),
+          (unsigned long long) datafile->_tickMax);
+    }
+       
+    if (tick < static_cast<TRI_voc_tick_t>(datafile->_fid)) {
+      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
+          "expected tick value >= fid %llu",
+          (unsigned long long) tick,
+          (int) marker->_type,
+          datafile->getName(datafile),
+          (unsigned long long) datafile->_fid);
+    }
+#endif
+  
+    if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+        type == TRI_DOC_MARKER_KEY_EDGE) {
+      if (datafile->_dataMin == 0) {
+        datafile->_dataMin = tick;
+      }
+
+      if (datafile->_dataMax < tick) {
+        datafile->_dataMax = tick;
+      }
     }
   }
 
@@ -1408,39 +1396,33 @@ void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
       type != TRI_DF_MARKER_SHAPE) {
 
     if (datafile->_tickMin == 0) {
-      datafile->_tickMin = marker->_tick;
+      datafile->_tickMin = tick;
     }
 
     if (datafile->_tickMax < marker->_tick) {
-      datafile->_tickMax = marker->_tick;
+      datafile->_tickMax = tick;
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
-/// this function will also assign a new tick value for the marker (so that
-/// the tick values are increasing)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  void* position,
                                  TRI_df_marker_t* marker,
-                                 TRI_voc_size_t markerSize,
                                  bool forceSync) {
-  if (marker->_tick == 0) {
-    // set a tick value for the marker
-    marker->_tick = TRI_NewTickServer();
-  }
+  TRI_ASSERT(marker->_tick != 0);
 
   if (datafile->isPhysical(datafile)) {
     TRI_voc_crc_t crc = TRI_InitialCrc32();
   
-    crc = TRI_BlockCrc32(crc, (char const*) marker, markerSize);
+    crc = TRI_BlockCrc32(crc, (char const*) marker, marker->_size);
     marker->_crc = TRI_FinalCrc32(crc);
   }
 
-  return TRI_WriteElementDatafile(datafile, position, marker, markerSize, forceSync);
+  return TRI_WriteElementDatafile(datafile, position, marker, forceSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1668,7 +1650,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, footer.base._size, true);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, true);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

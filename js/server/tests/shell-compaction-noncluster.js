@@ -43,7 +43,7 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create movement of shapes
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testShapesMovement : function () {
       var cn = "example";
       internal.db._drop(cn);
@@ -142,7 +142,7 @@ function CompactionSuite () {
       c1.toArray();
 
       c1.truncate(); 
-      c1.rotate(); 
+      testHelper.rotate(c1);
 
       // create lots of different shapes
       for (i = 0; i < 100; ++i) { 
@@ -154,8 +154,7 @@ function CompactionSuite () {
       } 
 
       // make sure compaction moves the shapes
-      c1.rotate(); 
-      internal.wait(5); 
+      testHelper.rotate(c1);
       c1.truncate(); 
       internal.wait(5); 
       
@@ -196,7 +195,7 @@ function CompactionSuite () {
         c1.save({ _key: "test" + i });
       }
       c1.truncate(); 
-      c1.rotate(); 
+      testHelper.rotate(c1);
 
       // create lots of different shapes
       for (i = 0; i < 100; ++i) { 
@@ -216,8 +215,7 @@ function CompactionSuite () {
       }
 
       // make sure compaction moves the shapes
-      c1.rotate(); 
-      internal.wait(5); 
+      testHelper.rotate(c1);
       
       var doc = c1.document("foo");
       assertTrue(doc.hasOwnProperty("name"));
@@ -265,8 +263,7 @@ function CompactionSuite () {
       }
 
       // make sure compaction moves the shapes
-      c1.rotate(); 
-      internal.wait(5);
+      testHelper.rotate(c1);
       // unload the collection
       
       testHelper.waitUnload(c1);
@@ -308,7 +305,7 @@ function CompactionSuite () {
 
       internal.db._drop(cn);
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test journals
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,6 +314,8 @@ function CompactionSuite () {
       var cn = "example";
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      internal.flushWal(true, true);
 
       // empty collection
       var fig = c1.figures();
@@ -330,6 +329,7 @@ function CompactionSuite () {
       assertEqual(0, fig["compactors"]["count"]);
 
       c1.save({ "foo": "bar" });
+      internal.flushWal(true, true);
 
       fig = c1.figures();
       assertEqual(1, c1.count());
@@ -342,8 +342,7 @@ function CompactionSuite () {
       assertEqual(0, fig["datafiles"]["count"]);
       assertEqual(0, fig["compactors"]["count"]);
       
-      c1.rotate();
-      internal.wait(5);
+      testHelper.rotate(c1);
       
       fig = c1.figures();
       assertEqual(1, c1.count());
@@ -358,6 +357,7 @@ function CompactionSuite () {
       
       c1.save({ "bar": "baz" });
 
+      internal.flushWal(true, true);
       fig = c1.figures();
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
@@ -369,8 +369,7 @@ function CompactionSuite () {
       assertEqual(1, fig["datafiles"]["count"]);
       assertEqual(0, fig["compactors"]["count"]);
 
-      c1.rotate();
-      internal.wait(5);
+      testHelper.rotate(c1);
       
       fig = c1.figures();
       assertEqual(2, c1.count());
@@ -384,9 +383,7 @@ function CompactionSuite () {
       assertEqual(0, fig["compactors"]["count"]);
 
       c1.truncate();
-      c1.rotate();
-      
-      internal.wait(10);
+      testHelper.rotate(c1);
       
       fig = c1.figures();
       assertEqual(0, c1.count());

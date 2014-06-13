@@ -669,19 +669,15 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
-                              TRI_voc_size_t markerSize,
                               bool sync) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
-/// this function will also assign a new tick value for the marker (so that
-/// the tick values are increasing)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  void* position,
                                  TRI_df_marker_t* marker,
-                                 TRI_voc_size_t markerSize,
                                  bool sync) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
