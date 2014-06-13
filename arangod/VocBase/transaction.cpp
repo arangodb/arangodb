@@ -830,8 +830,8 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t* trxCollection
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollection,
-                                        const TRI_transaction_type_e accessType,
-                                        const int nestingLevel) {
+                                        TRI_transaction_type_e accessType,
+                                        int nestingLevel) {
 
   if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type

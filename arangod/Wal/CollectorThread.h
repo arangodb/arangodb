@@ -316,7 +316,8 @@ namespace triagens {
 /// @brief get the next free position for a new marker of the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* nextFreeMarkerPosition (struct TRI_document_collection_t*, 
+        char* nextFreeMarkerPosition (struct TRI_document_collection_t*,
+                                      TRI_voc_tick_t, 
                                       TRI_df_marker_type_e,
                                       TRI_voc_size_t,
                                       CollectorCache*);

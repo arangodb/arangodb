@@ -7034,6 +7034,8 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
+  
+  PREVENT_EMBEDDED_TRANSACTION(scope); 
 
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);

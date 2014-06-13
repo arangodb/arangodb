@@ -707,6 +707,7 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*,
+                                                     TRI_voc_fid_t,
                                                      TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////

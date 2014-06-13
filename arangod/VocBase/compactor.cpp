@@ -213,7 +213,7 @@ static int CopyMarker (TRI_document_collection_t* document,
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return TRI_WriteElementDatafile(compactor, *result, marker, marker->_size, false);
+  return TRI_WriteElementDatafile(compactor, *result, marker, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,7 +445,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
   TRI_df_marker_t* result;
   int res;
 
-  compaction_context_t* context = (compaction_context_t*) data;
+  compaction_context_t* context = static_cast<compaction_context_t*>(data);
   TRI_document_collection_t* document = context->_document;
 
   // new or updated document
@@ -831,11 +831,11 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     TRI_datafile_t* df = compaction->_datafile;
     
-    LOG_DEBUG("compacting datafile '%s' into '%s', number: %d, keep deletions: %d", 
-              df->getName(df), 
-              compactor->getName(compactor),
-              (int) i,
-              (int) compaction->_keepDeletions);
+    LOG_TRACE("compacting datafile '%s' into '%s', number: %d, keep deletions: %d", 
+               df->getName(df), 
+               compactor->getName(compactor),
+               (int) i,
+               (int) compaction->_keepDeletions);
 
     // if this is the first datafile in the list of datafiles, we can also collect
     // deletion markers

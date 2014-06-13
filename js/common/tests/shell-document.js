@@ -26,9 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-
 var arangodb = require("org/arangodb");
-
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var wait = require("internal").wait;

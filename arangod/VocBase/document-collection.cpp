@@ -276,7 +276,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   cm._type = (TRI_col_type_t) collection->_info._type;
   cm._cid  = collection->_info._cid;
 
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), false);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     collection->_lastError = journal->_lastError;
@@ -2322,19 +2322,16 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_co
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* document,
+                                                     TRI_voc_fid_t fid,
                                                      TRI_voc_size_t journalSize) {
   TRI_col_header_marker_t cm;
-  TRI_collection_t* collection;
   TRI_datafile_t* journal;
   TRI_df_marker_t* position;
-  TRI_voc_fid_t fid;
   int res;
 
-  collection = document;
+  TRI_ASSERT(fid > 0);
 
-  fid = (TRI_voc_fid_t) TRI_NewTickServer();
-
-  if (collection->_info._isVolatile) {
+  if (document->_info._isVolatile) {
     // in-memory collection
     journal = TRI_CreateDatafile(nullptr, fid, journalSize, true);
   }
@@ -2346,7 +2343,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
     // construct a suitable filename (which is temporary at the beginning)
     number   = TRI_StringUInt64(fid);
     jname    = TRI_Concatenate3String("temp-", number, ".db");
-    filename = TRI_Concatenate2File(collection->_directory, jname);
+    filename = TRI_Concatenate2File(document->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
@@ -2357,12 +2354,12 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
 
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      collection->_state = TRI_COL_STATE_READ;
+      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      document->_state = TRI_COL_STATE_READ;
     }
     else {
-      collection->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-      collection->_state = TRI_COL_STATE_WRITE_ERROR;
+      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+      document->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
     return NULL;
@@ -2375,7 +2372,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, journalSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
+    document->_lastError = journal->_lastError;
     LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
 
     TRI_FreeDatafile(journal);
@@ -2386,13 +2383,13 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
 
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
-  cm._type = (TRI_col_type_t) collection->_info._type;
-  cm._cid  = collection->_info._cid;
+  cm._type = (TRI_col_type_t) document->_info._type;
+  cm._cid  = document->_info._cid;
 
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, sizeof(cm), true);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
+    document->_lastError = journal->_lastError;
     LOG_ERROR("cannot create document header in journal '%s': %s", journal->getName(journal), TRI_last_error());
 
     TRI_FreeDatafile(journal);
@@ -2414,7 +2411,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
     number = TRI_StringUInt64(journal->_fid);
     jname = TRI_Concatenate3String("journal-", number, ".db");
 
-    filename = TRI_Concatenate2File(collection->_directory, jname);
+    filename = TRI_Concatenate2File(document->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
@@ -2435,7 +2432,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
-  TRI_PushBackVectorPointer(&collection->_journals, journal);
+  TRI_PushBackVectorPointer(&document->_journals, journal);
 
   return journal;
 }
@@ -5230,7 +5227,14 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
   // no extra locking here as the collection is already locked
-  return TRI_RemoveShapedJsonDocumentCollection(trxCollection, (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 0, policy, false, false);  // PROTECTED by trx in trxCollection
+  TRI_ASSERT(TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0));
+
+  return TRI_RemoveShapedJsonDocumentCollection(trxCollection, 
+                                                (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc), 
+                                                0, 
+                                                policy, 
+                                                false, 
+                                                false);  // PROTECTED by trx in trxCollection
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5239,8 +5243,25 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
-  // TODO: re-create this functionality
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  int res = TRI_ERROR_ARANGO_NO_JOURNAL;
+
+  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
+  if (document->_state == TRI_COL_STATE_WRITE) {
+    size_t const n = document->_journals._length;
+
+    if (n > 0) {
+      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(document->_journals._buffer[0]);
+      TRI_ASSERT(datafile != nullptr);
+      TRI_CloseJournalDocumentCollection(document, 0);
+
+      res = TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
+  return res;
 }
 
 // -----------------------------------------------------------------------------

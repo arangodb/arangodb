@@ -40,10 +40,6 @@ var processCsvFile = internal.processCsvFile;
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief array query
-////////////////////////////////////////////////////////////////////////////////
-
 exports.Helper = {
   process: function (file, processor) {
     processCsvFile(file, function (raw_row, index) {
@@ -62,6 +58,29 @@ exports.Helper = {
    
     while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
       collection.unload();
+      internal.wait(1);
+    }
+  },
+
+  rotate: function (collection) {
+    var internal = require("internal");
+
+    internal.flushWal(true, true);
+
+    var fig = collection.figures();
+    var files = fig.datafiles.count + fig.journals.count;
+
+    // wait for at most 10 seconds
+    var end = internal.time() + 10;
+    collection.rotate();
+
+    while (internal.time() < end) {
+      // wait until the figures change 
+      fig = collection.figures();
+      if (fig.datafiles.count + fig.journals.count !== files) {
+        break;
+      }
+
       internal.wait(1);
     }
   }

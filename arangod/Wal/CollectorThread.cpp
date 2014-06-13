@@ -805,7 +805,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         size_t n = strlen(name) + 1; // add NULL byte
         TRI_voc_size_t const totalSize = sizeof(TRI_df_attribute_marker_t) + n;
 
-        char* dst = nextFreeMarkerPosition(document, TRI_DF_MARKER_ATTRIBUTE, totalSize, cache);
+        char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DF_MARKER_ATTRIBUTE, totalSize, cache);
 
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -832,7 +832,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         ptrdiff_t shapeLength = source->_size - (shape - base);
         TRI_voc_size_t const totalSize = sizeof(TRI_df_shape_marker_t) + shapeLength;
 
-        char* dst = nextFreeMarkerPosition(document, TRI_DF_MARKER_SHAPE, totalSize, cache);
+        char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DF_MARKER_SHAPE, totalSize, cache);
 
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -861,7 +861,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
                                          TRI_DF_ALIGN_BLOCK(n) + 
                                          shapeLength;
         
-        char* dst = nextFreeMarkerPosition(document, TRI_DOC_MARKER_KEY_DOCUMENT, totalSize, cache);
+        char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_DOCUMENT, totalSize, cache);
 
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -906,7 +906,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
                                          TRI_DF_ALIGN_BLOCK(from) + 
                                          shapeLength;
 
-        char* dst = nextFreeMarkerPosition(document, TRI_DOC_MARKER_KEY_EDGE, totalSize, cache);
+        char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_EDGE, totalSize, cache);
 
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -948,7 +948,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         size_t n = strlen(key) + 1; // add NULL byte
         TRI_voc_size_t const totalSize = sizeof(TRI_doc_deletion_key_marker_t) + n;
 
-        char* dst = nextFreeMarkerPosition(document, TRI_DOC_MARKER_KEY_DELETION, totalSize, cache);
+        char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_DELETION, totalSize, cache);
 
         if (dst == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -1091,6 +1091,7 @@ int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document
 ////////////////////////////////////////////////////////////////////////////////
 
 char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* document,
+                                               TRI_voc_tick_t tick,
                                                TRI_df_marker_type_e type,
                                                TRI_voc_size_t size,
                                                CollectorCache* cache) {
@@ -1138,7 +1139,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
       TRI_CloseJournalDocumentCollection(document, i);
     }
     
-    TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, targetSize);
+    TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, tick, targetSize);
 
     if (datafile == nullptr) {
       LOG_ERROR("unable to create journal file");

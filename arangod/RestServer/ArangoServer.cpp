@@ -764,10 +764,6 @@ int ArangoServer::startupServer () {
   // open all databases
   bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
 
-  if (iterateMarkersOnOpen) {
-    LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
-  }
-
   openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
       
   if (! wal::LogfileManager::instance()->open()) {
