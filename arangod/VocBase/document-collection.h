@@ -51,7 +51,8 @@ struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_index_s;
 struct TRI_json_s;
-struct TRI_key_generator_s;
+
+class KeyGenerator;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -447,7 +448,7 @@ public:
 
   TRI_primary_index_t          _primaryIndex;
   TRI_headers_t*               _headersPtr;
-  struct TRI_key_generator_s*  _keyGenerator;
+  KeyGenerator*                _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
   
   TRI_vector_pointer_t         _allIndexes;
@@ -489,11 +490,9 @@ public:
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
 
-  TRI_document_collection_t () {
-  }
+  TRI_document_collection_t ();
 
-  ~TRI_document_collection_t () {
-  }
+  ~TRI_document_collection_t ();
 };
 
 // -----------------------------------------------------------------------------

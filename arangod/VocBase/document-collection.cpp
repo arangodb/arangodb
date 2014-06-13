@@ -102,6 +102,23 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document collection
+////////////////////////////////////////////////////////////////////////////////
+    
+TRI_document_collection_t::TRI_document_collection_t () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy a document collection
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_document_collection_t::~TRI_document_collection_t () {
+  if (_keyGenerator != nullptr) {
+    delete _keyGenerator;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the shaper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -754,7 +771,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     // insert has failed
     return res;
   }
-
+    
   // insert into secondary indexes
   res = InsertSecondaryIndexes(document, header, false);
 
@@ -1104,9 +1121,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 #endif
   
   key = ((char*) d) + d->_offsetKey;
-  if (document->_keyGenerator->trackKey != nullptr) {
-    document->_keyGenerator->trackKey(document->_keyGenerator, key);
-  }
+  document->_keyGenerator->track(key);
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
@@ -1236,9 +1251,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
             (unsigned long long) d->_rid,
             (unsigned long long) marker->_tick);
 
-  if (document->_keyGenerator->trackKey != nullptr) {
-    document->_keyGenerator->trackKey(document->_keyGenerator, key);
-  }
+  document->_keyGenerator->track(key);
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
@@ -1904,7 +1917,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
                                        TRI_shaper_t* shaper) {
   document->setShaper(shaper);
   document->_capConstraint      = nullptr;
-  document->_keyGenerator       = nullptr;
   document->_numberDocuments    = 0;
   document->_lastCompaction     = 0.0;
 
@@ -1944,7 +1956,8 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
 
 static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) {
   if (document->_keyGenerator != nullptr) {
-    TRI_FreeKeyGenerator(document->_keyGenerator);
+    delete document->_keyGenerator;
+    document->_keyGenerator = nullptr;
   }
 
   TRI_DestroyReadWriteLock(&document->_compactionLock);
@@ -2137,7 +2150,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
   TRI_document_collection_t* document;
-  TRI_key_generator_t* keyGenerator;
   int res;
 
   if (cid > 0) {
@@ -2150,16 +2162,12 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   parameter->_cid = cid;
 
   // check if we can generate the key generator
-  res = TRI_CreateKeyGenerator(parameter->_keyOptions, &keyGenerator);
+  KeyGenerator* keyGenerator = KeyGenerator::factory(parameter->_keyOptions);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-
+  if (keyGenerator == nullptr) {
+    TRI_set_errno(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
     return nullptr;
   }
-
-  TRI_ASSERT(keyGenerator != nullptr);
-
 
   // first create the document collection
   try {
@@ -2170,17 +2178,17 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   if (document == nullptr) {
-    TRI_FreeKeyGenerator(keyGenerator);
+    delete keyGenerator;
     LOG_WARNING("cannot create document collection");
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     return nullptr;
   }
 
+  document->_keyGenerator = keyGenerator;
   collection = TRI_CreateCollection(vocbase, document, path, parameter);
 
   if (collection == nullptr) {
-    TRI_FreeKeyGenerator(keyGenerator);
     delete document;
     LOG_ERROR("cannot create document collection");
 
@@ -2192,7 +2200,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   if (shaper == NULL) {
     LOG_ERROR("cannot create shaper");
 
-    TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
     delete document;
@@ -2204,7 +2211,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot initialise document collection");
 
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
-    TRI_FreeKeyGenerator(keyGenerator);
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
     delete document;
@@ -2691,7 +2697,6 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
                                                        TRI_vocbase_col_t* col) {
   TRI_collection_t* collection;
   TRI_shaper_t* shaper;
-  TRI_key_generator_t* keyGenerator;
   int res;
 
   char const* path = col->_path;
@@ -2739,18 +2744,16 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   // check if we can generate the key generator
-  res = TRI_CreateKeyGenerator(collection->_info._keyOptions, &keyGenerator);
+  KeyGenerator* keyGenerator = KeyGenerator::factory(collection->_info._keyOptions);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (keyGenerator == nullptr) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    LOG_ERROR("cannot initialise document collection");
-    TRI_set_errno(res);
+    TRI_set_errno(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
 
     return nullptr;
   }
 
-  TRI_ASSERT(keyGenerator != nullptr);
   document->_keyGenerator = keyGenerator;
 
   // create a fake transaction for loading the collection
@@ -5376,7 +5379,6 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             bool forceSync,
                                             bool isRestore) {
 
-  // TODO: isRestore is not used yet!
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
@@ -5384,14 +5386,13 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_voc_tick_t tick = static_cast<TRI_voc_tick_t>(rid);
   
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
-  TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(document->_keyGenerator);
+  //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
 
   std::string keyString;
 
   if (key == nullptr) {
     // no key specified, now generate a new one
-    keyString = keyGenerator->generateKey(keyGenerator, tick);
+    keyString = document->_keyGenerator->generate(tick);
 
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
@@ -5399,7 +5400,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   }
   else {
     // key was specified, now validate it
-    int res = keyGenerator->validateKey(keyGenerator, key);
+    int res = document->_keyGenerator->validate(key, isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5412,12 +5413,17 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   // construct a legend for the shaped json
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentInvalidShape") {
+    return TRI_ERROR_DEBUG;
+  }
+
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
+  
   triagens::wal::Marker* marker = nullptr;
 
   if (edge == nullptr) {
@@ -5453,6 +5459,10 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoHeader") {
+      return TRI_ERROR_DEBUG;
+    }
+
     // create a new header
     TRI_doc_mptr_t* header = operation.header = document->_headersPtr->request(marker->size());  // PROTECTED by trx in trxCollection
 
@@ -5460,7 +5470,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       // out of memory. no harm done here. just return the error
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-
+  
     // update the header we got
     void* mem = operation.marker->mem();
     header->_rid  = rid;
@@ -5500,7 +5510,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
     
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
+  //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
   
   // create legend  
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection

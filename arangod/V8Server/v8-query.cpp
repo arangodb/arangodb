@@ -2125,6 +2125,10 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper struct used when calculting checksums
+////////////////////////////////////////////////////////////////////////////////
+
 struct collection_checksum_t {
   collection_checksum_t (CollectionNameResolver const* resolver) 
     : _resolver(resolver), 
