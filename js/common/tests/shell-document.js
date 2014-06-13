@@ -32,23 +32,7 @@ var arangodb = require("org/arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var wait = require("internal").wait;
-var flushWal = require("internal").flushWal;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
-      
-function waitUnload (collection) {      
-  collection.unload();
-  flushWal();
-   
-  while (collection.status() != arangodb.ArangoCollection.STATUS_UNLOADED) {
-    collection.unload();
-    wait(1);
-  }
-
-  assertEqual(arangodb.ArangoCollection.STATUS_UNLOADED, collection.status());
-}
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -383,7 +367,7 @@ function CollectionDocumentSuite () {
       d1 = null;
       d2 = null;
 
-      waitUnload(collection);
+      testHelper.waitUnload(collection);
 
       collection.load();
 
@@ -416,7 +400,7 @@ function CollectionDocumentSuite () {
       d1 = null;
       d2 = null;
 
-      waitUnload(collection);
+      testHelper.waitUnload(collection);
 
       collection.load();
 
@@ -444,7 +428,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(0, collection.count());
 
-      waitUnload(collection);
+      testHelper.waitUnload(collection);
 
       collection.load();
 
@@ -480,7 +464,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(1, collection.count());
 
-      waitUnload(collection);
+      testHelper.waitUnload(collection);
 
       collection.load();
 
@@ -521,7 +505,7 @@ function CollectionDocumentSuite () {
       assertEqual(0, doc.value);
       doc = null;
 
-      waitUnload(collection);
+      testHelper.waitUnload(collection);
 
       collection.load();
 
