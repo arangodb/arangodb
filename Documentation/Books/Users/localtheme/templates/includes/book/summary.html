@@ -22,6 +22,7 @@
         <input type="text" placeholder="Search" class="form-control" />
     </div>
     <ul class="summary">
+        {% set _divider = false %}
         {% if options.links.issues !== false && (options.links.issues || githubId) %}
         {% set _divider = true %}
         <li>
@@ -36,15 +37,9 @@
             <a href="{{ basePath }}/"><i class="fa fa-check"></i> Introduction</a>
         </li>
         {{ articles(summary.chapters) }}
-
-        {% if options.links.gitbook !== false %}
-        <li class="divider"></li>
-        <li>
-            <a href="http://www.gitbook.io/" target="blank" class="gitbook-link">Generated using GitBook</a>
-        </li>
-        {% endif %}
     </ul>
 </div>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
 <script type="text/javascript">
   jQuery(".summary>li").each(function(){
   	var flag = true;
