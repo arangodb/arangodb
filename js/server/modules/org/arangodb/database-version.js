@@ -30,10 +30,9 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var cluster = require("org/arangodb/cluster");
 var fs = require("fs");
-var db = internal.db;
+var db = require("org/arangodb").db;
 var console = require("console");
 
 // -----------------------------------------------------------------------------
@@ -124,7 +123,7 @@ exports.databaseVersion = function () {
   }
 
   // path to the VERSION file
-  var versionFile = internal.db._path() + "/VERSION";
+  var versionFile = db._path() + "/VERSION";
   var lastVersion = null;
 
   // VERSION file exists, read its contents
@@ -152,11 +151,11 @@ exports.databaseVersion = function () {
   }
     
   // extract server version
-  var currentServerVersion = internal.db._version().match(/^(\d+\.\d+).*$/);
+  var currentServerVersion = db._version().match(/^(\d+\.\d+).*$/);
 
   // server version is invalid for some reason
   if (! currentServerVersion) {
-    logger.error("Unexpected ArangoDB server version: " + internal.db._version());
+    logger.error("Unexpected ArangoDB server version: " + db._version());
     return { result: exports.NO_SERVER_VERSION };
   }
   

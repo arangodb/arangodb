@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, ArangoConnection, print, SYS_ARANGO */
+/*global require, ArangoConnection, print, SYS_ARANGO, window */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -299,6 +299,32 @@
   internal.log = function (level, msg) {
     internal.output(level, ": ", msg, "\n");
   };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sprintf wrapper
+////////////////////////////////////////////////////////////////////////////////
+  
+  try {
+    if (window) { 
+      internal.sprintf = function (format) {
+        var n = arguments.length;
+        if (n === 0) {
+          return "";
+        }
+        if (n <= 1) {
+          return String(format);
+        }
+
+        var i = 0;
+
+        return format.replace(/%[dfs]/, function (match) {
+          return String(arguments[++i]);
+        });
+      };
+    }
+  }
+  catch (err) {
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}

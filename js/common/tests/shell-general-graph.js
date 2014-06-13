@@ -307,7 +307,7 @@ function GeneralGraphCreationSuite() {
         );
         fail();
       } catch (err) {
-        assertEqual(err.errorMessage, "a graph name is required to create a graph.");
+        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_CREATE_MISSING_NAME.message);
       }
     },
 
@@ -2497,6 +2497,118 @@ function GeneralGraphCommonNeighborsSuite() {
   };
 }
 
+function OrphanCollectionSuite() {
+  var prefix = "UnitTestGraphVertexCollection",
+    g1,
+    g2,
+    gN1 = prefix + "Graph1",
+    gN2 = prefix + "Graph2",
+    eC1 = prefix + "EdgeCollection1",
+    eC2 = prefix + "EdgeCollection2",
+    vC1 = prefix + "VertexCollection1",
+    vC2 = prefix + "VertexCollection2",
+    vC3 = prefix + "VertexCollection3",
+    vC4 = prefix + "VertexCollection4",
+    vC5 = prefix + "VertexCollection5";
+
+  return {
+
+    setUp : function() {
+      try {
+        arangodb.db._collection("_graphs").remove(gN1);
+      } catch (ignore) {
+      }
+      try {
+        arangodb.db._collection("_graphs").remove(gN2);
+      } catch (ignore) {
+      }
+      g1 = graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(
+            eC1, [vC1], [vC1, vC2]
+          )
+        )
+      );
+      g2 = graph._create(
+        gN2,
+        graph._edgeDefinitions(
+          graph._directedRelationDefinition(
+            eC2, [vC3], [vC1]
+          )
+        )
+      );
+    },
+
+    tearDown : function() {
+      graph._drop(gN1);
+      graph._drop(gN2);
+      try {db[vC1].drop()} catch (e) {}
+      try {db[vC4].drop()} catch (e) {}
+    },
+
+    test_getOrphanCollection: function() {
+      assertEqual(g1._getOrphanCollections(), []);
+    },
+
+    test_addOrphanCollection1: function() {
+      g1._addOrphanCollection(vC1, false);
+      assertEqual(g1._getOrphanCollections(), [vC1]);
+    },
+
+    test_addOrphanCollection2: function() {
+      try {
+        g1._addOrphanCollection(vC4, false);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
+        assertEqual(e.errorMessage, vC4 + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+      }
+      assertTrue(db._collection(vC4) === null);
+      assertEqual(g1._getOrphanCollections(), []);
+    },
+
+    test_addOrphanCollection3: function() {
+      try {
+        g1._addOrphanCollection(eC1, false);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message);
+      }
+      assertTrue(db._collection(vC4) === null);
+      assertEqual(g1._getOrphanCollections(), []);
+    },
+
+    test_removeOrphanCollection1: function() {
+      var name = "completelyNonsenseNameForACollectionBLUBBBBB"
+      try {
+        g1._removeOrphanCollection(name);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
+      }
+    },
+
+    test_removeOrphanCollection2: function() {
+      g1._addOrphanCollection(vC4, true);
+      g1._addOrphanCollection(vC5, true);
+      assertEqual(g1._getOrphanCollections(), [vC4, vC5]);
+      g1._removeOrphanCollection(vC4, false);
+      assertEqual(g1._getOrphanCollections(), [vC5]);
+      try {
+        g1._removeOrphanCollection(vC4);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
+      }
+    }
+
+
+  };
+
+
+
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
@@ -2511,7 +2623,7 @@ jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
-//jsunity.run(VertexCollectionChainedFluentAQLResultsSuite);
+jsunity.run(OrphanCollectionSuite);
 
 return jsunity.done();
 

@@ -100,6 +100,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
+  REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
   REG_ERROR(ERROR_REPLICATION_INVALID_RESPONSE, "invalid response");
   REG_ERROR(ERROR_REPLICATION_MASTER_ERROR, "master error");
@@ -205,6 +206,15 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
   REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
   REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE, "multi use of edge collection in edge def");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
+  REG_ERROR(ERROR_GRAPH_CREATE_MISSING_NAME, "missing graph name");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge def");
+  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
+  REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
+  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "collection does not exist");
+  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
+  REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

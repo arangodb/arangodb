@@ -154,7 +154,9 @@ namespace triagens {
 /// @brief opens all system databases
 ////////////////////////////////////////////////////////////////////////////////
 
-        void openDatabases (bool);
+        void openDatabases (bool,
+                            bool,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes all database
