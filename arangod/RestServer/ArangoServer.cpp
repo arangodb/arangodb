@@ -721,6 +721,27 @@ int ArangoServer::startupServer () {
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
   }
+  
+  // check version
+  bool checkVersion = false;
+
+  if (_applicationServer->programOptions().has("check-version")) {
+    checkVersion = true;
+  }
+
+  // run upgrade script
+  bool performUpgrade = false;
+
+  if (_applicationServer->programOptions().has("upgrade")) {
+    performUpgrade = true;
+  }
+
+  // skip an upgrade even if VERSION is missing
+  bool skipUpgrade = false;
+
+  if (_applicationServer->programOptions().has("no-upgrade")) {
+    skipUpgrade = true;
+  }
 
   // special treatment for the write-ahead log
   // the log must exist before all other server operations can start
@@ -747,7 +768,7 @@ int ArangoServer::startupServer () {
     LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
   }
 
-  openDatabases(iterateMarkersOnOpen);
+  openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
       
   if (! wal::LogfileManager::instance()->open()) {
     LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
@@ -781,18 +802,6 @@ int ArangoServer::startupServer () {
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
 
-  bool performUpgrade = false;
-
-  if (_applicationServer->programOptions().has("upgrade")) {
-    performUpgrade = true;
-  }
-
-  // skip an upgrade even if VERSION is missing
-  bool skipUpgrade = false;
-
-  if (_applicationServer->programOptions().has("no-upgrade")) {
-    skipUpgrade = true;
-  }
 
   // .............................................................................
   // prepare everything
@@ -818,7 +827,7 @@ int ArangoServer::startupServer () {
   _applicationServer->prepare2();
 
   // run version check
-  if (_applicationServer->programOptions().has("check-version")) {
+  if (checkVersion) {
     _applicationV8->runUpgradeCheck();
   }
 
@@ -1065,7 +1074,9 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 /// @brief opens all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabases (bool iterateMarkersOnOpen) {
+void ArangoServer::openDatabases (bool checkVersion, 
+                                  bool performUpgrade,
+                                  bool iterateMarkersOnOpen) {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
@@ -1093,10 +1104,13 @@ void ArangoServer::openDatabases (bool iterateMarkersOnOpen) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
   }
 
-  bool const isUpgrade = _applicationServer->programOptions().has("upgrade");
-  res = TRI_StartServer(_server, isUpgrade);
+  res = TRI_StartServer(_server, checkVersion, performUpgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+      TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    }
+
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));
   }
 

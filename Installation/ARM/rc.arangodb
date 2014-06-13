@@ -39,11 +39,11 @@ start () {
     fi
 
     if [ "$1" = "--upgrade" ]; then
-      $DAEMON -c $CONF --uid arangodb --gid arangodb $@
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server $@
       RETVAL=$?
       log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --check-version
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --check-version
       RETVAL=$?
 
       if test $RETVAL -eq 0;  then

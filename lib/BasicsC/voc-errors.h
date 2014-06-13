@@ -213,6 +213,8 @@ extern "C" {
 ///   Will be raised when an attempt to create an index has failed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
+/// - 1301: @LIT{server database directory is empty}
+///   Will be raised when encoutering an empty server database directory.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -485,6 +487,25 @@ extern "C" {
 /// - 1910: @LIT{invalid filter result}
 ///   Will be raised when an invalid filter result is returned in a graph
 ///   traversal.
+/// - 1920: @LIT{multi use of edge collection in edge def}
+///   an edge collection may only be used once in one edge definition of a
+///   graph.
+/// - 1921: @LIT{edge collection already used in edge def}
+///    is already used by another graph in a different edge definition.
+/// - 1922: @LIT{missing graph name}
+///   a graph name is required to create a graph.
+/// - 1923: @LIT{malformed edge def}
+///   the edge definition is malformed. It has to be an array of objects.
+/// - 1924: @LIT{graph not found}
+///   a graph with this name could not be found.
+/// - 1925: @LIT{graph already exists}
+///   a graph with this name already exists.
+/// - 1926: @LIT{collection does not exist}
+///    does not exist.
+/// - 1927: @LIT{not a vertex collection}
+///   the collection is not a vertex collection.
+/// - 1928: @LIT{not in orphan collection}
+///   Vertex collection not in orphan collection of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -1451,6 +1472,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_FULL                                    (1300)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1301: ERROR_ARANGO_EMPTY_DATADIR
+///
+/// server database directory is empty
+///
+/// Will be raised when encoutering an empty server database directory.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1400: ERROR_REPLICATION_NO_RESPONSE
@@ -2556,6 +2587,96 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_FILTER_RESULT                             (1910)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1920: ERROR_GRAPH_COLLECTION_MULTI_USE
+///
+/// multi use of edge collection in edge def
+///
+/// an edge collection may only be used once in one edge definition of a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_MULTI_USE                              (1920)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1921: ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS
+///
+/// edge collection already used in edge def
+///
+///  is already used by another graph in a different edge definition.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    (1921)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1922: ERROR_GRAPH_CREATE_MISSING_NAME
+///
+/// missing graph name
+///
+/// a graph name is required to create a graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               (1922)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
+///
+/// malformed edge def
+///
+/// the edge definition is malformed. It has to be an array of objects.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  (1923)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1924: ERROR_GRAPH_NOT_FOUND
+///
+/// graph not found
+///
+/// a graph with this name could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NOT_FOUND                                         (1924)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1925: ERROR_GRAPH_DUPLICATE
+///
+/// graph already exists
+///
+/// a graph with this name already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_DUPLICATE                                         (1925)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
+///
+/// collection does not exist
+///
+///  does not exist.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
+///
+/// not a vertex collection
+///
+/// the collection is not a vertex collection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      (1927)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
+///
+/// not in orphan collection
+///
+/// Vertex collection not in orphan collection of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          (1928)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
