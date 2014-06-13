@@ -209,15 +209,10 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document, 
                                         TRI_voc_fid_t fid,
                                         TRI_voc_size_t maximalSize) {
-  TRI_col_header_marker_t cm;
-  TRI_collection_t* collection;
   TRI_datafile_t* journal;
-  TRI_df_marker_t* position;
   int res;
-
-  collection = document;
-
-  if (collection->_info._isVolatile) {
+      
+  if (document->_info._isVolatile) {
     // in-memory collection
     journal = TRI_CreateDatafile(NULL, fid, maximalSize, true);
   }
@@ -228,7 +223,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 
     number   = TRI_StringUInt64(fid);
     jname    = TRI_Concatenate3String("compaction-", number, ".db");
-    filename = TRI_Concatenate2File(collection->_directory, jname);
+    filename = TRI_Concatenate2File(document->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
@@ -244,12 +239,12 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      collection->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      collection->_state = TRI_COL_STATE_READ;
+      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      document->_state = TRI_COL_STATE_READ;
     }
     else {
-      collection->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-      collection->_state = TRI_COL_STATE_WRITE_ERROR;
+      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+      document->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
     return NULL;
@@ -259,10 +254,11 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 
 
   // create a collection header, still in the temporary file
+  TRI_df_marker_t* position;
   res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, maximalSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
+    document->_lastError = journal->_lastError;
     LOG_ERROR("cannot create document header in compactor '%s': %s", journal->getName(journal), TRI_last_error());
 
     TRI_FreeDatafile(journal);
@@ -271,15 +267,16 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   }
 
 
+  TRI_col_header_marker_t cm;
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
-  cm._type = (TRI_col_type_t) collection->_info._type;
-  cm._cid  = collection->_info._cid;
+  cm._type = (TRI_col_type_t) document->_info._type;
+  cm._cid  = document->_info._cid;
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    collection->_lastError = journal->_lastError;
+    document->_lastError = journal->_lastError;
     LOG_ERROR("cannot create document header in compactor '%s': %s", journal->getName(journal), TRI_last_error());
 
     TRI_FreeDatafile(journal);
@@ -288,6 +285,9 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   }
 
   TRI_ASSERT(fid == journal->_fid);
+  
+  // now create a datafile entry for the compactor file
+  TRI_FindDatafileInfoDocumentCollection(document, fid, true);
 
   return journal;
 }
@@ -302,18 +302,14 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
                                             size_t position,
                                             bool compactor) {
-  TRI_collection_t* collection;
   TRI_vector_pointer_t* vector;
-  int res;
-
-  collection = document;
 
   // either use a journal or a compactor
   if (compactor) {
-    vector = &collection->_compactors;
+    vector = &document->_compactors;
   }
   else {
-    vector = &collection->_journals;
+    vector = &document->_journals;
   }
 
   // no journal at this position
@@ -324,14 +320,14 @@ static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
 
   // seal and rename datafile
   TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(vector->_buffer[position]);
-  res = TRI_SealDatafile(journal);
+  int res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("failed to seal datafile '%s': %s", journal->getName(journal), TRI_last_error());
 
     if (! compactor) {
       TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&collection->_datafiles, journal);
+      TRI_PushBackVectorPointer(&document->_datafiles, journal);
     }
 
     return false;
@@ -346,7 +342,7 @@ static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
 
     number = TRI_StringUInt64(journal->_fid);
     dname = TRI_Concatenate3String("datafile-", number, ".db");
-    filename = TRI_Concatenate2File(collection->_directory, dname);
+    filename = TRI_Concatenate2File(document->_directory, dname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -357,7 +353,7 @@ static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
       LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->getName(journal), filename, TRI_last_error());
 
       TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&collection->_datafiles, journal);
+      TRI_PushBackVectorPointer(&document->_datafiles, journal);
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
       return false;
@@ -370,7 +366,7 @@ static bool CloseJournalDocumentCollection (TRI_document_collection_t* document,
 
   if (! compactor) {
     TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&collection->_datafiles, journal);
+    TRI_PushBackVectorPointer(&document->_datafiles, journal);
   }
 
   return true;
@@ -1044,6 +1040,9 @@ static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state
 static void TrackDeadMarker (TRI_df_marker_t const* marker,
                              TRI_datafile_t const* datafile,
                              open_iterator_state_t* state) {
+  // TODO: decide whether we can get rid of old transaction markers or not
+  return;
+  /*
   if (state->_fid != datafile->_fid) {
     TRI_document_collection_t* document = state->_document; 
 
@@ -1055,6 +1054,7 @@ static void TrackDeadMarker (TRI_df_marker_t const* marker,
     state->_dfi->_numberDead++;
     state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
   }
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1755,7 +1755,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
     document->_tickMax = tick;
   }
 
-
   return (res == TRI_ERROR_NO_ERROR);
 }
 
@@ -2433,6 +2432,9 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
   }
 
   TRI_PushBackVectorPointer(&document->_journals, journal);
+  
+  // now create a datafile entry for the new journal
+  TRI_FindDatafileInfoDocumentCollection(document, fid, true);
 
   return journal;
 }
@@ -5192,7 +5194,6 @@ static bool IsExampleMatch (TRI_transaction_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
-
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           TRI_transaction_collection_t* trxCollection,
