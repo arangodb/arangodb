@@ -39,7 +39,7 @@ namespace triagens {
         if (status == StatusType::HANDLED) {
           if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
             TRI_document_collection_t* document = trxCollection->_collection->_collection;
-            document->_headersPtr->release(document->_headersPtr, header, false);  // PROTECTED by trx in trxCollection
+            document->_headersPtr->release(header, false);  // PROTECTED by trx in trxCollection
           }
         }
         else if (status != StatusType::SWAPPED) {
@@ -91,11 +91,11 @@ namespace triagens {
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // move header to the end of the list
-          document->_headersPtr->moveBack(document->_headersPtr, header, &oldHeader);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->moveBack(header, &oldHeader);  // PROTECTED by trx in trxCollection
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           // unlink the header
-          document->_headersPtr->unlink(document->_headersPtr, header);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->unlink(header);  // PROTECTED by trx in trxCollection
           document->_numberDocuments--;
         }
  
@@ -116,14 +116,14 @@ namespace triagens {
         }
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-          document->_headersPtr->release(document->_headersPtr, header, true);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->release(header, true);  // PROTECTED by trx in trxCollection
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-          document->_headersPtr->move(document->_headersPtr, header, &oldHeader);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx in trxCollection
           header->copy(oldHeader); 
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          document->_headersPtr->relink(document->_headersPtr, header, &oldHeader); // PROTECTED by trx in trxCollection
+          document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx in trxCollection
         }
 
         status = StatusType::SWAPPED;

@@ -610,7 +610,7 @@ namespace triagens {
 
           if (offset >= 0) {
             // read from front
-            doc = document->_headersPtr->front(document->_headersPtr);  // PROTECTED by trx in trxCollection
+            doc = document->_headersPtr->front();  // PROTECTED by trx in trxCollection
             int64_t i = 0;
 
             while (doc != nullptr && i < offset) {
@@ -627,7 +627,7 @@ namespace triagens {
           }
           else {
             // read from back
-            doc = document->_headersPtr->back(document->_headersPtr);  // PROTECTED by trx in trxCollection
+            doc = document->_headersPtr->back();  // PROTECTED by trx in trxCollection
             int64_t i = -1;
 
             while (doc != nullptr && i > offset) {
