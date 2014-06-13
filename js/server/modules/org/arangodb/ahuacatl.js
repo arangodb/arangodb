@@ -3771,6 +3771,29 @@ function MERGE_RECURSIVE () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a value, using a lookup document
+////////////////////////////////////////////////////////////////////////////////
+
+function TRANSLATE (value, lookup, defaultValue) {
+  "use strict";
+
+  if (defaultValue === undefined) {
+    defaultValue = value;
+  }
+
+  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRANSLATE");
+  }
+
+  var key = String(value);
+  if (lookup.hasOwnProperty(key)) {
+    return lookup[key];
+  }
+
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare an object against a list of examples and return whether the
 /// object matches any of the examples. returns the example index or a bool,
 /// depending on the value of the control flag (3rd) parameter
@@ -7060,6 +7083,7 @@ exports.UNSET = UNSET;
 exports.KEEP = KEEP;
 exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
+exports.TRANSLATE = TRANSLATE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;
