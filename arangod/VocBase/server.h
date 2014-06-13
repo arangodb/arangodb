@@ -305,6 +305,18 @@ bool TRI_MSync (int,
                 char const*,
                 char const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the current operation mode of the server
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ChangeOperationModeServer (TRI_vocbase_operationmode_e);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current operation mode of the server
+////////////////////////////////////////////////////////////////////////////////
+ 
+TRI_vocbase_operationmode_e TRI_GetOperationModeServer ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

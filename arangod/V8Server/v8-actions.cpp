@@ -398,6 +398,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   serverArray->Set(v8g->AddressKey, v8::String::New(info.serverAddress.c_str(), (int) info.serverAddress.size()));
   serverArray->Set(v8g->PortKey, v8::Number::New(info.serverPort));
   req->Set(v8g->ServerKey, serverArray);
+  req->Set(v8g->PortTypeKey, v8::String::New(info.portType().c_str()), static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
 
   v8::Handle<v8::Object> clientArray = v8::Object::New();
   clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), (int) info.clientAddress.size()));

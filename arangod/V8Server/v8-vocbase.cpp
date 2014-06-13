@@ -1359,7 +1359,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   TRI_ASSERT(TRI_IsStringJson(value));
 
   TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
- 
+
   // extract unique
   bool unique = false;
   value = TRI_LookupArrayJson(json, "unique");
@@ -1426,10 +1426,18 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     TRI_DestroyVectorPointer(&attributes);
     TRI_V8_EXCEPTION(scope, res);
   }
+  
 
   TRI_document_collection_t* document = trx.documentCollection();
   const string collectionName = string(collection->_name);
-
+  
+  // disallow index creation in read-only mode
+  if (! TRI_IsSystemNameCollection(collectionName.c_str()) &&
+      create && 
+      TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
+  } 
+ 
   bool created = false;
   TRI_index_t* idx = 0;
 
@@ -3163,6 +3171,11 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   if (argv.Length() < 1 || argv.Length() > 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }
+
+  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
+  } 
+
 
   PREVENT_EMBEDDED_TRANSACTION(scope); 
 
@@ -7769,6 +7782,73 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the operation mode of the server
+/// @startDocuBlock TODO
+/// `db._changeMode(<mode>)`
+///
+/// Sets the sever to the given mode.
+/// Possible parameters for mode are:
+/// - Normal
+/// - ReadOnly
+///
+/// `db._changeMode(<mode>)`
+///
+/// *Examples*
+///
+/// db._changeMode("Normal") every user can do all CRUD operations
+/// db._changeMode("ReadOnly") the user cannot create databases, indexes,
+///                            and collections, and cannot carry out any
+///                            data-modifying operations but dropping databases,
+///                            indexes and collections.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ChangeOperationModeVocbase (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+   
+  bool allowModeChange = false;
+  if (v8g->_currentRequest.IsEmpty()|| v8g->_currentRequest->IsUndefined()) {
+    // console mode
+    allowModeChange = true;
+  }
+  else if (v8g->_currentRequest->IsObject()) {
+    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(v8g->_currentRequest);
+
+    if (obj->Has(v8g->PortTypeKey)) {
+      string const portType = TRI_ObjectToString(obj->Get(v8g->PortTypeKey));
+      if (portType == "unix") {
+        allowModeChange = true;
+      }
+    }
+  }
+
+  if (! allowModeChange) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
+  }
+
+  // expecting one argument
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "_changeMode(<mode>), with modes: 'Normal', 'ReadOnly'");
+  }
+
+  string const newModeStr = TRI_ObjectToString(argv[0]);
+
+  TRI_vocbase_operationmode_e newMode = TRI_VOCBASE_MODE_NORMAL;
+   
+  if (newModeStr == "ReadOnly") {
+    newMode = TRI_VOCBASE_MODE_READONLY;
+  } 
+  else if (newModeStr != "Normal") {
+    TRI_V8_EXCEPTION_USAGE(scope, "illegal mode, allowed modes are: 'Normal' and 'ReadOnly'");
+  }
+
+  TRI_ChangeOperationModeServer(newMode);
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieves a collection from a V8 argument
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -7961,6 +8041,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   TRI_DestroyVectorString(&names);
 
   // add function names. these are hard coded
+  result->Set(j++, v8::String::New("_changeMode()"));
   result->Set(j++, v8::String::New("_collection()"));
   result->Set(j++, v8::String::New("_collections()"));
   result->Set(j++, v8::String::New("_create()"));
@@ -8851,6 +8932,10 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   if (vocbase == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  
+  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
+  } 
 
   if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
@@ -9874,6 +9959,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion
+  TRI_AddMethodVocbase(rt, "_changeMode", JS_ChangeOperationModeVocbase);
   TRI_AddMethodVocbase(rt, "_collection", JS_CollectionVocbase);
   TRI_AddMethodVocbase(rt, "_collections", JS_CollectionsVocbase);
   TRI_AddMethodVocbase(rt, "_COMPLETIONS", JS_CompletionsVocbase, true);
