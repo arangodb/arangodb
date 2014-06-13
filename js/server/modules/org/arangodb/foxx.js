@@ -38,7 +38,7 @@ exports.Controller = Controller;
 exports.Model = Model;
 exports.Repository = Repository;
 exports.requireApp = function (path) {
-  "use strict";
+  'use strict';
   return manager.mountedApp(arangodb.normalizeURL('/' + path));
 };
 

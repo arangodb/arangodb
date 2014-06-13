@@ -41,7 +41,7 @@ var RequestContext,
   addCheck;
 
 var elementExtractFactory = function (paramName, rootElement) {
-  "use strict";
+  'use strict';
   var extractElement;
 
   if (rootElement) {
