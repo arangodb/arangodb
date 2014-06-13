@@ -115,6 +115,12 @@ Controller = function (context, options) {
 
   context.foxxes.push(this);
 
+  if (is.existy(context.manifest.rootElement)) {
+    this.rootElement =context.manifest.rootElement;
+  } else {
+    this.rootElement = false;
+  }
+
   this.applicationContext = context;
 };
 
@@ -123,22 +129,8 @@ extend(Controller.prototype, {
 
   collection: function (name) {
     'use strict';
-    var collection, cname, prefix;
-    prefix = this.collectionPrefix;
-
-    if (prefix === "") {
-      cname = name;
-    } else {
-      cname = prefix + "_" + name;
-    }
-    cname = cname.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
-
-    collection = db._collection(cname);
-
-    if (!collection) {
-      throw new Error("collection with name '" + cname + "' does not exist.");
-    }
-    return collection;
+    require('console').log('Controller#collection is deprecated, use appContext#collection instead');
+    return this.applicationContext.collection(name);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +148,7 @@ extend(Controller.prototype, {
   handleRequest: function (method, route, callback) {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback),
-      requestContext = new RequestContext(this.allRoutes, this.models, newRoute),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement),
       summary;
 
     this.routingInfo.routes.push(newRoute);
@@ -294,7 +286,7 @@ extend(Controller.prototype, {
 ///
 /// This handles requests from the HTTP verb `delete`.  See above for the
 /// arguments you can give.
-/// 
+///
 /// @warning Do not forget that `delete` is a reserved word in JavaScript and
 /// therefore needs to be called as app['delete']. There is also an alias `del`
 /// for this very reason.

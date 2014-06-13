@@ -102,7 +102,7 @@ function checkManifest (filename, mf) {
     // add a default (empty) description
     mf.description = "";
   }
-  
+
   if (mf.hasOwnProperty("apps")) {
     console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
                  "Please change the attribute name to 'controllers'.", filename);
@@ -121,7 +121,7 @@ function checkManifest (filename, mf) {
     "assets":             [ false, "object" ],
     "author":             [ false, "string" ],
     "contributors":       [ false, "array" ],
-    "controllers":        [ true, "object" ],
+    "controllers":        [ false, "object" ],
     "defaultDocument":    [ false, "string" ],
     "description":        [ true, "string" ],
     "engines":            [ false, "object" ],
@@ -136,6 +136,7 @@ function checkManifest (filename, mf) {
     "teardown":           [ false, "string" ],
     "thumbnail":          [ false, "string" ],
     "version":            [ true, "string" ],
+    "rootElement":        [ false, "boolean" ],
     "exports":            [ false, "object" ]
   };
 
@@ -148,8 +149,8 @@ function checkManifest (filename, mf) {
         var actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
 
         if (actualType !== expectedType) {
-          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'", 
-                        filename, 
+          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
+                        filename,
                         actualType,
                         expectedType,
                         att);
@@ -160,8 +161,8 @@ function checkManifest (filename, mf) {
         // attribute not present in manifest
         if (expected[att][0]) {
           // required attribute
-          console.error("Manifest '%s' does not provide required attribute '%s'", 
-                        filename, 
+          console.error("Manifest '%s' does not provide required attribute '%s'",
+                        filename,
                         att);
 
           failed = true;
@@ -169,7 +170,7 @@ function checkManifest (filename, mf) {
       }
     }
   }
-  
+
   if (failed) {
     throw new Error("Manifest '%s' is invalid/incompatible. Please check the error logs.");
   }
@@ -178,8 +179,8 @@ function checkManifest (filename, mf) {
   for (att in mf) {
     if (mf.hasOwnProperty(att)) {
       if (! expected.hasOwnProperty(att)) {
-        console.warn("Manifest '%s' contains an unknown attribute '%s'", 
-                      filename, 
+        console.warn("Manifest '%s' contains an unknown attribute '%s'",
+                      filename,
                       att);
       }
     }
@@ -206,6 +207,10 @@ function extendContext (context, app, root) {
     }
 
     return replaced;
+  };
+
+  context.collection = function (name) {
+    return arangodb.db._collection(this.collectionName(name));
   };
 
   context.path = function (name) {
@@ -279,7 +284,7 @@ function buildAssetContent (app, assets, basePath) {
 
   var excludeFile = function (name) {
     var parts = name.split('/');
-        
+
     if (parts.length > 0) {
       var last = parts[parts.length - 1];
 
@@ -303,8 +308,8 @@ function buildAssetContent (app, assets, basePath) {
 
     if (match !== null) {
       m = fs.listTree(fs.join(basePath, match[1]));
-  
-      // files are sorted in file-system order. 
+
+      // files are sorted in file-system order.
       // this makes the order non-portable
       // we'll be sorting the files now using JS sort
       // so the order is more consistent across multiple platforms
@@ -312,7 +317,7 @@ function buildAssetContent (app, assets, basePath) {
 
       for (i = 0; i < m.length; ++i) {
         var filename = fs.join(basePath, match[1], m[i]);
-        
+
         if (! excludeFile(m[i])) {
           if (fs.isFile(filename)) {
             files.push(filename);
@@ -322,7 +327,7 @@ function buildAssetContent (app, assets, basePath) {
     }
     else {
       match = reAll.exec(asset);
-        
+
       if (match !== null) {
         throw new Error("Not implemented");
       }
@@ -367,7 +372,7 @@ function buildFileAsset (app, path, basePath, asset) {
     type = asset.contentType;
   }
 
-  // path contains a dot, derive content type from path 
+  // path contains a dot, derive content type from path
   else if (path.match(/\.[a-zA-Z0-9]+$/)) {
     type = arangodb.guessContentType(path);
   }
@@ -399,7 +404,7 @@ function buildDevelopmentAssetRoute (app, path, basePath, asset) {
 
   return {
     url: { match: path },
-    action: { 
+    action: {
       callback: function (req, res) {
         var c = buildFileAsset(app, path, basePath, asset);
 
@@ -495,7 +500,7 @@ function installAssets (app, routes) {
 
 function executeAppScript (app, name, mount, prefix) {
   var desc = app._manifest;
-  
+
   if (! desc) {
     throw new Error("Invalid application manifest, app " + arangodb.inspect(app));
   }
@@ -527,6 +532,7 @@ function executeAppScript (app, name, mount, prefix) {
 
     appContext.isDevelopment = devel;
     appContext.isProduction = ! devel;
+    appContext.manifest = app._manifest;
 
     extendContext(appContext, app, root);
 
@@ -557,10 +563,10 @@ function teardownApp (app, mount, prefix) {
 
 function upsertAalAppEntry (manifest, thumbnail, path) {
   var aal = getStorage();
-  var doc = aal.firstExample({ 
-    type: "app", 
-    name: manifest.name, 
-    version: manifest.version 
+  var doc = aal.firstExample({
+    type: "app",
+    name: manifest.name,
+    version: manifest.version
   });
 
   if (doc === null) {
@@ -610,7 +616,7 @@ function mountAalApp (app, mount, options) {
   var find = aal.firstExample({ type: "mount", mount: mount, active: true });
 
   if (find !== null) {
-    throw new Error("Cannot use mount path '" + mount + "', already used by '" 
+    throw new Error("Cannot use mount path '" + mount + "', already used by '"
                     + find.app + "' (" + find._key + ")");
   }
 
@@ -747,6 +753,8 @@ function routingAalApp (app, mount, options) {
     appContextTempl.isDevelopment = devel;
     appContextTempl.isProduction = ! devel;
 
+    appContextTempl.manifest = app._manifest;
+
     var appContext;
     var file;
 
@@ -815,13 +823,13 @@ function routingAalApp (app, mount, options) {
 
               for (j = 0;  j < rt.length;  ++j) {
                 route = rt[j];
-                
+
                 if (route.hasOwnProperty("url")) {
                   route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
                 }
 
                 route.context = i;
-                
+
                 routes[key].push(route);
               }
             }
@@ -910,16 +918,16 @@ function scanDirectory (path) {
 
 exports.scanAppDirectory = function () {
   'use strict';
-  
+
   var aal = getStorage();
 
   // remove all loaded apps first
   aal.removeByExample({ type: "app" });
 
   // now re-scan, starting with system apps
-  scanDirectory(module.systemAppPath()); 
+  scanDirectory(module.systemAppPath());
   // now scan database-specific apps
-  scanDirectory(module.appPath()); 
+  scanDirectory(module.appPath());
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1214,7 +1222,7 @@ exports.devSetup = function (filename) {
 
   var root = module.devAppPath();
   var m = fs.join(root, filename, "manifest.json");
-  
+
   if (fs.exists(m)) {
     try {
       var mf = JSON.parse(fs.read(m));
@@ -1262,7 +1270,7 @@ exports.devTeardown = function (filename) {
 
   var root = module.devAppPath();
   var m = fs.join(root, filename, "manifest.json");
-  
+
   if (fs.exists(m)) {
     try {
       var mf = JSON.parse(fs.read(m));
@@ -1296,7 +1304,7 @@ exports.devTeardown = function (filename) {
 
 exports.appRoutes = function () {
   'use strict';
-  
+
   var aal = getStorage();
 
   return arangodb.db._executeTransaction({
@@ -1327,7 +1335,7 @@ exports.appRoutes = function () {
           var r = routingAalApp(app, mount, options);
 
           if (r === null) {
-            throw new Error("Cannot compute the routing table for Foxx application '" 
+            throw new Error("Cannot compute the routing table for Foxx application '"
                             + app._id + "', check the log file for errors!");
           }
 
@@ -1367,7 +1375,7 @@ exports.developmentRoutes = function () {
     if (fs.exists(m)) {
       try {
         var mf = JSON.parse(fs.read(m));
-      
+
         checkManifest(m, mf);
 
         var appId = "dev:" + mf.name + ":" + files[j];
@@ -1387,7 +1395,7 @@ exports.developmentRoutes = function () {
         var r = routingAalApp(app, mount, options);
 
         if (r === null) {
-          throw new Error("Cannot compute the routing table for Foxx application '" 
+          throw new Error("Cannot compute the routing table for Foxx application '"
                           + app._id + "', check the log file for errors!");
         }
 

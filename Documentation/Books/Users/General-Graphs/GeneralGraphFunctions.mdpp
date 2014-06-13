@@ -78,7 +78,23 @@ alternative call:
   _key: "123"
 };
 ```
+!SUBSECTION Orphan Collections
 
+Each graph has an orphan collection. It consists of arbitrary many vertex collection (type *document*), that are not
+used in an edge definition of the graph. If the graph is extended with an edge definition, which is part of the orphan
+collection, it will be removed from the orphan collection automatically.
+
+!SUBSUBSECTION Add
+
+<!-- @startDocuBlock JSF_general_graph__addOrphanCollection -->
+
+!SUBSUBSECTION Read
+
+<!-- @startDocuBlock JSF_general_graph__getOrphanCollections -->
+
+!SUBSUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph__removeOrphanCollection -->
 
 !SUBSECTION Read a graph
 
