@@ -1,0 +1,136 @@
+!CHAPTER The Manifest File
+
+In the *manifest.json* you define the components of your application. 
+The content is a JSON object with the following attributes (not all 
+attributes are required though):
+
+* *assets*: Deliver pre-processed files
+* *author*: The author name
+* *contributors*: An array containing objects, each represents a contributor (with *name* and optional *email*)
+* *controllers*: Map routes to FoxxControllers
+* *defaultDocument*: The default document when the applicated root (*/*) is called (defaults to *index.html*)
+* *description*: A short description of the application (Meta information)
+* *engines*: Should be an object with *arangodb* set to the ArangoDB version your Foxx app is compatible with.
+* *files*: Deliver files
+* *isSystem*: Mark an application as a system application
+* *keywords*: An array of keywords to help people find your Foxx app
+* *lib*: Base path for all required modules
+* *license*: Short form of the license (MIT, GPL...)
+* *name*: Name of the application (Meta information)
+* *repository*: An object with information about where you can find the repository: *type* and *url*
+* *setup*: Path to a setup script
+* *teardown*: Path to a teardown script
+* *thumbnail*: Path to a thumbnail that represents the application (Meta information)
+* *version*: Current version of the application (Meta information)
+
+If you install an application using the Foxx manager or are using the
+development mode, your manifest will be checked for completeness and common errors.
+You should have a look at the server log files after changing a manifest file to 
+get informed about potential errors in the manifest.
+
+A more complete example for a Manifest file:
+
+    {
+      "name": "my_website",
+      "version": "1.2.1",
+      "description": "My Website with a blog and a shop",
+      "thumnail": "images/website-logo.png",
+
+      "controllers": {
+        "/blog": "apps/blog.js",
+        "/shop": "apps/shop.js"
+      },
+
+      "lib": "lib",
+
+      "files": {
+        "/images": "images"
+      },
+
+      "assets": {
+        "application.js": {
+          "files": [
+            "vendor/jquery.js",
+            "assets/javascripts/*"
+          ]
+        }
+      },
+
+      "setup": "scripts/setup.js",
+      "teardown": "scripts/teardown.js"
+    }
+
+!SUBSECTION The setup and teardown scripts
+
+You can provide a path to a JavaScript file that prepares ArangoDB for your
+application (or respectively removes it entirely). These scripts have access to
+*appCollection* and *appCollectionName*. Use the *setup* script to create all
+collections your application needs and fill them with initial data if you want
+to. Use the *teardown* script to remove all collections you have created.
+
+Note: the setup script is called on each request in the development mode.
+If your application needs to set up specific collections, you should always 
+check in the setup script whether they are already there.
+
+The teardown script is called when an application is uninstalled. It is good
+practice to drop any collections in the teardown script that the application used 
+exclusively, but this is not enforced. Maybe there are reasons to keep application
+data even after removing an application. It's up to you to decide what to do.
+
+!SUBSECTION controllers is an object that matches routes to files
+
+* The *key* is the route you want to mount at
+
+* The *value* is the path to the JavaScript file containing the
+  *FoxxController* you want to mount
+
+You can add multiple controllers in one manifest this way.
+
+!SUBSECTIONThe files
+
+Deliver all files in a certain folder without modifying them. You can deliver 
+text files as well as binaries:
+
+    "files": {
+      "/images": "images"
+    }
+
+!SUBSECTION The assets
+
+The value for the asset key is an object consisting of paths that are matched 
+to the files they are composed of. Let's take the following example:
+
+  "assets": {
+    "application.js": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ]
+    }
+  }
+
+If a request is made to */application.js* (in development mode), the file 
+array provided will be processed one element at a time. The elements are 
+paths to files (with the option to use wildcards). The files will be 
+concatenated and delivered as a single file.
+
+The content-type (or mime type) of the HTTP response when requesting 
+*application.js* is automatically determined by looking at the filename 
+extension in the asset name (*application.js* in the above example). 
+If the asset does not have a filename extension, the content-type is 
+determined by looking at the filename extension of the first file in the 
+*files* list. If no file extension can be determined, the asset will be
+deliverd with a content-type of *text/plain*.
+
+It is possible to explicitly override the content-type for an asset by
+setting the optional *contentType* attribute of an asset as follows:
+
+  "assets": {
+    "myincludes": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ],
+      "contentType": "text/javascript"
+    }
+  }

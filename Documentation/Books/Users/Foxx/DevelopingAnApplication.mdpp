@@ -1,4 +1,4 @@
-!CHAPTER Iteratively Developing an Application
+!CHAPTER Developing an Application
 
 
 While developing a Foxx application, it is recommended to use the development
@@ -10,7 +10,7 @@ recommended to use the development mode in production.
 During development it is often necessary to log some debug output. ArangoDB
 provides a few mechanisms for this:
 
-- using *console.log*:
+* using *console.log*:
   ArangoDB provides the *console* module, which you can use from within your
   Foxx application like this:
         
@@ -21,14 +21,14 @@ provides a few mechanisms for this:
   ArangoDB's logfile using a *tail -f* command or something similar.
   Please refer to @ref JSModuleConsole for details.
 
-- using *internal.print*:
+* using *internal.print*:
   The *print* method of the *internal* module writes data to the standard
   output of the ArangoDB server process. If you have start ArangoDB manually
   and do not run it as an (unattended) daemon, this is a convenient method:
 
       require("internal").print(value);
 
-- tapping requests / responses:
+* tapping requests / responses:
   Foxx allows to tap incoming requests and outgoing responses using the *before*
   and *after* hooks. To print all incoming requests to the stdout of the ArangoDB
   server process, you could use some code like this in your controller:
@@ -38,4 +38,28 @@ provides a few mechanisms for this:
       });
 
   Of course you can also use *console.log* or any other means of logging output.
+
+!SUBSECTION Development Mode
+
+If you start ArangoDB with the option *--javascript.dev-app-path* followed by 
+the path to a directory containing a manifest file and the path to the 
+database, you are starting ArangoDB in development mode with the application 
+loaded. This means that on every request:
+
+1. All routes are dropped
+2. All module caches are flushed
+3. Your manifest file is read
+4. All files in your lib folder are loaded
+5. An app in DIRNAME is mounted at */dev/DIRNAME*
+6. The request will be processed
+
+This means that you do not have to restart ArangoDB if you change anything 
+in your app. It is of course not meant for production, because the reloading 
+makes the app relatively slow.
+
+!SUBSECTION Production Mode
+
+To run a Foxx app in production first copy your app code to the directory given in 
+the config variable *--javascript.app-path*. After that use Foxx manager to mount the app.
+You can also use Foxx manager to find out your current app-path.
 
