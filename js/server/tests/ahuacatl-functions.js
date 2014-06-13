@@ -1562,6 +1562,131 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test translate function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTranslate1 : function () {
+      var tests = [
+        { value: "foo", lookup: { }, expected: "foo" },
+        { value: "foo", lookup: { foo: "bar" }, expected: "bar" },
+        { value: "foo", lookup: { bar: "foo" }, expected: "foo" },
+        { value: 1, lookup: { 1: "one", 2: "two" }, expected: "one" },
+        { value: 1, lookup: { "1": "one", "2": "two" }, expected: "one" },
+        { value: "1", lookup: { 1: "one", 2: "two" }, expected: "one" },
+        { value: "1", lookup: { "1": "one", "2": "two" }, expected: "one" },
+        { value: null, lookup: { foo: "bar", bar: "foo" }, expected: null },
+        { value: "foobar", lookup: { foo: "bar", bar: "foo" }, expected: "foobar" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: "replaced!" }, expected: "replaced!" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: null }, expected: null },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: [ 1, 2, 3 ] }, expected: [ 1, 2, 3 ] },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: { thefoxx: "is great" } }, expected: { thefoxx: "is great" } },
+        { value: "one", lookup: { one: "two", two: "three", three: "four" }, expected: "two" },
+        { value: null, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: null },
+        { value: false, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: false },
+        { value: 0, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: 0 },
+        { value: "", lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: "" },
+        { value: "CGN", lookup: { "DUS" : "Duessldorf", "FRA" : "Frankfurt", "CGN" : "Cologne" }, expected: "Cologne" }
+      ];
+
+      tests.forEach(function(t) {
+        var actual = getQueryResults("RETURN TRANSLATE(@value, @lookup)", { value: t.value, lookup: t.lookup });
+        assertEqual(t.expected, actual[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test translate function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTranslate2 : function () {
+      var i, lookup = { };
+      for (i = 0; i < 100; ++i) {
+        lookup["test" + i] = "the quick brown Foxx:" + i;
+      }
+
+      for (i = 0; i < 100; ++i) {
+        var actual = getQueryResults("RETURN TRANSLATE(@value, @lookup)", { value: "test" + i, lookup: lookup });
+        assertEqual(lookup["test" + i], actual[0]);
+        assertEqual("the quick brown Foxx:" + i, actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test translate function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTranslate3 : function () {
+      var i, lookup = { };
+      for (i = 0; i < 100; ++i) {
+        lookup[i] = i * i;
+      }
+
+      for (i = 0; i < 100; ++i) {
+        var actual = getQueryResults("RETURN TRANSLATE(@value, @lookup, @def)", { value: i, lookup: lookup, def: "fail!" });
+        assertEqual(lookup[i], actual[0]);
+        assertEqual(i * i, actual[0]);
+        
+        actual = getQueryResults("RETURN TRANSLATE(@value, @lookup, @def)", { value: "test" + i, lookup: lookup, def: "fail" + i });
+        assertEqual("fail" + i, actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test translate function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testTranslateDefault : function () {
+      var tests = [
+        { value: "foo", lookup: { }, expected: "bar", def: "bar" },
+        { value: "foo", lookup: { foo: "bar" }, expected: "bar", def: "lol" },
+        { value: "foo", lookup: { bar: "foo" }, expected: "lol", def: "lol" },
+        { value: 1, lookup: { 1: "one", 2: "two" }, expected: "one", def: "foobar" },
+        { value: 1, lookup: { "1": "one", "2": "two" }, expected: "one", def: "test" },
+        { value: 1, lookup: { "3": "one", "2": "two" }, expected: "test", def: "test" },
+        { value: "1", lookup: { 1: "one", 2: "two" }, expected: "one", def: "test" },
+        { value: "1", lookup: { 3: "one", 2: "two" }, expected: "test", def: "test" },
+        { value: "1", lookup: { "1": "one", "2": "two" }, expected: "one", def: "test" },
+        { value: "1", lookup: { "3": "one", "2": "two" }, expected: "test", def: "test" },
+        { value: null, lookup: { foo: "bar", bar: "foo" }, expected: 1, def: 1 },
+        { value: null, lookup: { foo: "bar", bar: "foo" }, expected: "foobar", def: "foobar" },
+        { value: "foobar", lookup: { foo: "bar", bar: "foo" }, expected: "foobart", def: "foobart" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: "replaced!" }, expected: "replaced!", def: "foobart" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: null }, expected: null, def: "foobaz" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: [ 1, 2, 3 ] }, expected: [ 1, 2, 3 ], def: null },
+        { value: "foobaz", lookup: { foobar: "bar" }, expected: null, def: null },
+        { value: "foobaz", lookup: { }, expected: "FOXX", def: "FOXX" },
+        { value: "foobaz", lookup: { foobar: "bar", foobaz: { thefoxx: "is great" } }, expected: { thefoxx: "is great" }, def: null },
+        { value: "one", lookup: { one: "two", two: "three", three: "four" }, expected: "two", def: "foo" },
+        { value: null, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: "bla", def: "bla" },
+        { value: false, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: true, def: true },
+        { value: 0, lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: 42, def: 42 },
+        { value: "", lookup: { "foo": "one", " ": "bar", "empty": 3 }, expected: "three", def: "three" },
+        { value: "CGN", lookup: { "DUS" : "Duessldorf", "FRA" : "Frankfurt", "MUC" : "Munich" }, expected: "Cologne", def: "Cologne" }
+      ];
+
+      tests.forEach(function(t) {
+        var actual = getQueryResults("RETURN TRANSLATE(@value, @lookup, @def)", { value: t.value, lookup: t.lookup, def: t.def });
+        assertEqual(t.expected, actual[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge_recursive function
+////////////////////////////////////////////////////////////////////////////////
+
+    testTranslateInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRANSLATE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRANSLATE('foo')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRANSLATE('foo', { }, '', 'baz')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE({ }, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE('', null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE('', true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE('', 1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE('', '')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN TRANSLATE('', [])"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test union function
 ////////////////////////////////////////////////////////////////////////////////
     
