@@ -5252,8 +5252,7 @@ int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
     size_t const n = document->_journals._length;
 
     if (n > 0) {
-      TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(document->_journals._buffer[0]);
-      TRI_ASSERT(datafile != nullptr);
+      TRI_ASSERT(document->_journals._buffer[0] != nullptr);
       TRI_CloseJournalDocumentCollection(document, 0);
 
       res = TRI_ERROR_NO_ERROR;
