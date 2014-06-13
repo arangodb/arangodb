@@ -36,11 +36,11 @@
     actions = require("org/arangodb/actions"),
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
+    _ = require("underscore"),
     errors = require("internal").errors,
     toId = function(c, k) {
       return c + "/" + k;
     },
-    _ = require("underscore"),
     setResponse = function (res, name, body, code) {
       var obj = {};
       obj.error = false;
@@ -60,9 +60,271 @@
       code = code || actions.HTTP_OK;
       setResponse(res, "graph", {
         name: g.__name,
-        edgeDefinitions: g.__edgeDefinitions
+        edgeDefinitions: g.__edgeDefinitions,
+        orphanCollections: g._getOrphanCollections()
       }, code);
     };
+
+////////////////////// Graph Creation /////////////////////////////////
+
+  /** List graphs
+   *
+   * Creates a list of all available graphs.
+   */
+  controller.get("/", function(req, res) {
+    setResponse(res, "graphs", Graph._list());
+  });
+
+  /** Creates a new graph
+   *
+   * Creates a new graph object
+   */
+  controller.post("/", function(req, res) {
+    var infos = req.params("graph");
+    var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
+    setGraphResponse(res, g, actions.HTTP_CREATED);
+  }).errorResponse(
+    ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
+      return {
+        code: actions.HTTP_CONFLICT,
+        error: e.errorMessage
+      };
+    }
+  ).bodyParam("graph", "The required information for a graph", Model);
+
+  /** Drops an existing graph
+   *
+   * Drops an existing graph object by name.
+   * By default all collections not used by other graphs will be dropped as
+   * well. It can be optionally configured to not drop the collections.
+   */
+  controller.del("/:graph", function(req, res) {
+    var name = req.params("graph");
+    Graph._drop(name);
+    setResponse(res);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+/////////////////////// Definitions ////////////////////////////////////
+
+  /** List all vertex collections.
+   *
+   * Gets the list of all vertex collections.
+   */
+  controller.get("/:graph/vertex", function(req, res) {
+    var name = req.params("graph");
+    var g = Graph._graph(name);
+    setResponse(res, "collections", _.map(g._vertexCollections(), function(c) {
+      return c.name();
+    }));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Create a new vertex collection.
+   *
+   * Stores a new vertex collection.
+   * This has to contain the vertex-collection name.
+   */
+  controller.post("/:graph/vertex", function(req, res) {
+    var name = req.params("graph");
+    var body = req.params("collection");
+    var g = Graph._graph(name);
+    g._addOrphanCollection(body.get("collection"));
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .bodyParam(
+    "collection", "The vertex collection to be stored.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD, "The vertex collection is invalid.", function(e) {
+      return {
+        code: actions.HTTP_BAD,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Delete a vertex collection.
+   *
+   * Removes a vertex collection from this graph.
+   * If this collection is used in one or more edge definitions 
+   * All data stored in the collection is dropped as well as long
+   * as it is not used in other graphs.
+   */
+  controller.del("/:graph/vertex/:collection", function(req, res) {
+    var name = req.params("graph");
+    var def_name = req.params("collection");
+    var g = Graph._graph(name);
+    g._removeOrphanCollection(def_name);
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("collection", {
+    type: "string",
+    description: "Name of the vertex collection."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND,
+    "The collection is not found or part of an edge definition."
+  );
+
+  /** List all edge collections.
+   *
+   * Get the list of all edge collection.
+   */
+  controller.get("/:graph/edge", function(req, res) {
+    var name = req.params("graph");
+    var g = Graph._graph(name);
+    setResponse(res, "collections", _.map(g._edgeCollections(), function(c) {
+      return c.name();
+    }));
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Create a new edge definition.
+   *
+   * Stores a new edge definition with the information contained
+   * within the body.
+   * This has to contain the edge-collection name, as well as set of from and to
+   * collections-names respectively. 
+   */
+  controller.post("/:graph/edge", function(req, res) {
+    var name = req.params("graph");
+    var body = req.params("edgeDefinition");
+    var g = Graph._graph(name);
+    g._extendEdgeDefinitions(body.forDB());
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .bodyParam(
+    "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
+      return {
+        code: actions.HTTP_BAD,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Replace an edge definition.
+   *
+   * Replaces an existing edge definition with the information contained
+   * within the body.
+   * This has to contain the edge-collection name, as well as set of from and to
+   * collections-names respectively.
+   * This will also change the edge definitions of all other graphs using this
+   * definition as well.
+   */
+  controller.put("/:graph/edge/:definition", function(req, res) {
+    var name = req.params("graph");
+    var def_name = req.params("definition");
+    var body = req.params("edgeDefinition");
+    var g = Graph._graph(name);
+    if (def_name !== body.get("collection")) {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
+      err.errorMessage = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
+      throw err;
+    }
+    g._editEdgeDefinitions(body.forDB());
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("definition", {
+    type: "string",
+    description: "Name of the edge collection in the definition."
+  })
+  .bodyParam(
+    "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
+      return {
+        code: actions.HTTP_BAD,
+        error: e.errorMessage
+      };
+    }
+  );
+
+  /** Delete an edge definition.
+   *
+   * Removes an existing edge definition from this graph.
+   * All data stored in the collections is dropped as well as long
+   * as it is not used in other graphs.
+   */
+  controller.del("/:graph/edge/:definition", function(req, res) {
+    var name = req.params("graph");
+    var def_name = req.params("definition");
+    var g = Graph._graph(name);
+    g._deleteEdgeDefinition(def_name);
+    setGraphResponse(res, g);
+  })
+  .pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  })
+  .pathParam("definition", {
+    type: "string",
+    description: "Name of the edge collection in the definition."
+  })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "The edge definition is invalid.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
+
+////////////////////// Vertex Operations /////////////////////////////////
 
   /** Create a new vertex.
    *
@@ -229,76 +491,7 @@
     }
   );
 
-  ///////////////////////////////////////////////// Edges //////////
-  
-  /** Create a new edge definition.
-   *
-   * Stores a new edge definition with the information contained
-   * within the body.
-   * This has to contain the edge-collection name, as well as set of from and to
-   * collections-names respectively. 
-   */
-  controller.post("/:graph/edge", function(req, res) {
-    var name = req.params("graph");
-    var body = req.params("edgeDefinition");
-    var g = Graph._graph(name);
-    g._extendEdgeDefinitions(body.forDB());
-    setGraphResponse(res, g);
-  })
-  .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
-  })
-  .bodyParam(
-    "edgeDefinition", "The edge definition to be stored.", Model
-  )
-  .errorResponse(
-    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
-    }
-  );
-
-  /** Replace an edge definition.
-   *
-   * Replaces an existing edge definition with the information contained
-   * within the body.
-   * This has to contain the edge-collection name, as well as set of from and to
-   * collections-names respectively.
-   * This will also change the edge definitions of all other graphs using this
-   * definition as well.
-   */
-  controller.put("/:graph/edge/:definition", function(req, res) {
-    var name = req.params("graph");
-    var def_name = req.params("definition");
-    var body = req.params("edgeDefinition");
-    var g = Graph._graph(name);
-    if (def_name !== body.get("collection")) {
-      var err = new ArangoError();
-      err.errorNum = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
-      err.errorMessage = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
-      throw err;
-    }
-    g._editEdgeDefinitions(body.forDB());
-    setGraphResponse(res, g);
-  })
-  .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
-  })
-  .bodyParam(
-    "edgeDefinition", "The edge definition to be stored.", Model
-  )
-  .errorResponse(
-    ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
-    }
-  );
+//////////////////////////// Edge Operations //////////////////////////
 
   /** Create a new edge.
    *
@@ -478,49 +671,6 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
-    }
-  );
-
-///////////////// GRAPH /////////////////////////////////
-
-  /** Creates a new graph
-   *
-   * Creates a new graph object
-   */
-  controller.post("/", function(req, res) {
-    var infos = req.params("graph");
-    var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
-    setGraphResponse(res, g, actions.HTTP_CREATED);
-  }).errorResponse(
-    ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
-      return {
-        code: actions.HTTP_CONFLICT,
-        error: e.errorMessage
-      };
-    }
-  ).bodyParam("graph", "The required information for a graph", Model);
-
-  /** Drops an existing graph
-   *
-   * Drops an existing graph object by name.
-   * By default all collections not used by other graphs will be dropped as
-   * well. It can be optionally configured to not drop the collections.
-   */
-  controller.del("/:graph", function(req, res) {
-    var name = req.params("graph");
-    Graph._drop(name);
-    setResponse(res);
-  })
-  .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
-  })
-  .errorResponse(
-    ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
       return {
         code: actions.HTTP_NOT_FOUND,
         error: e.errorMessage

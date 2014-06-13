@@ -1403,6 +1403,15 @@ var _directedRelationDefinition = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a list of all graph names
+////////////////////////////////////////////////////////////////////////////////
+
+var _list = function() {
+  var gdb = getGraphCollection();
+  return _.pluck(gdb.toArray(), "_key");
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list of edge definitions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2063,7 +2072,11 @@ Graph.prototype._edgeCollections = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._vertexCollections = function() {
-  return _.values(this.__vertexCollections);
+  var orphans = [];
+  _.each(this.__orphanCollections, function(o) {
+    orphans.push(db[o]);
+  });
+  return _.union(_.values(this.__vertexCollections), orphans);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2918,6 +2931,7 @@ exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
+exports._list = _list;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
