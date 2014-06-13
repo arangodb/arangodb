@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*global module, require, exports, assertEqual, assertTrue, assertIsSatisfied */
+
 require("internal").flushModuleCache();
 
 var jsunity = require("jsunity"),
@@ -15,8 +18,8 @@ function RepositorySpec () {
   return {
     setUp: function () {
       prefix = "myApp";
-      collection = function () {};
-      modelPrototype = function () {};
+      collection = stub();
+      modelPrototype = stub();
       model = new modelPrototype();
       modelData = { fancy: 1 };
       model.forDB = function () {
@@ -60,24 +63,6 @@ function RepositorySpec () {
       instance = new TestRepository(collection);
 
       assertEqual(instance.test(), "test");
-    },
-
-    testNothing: function () {
-      [
-        "save",
-
-        "removeById",
-        "removeByExample",
-
-        "replace",
-
-        "byId",
-        "byExample",
-        "firstExample"
-      ].forEach(function (f) {
-        instance = new FoxxRepository(collection);
-        assertTrue(instance[f] !== undefined);
-      });
     }
   };
 }
@@ -113,6 +98,8 @@ function RepositoryMethodsSpec() {
       instance = new FoxxRepository(collection, { model: ModelPrototype });
     },
 
+    // Adding Entries
+
     testSave: function () {
       expect(model)
         .toReceive("set")
@@ -129,69 +116,7 @@ function RepositoryMethodsSpec() {
       collection.assertIsSatisfied();
     },
 
-    testRemoveById: function () {
-      expect(collection)
-        .toReceive("remove")
-        .withArguments(id);
-
-      instance.removeById(id);
-
-      collection.assertIsSatisfied();
-    },
-
-    testRemoveByExample: function () {
-      expect(collection)
-        .toReceive("removeByExample")
-        .withArguments(example);
-
-      instance.removeByExample(example);
-
-      collection.assertIsSatisfied();
-    },
-
-    testReplace: function () {
-      allow(model)
-        .toReceive("get")
-        .andReturn(id);
-
-      allow(model)
-        .toReceive("forDB")
-        .andReturn(data);
-
-      expect(model)
-        .toReceive("set")
-        .withArguments(id_and_rev);
-
-      expect(collection)
-        .toReceive("replace")
-        .withArguments(id, data)
-        .andReturn(id_and_rev);
-
-      assertEqual(instance.replace(model), model);
-
-      collection.assertIsSatisfied();
-      model.assertIsSatisfied();
-    },
-
-    testReplaceById: function () {
-      allow(model)
-        .toReceive("forDB")
-        .andReturn(data);
-
-      expect(model)
-        .toReceive("set")
-        .withArguments(id_and_rev);
-
-      expect(collection)
-        .toReceive("replace")
-        .withArguments(id, data)
-        .andReturn(id_and_rev);
-
-      assertEqual(instance.replaceById(id, model), model);
-
-      collection.assertIsSatisfied();
-      model.assertIsSatisfied();
-    },
+    // Finding Entries
 
     testById: function () {
       expect(collection)
@@ -244,6 +169,102 @@ function RepositoryMethodsSpec() {
       ModelPrototype.assertIsSatisfied();
       collection.assertIsSatisfied();
     },
+
+    // TODO: Implement
+    // testAll: function () {
+    // },
+
+    // Removing Entries
+
+    // TODO: Implement
+    // testRemove: function () {
+    // },
+
+    testRemoveById: function () {
+      expect(collection)
+        .toReceive("remove")
+        .withArguments(id);
+
+      instance.removeById(id);
+
+      collection.assertIsSatisfied();
+    },
+
+    testRemoveByExample: function () {
+      expect(collection)
+        .toReceive("removeByExample")
+        .withArguments(example);
+
+      instance.removeByExample(example);
+
+      collection.assertIsSatisfied();
+    },
+
+    // Replacing Entries
+
+    testReplace: function () {
+      allow(model)
+        .toReceive("get")
+        .andReturn(id);
+
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      assertEqual(instance.replace(model), model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
+    },
+
+    testReplaceById: function () {
+      allow(model)
+        .toReceive("forDB")
+        .andReturn(data);
+
+      expect(model)
+        .toReceive("set")
+        .withArguments(id_and_rev);
+
+      expect(collection)
+        .toReceive("replace")
+        .withArguments(id, data)
+        .andReturn(id_and_rev);
+
+      assertEqual(instance.replaceById(id, model), model);
+
+      collection.assertIsSatisfied();
+      model.assertIsSatisfied();
+    },
+
+    // TODO: Implement
+    // testRemoveByExample: function () {
+    // },
+
+    // Updating Entries
+
+    // TODO: Implement
+    // testUpdateById: function () {
+    // },
+
+    // TODO: Implement
+    // testUpdateByExample: function () {
+    // },
+
+    // Counting Entries
+
+    // TODO: Implement
+    // testCount: function () {
+    // },
   };
 }
 
