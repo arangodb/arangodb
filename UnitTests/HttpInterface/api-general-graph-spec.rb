@@ -28,6 +28,11 @@ def edge_endpoint(graph_name, collection)
   return URLPREFIX + "/" + graph_name + "/edge/" + collection
 end
 
+def list_edge_collections (graph_name) 
+  cmd = URLPREFIX + "/" + graph_name + "/edge"
+  doc = ArangoDB.get(cmd)
+  return doc
+end
 
 def additional_edge_definition (graph_name, edge_definitions) 
   cmd = URLPREFIX + "/" + graph_name + "/edge"
@@ -43,6 +48,25 @@ end
 
 def delete_edge_definition (graph_name, definition_name) 
   cmd = edge_endpoint(graph_name, definition_name)
+  doc = ArangoDB.delete(cmd)
+  return doc
+end
+
+def list_vertex_collections (graph_name) 
+  cmd = URLPREFIX + "/" + graph_name + "/vertex"
+  doc = ArangoDB.get(cmd)
+  return doc
+end
+
+def additional_vertex_collection (graph_name, collection_name) 
+  cmd = URLPREFIX + "/" + graph_name + "/vertex"
+  body = { :collection => collection_name }
+  doc = ArangoDB.post(cmd, :body => JSON.dump(body))
+  return doc
+end
+
+def delete_vertex_collection (graph_name, collection_name) 
+  cmd = vertex_endpoint(graph_name, collection_name)
   doc = ArangoDB.delete(cmd)
   return doc
 end
@@ -153,7 +177,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['name'].should eq(graph_name)
-        # doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
       end
 
@@ -166,7 +190,7 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['name'].should eq(graph_name)
-        # doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
       end
 
@@ -181,7 +205,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['graph']['name'].should eq("#{graph_name}")
+        doc.parsed_response['graph']['name'].should eq(graph_name)
         doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
       end
@@ -196,10 +220,54 @@ describe ArangoDB do
         doc.code.should eq(200)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
-        doc.parsed_response['graph']['name'].should eq("#{graph_name}")
+        doc.parsed_response['graph']['name'].should eq(graph_name)
         doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
-        
+      end
+
+      it "can delete an edge definition" do
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        edge_definition = [first_def]
+        create_graph( graph_name, edge_definition )
+        doc = delete_edge_definition( graph_name, friend_collection )
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['graph']['name'].should eq(graph_name)
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['edgeDefinitions'].should eq([])
+      end
+
+      it "can add an additional orphan collection" do
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        edge_definition = [first_def]
+        create_graph( graph_name, edge_definition )
+        doc = additional_vertex_collection( graph_name, product_collection )
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['graph']['name'].should eq(graph_name)
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
+        doc.parsed_response['graph']['orphanCollections'].should eq([product_collection])
+      end
+
+      it "can delete an orphan collection" do
+        first_def = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        edge_definition = [first_def]
+        create_graph( graph_name, edge_definition )
+        additional_vertex_collection( graph_name, product_collection )
+        doc = delete_vertex_collection( graph_name, product_collection )
+
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['graph']['name'].should eq(graph_name)
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
+        doc.parsed_response['graph']['orphanCollections'].should eq([])
       end
 
       it "can delete a graph again" do
@@ -228,6 +296,30 @@ describe ArangoDB do
         doc.code.should eq(409)
         doc.parsed_response['error'].should eq("graph already exists")
         doc.parsed_response['code'].should eq(409)
+      end
+
+      it "can get a list of vertex collections" do
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        create_graph(graph_name, [definition])
+        additional_vertex_collection(graph_name, product_collection)
+
+        doc = list_vertex_collections(graph_name)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['collections'].should eq([product_collection, user_collection])
+      end
+
+      it "can get a list of edge collections" do
+        definition1 = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        definition2 = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
+        create_graph(graph_name, [definition1, definition2])
+
+        doc = list_edge_collections(graph_name)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['collections'].should eq([bought_collection, friend_collection])
       end
     end
 
