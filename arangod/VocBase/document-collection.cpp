@@ -3033,7 +3033,7 @@ static int FillIndex (TRI_document_collection_t* document,
     
   if (idx->sizeHint != nullptr) {
     // give the index a size hint
-    idx->sizeHint(idx, document->_primaryIndex._nrUsed);
+    idx->sizeHint(idx, (size_t) document->_primaryIndex._nrUsed);
   }
 
 
@@ -5216,7 +5216,8 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + document->_primaryIndex._nrAlloc;
 
   for (;  ptr < end;  ++ptr) {
-    if (*ptr != nullptr && IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
+    if (*ptr != nullptr && 
+        IsExampleMatch(trxCollection, shaper, *ptr, length, pids, values)) {
       filtered.push_back(**ptr);
     }
   }

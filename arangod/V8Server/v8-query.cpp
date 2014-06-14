@@ -1878,11 +1878,18 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   // ...........................................................................
   // inside a read transaction
   // ...........................................................................
+    
+  vector<TRI_doc_mptr_copy_t> filtered; 
 
   trx.lockRead();
 
   // find documents by example
-  vector<TRI_doc_mptr_copy_t> filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  try {
+    filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  }
+  catch (std::exception& ex) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
   trx.finish(res);
 
