@@ -1809,12 +1809,13 @@ static bool OpenIndexIterator (char const* filename,
   int res;
 
   // load json description of the index
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
+  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   
   // json must be a index description
   if (! TRI_IsArrayJson(json)) {
     LOG_ERROR("cannot read index definition from '%s'", filename);
-    if (json != NULL) {
+
+    if (json != nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
@@ -1825,8 +1826,7 @@ static bool OpenIndexIterator (char const* filename,
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot read index definition from '%s': %s", filename, TRI_errno_string(res));
-
+    // error was already printed if we get here
     return false;
   }
   

@@ -40,7 +40,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 constexpr uint64_t InitialSize () {
-  return 11;
+  return 251;
 }
 
 // -----------------------------------------------------------------------------
@@ -52,8 +52,13 @@ constexpr uint64_t InitialSize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
-                                uint64_t targetSize) {
+                                uint64_t targetSize,
+                                bool allowShrink) {
   TRI_ASSERT(targetSize > 0);
+
+  if (idx->_nrAlloc >= targetSize && ! allowShrink) {
+    return true;
+  }
 
   void** oldTable = idx->_table;
 
@@ -65,24 +70,28 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
     return false;
   }
 
-  // table is already cleared by allocate, now copy old data
-  for (uint64_t j = 0; j < idx->_nrAlloc; j++) {
-    TRI_doc_mptr_t const* element = static_cast<TRI_doc_mptr_t const*>(oldTable[j]);
+  if (idx->_nrUsed > 0) {
+    uint64_t const oldAlloc = idx->_nrAlloc;
 
-    if (element != nullptr) {
-      uint64_t const hash = element->_hash;
-      uint64_t i, k;
+    // table is already cleared by allocate, now copy old data
+    for (uint64_t j = 0; j < oldAlloc; j++) {
+      TRI_doc_mptr_t const* element = static_cast<TRI_doc_mptr_t const*>(oldTable[j]);
 
-      i = k = hash % targetSize;
+      if (element != nullptr) {
+        uint64_t const hash = element->_hash;
+        uint64_t i, k;
 
-      for (; i < targetSize && idx->_table[i] != nullptr; ++i);
-      if (i == targetSize) {
-        for (i = 0; i < k && idx->_table[i] != nullptr; ++i);
+        i = k = hash % targetSize;
+
+        for (; i < targetSize && idx->_table[i] != nullptr; ++i);
+        if (i == targetSize) {
+          for (i = 0; i < k && idx->_table[i] != nullptr; ++i);
+        }
+
+        TRI_ASSERT_EXPENSIVE(i < targetSize);
+
+        idx->_table[i] = (void*) element;
       }
-
-      TRI_ASSERT_EXPENSIVE(i < targetSize);
-
-      idx->_table[i] = (void*) element;
     }
   }
 
@@ -197,7 +206,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
 
   if (idx->_nrAlloc < 2 * idx->_nrUsed) {
     // check for out-of-memory
-    if (! ResizePrimaryIndex(idx, (uint64_t) (2 * idx->_nrAlloc + 1))) {
+    if (! ResizePrimaryIndex(idx, (uint64_t) (2 * idx->_nrAlloc + 1), false)) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
@@ -275,6 +284,10 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
     }
 
     k = TRI_IncModU64(k, n);
+  }
+
+  if (idx->_nrUsed == 0) {
+    ResizePrimaryIndex(idx, InitialSize(), true);
   }
 
   // return success
