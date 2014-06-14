@@ -501,8 +501,8 @@ namespace triagens {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            size_t total = document->_primaryIndex._nrAlloc;
-            size_t pos = TRI_UInt32Random() % total;
+            uint32_t total = (uint32_t) document->_primaryIndex._nrAlloc;
+            uint32_t pos = TRI_UInt32Random() % total;
             void** beg = document->_primaryIndex._table;
 
             while (beg[pos] == 0) {
@@ -564,7 +564,7 @@ namespace triagens {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            ids.reserve(document->_primaryIndex._nrUsed);
+            ids.reserve((size_t) document->_primaryIndex._nrUsed);
 
             void** ptr = document->_primaryIndex._table;
             void** end = ptr + document->_primaryIndex._nrAlloc;
