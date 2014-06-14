@@ -2374,6 +2374,7 @@ function GeneralGraphCommonNeighborsSuite() {
 
     testCommonNeighborsIn: function () {
       actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
+
       assertEqual(actual[0][v3][v6][0]._id, v2);
       assertEqual(actual[1][v5][v8][0]._id, v3);
       assertEqual(actual[1][v5][v7][0]._id, v3);
@@ -2388,12 +2389,10 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[1][v5][0][v8] , 1);
       assertEqual(actual[1][v5][1][v7] , 1);
       assertEqual(actual[2][v6][0][v3] , 1);
-      assertEqual(actual[3][v7][0][v5] , 1);
-      assertEqual(actual[3][v7][1][v8] , 1);
-
+      assertEqual(actual[3][v7][1][v5] , 1);
+      assertEqual(actual[3][v7][0][v8] , 1);
       assertEqual(actual[4][v8][0][v5] , 1);
       assertEqual(actual[4][v8][1][v7] , 1);
-
     },
 
 
@@ -2450,10 +2449,10 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[6][v7][0]._id  , v4);
       assertEqual(actual[6][v7][1]._id  , v6);
       assertEqual(actual[6][v7][2]._id  , v8);
-      assertEqual(actual[7][v8][0]._id  , v4);
-      assertEqual(actual[7][v8][1]._id  , v6);
-      assertEqual(actual[7][v8][2]._id  , v7);
-      assertEqual(actual[7][v8][3]._id  , v3);
+      assertEqual(actual[7][v8][0]._id  , v3);
+      assertEqual(actual[7][v8][1]._id  , v4);
+      assertEqual(actual[7][v8][2]._id  , v6);
+      assertEqual(actual[7][v8][3]._id  , v7);
 
       actual = testGraph._amountCommonProperties({} ,{} ,{});
       assertEqual(actual, [

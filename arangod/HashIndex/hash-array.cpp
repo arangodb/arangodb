@@ -29,7 +29,7 @@
 
 #include "hash-array.h"
 
-#include "BasicsC/hashes.h"
+#include "BasicsC/fasthash.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
 
@@ -38,37 +38,16 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if an element is 'empty'
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsEmptyElement (TRI_hash_index_element_t* element) {
-  return (element->_document == nullptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief marks an element in the hash array as being 'cleared' or 'empty'
-////////////////////////////////////////////////////////////////////////////////
-
-static void ClearElement (TRI_hash_array_t* array,
-                          TRI_hash_index_element_t* element) {
-  if (element != nullptr) {
-    element->_document = nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an element, removing any allocated memory
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DestroyElement (TRI_hash_array_t* array,
                             TRI_hash_index_element_t* element) {
-  if (element != nullptr) {
-    if (element->_document != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
-    }
-  }
+  TRI_ASSERT_EXPENSIVE(element != nullptr);
+  TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
 
-  ClearElement(array, element);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  element->_document = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,20 +68,17 @@ static inline bool IsEqualElementElement (TRI_hash_index_element_t* left,
 static bool IsEqualKeyElement (TRI_hash_array_t* array,
                                TRI_index_search_value_t* left,
                                TRI_hash_index_element_t* right) {
-  if (right->_document == nullptr) {
-    return false;
-  }
+  TRI_ASSERT_EXPENSIVE(right->_document != nullptr);
 
   for (size_t j = 0;  j < array->_numFields;  ++j) {
     TRI_shaped_json_t* leftJson = &left->_values[j];
     TRI_shaped_sub_t* rightSub = &right->_subObjects[j];
-    size_t length;
 
     if (leftJson->_sid != rightSub->_sid) {
       return false;
     }
 
-    length = leftJson->_data.length;
+    auto length = leftJson->_data.length;
 
     if (length != rightSub->_length) {
       return false;
@@ -126,12 +102,12 @@ static bool IsEqualKeyElement (TRI_hash_array_t* array,
 
 static uint64_t HashKey (TRI_hash_array_t* array,
                          TRI_index_search_value_t* key) {
-  uint64_t hash = TRI_FnvHashBlockInitial();
+  uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < array->_numFields;  ++j) {
 
     // ignore the sid for hashing
-    hash = TRI_FnvHashBlock(hash, key->_values[j]._data.data, key->_values[j]._data.length);
+    hash = fasthash64(key->_values[j]._data.data, key->_values[j]._data.length, hash);
   }
 
   return hash;
@@ -143,14 +119,14 @@ static uint64_t HashKey (TRI_hash_array_t* array,
 
 static uint64_t HashElement (TRI_hash_array_t* array,
                              TRI_hash_index_element_t* element) {
-  uint64_t hash = TRI_FnvHashBlockInitial();
+  uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < array->_numFields;  j++) {
     // ignore the sid for hashing
     char const* ptr = element->_document->getShapedJsonPtr() + element->_subObjects[j]._offset;  // ONLY IN INDEX
 
     // only hash the data block
-    hash = TRI_FnvHashBlock(hash, ptr, element->_subObjects[j]._length);
+    hash = fasthash64(ptr, element->_subObjects[j]._length, hash);
   }
 
   return hash;
@@ -171,7 +147,9 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 /// reallocations/repositionings necessary when the table grows
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INITIAL_SIZE    (251)
+constexpr uint64_t InitialSize () {
+  return 251;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -186,48 +164,14 @@ constexpr size_t TableEntrySize () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new element
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddElement (TRI_hash_array_t* array,
-                        TRI_hash_index_element_t* element) {
-  uint64_t hash;
-  uint64_t i;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashElement(array, element);
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  i = hash % array->_nrAlloc;
-
-  while (! IsEmptyElement(&array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  // ...........................................................................
-  // add a new element to the associative array
-  // memcpy ok here since are simply moving array items internally
-  // ...........................................................................
-
-  memcpy(&array->_table[i], element, TableEntrySize());
-  array->_nrUsed++;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate memory for the hash table
 ///
 /// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
 
 static int AllocateTable (TRI_hash_array_t* array, 
-                          size_t numElements) {
-  size_t const size = TableEntrySize() * numElements;
+                          uint64_t numElements) {
+  size_t const size = (size_t) (TableEntrySize() * numElements + 64);
 
   TRI_hash_index_element_t* table = static_cast<TRI_hash_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, true));
 
@@ -235,8 +179,9 @@ static int AllocateTable (TRI_hash_array_t* array,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  array->_table = table;
-  array->_nrAlloc = numElements;
+  array->_tablePtr = table;
+  array->_table    = static_cast<TRI_hash_index_element_t*>(TRI_Align64(table));
+  array->_nrAlloc  = numElements;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -246,32 +191,70 @@ static int AllocateTable (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ResizeHashArray (TRI_hash_array_t* array,
-                           uint64_t targetSize) {
-  TRI_hash_index_element_t* oldTable;
-  uint64_t oldAlloc;
-  uint64_t j;
-  int res;
+                            uint64_t targetSize, 
+                            bool allowShrink) {
+  if (array->_nrAlloc >= targetSize && ! allowShrink) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
-  oldTable = array->_table;
-  oldAlloc = array->_nrAlloc;
+  TRI_hash_index_element_t* oldTable    = array->_table;
+  TRI_hash_index_element_t* oldTablePtr = array->_tablePtr;
+  uint64_t oldAlloc = array->_nrAlloc;
 
-  res = AllocateTable(array, (size_t) targetSize);
+  TRI_ASSERT(targetSize > 0);
+
+  int res = AllocateTable(array, targetSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  array->_nrUsed = 0;
+  if (array->_nrUsed > 0) {
+    uint64_t const n = array->_nrAlloc;
 
-  for (j = 0; j < oldAlloc; j++) {
-    if (! IsEmptyElement(&oldTable[j])) {
-      AddElement(array, &oldTable[j]);
+    for (uint64_t j = 0; j < oldAlloc; j++) {
+      TRI_hash_index_element_t* element = &oldTable[j];
+
+      if (element->_document != nullptr) {
+        uint64_t i, k;
+        i = k = HashElement(array, element) % n;
+
+        for (; i < n && array->_table[i]._document != nullptr; ++i);
+        if (i == n) {
+          for (i = 0; i < k && array->_table[i]._document != nullptr; ++i);
+        }
+
+        TRI_ASSERT_EXPENSIVE(i < n);
+
+        // ...........................................................................
+        // add a new element to the associative array
+        // memcpy ok here since are simply moving array items internally
+        // ...........................................................................
+
+        memcpy(&array->_table[i], element, TableEntrySize());
+      }
     }
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief triggers a resize if necessary
+////////////////////////////////////////////////////////////////////////////////
+  
+static bool CheckResize (TRI_hash_array_t* array) {
+  if (array->_nrAlloc < 2 * array->_nrUsed) {
+    int res = ResizeHashArray(array, 2 * array->_nrAlloc + 1, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -284,35 +267,16 @@ static int ResizeHashArray (TRI_hash_array_t* array,
 
 int TRI_InitHashArray (TRI_hash_array_t* array,
                        size_t numFields) {
-  size_t initialSize;
-  int res;
-
-  // ...........................................................................
-  // Assign the callback functions
-  // ...........................................................................
 
   TRI_ASSERT(numFields > 0);
 
   array->_numFields = numFields;
-  array->_table = nullptr;
-  array->_nrUsed = 0;
-  array->_nrAlloc = 0;
+  array->_tablePtr  = nullptr;
+  array->_table     = nullptr;
+  array->_nrUsed    = 0;
+  array->_nrAlloc   = 0;
 
-  initialSize = INITIAL_SIZE;
-
-  res = AllocateTable(array, initialSize);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // ...........................................................................
-  // allocate storage for the hash array
-  // ...........................................................................
-
-  array->_nrUsed = 0;
-
-  return TRI_ERROR_NO_ERROR;
+  return AllocateTable(array, InitialSize());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,10 +301,12 @@ void TRI_DestroyHashArray (TRI_hash_array_t* array) {
     e = p + array->_nrAlloc;
 
     for (;  p < e;  ++p) {
-      DestroyElement(array, p);
+      if (p->_document != nullptr) {
+        DestroyElement(array, p);
+      }
     }
 
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_table);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_tablePtr);
   }
 }
 
@@ -368,7 +334,10 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
     return 0;
   }
 
-  return (size_t) (array->_nrAlloc * TableEntrySize()); 
+  size_t tableSize  = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
+  size_t memberSize = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
+
+  return (size_t) (tableSize + memberSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,7 +346,7 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
   
 int TRI_ResizeHashArray (TRI_hash_array_t* array,
                          size_t size) {
-  return ResizeHashArray(array, 2 * size + 1);
+  return ResizeHashArray(array, (uint64_t) (2 * size + 1), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,24 +355,17 @@ int TRI_ResizeHashArray (TRI_hash_array_t* array,
 
 TRI_hash_index_element_t* TRI_LookupByKeyHashArray (TRI_hash_array_t* array,
                                                     TRI_index_search_value_t* key) {
-  uint64_t hash;
-  uint64_t i;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
+  i = k = HashKey(array, key) % n;
 
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   // ...........................................................................
   // return whatever we found
@@ -420,140 +382,11 @@ TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
                                                   TRI_index_search_value_t* key) {
   TRI_hash_index_element_t* element = TRI_LookupByKeyHashArray(array, key);
 
-  if (element != nullptr) {
-    if (! IsEmptyElement(element) && IsEqualKeyElement(array, key, element)) {
-      return element;
-    }
+  if (element != nullptr && element->_document != nullptr && IsEqualKeyElement(array, key, element)) {
+    return element;
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given an element
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_element_t* TRI_LookupByElementHashArray (TRI_hash_array_t* array,
-                                                        TRI_hash_index_element_t* element) {
-  uint64_t hash;
-  uint64_t i;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualElementElement(element, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  // ...........................................................................
-  // return whatever we found
-  // ...........................................................................
-
-  return &array->_table[i];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given an element, returns NULL if not found
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_hash_index_element_t* TRI_FindByElementHashArray (TRI_hash_array_t* array,
-                                                      TRI_hash_index_element_t* element) {
-  TRI_hash_index_element_t* element2;
-
-  element2 = TRI_LookupByElementHashArray(array, element);
-
-  if (element2 != nullptr) {
-    if (! IsEmptyElement(element2) && IsEqualElementElement(element2, element)) {
-      return element2;
-    }
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the array
-///
-/// This function claims the owenship of the sub-objects in the inserted
-/// element.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertElementHashArray (TRI_hash_array_t* array,
-                                TRI_hash_index_element_t* element,
-                                bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  TRI_hash_index_element_t* arrayElement;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualElementElement(element, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  arrayElement = &array->_table[i];
-
-  // ...........................................................................
-  // if we found an element, return
-  // ...........................................................................
-
-  bool found = ! IsEmptyElement(arrayElement);
-
-  if (found) {
-    if (overwrite) {
-      // destroy the underlying element since we are going to stomp on top if it
-      DestroyElement(array, arrayElement);
-      *arrayElement = *element;
-    }
-    else {
-      DestroyElement(array, element);
-    }
-
-    return TRI_RESULT_ELEMENT_EXISTS;
-  }
-
-  // ...........................................................................
-  // add a new element to the hash array (existing item is empty so no need to
-  // destroy it)
-  // ...........................................................................
-
-  *arrayElement = *element;
-  array->_nrUsed++;
-
-  // ...........................................................................
-  // we are adding and the table is more than half full, extend it
-  // ...........................................................................
-
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res;
-
-    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,33 +400,34 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
                             TRI_index_search_value_t* key,
                             TRI_hash_index_element_t* element,
                             bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  TRI_hash_index_element_t* arrayElement;
 
   // ...........................................................................
-  // compute the hash
+  // we are adding and the table is more than half full, extend it
   // ...........................................................................
-
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  
+  if (! CheckResize(array)) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  arrayElement = &array->_table[i];
+  const uint64_t n = array->_nrAlloc;
+  uint64_t i, k;
+ 
+  i = k = HashKey(array, key) % n;
+  
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  }
+  
+  TRI_ASSERT_EXPENSIVE(i < n);
+
+  TRI_hash_index_element_t* arrayElement = &array->_table[i];
 
   // ...........................................................................
   // if we found an element, return
   // ...........................................................................
 
-  bool found = ! IsEmptyElement(arrayElement);
+  bool found = (arrayElement->_document != nullptr);
 
   if (found) {
     if (overwrite) {
@@ -608,27 +442,9 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
     return TRI_RESULT_KEY_EXISTS;
   }
 
-  // ...........................................................................
-  // add a new element to the associative array
-  // ...........................................................................
-
   *arrayElement = *element;
   array->_nrUsed++;
-
-  // ...........................................................................
-  // we are adding and the table is more than half full, extend it
-  // ...........................................................................
-
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res;
-
-    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -638,25 +454,17 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
 
 int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
                                 TRI_hash_index_element_t* element) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
+  i = k = HashElement(array, element) % n;
 
-  hash = HashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualElementElement(element, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   TRI_hash_index_element_t* arrayElement = static_cast<TRI_hash_index_element_t*>(&array->_table[i]);
 
@@ -664,7 +472,7 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
   // if we did not find such an item return false
   // ...........................................................................
 
-  bool found = ! IsEmptyElement(arrayElement);
+  bool found = (arrayElement->_document != nullptr);
 
   if (! found) {
     return TRI_RESULT_ELEMENT_NOT_FOUND;
@@ -682,89 +490,23 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
   // so that there are no gaps in the array
   // ...........................................................................
 
-  k = TRI_IncModU64(i, array->_nrAlloc);
+  k = TRI_IncModU64(i, n);
 
-  while (! IsEmptyElement(&array->_table[k])) {
-    uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
+  while (array->_table[k]._document != nullptr) {
+    uint64_t j = HashElement(array, &array->_table[k]) % n;
 
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
+    if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      ClearElement(array, &array->_table[k]);
+      array->_table[k]._document = nullptr;
       i = k;
     }
 
-    k = TRI_IncModU64(k, array->_nrAlloc);
+    k = TRI_IncModU64(k, n);
   }
 
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an key from the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
-                            TRI_index_search_value_t* key) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  if (array->_nrUsed == 0) {
+    ResizeHashArray(array, InitialSize(), true);
   }
-
-  TRI_hash_index_element_t* arrayElement = static_cast<TRI_hash_index_element_t*>(&array->_table[i]);
-
-  // ...........................................................................
-  // if we did not find such an item return false
-  // ...........................................................................
-
-  bool found = ! IsEmptyElement(arrayElement);
-
-  if (! found) {
-    return TRI_RESULT_KEY_NOT_FOUND;
-  }
-
-  // ...........................................................................
-  // remove item
-  // ...........................................................................
-
-  DestroyElement(array, arrayElement);
-  array->_nrUsed--;
-
-  // ...........................................................................
-  // and now check the following places for items to move here
-  // ...........................................................................
-
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (! IsEmptyElement(&array->_table[k])) {
-    uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      ClearElement(array, &array->_table[k]);
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
-  }
-
-  // ...........................................................................
-  // return success
-  // ...........................................................................
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -783,81 +525,29 @@ int TRI_RemoveKeyHashArray (TRI_hash_array_t* array,
 
 TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t* array,
                                                     TRI_index_search_value_t* key) {
-  TRI_vector_pointer_t result;
-  uint64_t hash;
-  uint64_t i;
+  TRI_ASSERT_EXPENSIVE(array->_nrUsed < array->_nrAlloc);
 
   // ...........................................................................
   // initialise the vector which will hold the result if any
   // ...........................................................................
 
+  TRI_vector_pointer_t result;
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
 
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])) {
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i = HashKey(array, key) % n;
+  
+  while (array->_table[i]._document != nullptr) {
     if (IsEqualKeyElement(array, key, &array->_table[i])) {
       TRI_PushBackVectorPointer(&result, &array->_table[i]);
     }
 
-    i = TRI_IncModU64(i, array->_nrAlloc);
+    i = TRI_IncModU64(i, n);
   }
 
   // ...........................................................................
   // return whatever we found -- which could be an empty vector list if nothing
   // matches.
-  // ...........................................................................
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given an element
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hash_array_t* array,
-                                                        TRI_hash_index_element_t* element) {
-  TRI_vector_pointer_t result;
-  uint64_t hash;
-  uint64_t i;
-
-  // ...........................................................................
-  // initialise the vector which will hold the result if any
-  // ...........................................................................
-
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])) {
-    if (IsEqualElementElement(element, &array->_table[i])) {
-      TRI_PushBackVectorPointer(&result, &array->_table[i]);
-    }
-
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  // ...........................................................................
-  // return whatever we found -- which could be an empty vector list if nothing
-  // matches. Note that we allow multiple elements (compare with pointer impl).
   // ...........................................................................
 
   return result;
@@ -873,45 +563,23 @@ TRI_vector_pointer_t TRI_LookupByElementHashArrayMulti (TRI_hash_array_t* array,
 int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
                                      TRI_hash_index_element_t* element,
                                      bool overwrite) {
+  if (! CheckResize(array)) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
-  uint64_t hash;
-  uint64_t i, j;
-  TRI_hash_index_element_t* arrayElement;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashElement(array, element);
-  i = j = hash % array->_nrAlloc;
   uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
+  i = k = HashElement(array, element) % n;
 
-  /*
-  while (! IsEmptyElement(&array->_table[i]) &&
-         ! IsEqualElementElement(element, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-  */
-  // the following code is a hand-written optimization of the above loop,
-  // executing about twice as fast
-  
-  // scan from entry point until end of the table
-  for (; i < n && 
-         array->_table[i]._document != nullptr && 
-         array->_table[i]._document != element->_document; ++i);
-
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
   if (i == n) {
-    // reached the end of the table, but did not find the value
-    for (i = 0; i < j && 
-                array->_table[i]._document != nullptr && 
-                array->_table[i]._document != element->_document; ++i);
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
   
-  arrayElement = &array->_table[i];
+  TRI_hash_index_element_t* arrayElement = &array->_table[i];
 
   // ...........................................................................
   // If we found an element, return. While we allow duplicate entries in the
@@ -921,7 +589,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
   // differentiate between elements.
   // ...........................................................................
 
-  bool found = ! IsEmptyElement(arrayElement);
+  bool found = (arrayElement->_document != nullptr);
 
   if (found) {
     if (overwrite) {
@@ -942,82 +610,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
 
   *arrayElement = *element;
   array->_nrUsed++;
-
-  // ...........................................................................
-  // if we were adding and the table is more than half full, extend it
-  // ...........................................................................
-
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res;
-
-    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key/element to the array
-///
-/// This function claims the owenship of the sub-objects in the inserted
-/// element.
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
-                                 TRI_index_search_value_t* key,
-                                 TRI_hash_index_element_t* element,
-                                 bool overwrite) {
-  uint64_t hash;
-  uint64_t i;
-  TRI_hash_index_element_t* arrayElement;
-
-  // ...........................................................................
-  // compute the hash
-  // ...........................................................................
-
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  arrayElement = &array->_table[i];
-
-  // ...........................................................................
-  // We do not look for an element (as opposed to the function above). So whether
-  // or not there exists a duplicate we do not care.
-  // ...........................................................................
-
-  // ...........................................................................
-  // add a new element to the associative array
-  // ...........................................................................
-
-  *arrayElement = * element;
-  array->_nrUsed++;
-
-  // ...........................................................................
-  // if we were adding and the table is more than half full, extend it
-  // ...........................................................................
-
-  if (array->_nrAlloc < 2 * array->_nrUsed) {
-    int res;
-
-    res = ResizeHashArray(array, 2 * array->_nrAlloc + 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1027,34 +620,25 @@ int TRI_InsertKeyHashArrayMulti (TRI_hash_array_t* array,
 
 int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
                                      TRI_hash_index_element_t* element) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  TRI_hash_index_element_t* arrayElement;
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  // ...........................................................................
-  // Obtain the hash
-  // ...........................................................................
+  i = k = HashElement(array, element) % n;
 
-  hash = HashElement(array, element);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualElementElement(element, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
   }
 
-  arrayElement = &array->_table[i];
+  TRI_ASSERT_EXPENSIVE(i < n);
+
+  TRI_hash_index_element_t* arrayElement = &array->_table[i];
 
   // ...........................................................................
   // if we did not find such an item return false
   // ...........................................................................
 
-  bool found = ! IsEmptyElement(arrayElement);
+  bool found = (arrayElement->_document != nullptr);
 
   if (! found) {
     return TRI_RESULT_ELEMENT_NOT_FOUND;
@@ -1071,85 +655,22 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
   // and now check the following places for items to move here
   // ...........................................................................
 
-  k = TRI_IncModU64(i, array->_nrAlloc);
+  k = TRI_IncModU64(i, n);
 
-  while (! IsEmptyElement(&array->_table[k])) {
-    uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
+  while (array->_table[k]._document != nullptr) {
+    uint64_t j = HashElement(array, &array->_table[k]) % n;
 
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
+    if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      ClearElement(array, &array->_table[k]);
+      array->_table[k]._document = nullptr;
       i = k;
     }
 
-    k = TRI_IncModU64(k, array->_nrAlloc);
+    k = TRI_IncModU64(k, n);
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveKeyHashArrayMulti (TRI_hash_array_t* array,
-                                 TRI_index_search_value_t* key) {
-  uint64_t hash;
-  uint64_t i;
-  uint64_t k;
-  TRI_hash_index_element_t* arrayElement;
-
-  // ...........................................................................
-  // generate hash using key
-  // ...........................................................................
-
-  hash = HashKey(array, key);
-  i = hash % array->_nrAlloc;
-
-  // ...........................................................................
-  // search the table -- we can only match keys
-  // ...........................................................................
-
-  while (! IsEmptyElement(&array->_table[i])
-      && ! IsEqualKeyElement(array, key, &array->_table[i])) {
-    i = TRI_IncModU64(i, array->_nrAlloc);
-  }
-
-  arrayElement = &array->_table[i];
-
-  // ...........................................................................
-  // if we did not find such an item return false
-  // ...........................................................................
-
-  bool found = ! IsEmptyElement(arrayElement);
-
-  if (! found) {
-    return TRI_RESULT_KEY_NOT_FOUND;
-  }
-
-  // ...........................................................................
-  // remove item
-  // ...........................................................................
-
-  DestroyElement(array, arrayElement);
-  array->_nrUsed--;
-
-  // ...........................................................................
-  // and now check the following places for items to move here
-  // ...........................................................................
-
-  k = TRI_IncModU64(i, array->_nrAlloc);
-
-  while (! IsEmptyElement(&array->_table[k])) {
-    uint64_t j = HashElement(array, &array->_table[k]) % array->_nrAlloc;
-
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
-      array->_table[i] = array->_table[k];
-      ClearElement(array, &array->_table[k]);
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, array->_nrAlloc);
+  
+  if (array->_nrUsed == 0) {
+    ResizeHashArray(array, InitialSize(), true);
   }
 
   return TRI_ERROR_NO_ERROR;
