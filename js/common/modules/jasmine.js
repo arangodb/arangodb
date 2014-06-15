@@ -8,6 +8,7 @@
  */
 
 var jasmine = require('jasmine/core'),
+  _ = require('underscore'),
   Reporter = require('jasmine/reporter').Reporter;
 
 jasmine = jasmine.core(jasmine);
@@ -17,45 +18,24 @@ var env = jasmine.getEnv();
 /**
  * ## The Global Interface
  */
-exports.describe = function(description, specDefinitions) {
-  return env.describe(description, specDefinitions);
-};
 
-exports.xdescribe = function(description, specDefinitions) {
-  return env.xdescribe(description, specDefinitions);
-};
+var exposedFunctionality = [
+  'describe',
+  'xdescribe',
+  'it',
+  'xit',
+  'beforeEach',
+  'afterEach',
+  'expect',
+  'pending',
+  'spyOn',
+  'execute'
+];
 
-exports.it = function(desc, func) {
-  return env.it(desc, func);
-};
+_.each(exposedFunctionality, function(name) {
+  exports[name] = env[name];
+});
 
-exports.xit = function(desc, func) {
-  return env.xit(desc, func);
-};
-
-exports.beforeEach = function(beforeEachFunction) {
-  return env.beforeEach(beforeEachFunction);
-};
-
-exports.afterEach = function(afterEachFunction) {
-  return env.afterEach(afterEachFunction);
-};
-
-exports.expect = function(actual) {
-  return env.expect(actual);
-};
-
-exports.pending = function() {
-  return env.pending();
-};
-
-exports.spyOn = function(obj, methodName) {
-  return env.spyOn(obj, methodName);
-};
-
-exports.execute = function() {
-  env.execute();
-};
 
 /**
  * Expose the interface for adding custom equality testers.
