@@ -1,0 +1,103 @@
+!CHAPTER Handling Edges
+
+!SECTION Create an edge
+
+`POST /system/gharial/graph-name/edge/collection-name`*(create an edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the edge collection the edge belongs to.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_edge_create_info -->
+
+<!-- @startDocuBlock JSF_general_graph_edge_create_http_examples -->
+
+!SECTION Get an edge
+
+`GET /system/gharial/graph-name/edge/collection-name/edge-key`*(get an edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the edge collection the edge belongs to.
+
+`collection-name (string, required)`  
+The `_key` attribute of the edge.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_edge_get_info -->
+
+<!-- @startDocuBlock JSF_general_graph_edge_get_http_examples -->
+
+!SECTION Modify an edge
+
+`PATCH /system/gharial/graph-name/edge/collection-name/edge-key`*(modify an edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the edge collection the edge belongs to.
+
+`collection-name (string, required)`  
+The `_key` attribute of the edge.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_edge_modify_info -->
+
+<!-- @startDocuBlock JSF_general_graph_edge_modify_http_examples -->
+
+!SECTION Replace an edge
+
+`PATCH /system/gharial/graph-name/edge/collection-name/edge-key`*(replace an edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the edge collection the edge belongs to.
+
+`collection-name (string, required)`  
+The `_key` attribute of the edge.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_edge_replace_info -->
+
+<!-- @startDocuBlock JSF_general_graph_edge_replace_http_examples -->
+
+!SECTION Remove an edge
+
+`DELETE /system/gharial/graph-name/edge/collection-name/edge-key`*(remove an edge)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the edge collection the edge belongs to.
+
+`collection-name (string, required)`  
+The `_key` attribute of the edge.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_edge_delete_info -->
+
+<!-- @startDocuBlock JSF_general_graph_edge_delete_http_examples -->
