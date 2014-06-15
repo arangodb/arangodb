@@ -7,10 +7,13 @@
 
 var Reporter,
   _ = require('underscore'),
-  log = require('console').log,
   internal = require('internal'),
   inspect = internal.inspect,
-  p = function (x) { log(inspect(x)); };
+  failureColor = internal.COLORS.COLOR_RED,
+  successColor = internal.COLORS.COLOR_GREEN,
+  commentColor = internal.COLORS.COLOR_BLUE,
+  resetColor = internal.COLORS.COLOR_RESET,
+  p = function (x) { print(inspect(x)); };
 
 var repeatString = function(str, num) {
   return new Array(num + 1).join(str);
@@ -22,9 +25,20 @@ var indenter = function(indentation) {
   };
 };
 
-var printIndented = function(message, indentation) {
+var indent = function(message, indentation) {
   var lines = message.split("\n");
-  print(_.map(lines, indenter(indentation)).join("\n"));
+  return _.map(lines, indenter(indentation)).join("\n");
+};
+
+  // "at Function.main (test.js:19:11)"
+
+var fileInfoPattern = /\(([^:]+):[^)]+\)/;
+
+var parseFileName = function(stack) {
+  var parsedStack = _.last(_.filter(stack.split("\n"), function(line) {
+    return fileInfoPattern.test(line);
+  }));
+  return fileInfoPattern.exec(parsedStack)[1];
 };
 
 Reporter = function () {
@@ -34,7 +48,7 @@ Reporter = function () {
 _.extend(Reporter.prototype, {
   jasmineStarted: function(options) {
     this.totalSpecs = options.totalSpecsDefined || 0;
-    this.failedSpecs = 0;
+    this.failedSpecs = [];
     this.start = new Date();
     print();
   },
@@ -44,6 +58,10 @@ _.extend(Reporter.prototype, {
       this.printFailureInfo();
     }
     this.printFooter();
+    if (this.failures.length > 0) {
+      this.printFailedExamples();
+    }
+    print();
   },
 
   suiteStarted: function(result) {
@@ -63,34 +81,48 @@ _.extend(Reporter.prototype, {
   },
 
   pass: function (testName) {
-    print(internal.COLORS.COLOR_GREEN + "  " + testName + internal.COLORS.COLOR_RESET);
+    print(successColor + "  " + testName + resetColor);
   },
 
   fail: function (testName, result) {
     var failedExpectations = result.failedExpectations;
-    print(internal.COLORS.COLOR_RED + "  " + testName + " [FAILED]" + internal.COLORS.COLOR_RESET);
+    this.failedSpecs.push(result.fullName);
+    print(failureColor + "  " + testName + " [FAILED]" + resetColor);
     _.each(failedExpectations, function(failedExpectation) {
-      this.failures.push({ fullName: result.fullName, failedExpectation: failedExpectation });
+      this.failures.push({
+        fullName: result.fullName,
+        failedExpectation: failedExpectation,
+        fileName: parseFileName(failedExpectation.stack)
+      });
     }, this);
   },
 
   printFailureInfo: function () {
-    print("\nFailures:\n");
+    print("Failures:\n");
     _.each(this.failures, function(failure, index) {
       var failedExpectation = failure.failedExpectation;
 
       print("  " + index + ") " + failure.fullName);
-      printIndented(failedExpectation.stack, 6);
+      print(failureColor + indent(failedExpectation.stack, 6) + resetColor);
     });
   },
 
   printFooter: function () {
     var end = new Date(),
-      timeInMilliseconds = end - this.start;
+      timeInMilliseconds = end - this.start,
+      color = this.failedSpecs.length > 0 ? failureColor : successColor;
+
     print();
     print('Finished in ' + (timeInMilliseconds / 1000) + ' seconds');
-    print(this.totalSpecs + ' example, ' + this.failedSpecs + ' failures');
-    print();
+    print(color + this.totalSpecs + ' example, ' + this.failedSpecs.length + ' failures' + resetColor);
+  },
+
+  printFailedExamples: function () {
+    print("\nFailed examples:\n");
+    _.each(this.failures, function(failure) {
+      var repeatAction = "arangod --javascript.unit-tests " + failure.fileName + " /tmp/arangodb_test";
+      print(failureColor + repeatAction + commentColor + " # " + failure.fullName + resetColor);
+    });
   }
 });
 
