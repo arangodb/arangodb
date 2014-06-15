@@ -55,6 +55,10 @@ _.extend(Reporter.prototype, {
     print();
   },
 
+  hasErrors: function() {
+    return this.failedSpecs.length > 0;
+  },
+
   jasmineDone: function() {
     if (this.format === 'progress') {
       print('\n');

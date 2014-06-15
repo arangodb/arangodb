@@ -92,4 +92,14 @@ env.addReporter(jsApiReporter);
  */
 var arangoReporter = new Reporter({ format: 'progress' });
 
+exports.status = function() {
+  var status;
+  if (arangoReporter.hasErrors()) {
+    status = 1;
+  } else {
+    status = 0;
+  }
+  return status;
+};
+
 env.addReporter(arangoReporter);
