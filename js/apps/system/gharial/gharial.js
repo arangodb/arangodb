@@ -67,6 +67,24 @@
 
 ////////////////////// Graph Creation /////////////////////////////////
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_list_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   examples.loadGraph("routeplanner");
+///   var url = "/system/gharial";
+///   var response = logCurlRequest('GET', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+
   /** List graphs
    *
    * Creates a list of all available graphs.
@@ -74,6 +92,32 @@
   controller.get("/", function(req, res) {
     setResponse(res, "graphs", Graph._list());
   });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_create_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
+///   var url = "/system/gharial";
+///   body = { 
+///     name: "myGraph", 
+///     edgeDefinitions: [{
+///       collection: "edges",
+///       from: [ "startVertices" ],
+///       to: [ "endVertices" ]
+///     }]
+///   };
+///
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("myGraph");
+///   
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Creates a new graph
    *
@@ -91,6 +135,21 @@
       };
     }
   ).bodyParam("graph", "The required information for a graph", Model);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_drop_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Drops an existing graph
    *
