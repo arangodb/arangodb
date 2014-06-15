@@ -1009,7 +1009,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///
 /// Restriction of a query is only valid for collections known to the graph:
 //
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices({name: "Alice"});
@@ -1403,16 +1403,19 @@ var _directedRelationDefinition = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list
-///
+/// @startDocuBlock JSF_general_graph_list_call
 /// `general-graph._list()`
 /// *List all graphs.*
+/// @endDocuBlock
 ///
+/// @startDocuBlock JSF_general_graph_list_info
 /// Lists all graph names stored in this database.
 ///
 /// @EXAMPLES
+/// @endDocuBlock
+/// @startDocuBlock JSF_general_graph_list_examples
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._list();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2849,7 +2852,7 @@ Graph.prototype._addOrphanCollection = function(vertexCollection, createCollecti
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = examples._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3, true);
+///   g._addOrphanCollection("myVC3", true);
 ///   g._getOrphanCollections();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2874,12 +2877,12 @@ Graph.prototype._getOrphanCollections = function() {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeOrphanCollections}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = examples._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3, true);
-///   g._addOrphanCollection("myVC4, true);
+///   g._addOrphanCollection("myVC3", true);
+///   g._addOrphanCollection("myVC4", true);
 ///   g._getOrphanCollections();
 ///   g._removeOrphanCollection("myVC3");
 ///   g._getOrphanCollections();
