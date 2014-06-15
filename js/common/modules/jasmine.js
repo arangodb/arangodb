@@ -90,6 +90,6 @@ env.addReporter(jsApiReporter);
 /**
  * The `arangoReporter` does the reporting to the console
  */
-var arangoReporter = new Reporter();
+var arangoReporter = new Reporter({ format: 'progress' });
 
 env.addReporter(arangoReporter);

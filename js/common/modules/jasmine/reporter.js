@@ -2,8 +2,8 @@
 /*global module, require, exports, print */
 
 // Reporter
-//  [p]rogress (default - dots)
-//  [d]ocumentation (group and example names)
+//  progress [default]: Dots
+//  documentation: Group and example names
 
 var Reporter,
   _ = require('underscore'),
@@ -41,7 +41,9 @@ var parseFileName = function(stack) {
   return fileInfoPattern.exec(parsedStack)[1];
 };
 
-Reporter = function () {
+Reporter = function (options) {
+  options = options || {};
+  this.format = options.format || 'progress';
   this.failures = [];
 };
 
@@ -54,6 +56,9 @@ _.extend(Reporter.prototype, {
   },
 
   jasmineDone: function() {
+    if (this.format === 'progress') {
+      print('\n');
+    }
     if (this.failures.length > 0) {
       this.printFailureInfo();
     }
@@ -65,11 +70,15 @@ _.extend(Reporter.prototype, {
   },
 
   suiteStarted: function(result) {
-    print(result.description);
+    if (this.format === 'documentation') {
+      print(result.description);
+    }
   },
 
   suiteDone: function() {
-    print();
+    if (this.format === 'documentation') {
+      print();
+    }
   },
 
   specDone: function(result) {
@@ -81,13 +90,25 @@ _.extend(Reporter.prototype, {
   },
 
   pass: function (testName) {
-    print(successColor + "  " + testName + resetColor);
+    if (this.format === 'progress') {
+      printf("%s", successColor + "." + resetColor);
+    } else if (this.format === 'documentation') {
+      print(successColor + "  " + testName + resetColor);
+    }
+  },
+
+  printFailureMessage: function(testName) {
+    if (this.format === 'progress') {
+      printf("%s", failureColor + "F" + resetColor);
+    } else if (this.format === 'documentation') {
+      print(failureColor + "  " + testName + " [FAILED]" + resetColor);
+    }
   },
 
   fail: function (testName, result) {
     var failedExpectations = result.failedExpectations;
     this.failedSpecs.push(result.fullName);
-    print(failureColor + "  " + testName + " [FAILED]" + resetColor);
+    this.printFailureMessage(testName);
     _.each(failedExpectations, function(failedExpectation) {
       this.failures.push({
         fullName: result.fullName,
