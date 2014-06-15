@@ -13,6 +13,7 @@ var Reporter,
   successColor = internal.COLORS.COLOR_GREEN,
   commentColor = internal.COLORS.COLOR_BLUE,
   resetColor = internal.COLORS.COLOR_RESET,
+  pendingColor = internal.COLORS.COLOR_YELLOW
   p = function (x) { print(inspect(x)); };
 
 var repeatString = function(str, num) {
@@ -51,6 +52,7 @@ _.extend(Reporter.prototype, {
   jasmineStarted: function(options) {
     this.totalSpecs = options.totalSpecsDefined || 0;
     this.failedSpecs = [];
+    this.pendingSpecs = [];
     this.start = new Date();
     print();
   },
@@ -65,6 +67,9 @@ _.extend(Reporter.prototype, {
     }
     if (this.failures.length > 0) {
       this.printFailureInfo();
+    }
+    if (this.pendingSpecs.length > 0) {
+      this.printPendingInfo();
     }
     this.printFooter();
     if (this.failures.length > 0) {
@@ -85,11 +90,28 @@ _.extend(Reporter.prototype, {
     }
   },
 
+  specStarted: function(result) {
+    if (!_.isUndefined(this.currentSpec)) {
+      this.pending(this.currentSpec.description, this.currentSpec);
+    }
+    this.currentSpec = result;
+  },
+
   specDone: function(result) {
+    this.currentSpec = undefined;
     if (_.isEqual(result.status, 'passed')) {
       this.pass(result.description);
     } else {
       this.fail(result.description, result);
+    }
+  },
+
+  pending: function (testName, result) {
+    this.pendingSpecs.push(result);
+    if (this.format === 'progress') {
+      printf("%s", pendingColor + "*" + resetColor);
+    } else if (this.format === 'documentation') {
+      print(pendingColor + "  " + testName + " [PENDING]" +  resetColor);
     }
   },
 
@@ -132,14 +154,31 @@ _.extend(Reporter.prototype, {
     });
   },
 
+  printPendingInfo: function () {
+    print("Pending:\n");
+    _.each(this.pendingSpecs, function(pending) {
+      print(pendingColor + "  " + pending.fullName + resetColor);
+    });
+  },
+
   printFooter: function () {
     var end = new Date(),
       timeInMilliseconds = end - this.start,
-      color = this.failedSpecs.length > 0 ? failureColor : successColor;
+      color,
+      message = this.totalSpecs + ' example, ' + this.failedSpecs.length + ' failures';
+
+    if (this.failedSpecs.length > 0) {
+      color = failureColor;
+    } else if (this.pendingSpecs.length > 0) {
+      color = pendingColor;
+      message += ', ' + this.pendingSpecs.length + ' pending';
+    } else {
+      color = successColor;
+    }
 
     print();
     print('Finished in ' + (timeInMilliseconds / 1000) + ' seconds');
-    print(color + this.totalSpecs + ' example, ' + this.failedSpecs.length + ' failures' + resetColor);
+    print(color + message + resetColor);
   },
 
   printFailedExamples: function () {
