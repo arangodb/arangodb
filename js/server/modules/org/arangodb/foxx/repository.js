@@ -2,7 +2,7 @@
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx Repository
+/// Foxx Repository
 ///
 /// @file
 ///
@@ -32,15 +32,11 @@ var Repository,
   _ = require("underscore"),
   backbone_helpers = require("backbone");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        Repository
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_initializer
-/// @brief Create a new instance of Repository
+/// @startDocuBlock JSF_foxx_repository_initializer
+/// Create a new instance of Repository
 ///
-/// @FUN{new FoxxRepository(@FA{collection}, @FA{opts})}
+/// `new FoxxRepository(collection, opts)`
 ///
 /// Create a new instance of Repository
 ///
@@ -55,57 +51,71 @@ var Repository,
 /// your Repository (for some AQL queries probably). Get it from the Foxx.Controller
 /// via the `collectionPrefix` attribute.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
-/// @code
-///     instance = new Repository(app.collection("my_collection"));
-///     // or:
-///     instance = new Repository(app.collection("my_collection"), {
-///       model: MyModelPrototype,
-///       prefix: app.collectionPrefix,
-///     });
-/// @endcode
+/// ```javascript
+/// instance = new Repository(app.collection("my_collection"));
+/// // or:
+/// instance = new Repository(app.collection("my_collection"), {
+///   model: MyModelPrototype,
+///   prefix: app.collectionPrefix,
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Repository = function (collection, opts) {
   'use strict';
   this.options = opts || {};
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        Attributes
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_collection
-/// @brief The collection object.
-///
-/// See the documentation of collection.
+/// @startDocuBlock JSF_foxx_repository_collection
+/// The wrapped ArangoDB collection object
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   this.collection = collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_modelPrototype
-/// @brief The prototype of the according model.
-///
-/// See the documentation of collection.
+/// @startDocuBlock JSF_foxx_repository_modelPrototype
+/// The prototype of the according model.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   this.modelPrototype = this.options.model || require("org/arangodb/foxx/model").Model;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_prefix
-/// @brief The prefix of the application.
-///
-/// See the documentation of collection.
+/// @startDocuBlock JSF_foxx_repository_prefix
+/// The prefix of the application. This is useful if you want to construct AQL
+/// queries for example.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   this.prefix = this.options.prefix;
 };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           Methods
+// -----------------------------------------------------------------------------
+
 _.extend(Repository.prototype, {
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                                 Adding Entries
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_save
-/// @brief Save a model into the database
+/// @startDocuBlock JSF_foxx_repository_save
+/// `save(model)`
+///
+/// Save a model into the database
 ///
 /// Expects a model. Will set the ID and Rev on the model.
-/// Returns the model (for convenience).
+/// Returns the model.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
     'use strict';
@@ -114,11 +124,87 @@ _.extend(Repository.prototype, {
     return model;
   },
 
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                                Finding Entries
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_removeById
-/// @brief Remove the document with the given ID
+/// @startDocuBlock JSF_foxx_repository_byId
+/// `byId(id)`
+///
+/// Find a model by its ID
+///
+/// Returns the model for the given ID.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  byId: function (id) {
+    'use strict';
+    var data = this.collection.document(id);
+    return (new this.modelPrototype(data));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_byExample
+/// `byExample(example)`
+///
+/// Find all models by an example
+///
+/// Returns an array of models for the given ID.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  byExample: function (example) {
+    'use strict';
+    var rawDocuments = this.collection.byExample(example).toArray();
+    return _.map(rawDocuments, function (rawDocument) {
+      return (new this.modelPrototype(rawDocument));
+    }, this);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_firstExample
+/// `firstExample(example)`
+///
+/// Find the first model that matches the example.
+///
+/// Returns a model that matches the given example.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  firstExample: function (example) {
+    'use strict';
+    var rawDocument = this.collection.firstExample(example);
+    return (new this.modelPrototype(rawDocument));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_all
+/// `all()`
+///
+/// Returns an array of models that matches the given example.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                               Removing Entries
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_remove
+/// `remove(model)`
+///
+/// Remove the model from the repository
+///
+/// Expects a model
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_removeById
+/// `removeById(id)`
+///
+/// Remove the document with the given ID
 ///
 /// Expects an ID of an existing document.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   removeById: function (id) {
     'use strict';
@@ -126,23 +212,31 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_removeByExample
-/// @brief Remove all documents that match the example
+/// @startDocuBlock JSF_foxx_repository_removeByExample
+/// `removeByExample(example)`
+///
+/// Remove all documents that match the example
 ///
 /// Find all documents that fit this example and remove them.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   removeByExample: function (example) {
     'use strict';
     this.collection.removeByExample(example);
   },
 
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                              Replacing Entries
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replace
-/// @brief Replace a model in the database
+/// @startDocuBlock JSF_foxx_repository_replace
+/// `replace(model)`
 ///
 /// Find the model in the database by its `_id` and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
-/// Returns the model (for convenience).
+/// Returns the model.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   replace: function (model) {
     'use strict';
@@ -154,13 +248,15 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_replaceById
-/// @brief Find an item by ID and replace it with the given model
+/// @startDocuBlock JSF_foxx_repository_replaceById
+/// `replaceById(id, model)`
+///
+/// Find an item by ID and replace it with the given model
 ///
 /// Find the model in the database by the given ID and replace it with the given.
 /// model.
-/// Expects a model. Sets the ID and Revision of the model.
-/// Returns the model (for convenience).
+/// Sets the ID and Revision of the model and also returns it.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   replaceById: function (id, model) {
     'use strict';
@@ -168,52 +264,53 @@ _.extend(Repository.prototype, {
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
     return model;
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_byId
-/// @brief Find a model by its ID
-///
-/// Returns the model for the given ID.
-////////////////////////////////////////////////////////////////////////////////
-  byId: function (id) {
-    'use strict';
-    var data = this.collection.document(id);
-    return (new this.modelPrototype(data));
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_byExample
-/// @brief Find all models by an example
-///
-/// Returns an array of models for the given ID.
-////////////////////////////////////////////////////////////////////////////////
-  byExample: function (example) {
-    'use strict';
-    var rawDocuments = this.collection.byExample(example).toArray();
-    return _.map(rawDocuments, function (rawDocument) {
-      return (new this.modelPrototype(rawDocument));
-    }, this);
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_firstExample
-/// @brief Find the first model that matches the example.
-///
-/// Returns a model that matches the given example.
-////////////////////////////////////////////////////////////////////////////////
-  firstExample: function (example) {
-    'use strict';
-    var rawDocument = this.collection.firstExample(example);
-    return (new this.modelPrototype(rawDocument));
   }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_repository_extend
-/// @brief Extend the Repository prototype to add or overwrite methods.
+/// @startDocuBlock JSF_foxx_repository_replaceByExample
+/// `replaceByExample(example, model)`
 ///
-/// Extend the Repository prototype to add or overwrite methods.
+/// Find an item by example and replace it with the given model
+///
+/// Find the model in the database by the given example and replace it with the given.
+/// model.
+/// Sets the ID and Revision of the model and also returns it.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                               Updating Entries
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_updateById
+/// `updateById(id, object)`
+///
+/// Find an item by ID and update it with the attributes in the provided object.
+/// Returns the updated model.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_updateByExample
+/// `updateByExample(example, object)`
+///
+/// Find an item by example and update it with the attributes in the provided object.
+/// Returns the updated model.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SUBSECTION--                                               Counting Entries
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_count
+/// `count()`
+///
+/// Return the number of entries in this collection
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Repository.extend = backbone_helpers.extend;
