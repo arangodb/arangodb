@@ -53,6 +53,7 @@ TRI_aql_variable_t* TRI_CreateVariableAql (char const* name,
   }
 
   variable->_definingNode = definingNode;
+  variable->_isUpdated = false;
 
   TRI_ASSERT(definingNode);
 

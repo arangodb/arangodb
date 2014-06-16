@@ -1074,7 +1074,7 @@ bool TRI_SaveJson (char const* filename,
     return false;
   }
 
-  fd = TRI_CREATE(tmp, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);

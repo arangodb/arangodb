@@ -314,7 +314,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
     }
     
     case TRI_AQL_NODE_REMOVE:
-    case TRI_AQL_NODE_SAVE:
+    case TRI_AQL_NODE_INSERT:
     case TRI_AQL_NODE_UPDATE:
     case TRI_AQL_NODE_REPLACE: {
       TRI_json_t* row;

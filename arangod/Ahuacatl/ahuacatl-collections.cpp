@@ -48,23 +48,21 @@ struct TRI_vector_pointer_s* TRI_GetCoordinatorIndexes (char const*, char const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeIndexes (TRI_aql_collection_t* collection) {
-  size_t i;
-
-  if (collection->_availableIndexes == NULL) {
+  if (collection->_availableIndexes == nullptr) {
     return;
   }
     
-  for (i = 0; i < collection->_availableIndexes->_length; ++i) {
+  for (size_t i = 0; i < collection->_availableIndexes->_length; ++i) {
     TRI_index_t* idx = (TRI_index_t*) TRI_AtVectorPointer(collection->_availableIndexes, i);
 
-    if (idx != NULL) {
+    if (idx != nullptr) {
       TRI_DestroyVectorString(&idx->_fields);
       TRI_Free(TRI_CORE_MEM_ZONE, idx);
     }
   }
 
   TRI_FreeVectorPointer(TRI_UNKNOWN_MEM_ZONE, collection->_availableIndexes);
-  collection->_availableIndexes = NULL;
+  collection->_availableIndexes = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,19 +103,17 @@ static int CollectionNameComparator (const void* l, const void* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
-  TRI_aql_collection_t* collection;
+  TRI_ASSERT(name != nullptr);
 
-  TRI_ASSERT(name);
+  TRI_aql_collection_t* collection = static_cast<TRI_aql_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false));
 
-  collection = (TRI_aql_collection_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_collection_t), false);
-
-  if (collection == NULL) {
-    return NULL;
+  if (collection == nullptr) {
+    return nullptr;
   }
 
   collection->_name             = (char*) name;
-  collection->_collection       = NULL;
-  collection->_availableIndexes = NULL;
+  collection->_collection       = nullptr;
+  collection->_availableIndexes = nullptr;
 
   return collection;
 }
@@ -126,25 +122,35 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
 /// @brief set up the collection names vector and order it
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetupCollections (TRI_aql_context_t* const context) {
-  size_t i, n;
+static bool SetupCollections (TRI_aql_context_t* context) {
+  if (context->_writeCollection != nullptr) { 
+    TRI_aql_collection_t* collection = CreateCollectionContainer(context->_writeCollection);
+    
+    if (collection == nullptr) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+      return false;
+    }
+    
+    TRI_PushBackVectorPointer(&context->_collections, (void*) collection);
+  }
+
   bool result = true;
 
   // each collection used is contained once in the assoc. array
   // so we do not have to care about duplicate names here
-  n = context->_collectionNames._nrAlloc;
+  size_t const n = context->_collectionNames._nrAlloc;
 
-  for (i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     char* name = static_cast<char*>(context->_collectionNames._table[i]);
-    TRI_aql_collection_t* collection;
 
-    if (name == NULL) {
+    if (name == nullptr || 
+        (context->_writeCollection != nullptr && TRI_EqualString(name, context->_writeCollection))) {
       continue;
     }
 
-    collection = CreateCollectionContainer(name);
+    TRI_aql_collection_t* collection = CreateCollectionContainer(name);
 
-    if (collection == NULL) {
+    if (collection == nullptr) {
       result = false;
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       break;
