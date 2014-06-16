@@ -59,21 +59,21 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
 
   res = TRI_ERROR_NO_ERROR;
 
-  // delete while at least one of the constraints is violated
+  // delete while at least one of the constraints is still violated
   while ((cap->_count > 0 && currentCount > cap->_count) || 
          (cap->_size > 0 && currentSize > cap->_size)) {
     TRI_doc_mptr_t* oldest = headers->front();
 
-    if (oldest != NULL) {
+    if (oldest != nullptr) {
       size_t oldSize;
      
-      TRI_ASSERT(oldest->getDataPtr() != NULL);  // ONLY IN INDEX, PROTECTED by RUNTIME
+      TRI_ASSERT(oldest->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
       oldSize = ((TRI_df_marker_t*) (oldest->getDataPtr()))->_size;  // ONLY IN INDEX, PROTECTED by RUNTIME
 
       TRI_ASSERT(oldSize > 0);
 
-      if (trxCollection != NULL) {
-        res = TRI_DeleteDocumentDocumentCollection(trxCollection, NULL, oldest);
+      if (trxCollection != nullptr) {
+        res = TRI_DeleteDocumentDocumentCollection(trxCollection, nullptr, oldest);
         
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));
@@ -113,7 +113,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
   currentCount = headers->count();
   currentSize = headers->size();
   
-  if ((cap->_count >0 && currentCount <= cap->_count) &&
+  if ((cap->_count > 0 && currentCount <= cap->_count) &&
       (cap->_size > 0 && currentSize <= cap->_size)) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -127,9 +127,11 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     vocbase = document->_vocbase;
     cid = document->_info._cid;
 
+    // create a fake transaction to avoid assertion failures TODO: FIXME
+    triagens::arango::TransactionBase fake(true);
     trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), true, 0.0, false);
 
-    if (trx == NULL) {
+    if (trx == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -140,7 +142,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 
       trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
 
-      if (trxCollection != NULL) {
+      if (trxCollection != nullptr) {
         res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER, TRI_TRANSACTION_TOP_LEVEL);
 
         if (res == TRI_ERROR_NO_ERROR) {
@@ -186,8 +188,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
   // create json object and fill it
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_count));
@@ -202,7 +204,7 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
 
 static void RemoveIndexCapConstraint (TRI_index_t* idx,
                                       TRI_document_collection_t* document) {
-  document->_capConstraint = NULL;
+  document->_capConstraint = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,8 +271,8 @@ TRI_index_t* TRI_CreateCapConstraint (TRI_document_collection_t* document,
                                       int64_t size) {
   TRI_cap_constraint_t* cap = static_cast<TRI_cap_constraint_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_cap_constraint_t), false));
 
-  if (cap == NULL) {
-    return NULL;
+  if (cap == nullptr) {
+    return nullptr;
   }
 
   TRI_index_t* idx = &cap->base;

@@ -3805,7 +3805,7 @@ jsunity.run(transactionCrossCollectionSuite);
 
 // only run this test suite if server-side failures are enabled
 if (internal.debugCanUseFailAt()) {
-  jsunity.run(transactionServerFailuresSuite);
+//  jsunity.run(transactionServerFailuresSuite);
 }
 
 return jsunity.done();

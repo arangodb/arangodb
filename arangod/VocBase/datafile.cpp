@@ -1281,10 +1281,7 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
                               bool forceSync) {
-
-  TRI_voc_tick_t tick       = marker->_tick;
-   
-  TRI_ASSERT(tick > 0);
+  TRI_ASSERT(marker->_tick > 0);
   TRI_ASSERT(marker->_size > 0);
 
   TRI_UpdateTicksDatafile(datafile, marker);

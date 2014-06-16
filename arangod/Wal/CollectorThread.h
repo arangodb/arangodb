@@ -71,6 +71,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct CollectorCache {
+      CollectorCache (CollectorCache const&) = delete;
+      CollectorCache& operator= (CollectorCache const&) = delete;
+
       explicit CollectorCache (TRI_voc_cid_t collectionId,
                                TRI_voc_tick_t databaseId,
                                Logfile* logfile,

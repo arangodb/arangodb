@@ -206,7 +206,7 @@ function computePerSeconds (current, prev) {
   'use strict';
   
   // sanity check if we have restarted the server
-  if (prev.time + exports.STATISTICS_INTERVALL * 1.5 < current.time) {
+  if (prev.time + exports.STATISTICS_INTERVAL * 1.5 < current.time) {
     return null;
   }
 
@@ -456,16 +456,16 @@ function compute15Minute (start, clusterId) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics intervall
+/// @brief statistics interval
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.STATISTICS_INTERVALL = 10;
+exports.STATISTICS_INTERVAL = 10;
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics intervall for history
+/// @brief statistics interval for history
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.STATISTICS_HISTORY_INTERVALL = 15 * 60;
+exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -493,7 +493,7 @@ exports.historian = function () {
     var now = internal.time();
     var prevRaw = lastEntry(
       '_statisticsRaw',
-      now - 2 * exports.STATISTICS_INTERVALL,
+      now - 2 * exports.STATISTICS_INTERVAL,
       clusterId);
 
     // create new raw statistics
@@ -550,17 +550,17 @@ exports.historianAverage = function () {
   try {
     var now = internal.time();
 
-    // check if need to create a new 15 min intervall
+    // check if need to create a new 15 min interval
     var prev15 = lastEntry(
       '_statistics15',
-      now - 2 * exports.STATISTICS_HISTORY_INTERVALL,
+      now - 2 * exports.STATISTICS_HISTORY_INTERVAL,
       clusterId);
 
     var stat15;
     var start;
 
     if (prev15 === null) {
-      start = now - exports.STATISTICS_HISTORY_INTERVALL;
+      start = now - exports.STATISTICS_HISTORY_INTERVAL;
     }
     else {
       start = prev15.time;

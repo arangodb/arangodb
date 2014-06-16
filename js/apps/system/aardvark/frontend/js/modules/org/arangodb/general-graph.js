@@ -121,6 +121,22 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find or create a collection by name
+////////////////////////////////////////////////////////////////////////////////
+
+var findOrCreateOrphanCollections = function (graphName, orphanCollections, noCreate) {
+  var returnVals = [];
+  if (!orphanCollections) {
+    orphanCollections = [];
+  }
+  orphanCollections.forEach(function (e) {
+    findOrCreateCollectionByName(e, ArangoCollection.TYPE_DOCUMENT, noCreate);
+    returnVals.push(db[e]);
+  });
+  return returnVals;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to get graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1388,6 +1404,28 @@ var _directedRelationDefinition = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_list
+///
+/// `general-graph._list()`
+/// *List all graphs.*
+///
+/// Lists all graph names stored in this database.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+///   var graph = require("org/arangodb/general-graph");
+///   graph._list();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+var _list = function() {
+  var gdb = getGraphCollection();
+  return _.pluck(gdb.toArray(), "_key");
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list of edge definitions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1425,8 +1463,11 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _create = function (graphName, edgeDefinitions) {
+var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
+  if (!orphanCollections) {
+    orphanCollections = [];
+  }
   var gdb = getGraphCollection(),
     err,
     graphAlreadyExists = true,
@@ -1497,13 +1538,18 @@ var _create = function (graphName, edgeDefinitions) {
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
+  orphanCollections.forEach(
+    function(oC) {
+      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
+    }
+  );
 
   gdb.save({
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
 
-  return new Graph(graphName, edgeDefinitions, collections[0], collections[1]);
+  return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
 
@@ -1701,7 +1747,10 @@ var createHiddenProperty = function(obj, name, value) {
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections) {
+var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+  if (!orphanCollections) {
+    orphanCollections = [];
+  }
   var self = this;
   // Create Hidden Properties
   createHiddenProperty(this, "__name", graphName);
@@ -1710,7 +1759,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
-  createHiddenProperty(this, "__orphanCollections", []);
+  createHiddenProperty(this, "__orphanCollections", orphanCollections);
 
   // fills this.__idsToRemove and this.__collectionsToLock
   var removeEdge = function (edgeId, options) {
@@ -1903,7 +1952,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 var _graph = function(graphName) {
 
   var gdb = getGraphCollection(),
-    g, collections;
+    g, collections, orphanCollections;
 
   try {
     g = gdb.document(graphName);
@@ -1919,8 +1968,12 @@ var _graph = function(graphName) {
   }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+  orphanCollections = g.orphanCollections;
+  if (!orphanCollections) {
+    orphanCollections = [];
+  }
 
-  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1]);
+  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2033,7 +2086,11 @@ Graph.prototype._edgeCollections = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._vertexCollections = function() {
-  return _.values(this.__vertexCollections);
+  var orphans = [];
+  _.each(this.__orphanCollections, function(o) {
+    orphans.push(db[o]);
+  });
+  return _.union(_.values(this.__vertexCollections), orphans);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2483,6 +2540,12 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
   edgeDefinition.from.forEach(
     function(vc) {
+      //remove from __orphanCollections
+      var orphanIndex = self.__orphanCollections.indexOf(vc);
+      if (orphanIndex !== -1) {
+        self.__orphanCollections.splice(orphanIndex, 1);
+      }
+      //push into __vertexCollections
       if (self.__vertexCollections[vc] === undefined) {
         self.__vertexCollections[vc] = db[vc];
       }
@@ -2490,6 +2553,12 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   );
   edgeDefinition.to.forEach(
     function(vc) {
+      //remove from __orphanCollections
+      var orphanIndex = self.__orphanCollections.indexOf(vc);
+      if (orphanIndex !== -1) {
+        self.__orphanCollections.splice(orphanIndex, 1);
+      }
+      //push into __vertexCollections
       if (self.__vertexCollections[vc] === undefined) {
         self.__vertexCollections[vc] = db[vc];
       }
@@ -2529,6 +2598,8 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
   var self = this;
   var dropCandidates;
   var currentEdgeDefinition = {};
+  var exOrphanCandidates = [];
+  var effectedGraphs = [];
 
 
   //check, if in graphs edge definition
@@ -2552,6 +2623,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
             eDs[id].from = edgeDefinition.from;
             eDs[id].to = edgeDefinition.to;
             db._graphs.update(graph._key, {edgeDefinitions: eDs});
+            effectedGraphs.push(graph._key);
             if (graph._key === self.__name) {
               self.__edgeDefinitions[id].from = edgeDefinition.from;
               self.__edgeDefinitions[id].to = edgeDefinition.to;
@@ -2584,11 +2656,11 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
     );
   }
 
-
   //push "new" collections into vertexCollections
   edgeDefinition.from.forEach(
     function(vc) {
       if (self.__vertexCollections[vc] === undefined) {
+        exOrphanCandidates.push(vc);
         self.__vertexCollections[vc] = db[vc];
       }
     }
@@ -2596,6 +2668,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
   edgeDefinition.to.forEach(
     function(vc) {
       if (self.__vertexCollections[vc] === undefined) {
+        exOrphanCandidates.push(vc);
         self.__vertexCollections[vc] = db[vc];
       }
     }
@@ -2619,6 +2692,26 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
       if (drop) {
         delete self.__vertexCollections[dropCanditate];
       }
+    }
+  );
+
+  //orphans treatment
+  effectedGraphs.forEach(
+    function(gN) {
+      var g;
+      if (gN === self.__name) {
+        g = self;
+      } else {
+        g = _graph(gN);
+      }
+      var orphans = g._getOrphanCollections();
+      exOrphanCandidates.forEach(
+        function(eOC) {
+          if (orphans.indexOf(eOC) !== -1) {
+            g._removeOrphanCollection(eOC);
+          }
+        }
+      );
     }
   );
 
@@ -2813,6 +2906,7 @@ Graph.prototype._removeOrphanCollection = function(orphanCollectionName, dropCol
     throw err;
   }
   this.__orphanCollections.splice(index, 1);
+  db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
   if (dropCollection !== false) {
     var graphs = getGraphCollection().toArray();
@@ -2851,6 +2945,7 @@ exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
+exports._list = _list;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

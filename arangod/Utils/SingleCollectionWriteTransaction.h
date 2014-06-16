@@ -52,11 +52,6 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,15 +97,6 @@ namespace triagens {
         virtual ~SingleCollectionWriteTransaction () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -139,10 +125,12 @@ namespace triagens {
 
         int createDocument (TRI_doc_mptr_copy_t* mptr,
                             TRI_json_t const* json,
-                            const bool forceSync) {
+                            bool forceSync) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
+#endif
           
           TRI_ASSERT(mptr != nullptr);
 
@@ -162,11 +150,12 @@ namespace triagens {
                         TRI_json_t const* json,
                         bool forceSync,
                         void const* data) {
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
-          
+#endif
+
           TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(), 
@@ -185,9 +174,11 @@ namespace triagens {
                             TRI_doc_mptr_copy_t* mptr,
                             TRI_shaped_json_t const* shaped,
                             bool forceSync) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
+#endif
           
           TRI_ASSERT(mptr != nullptr);
 
@@ -209,9 +200,11 @@ namespace triagens {
                         TRI_shaped_json_t const* shaped,
                         bool forceSync,
                         void const* data) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
+#endif
 
           TRI_ASSERT(mptr != nullptr);
 
@@ -229,16 +222,18 @@ namespace triagens {
 /// using json
 ////////////////////////////////////////////////////////////////////////////////
 
-        int updateDocument (const string& key,
+        int updateDocument (std::string const& key,
                             TRI_doc_mptr_copy_t* mptr,
                             TRI_json_t* const json,
-                            const TRI_doc_update_policy_e policy,
+                            TRI_doc_update_policy_e policy,
                             bool forceSync,
-                            const TRI_voc_rid_t expectedRevision,
+                            TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
+#endif
           
           TRI_ASSERT(mptr != nullptr);
 
@@ -258,17 +253,19 @@ namespace triagens {
 /// using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-        int updateDocument (const string& key,
+        int updateDocument (std::string const& key,
                             TRI_doc_mptr_copy_t* mptr,
                             TRI_shaped_json_t* const shaped,
-                            const TRI_doc_update_policy_e policy,
+                            TRI_doc_update_policy_e policy,
                             bool forceSync,
-                            const TRI_voc_rid_t expectedRevision,
+                            TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
-          
+#endif         
+ 
           TRI_ASSERT(mptr != nullptr);
 
           return this->update(this->trxCollection(), 
@@ -286,14 +283,16 @@ namespace triagens {
 /// @brief delete a single document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int deleteDocument (const string& key,
-                            const TRI_doc_update_policy_e policy,
+        int deleteDocument (std::string const& key,
+                            TRI_doc_update_policy_e policy,
                             bool forceSync,
-                            const TRI_voc_rid_t expectedRevision,
+                            TRI_voc_rid_t expectedRevision,
                             TRI_voc_rid_t* actualRevision) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
+#endif
 
           return this->remove(this->trxCollection(), 
                               key, 
@@ -309,25 +308,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int truncate (bool forceSync) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           if (_numWrites++ > N) {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
-
+#endif
           return this->removeAll(this->trxCollection(), forceSync);
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -338,10 +329,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _numWrites;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 
