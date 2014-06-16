@@ -85,18 +85,9 @@ namespace triagens {
 
         TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
-        if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-          // nothing special to do for insert
-          document->_numberDocuments++;
-        }
-        else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+        if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // move header to the end of the list
           document->_headersPtr->moveBack(header, &oldHeader);  // PROTECTED by trx in trxCollection
-        }
-        else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          // unlink the header
-          document->_headersPtr->unlink(header);  // PROTECTED by trx in trxCollection
-          document->_numberDocuments--;
         }
  
         // free the local marker buffer 
