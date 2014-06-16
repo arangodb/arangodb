@@ -1976,7 +1976,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// Using new Signature for attributes WaitForSync and limit
-/// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExampleWaitForSync}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var products = db._create(cn, { waitForSync: true });

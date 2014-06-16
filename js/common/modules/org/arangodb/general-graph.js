@@ -1009,7 +1009,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///
 /// Restriction of a query is only valid for collections known to the graph:
 //
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices({name: "Alice"});
@@ -1403,16 +1403,19 @@ var _directedRelationDefinition = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list
-///
+/// @startDocuBlock JSF_general_graph_list_call
 /// `general-graph._list()`
 /// *List all graphs.*
+/// @endDocuBlock
 ///
+/// @startDocuBlock JSF_general_graph_list_info
 /// Lists all graph names stored in this database.
 ///
 /// @EXAMPLES
+/// @endDocuBlock
+/// @startDocuBlock JSF_general_graph_list_examples
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._list();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2029,7 +2032,8 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 var _drop = function(graphId, dropCollections) {
 
-  var gdb = getGraphCollection();
+  var gdb = getGraphCollection(),
+    graphs;
 
   if (!gdb.exists(graphId)) {
     var err = new ArangoError();
@@ -2046,7 +2050,7 @@ var _drop = function(graphId, dropCollections) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
         var collection = edgeDefinition.collection;
-        var graphs = getGraphCollection().toArray();
+        graphs = getGraphCollection().toArray();
         if (checkIfMayBeDropped(collection, graph._key, graphs)) {
           db._drop(collection);
         }
@@ -2064,6 +2068,20 @@ var _drop = function(graphId, dropCollections) {
             }
           }
         );
+      }
+    );
+    //drop orphans
+    graphs = getGraphCollection().toArray();
+    if (!graph.orphanCollections) {
+      graph.orphanCollections = [];
+    }
+    graph.orphanCollections.forEach(
+      function(oC) {
+        if (checkIfMayBeDropped(oC, graph._key, graphs)) {
+          try {
+            db._drop(oC);
+          } catch (e) {}
+        }
       }
     );
   }
@@ -2478,9 +2496,10 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
-/// Extends the edge definitions of a graph. If the edge collection of the edge definition
-/// to add is already used in the graph or used in a different graph with different from
-/// an to collections an error is thrown.
+/// Extends the edge definitions of a graph. If an orphan collection is used in this
+/// edge definitino, it will be removed from the orphenage. If the edge collection of
+/// the edge definition to add is already used in the graph or used in a different
+/// graph with different from an to collections an error is thrown.
 ///
 /// `general-graph._extendEdgeDefinitions(edgeDefinition)`
 ///
@@ -2566,19 +2585,78 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function for editing edge definitions
+////////////////////////////////////////////////////////////////////////////////
+
+var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollections, possibleOrphans, self) {
+
+  var oldCollections = [];
+  var graphCollections = [];
+  var graphObj = _graph(graph._key);
+  var eDs = graph.edgeDefinitions;
+
+  //replace edgeDefintion
+  eDs.forEach(
+    function(eD, id) {
+      if(eD.collection === edgeDefinition.collection) {
+        oldCollections = _.union(oldCollections, eD.from);
+        oldCollections = _.union(oldCollections, eD.to);
+        eDs[id].from = edgeDefinition.from;
+        eDs[id].to = edgeDefinition.to;
+        db._graphs.update(graph._key, {edgeDefinitions: eDs});
+        if (graph._key === self.__name) {
+          self.__edgeDefinitions[id].from = edgeDefinition.from;
+          self.__edgeDefinitions[id].to = edgeDefinition.to;
+        }
+      } else {
+        //collect all used collections
+        graphCollections = _.union(graphCollections, eD.from);
+        graphCollections = _.union(graphCollections, eD.to);
+      }
+    }
+  );
+
+
+  //remove used collection from orphanage
+  newCollections.forEach(
+    function(nc) {
+      if (graph._key === self.__name) {
+        if (self.__vertexCollections[nc] === undefined) {
+          self.__vertexCollections[nc] = db[nc];
+        }
+        try {
+          graphObj._removeOrphanCollection(nc);
+        } catch (e) {
+        }
+      }
+    }
+  );
+
+  //move unused collections to orphanage
+  possibleOrphans.forEach(
+    function(po) {
+      if (graphCollections.indexOf(po) === -1) {
+        delete graphObj.__vertexCollections[po];
+        graphObj._addOrphanCollection(po);
+      }
+    }
+  );
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__editEdgeDefinition
 /// Edits the edge definitions of a graph. The edge definition used as argument will
-/// replace the existing edge definition the corresponding edge definition in graphs
-/// edge definitions. Other graphs with the same edge definition will be modified, too.
+/// replace the existing edge definition of the graph which has the same collection.
+/// Vertex Collections of the replaced edge definition, that are not used in the new
+/// definition will transform to an orphan. Orphans that are used in this new edge
+/// definition will be deleted from the list of orphans. Other graphs with the same edge
+/// definition will be modified, too.
 ///
-/// `general-graph._editEdgeDefinition(edgeDefinition, dropCollections)`
+/// `general-graph._editEdgeDefinition(edgeDefinition)`
 ///
 /// *edgeDefinition* - [string] : the edge definition to replace the existing edge
-/// definition with the same attribut *collection*.
-/// *dropCollections* - bool : True, all collections that are not used anymore in any
-/// graph will be removed. Default: true.
+/// definition with the same attribute *collection*.
 ///
 /// @EXAMPLES
 ///
@@ -2593,13 +2671,9 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections) {
-  var self = this;
-  var dropCandidates;
-  var currentEdgeDefinition = {};
-  var exOrphanCandidates = [];
-  var effectedGraphs = [];
+Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 
+  var self = this;
 
   //check, if in graphs edge definition
   if (this.__edgeCollections[edgeDefinition.collection] === undefined) {
@@ -2609,108 +2683,33 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
     throw err;
   }
 
+  findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+
+  //evaluate collections to add to orphanage
+  var possibleOrphans = [];
+  var currentEdgeDefinition;
+  this.__edgeDefinitions.forEach(
+    function(ed) {
+      if (edgeDefinition.collection === ed.collection) {
+        currentEdgeDefinition = ed;
+      }
+    }
+  );
+
+  var currentCollections = _.union(currentEdgeDefinition.from, currentEdgeDefinition.to);
+  var newCollections = _.union(edgeDefinition.from, edgeDefinition.to);
+  currentCollections.forEach(
+    function(colName) {
+      if (newCollections.indexOf(colName) === -1) {
+        possibleOrphans.push(colName);
+      }
+    }
+  );
   //change definition for ALL graphs
   var graphs = getGraphCollection().toArray();
   graphs.forEach(
     function(graph) {
-      var eDs = graph.edgeDefinitions;
-      eDs.forEach(
-        function(eD, id) {
-          if(eD.collection === edgeDefinition.collection) {
-            currentEdgeDefinition.from = eD.from;
-            currentEdgeDefinition.to = eD.to;
-            eDs[id].from = edgeDefinition.from;
-            eDs[id].to = edgeDefinition.to;
-            db._graphs.update(graph._key, {edgeDefinitions: eDs});
-            effectedGraphs.push(graph._key);
-            if (graph._key === self.__name) {
-              self.__edgeDefinitions[id].from = edgeDefinition.from;
-              self.__edgeDefinitions[id].to = edgeDefinition.to;
-            }
-          }
-        }
-      );
-    }
-  );
-
-  findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
-
-  if (dropCollections !== false) {
-    graphs = getGraphCollection().toArray();
-    //eval collection to be dropped
-    dropCandidates = currentEdgeDefinition.from;
-    currentEdgeDefinition.to.forEach(
-      function (col) {
-        if (dropCandidates.indexOf(col) === -1) {
-          dropCandidates.push(col);
-        }
-      }
-    );
-    dropCandidates.forEach(
-      function(dc) {
-        if (checkIfMayBeDropped(dc, null, graphs)) {
-          db._drop(dc);
-        }
-      }
-    );
-  }
-
-  //push "new" collections into vertexCollections
-  edgeDefinition.from.forEach(
-    function(vc) {
-      if (self.__vertexCollections[vc] === undefined) {
-        exOrphanCandidates.push(vc);
-        self.__vertexCollections[vc] = db[vc];
-      }
-    }
-  );
-  edgeDefinition.to.forEach(
-    function(vc) {
-      if (self.__vertexCollections[vc] === undefined) {
-        exOrphanCandidates.push(vc);
-        self.__vertexCollections[vc] = db[vc];
-      }
-    }
-  );
-
-  //remove "old" collections from vertexCollections
-  dropCandidates.forEach(
-    function(dropCanditate) {
-      var drop = true;
-      self.__edgeDefinitions.forEach(
-        function(eD) {
-          eD.from.forEach(
-            function(vC) {
-              if (vC === dropCanditate) {
-                drop = false;
-              }
-            }
-          );
-        }
-      );
-      if (drop) {
-        delete self.__vertexCollections[dropCanditate];
-      }
-    }
-  );
-
-  //orphans treatment
-  effectedGraphs.forEach(
-    function(gN) {
-      var g;
-      if (gN === self.__name) {
-        g = self;
-      } else {
-        g = _graph(gN);
-      }
-      var orphans = g._getOrphanCollections();
-      exOrphanCandidates.forEach(
-        function(eOC) {
-          if (orphans.indexOf(eOC) !== -1) {
-            g._removeOrphanCollection(eOC);
-          }
-        }
-      );
+      changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
     }
   );
 
@@ -2721,14 +2720,12 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
 /// Deletes an edge definition defined by the edge collection of a graph. If the
 /// collections defined in the edge definition (collection, from, to) are not used
-/// in another graph, they will be removed.
+/// in another edge definition of the graph, they will be moved to the orphanage.
 ///
-/// `general-graph._deleteEdgeDefinition(edgeCollectionName, dropCollections)`
+/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
 ///
 /// *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
 /// definition.
-/// *dropCollections* - bool : True, all collections are removed, if not used in another edge
-/// definition (including other graphs). Default: true.
 ///
 /// @EXAMPLES
 ///
@@ -2737,56 +2734,49 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition, dropCollections)
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = examples._create("myGraph", [ed1, ed2]);
-///   g._deleteEdgeDefinition("myEC1", true);
+///   g._deleteEdgeDefinition("myEC1");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections) {
+Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
+
+  //check, if in graphs edge definition
+  if (this.__edgeCollections[edgeCollection] === undefined) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
+    throw err;
+  }
+
   var edgeDefinitions = this.__edgeDefinitions,
-    vertexCollections = [],
-    definitionFound = false,
+    self = this,
+    usedVertexCollections = [],
+    possibleOrphans = [],
     index;
 
   edgeDefinitions.forEach(
     function(edgeDefinition, idx) {
       if (edgeDefinition.collection === edgeCollection) {
-        definitionFound = true;
-          if (dropCollections !== false) {
-          //get all vertex collections
-          var vertexCols = edgeDefinition.from.concat(edgeDefinition.to);
-          vertexCols.forEach(
-            function(vertexCol) {
-              if (vertexCollections.indexOf(vertexCol) === -1) {
-                vertexCollections.push(vertexCol);
-              }
-            }
-          );
-        }
+        index = idx;
+        possibleOrphans = edgeDefinition.from;
+        possibleOrphans = _.union(possibleOrphans, edgeDefinition.to);
+      } else {
+        usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.from);
+        usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.to);
       }
     }
   );
-  if (definitionFound) {
-    edgeDefinitions.splice(index, 1);
-    this.__edgeDefinitions = edgeDefinitions;
-    db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
-  }
-  if (dropCollections !== false) {
-    if (checkIfMayBeDropped(edgeCollection, this.__name, getGraphCollection().toArray())) {
-      db._drop(edgeCollection);
-    }
-    vertexCollections.forEach(
-      function(vC) {
-        if (checkIfMayBeDropped(vC, this.__name, getGraphCollection().toArray())) {
-          db._drop(vC);
-        }
+  this.__edgeDefinitions.splice(index, 1);
+  possibleOrphans.forEach(
+    function(po) {
+      if (usedVertexCollections.indexOf(po) === -1) {
+        self.__orphanCollections.push(po);
       }
-    );
-
-  }
-
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2812,17 +2802,17 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollections
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._addOrphanCollection = function(vertexCollection, createCollection) {
+Graph.prototype._addOrphanCollection = function(orphanCollectionName, createCollection) {
   //check edgeCollection
-  var ec = db._collection(vertexCollection);
+  var ec = db._collection(orphanCollectionName);
   var err;
   if (ec === null) {
     if (createCollection !== false) {
-      db._create(vertexCollection);
+      db._create(orphanCollectionName);
     } else {
       err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-      err.errorMessage = vertexCollection + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      err.errorMessage = orphanCollectionName + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
     }
   } else if (ec.type() !== 2) {
@@ -2831,8 +2821,14 @@ Graph.prototype._addOrphanCollection = function(vertexCollection, createCollecti
     err.errorMessage = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message;
     throw err;
   }
+  if (this.__vertexCollections[orphanCollectionName] !== undefined) {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
+    throw err;
+  }
 
-  this.__orphanCollections.push(vertexCollection);
+  this.__orphanCollections.push(orphanCollectionName);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
 };
@@ -2849,7 +2845,7 @@ Graph.prototype._addOrphanCollection = function(vertexCollection, createCollecti
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = examples._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3, true);
+///   g._addOrphanCollection("myVC3", true);
 ///   g._getOrphanCollections();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2874,12 +2870,12 @@ Graph.prototype._getOrphanCollections = function() {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeOrphanCollections}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = examples._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3, true);
-///   g._addOrphanCollection("myVC4, true);
+///   g._addOrphanCollection("myVC3", true);
+///   g._addOrphanCollection("myVC4", true);
 ///   g._getOrphanCollections();
 ///   g._removeOrphanCollection("myVC3");
 ///   g._getOrphanCollections();
