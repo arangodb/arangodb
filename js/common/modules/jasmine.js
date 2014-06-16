@@ -1,3 +1,6 @@
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, todo: true */
+/*global module, require, exports, print */
+
 /** Jasmine Wrapper
  *
  * This file is based upon Jasmine's boot.js,
@@ -9,91 +12,43 @@
 
 var jasmine = require('jasmine/core'),
   _ = require('underscore'),
+  fs = require('fs'),
   Reporter = require('jasmine/reporter').Reporter;
 
 jasmine = jasmine.core(jasmine);
 
-var env = jasmine.getEnv();
+exports.executeTestSuite = function (specFileNames, options) {
+  'use strict';
+  var sandbox = jasmine.getEnv(),
+    format = options.format || 'progress';
 
-/**
- * ## The Global Interface
- */
+  // Explicitly add require
+  sandbox.require = require;
 
-var exposedFunctionality = [
-  'describe',
-  'xdescribe',
-  'it',
-  'xit',
-  'beforeEach',
-  'afterEach',
-  'expect',
-  'pending',
-  'spyOn',
-  'execute'
-];
-
-_.each(exposedFunctionality, function(name) {
-  exports[name] = env[name];
-});
-
-
-/**
- * Expose the interface for adding custom equality testers.
- */
-jasmine.addCustomEqualityTester = function(tester) {
-  env.addCustomEqualityTester(tester);
-};
-
-/**
- * Expose the interface for adding custom expectation matchers
- */
-jasmine.addMatchers = function(matchers) {
-  return env.addMatchers(matchers);
-};
-
-/**
- * Expose the mock interface for the JavaScript timeout functions
- */
-jasmine.clock = function() {
-  return env.clock;
-};
-
-/**
- * The `jsApiReporter` also receives spec results, and is used by any environment that needs to extract the results  from JavaScript.
- */
-var jsApiReporter = new jasmine.JsApiReporter({
-  timer: new jasmine.Timer()
-});
-
-env.addReporter(jsApiReporter);
-
-/**
- * The `arangoReporter` does the reporting to the console
- */
-var arangoReporter = new Reporter({ format: 'progress' });
-
-exports.status = function() {
-  return !arangoReporter.hasErrors();
-};
-
-exports.executeTestSuite = function (specs) {
-  var jasmine = require('jasmine'),
-    _ = require('underscore'),
-    internal = require('internal');
-
-  var sandbox = {
-    require: require,
-    describe: jasmine.describe,
-    it: jasmine.it,
-    expect: jasmine.expect,
-  };
-
-  _.each(specs, function (spec) {
-    internal.executeScript(spec, sandbox, 'rhababer');
+  /**
+   * The `jsApiReporter` also receives spec results, and is used by any environment
+   * that needs to extract the results  from JavaScript.
+   */
+  var jsApiReporter = new jasmine.JsApiReporter({
+    timer: new jasmine.Timer()
   });
 
-  jasmine.execute();
-  return jasmine.status();
-};
+  sandbox.addReporter(jsApiReporter);
 
-env.addReporter(arangoReporter);
+  /**
+   * The `arangoReporter` does the reporting to the console
+   */
+  var arangoReporter = new Reporter({ format: format });
+  sandbox.addReporter(arangoReporter);
+
+  var _ = require('underscore'),
+    internal = require('internal');
+
+  _.each(specFileNames, function (specFileName) {
+    var spec = fs.read(specFileName);
+    internal.executeScript(spec, sandbox, specFileName);
+  });
+
+  sandbox.execute();
+  return !arangoReporter.hasErrors();
+};
