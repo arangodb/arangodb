@@ -501,7 +501,7 @@ extern "C" {
 /// - 1929: @LIT{collection used in edge def}
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
-///   Teh edge collection is not used in any edge definition of the graph.
+///   The edge collection is not used in any edge definition of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2657,7 +2657,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// edge collection not used in graph
 ///
-/// Teh edge collection is not used in any edge definition of the graph.
+/// The edge collection is not used in any edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
