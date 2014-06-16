@@ -71,7 +71,7 @@ function main (argv) {
   }
   else {
     jsunity.run(recoverySuite);
-    return jsunity.done();
+    return jsunity.done() ? 0 : 1;
   }
 }
 
