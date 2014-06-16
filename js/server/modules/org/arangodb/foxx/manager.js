@@ -80,6 +80,7 @@ function getStorage () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check a manifest for completeness
+///
 /// this implements issue #590: Manifest Lint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,14 +113,15 @@ function checkManifest (filename, mf) {
   var expected = {
     "assets":             [ false, "object" ],
     "author":             [ false, "string" ],
+    "configuration":      [ false, "object" ],
     "contributors":       [ false, "array" ],
     "controllers":        [ true, "object" ],
     "defaultDocument":    [ false, "string" ],
     "description":        [ true, "string" ],
     "engines":            [ false, "object" ],
     "files":              [ false, "object" ],
-    "keywords":           [ false, "array" ],
     "isSystem":           [ false, "boolean" ],
+    "keywords":           [ false, "array" ],
     "lib":                [ false, "string" ],
     "license":            [ false, "string" ],
     "name":               [ true, "string" ],
@@ -349,9 +351,9 @@ function buildFileAsset (app, path, basePath, asset) {
   var content = buildAssetContent(app, asset.files, basePath);
   var type;
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // content-type detection
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   // contentType explicitly specified for asset
   if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
@@ -374,9 +376,9 @@ function buildFileAsset (app, path, basePath, asset) {
     type = arangodb.guessContentType("");
   }
 
-  // -----------------------------------------------------------------------------
+  // .............................................................................
   // return content
-  // -----------------------------------------------------------------------------
+  // .............................................................................
 
   return { contentType: type, body: content };
 }
@@ -514,6 +516,7 @@ function executeAppScript (app, name, mount, prefix) {
     appContext.mount = mount;
     appContext.collectionPrefix = prefix;
     appContext.options = app._options;
+    appContext.configuration = app._options.configuration;
     appContext.basePath = fs.join(root, app._path);
 
     appContext.isDevelopment = devel;
@@ -738,6 +741,7 @@ function routingAalApp (app, mount, options) {
         appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
         appContext.collectionPrefix = prefix; // collection prefix
         appContext.options = options;
+        appContext.configuration = app._options.configuration;
         appContext.basePath = fs.join(root, app._path);
 
         appContext.isDevelopment = devel;
@@ -858,6 +862,68 @@ function scanDirectory (path) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create configuration
+////////////////////////////////////////////////////////////////////////////////
+
+function checkConfiguration (app, options) {
+  'use strict';
+
+  if (options === undefined || options === null) {
+    options = {};
+  }
+
+  if (! options.hasOwnProperty("configuration")) {
+    options.configuration = {};
+  }
+
+  if (! app._manifest.hasOwnProperty("configuration")) {
+    return options;
+  }
+
+  var configuration = options.configuration;
+  var expected = app._manifest.configuration;
+  var att;
+
+  for (att in expected) {
+    if (expected.hasOwnProperty(att)) {
+      if (configuration.hasOwnProperty(att)) {
+        var value = configuration[att];
+        var expectedType = expected[att].type;
+        var actualType = Array.isArray(value) ? "array" : typeof(value);
+
+        if (actualType !== expectedType) {
+          throw new Error(
+              "configuration for '" + app._manifest.name + "' uses "
+            + "an invalid data type (" + actualType + ") "
+            + "for " + expectedType + " attribute '" + att + "'");
+        }
+      }
+      else if (expected[att].hasOwnProperty("default")) {
+        configuration[att] = expected[att]["default"];
+      }
+      else {
+        throw new Error(
+            "configuration for '" + app._manifest.name + "' is "
+          + "missing a value for attribute '" + att + "'"); 
+      }
+    }
+  }
+
+  // additionally check if there are superfluous attributes in the manifest
+  for (att in configuration) {
+    if (configuration.hasOwnProperty(att)) {
+      if (! expected.hasOwnProperty(att)) {
+        console.warn("configuration for '%s' contains an unknown attribute '%s'", 
+                      app._manifest.name, 
+                      att);
+      }
+    }
+  }
+
+  return options;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -900,6 +966,7 @@ exports.rescan = function () {
 /// * options:
 ///     collectionPrefix: overwrites the default prefix
 ///     reload: reload the routing info (default: true)
+///     configuration: configuration options
 ///
 /// Output:
 /// * appId: the application identifier (must be mounted)
@@ -933,7 +1000,7 @@ exports.mount = function (appId, mount, options) {
   // install the application
   // .............................................................................
 
-  options = options || { };
+  options = checkConfiguration(app, options);
 
   var doc;
 

@@ -300,6 +300,7 @@ void ArangoClient::parse (ProgramOptions& options,
                           int argc,
                           char* argv[],
                           string const& initFilename) {
+
   // if options are invalid, exit directly
   if (! options.parse(description, argc, argv)) {
     LOG_FATAL_AND_EXIT("%s", options.lastError().c_str());
