@@ -2226,7 +2226,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'
 `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 <br />
-This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 It does not return the actual path but only the distance between two vertices.
 
 
@@ -2656,7 +2656,7 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 ]
 ```
 <br />
-A route planner example, the absolute closeness of all locations.
+A route planner example, the absolute betweenness of all locations.
 This considers the actual distances.
 <br />
 
@@ -2900,7 +2900,7 @@ arangosh> db._query("RETURN GRAPH_DIAMETER("
 ]
 ```
 <br />
-A route planner example, tthe diameter of the graph.
+A route planner example, the diameter of the graph.
 This considers the actual distances.
 <br />
 
