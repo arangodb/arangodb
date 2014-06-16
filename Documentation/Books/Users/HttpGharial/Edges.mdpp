@@ -18,6 +18,26 @@ The name of the edge collection the edge belongs to.
 
 <!-- @startDocuBlock JSF_general_graph_edge_create_http_examples -->
 
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation
+{"type":"friend","_from":"female/alice","_to":"female/diana"}
+
+HTTP/1.1 201 Created
+content-type: application/json
+etag: 543501814
+
+{ 
+  "error" : false, 
+  "code" : 201, 
+  "edge" : { 
+    "_id" : "relation/543501814", 
+    "_rev" : "543501814", 
+    "_key" : "543501814" 
+  } 
+}
+
+```
+
 !SECTION Get an edge
 
 `GET /system/gharial/graph-name/edge/collection-name/edge-key`*(get an edge)*
@@ -38,6 +58,28 @@ The `_key` attribute of the edge.
 <!-- @startDocuBlock JSF_general_graph_edge_get_info -->
 
 <!-- @startDocuBlock JSF_general_graph_edge_get_http_examples -->
+
+```
+unix> curl --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 546188790
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "relation/aliceAndBob", 
+    "_rev" : "546188790", 
+    "_key" : "aliceAndBob", 
+    "_from" : "female/alice", 
+    "_to" : "male/bob", 
+    "type" : "married" 
+  } 
+}
+
+```
 
 !SECTION Modify an edge
 
@@ -60,6 +102,27 @@ The `_key` attribute of the edge.
 
 <!-- @startDocuBlock JSF_general_graph_edge_modify_http_examples -->
 
+```
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+{"since":"01.01.2001"}
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 555494902
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "relation/aliceAndBob", 
+    "_rev" : "555494902", 
+    "_oldRev" : "554053110", 
+    "_key" : "aliceAndBob" 
+  } 
+}
+
+```
+
 !SECTION Replace an edge
 
 `PATCH /system/gharial/graph-name/edge/collection-name/edge-key`*(replace an edge)*
@@ -81,6 +144,27 @@ The `_key` attribute of the edge.
 
 <!-- @startDocuBlock JSF_general_graph_edge_replace_http_examples -->
 
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+{"type":"divorced"}
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 551366134
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "relation/aliceAndBob", 
+    "_rev" : "551366134", 
+    "_oldRev" : "550055414", 
+    "_key" : "aliceAndBob" 
+  } 
+}
+
+```
+
 !SECTION Remove an edge
 
 `DELETE /system/gharial/graph-name/edge/collection-name/edge-key`*(remove an edge)*
@@ -101,3 +185,17 @@ The `_key` attribute of the edge.
 <!-- @startDocuBlock JSF_general_graph_edge_delete_info -->
 
 <!-- @startDocuBlock JSF_general_graph_edge_delete_http_examples -->
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : true 
+}
+
+```
