@@ -1307,29 +1307,37 @@ int LogfileManager::readShutdownInfo () {
 int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
   std::string const filename = shutdownFilename();
 
-  std::string content;
-  content.append("{\"tick\":\"");
-  content.append(basics::StringUtils::itoa(TRI_CurrentTickServer()));
-  content.append("\",\"lastCollected\":\"");
-  content.append(basics::StringUtils::itoa(_lastCollectedId));
-  content.append("\",\"lastSealed\":\"");
-  content.append(basics::StringUtils::itoa(_lastSealedId));
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (json == nullptr) {
+    LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  std::string val;
+  
+  val = basics::StringUtils::itoa(TRI_CurrentTickServer());
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size())); 
+  
+  val = basics::StringUtils::itoa(_lastCollectedId);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "lastCollected", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size())); 
+
+  val = basics::StringUtils::itoa(_lastSealedId);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "lastSealed", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size())); 
 
   if (writeShutdownTime) {
-    content.append("\",\"shutdownTime\":\"");
-    content.append(getTimeString());
+    std::string const t(getTimeString());
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size())); 
   }
 
-  content.append("\"}\n");
-
-  try {
-    basics::FileUtils::spit(filename, content);
-  }
-  catch (std::exception& ex) {
+  if (! TRI_SaveJson(filename.c_str(), json, false)) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+
     return TRI_ERROR_CANNOT_WRITE_FILE;
   }
-    
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   return TRI_ERROR_NO_ERROR; 
 }
 
