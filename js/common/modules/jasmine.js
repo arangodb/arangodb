@@ -79,15 +79,17 @@ exports.status = function() {
 exports.executeTestSuite = function (specs) {
   var jasmine = require('jasmine'),
     _ = require('underscore'),
-    describe = jasmine.describe,
-    it = jasmine.it,
-    expect = jasmine.expect,
-    fs = require('fs'),
-    file,
-    status;
+    internal = require('internal');
+
+  var sandbox = {
+    require: require,
+    describe: jasmine.describe,
+    it: jasmine.it,
+    expect: jasmine.expect,
+  };
 
   _.each(specs, function (spec) {
-    eval(spec);
+    internal.executeScript(spec, sandbox, 'rhababer');
   });
 
   jasmine.execute();
