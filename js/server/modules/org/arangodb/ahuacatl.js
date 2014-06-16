@@ -4699,11 +4699,15 @@ function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
         while (positionFrom !== positionTo) {
           var edgePosition;
           if (positionFrom > positionTo) {
-            edgePosition = positionFrom-1
+            edgePosition = positionFrom-1;
           } else {
-            edgePosition = positionFrom
+            edgePosition = positionFrom;
           }
-          positionFrom > positionTo ? positionFrom = positionFrom -1 : positionFrom ++;
+          if (positionFrom > positionTo) {
+            positionFrom = positionFrom -1;
+          } else {
+            positionFrom ++;
+          }
           pathNew.vertices.push(path.vertices[positionFrom]);
           pathNew.edges.push(path.edges[edgePosition]);
           if (config.weight) {
@@ -4997,8 +5001,8 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options)
         if (TO_ID(v) === f.startVertex &&  TO_ID(t) === f.vertex._id) {
           result.push(f);
         }
-        calculated[JSON.stringify({ from : f.startVertex, to : f.vertex._id})] = f
-      })
+        calculated[JSON.stringify({ from : f.startVertex, to : f.vertex._id})] = f;
+      });
     });
   });
   result.forEach(function (r) {
