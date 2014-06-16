@@ -986,7 +986,13 @@ static TRI_aql_node_t* OptimiseReference (TRI_aql_statement_walker_t* const walk
     return node;
   }
 
+  if (variable->_isUpdated) {
+    // do not optimise variables that are updated, such as LET b = b + 1
+    return node;
+  }
+
   definingNode = variable->_definingNode;
+
   if (definingNode == NULL) {
     return node;
   }

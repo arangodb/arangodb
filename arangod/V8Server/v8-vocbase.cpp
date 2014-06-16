@@ -3333,7 +3333,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
 
   if (res != TRI_ERROR_NO_ERROR) {
     // check if there is some error data registered in the transaction
-    const string errorData = trx.getErrorData();
+    string const errorData = trx.getErrorData();
 
     if (errorData.empty()) {
       // no error data. return a regular error message
@@ -3360,7 +3360,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
   size_t codeLength = 0;
   char* code = TRI_GenerateCodeAql(context, &codeLength);
 
-  if (code == 0 || 
+  if (code == nullptr || 
       context->_error._code != TRI_ERROR_NO_ERROR) {
     v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&context->_error);
 
@@ -5212,10 +5212,10 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
-  const string queryString = TRI_ObjectToString(queryArg);
+  string const queryString = TRI_ObjectToString(queryArg);
   
   // bind parameters
-  TRI_json_t* parameters = 0;
+  TRI_json_t* parameters = nullptr;
 
   if (argc > 1 && argv[1]->IsObject()) {
     parameters = TRI_ObjectToJson(argv[1]);
@@ -5261,19 +5261,18 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
   AhuacatlGuard context(vocbase, queryString, userOptions);
 
   if (! context.valid()) {
-    if (userOptions != 0) {
+    if (userOptions != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
     }
 
-    if (parameters != 0) {
+    if (parameters != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
     }
 
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> result;
-  result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
+  v8::Handle<v8::Value> result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
   int res = context.ptr()->_error._code;
   
   if (res == TRI_ERROR_REQUEST_CANCELED) {
@@ -5282,11 +5281,11 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
    
   context.free();
   
-  if (userOptions != 0) {
+  if (userOptions != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
   }
     
-  if (parameters != 0) {
+  if (parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
   }
 

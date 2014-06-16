@@ -96,12 +96,16 @@
   return T_INTO;
 }
 
+(?i:WITH) {
+  return T_WITH;
+}
+
 (?i:REMOVE) {
   return T_REMOVE;
 }
 
-(?i:SAVE) {
-  return T_SAVE;
+(?i:INSERT) {
+  return T_INSERT;
 }
 
 (?i:UPDATE) {
@@ -110,10 +114,6 @@
 
 (?i:REPLACE) {
   return T_REPLACE;
-}
-
-(?i:IGNORE) {
-  return T_IGNORE;
 }
 
  /* ---------------------------------------------------------------------------

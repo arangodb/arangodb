@@ -104,16 +104,16 @@ TRI_aql_node_t* TRI_CreateNodeReturnAql (struct TRI_aql_context_s* const,
 TRI_aql_node_t* TRI_CreateNodeRemoveAql (struct TRI_aql_context_s* const,
                                          const TRI_aql_node_t* const,
                                          const TRI_aql_node_t* const,
-                                         bool);
+                                         TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST save node
+/// @brief create an AST insert node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeSaveAql (struct TRI_aql_context_s* const,
-                                       const TRI_aql_node_t* const,
-                                       const TRI_aql_node_t* const,
-                                       bool);
+TRI_aql_node_t* TRI_CreateNodeInsertAql (struct TRI_aql_context_s* const,
+                                         const TRI_aql_node_t* const,
+                                         const TRI_aql_node_t* const,
+                                         TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST update node
@@ -122,7 +122,8 @@ TRI_aql_node_t* TRI_CreateNodeSaveAql (struct TRI_aql_context_s* const,
 TRI_aql_node_t* TRI_CreateNodeUpdateAql (struct TRI_aql_context_s* const,
                                          const TRI_aql_node_t* const,
                                          const TRI_aql_node_t* const,
-                                         bool);
+                                         const TRI_aql_node_t* const,
+                                         TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST replace node
@@ -131,7 +132,8 @@ TRI_aql_node_t* TRI_CreateNodeUpdateAql (struct TRI_aql_context_s* const,
 TRI_aql_node_t* TRI_CreateNodeReplaceAql (struct TRI_aql_context_s* const,
                                           const TRI_aql_node_t* const,
                                           const TRI_aql_node_t* const,
-                                          bool);
+                                          const TRI_aql_node_t* const,
+                                          TRI_aql_node_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
@@ -185,7 +187,8 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (struct TRI_aql_context_s* const,
 
 TRI_aql_node_t* TRI_CreateNodeVariableAql (struct TRI_aql_context_s* const,
                                            const char* const,
-                                           TRI_aql_node_t* const);
+                                           TRI_aql_node_t* const,
+                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collection node

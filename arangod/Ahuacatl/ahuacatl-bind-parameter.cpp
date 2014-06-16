@@ -38,35 +38,29 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a node is a bound attribute access and convert it into a 
 /// "normal" attribute access
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_aql_node_t* FixAttributeAccess (TRI_aql_statement_walker_t* const walker,
                                            TRI_aql_node_t* node) {
-  TRI_aql_context_t* context;
   TRI_aql_node_t* valueNode;
   char* stringValue;
 
-  if (node == NULL || 
+  if (node == nullptr || 
       node->_type != TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS) {
     return node;
   }
 
   // we found a bound attribute access
-  context = (TRI_aql_context_t*) walker->_data;
+  TRI_aql_context_t* context = static_cast<TRI_aql_context_t*>(walker->_data);
   TRI_ASSERT(context);
 
   TRI_ASSERT(node->_members._length == 2);
   valueNode = TRI_AQL_NODE_MEMBER(node, 1);
 
-  if (valueNode == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+  if (valueNode == nullptr) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
     return node;
   }
   
@@ -77,7 +71,7 @@ static TRI_aql_node_t* FixAttributeAccess (TRI_aql_statement_walker_t* const wal
 
   stringValue = TRI_AQL_NODE_STRING(valueNode);
 
-  if (stringValue == NULL || strlen(stringValue) == 0) {
+  if (stringValue == nullptr || strlen(stringValue) == 0) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "(unknown)");
     return node;
   }
@@ -102,20 +96,19 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
                                         TRI_aql_node_t* node) {
   TRI_aql_bind_parameter_t* bind;
   TRI_associative_pointer_t* bindValues;
-  TRI_aql_context_t* context;
   char* name;
 
-  if (node == NULL || 
+  if (node == nullptr || 
       node->_type != TRI_AQL_NODE_PARAMETER) {
     return node;
   }
 
   // we found a parameter node
-  context = (TRI_aql_context_t*) walker->_data;
-  TRI_ASSERT(context);
+  TRI_aql_context_t* context = static_cast<TRI_aql_context_t*>(walker->_data);
+  TRI_ASSERT(context != nullptr);
 
   bindValues = (TRI_associative_pointer_t*) &context->_parameters._values;
-  TRI_ASSERT(bindValues);
+  TRI_ASSERT(bindValues != nullptr);
 
   name = TRI_AQL_NODE_STRING(node);
   TRI_ASSERT(name);
@@ -135,15 +128,15 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
       }
       else {
         TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, name);
-        node = NULL;
+        node = nullptr;
       }
     }
     else {
       node = TRI_JsonNodeAql(context, bind->_value);
     }
 
-    if (node == NULL) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+    if (node == nullptr) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, nullptr);
     }
   }
 
@@ -157,49 +150,38 @@ static TRI_aql_node_t* InjectParameter (TRI_aql_statement_walker_t* const walker
 static TRI_aql_bind_parameter_t* CreateParameter (const char* const name,
                                                   const size_t nameLength,
                                                   const TRI_json_t* const value) {
-  TRI_aql_bind_parameter_t* parameter;
-
   TRI_ASSERT(name);
   TRI_ASSERT(value);
 
-  parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
+  TRI_aql_bind_parameter_t* parameter = (TRI_aql_bind_parameter_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_bind_parameter_t), false);
 
-  if (parameter == NULL) {
-    return NULL;
+  if (parameter == nullptr) {
+    return nullptr;
   }
 
   parameter->_name = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name, nameLength);
 
-  if (parameter->_name == NULL) {
+  if (parameter->_name == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
 
-    return NULL;
+    return nullptr;
   }
 
   parameter->_value = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*) value);
 
-  if (parameter->_value == NULL) {
+  if (parameter->_value == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter->_name);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, parameter);
 
-    return NULL;
+    return nullptr;
   }
 
   return parameter;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash bind parameter
@@ -229,17 +211,13 @@ bool TRI_EqualBindParameterAql (TRI_associative_pointer_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
-  size_t i;
-  size_t n;
-
   // iterate thru all parameters allocated
-  n = context->_parameters._values._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_bind_parameter_t* parameter;
+  size_t const n = context->_parameters._values._nrAlloc;
 
-    parameter = (TRI_aql_bind_parameter_t*) context->_parameters._values._table[i];
+  for (size_t i = 0; i < n; ++i) {
+    TRI_aql_bind_parameter_t* parameter = static_cast<TRI_aql_bind_parameter_t*>(context->_parameters._values._table[i]);
 
-    if (!parameter) {
+    if (parameter == nullptr) {
       continue;
     }
 
@@ -258,46 +236,39 @@ void TRI_FreeBindParametersAql (TRI_aql_context_t* const context) {
 
 bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
                                 const TRI_json_t* const parameters) {
-  size_t i;
-  size_t n;
-
   TRI_ASSERT(context);
 
-  if (parameters == NULL) {
+  if (parameters == nullptr) {
     // no bind parameters, direclty return
     return true;
   }
 
   if (parameters->_type != TRI_JSON_ARRAY) {
     // parameters must be a list
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID, nullptr);
     return false;
   }
 
-  n = parameters->_value._objects._length;
+  size_t const n = parameters->_value._objects._length;
+
   if (n == 0) {
     // empty list, this is ok
     return true;
   }
 
-  for (i = 0; i < n; i += 2) {
-    TRI_json_t* name 
-      = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, i));
-    TRI_json_t* value 
-      = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, 
-                                              i + 1));
-    TRI_aql_bind_parameter_t* parameter;
+  for (size_t i = 0; i < n; i += 2) {
+    TRI_json_t* name = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, i));
+    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&parameters->_value._objects, i + 1));
 
     TRI_ASSERT(TRI_IsStringJson(name));
     TRI_ASSERT(value);
 
-    parameter = CreateParameter(name->_value._string.data, 
-                                name->_value._string.length - 1,
-                                value);
+    TRI_aql_bind_parameter_t* parameter = CreateParameter(name->_value._string.data, 
+                                                          name->_value._string.length - 1,
+                                                          value);
 
-    if (parameter == NULL) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-
+    if (parameter == nullptr) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
       return false;
     }
 
@@ -312,19 +283,17 @@ bool TRI_AddParameterValuesAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
-  size_t i;
-  size_t n;
-
   // iterate thru all parameter names used in the query
-  n = context->_parameters._names._nrAlloc;
-  for (i = 0; i < n; ++i) {
+  size_t n = context->_parameters._names._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
     char* name = (char*) context->_parameters._names._table[i];
 
-    if (!name) {
+    if (name == nullptr) {
       continue;
     }
 
-    if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._values, name)) {
+    if (! TRI_LookupByKeyAssociativePointer(&context->_parameters._values, name)) {
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, name);
       return false;
     }
@@ -332,18 +301,16 @@ bool TRI_ValidateBindParametersAql (TRI_aql_context_t* const context) {
 
   // iterate thru all parameters that we have values for
   n = context->_parameters._values._nrAlloc;
-  for (i = 0; i < n; ++i) {
-    TRI_aql_bind_parameter_t* parameter;
+  for (size_t i = 0; i < n; ++i) {
+    TRI_aql_bind_parameter_t* parameter = static_cast<TRI_aql_bind_parameter_t*>(context->_parameters._values._table[i]);
 
-    parameter = (TRI_aql_bind_parameter_t*) context->_parameters._values._table[i];
-
-    if (!parameter) {
+    if (parameter == nullptr) {
       continue;
     }
 
     TRI_ASSERT(parameter->_name);
 
-    if (!TRI_LookupByKeyAssociativePointer(&context->_parameters._names, parameter->_name)) {
+    if (! TRI_LookupByKeyAssociativePointer(&context->_parameters._names, parameter->_name)) {
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, parameter->_name);
       return false;
     }
@@ -366,11 +333,29 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
     return true;
   }
 
-  walker = TRI_CreateStatementWalkerAql(context, true, &InjectParameter, NULL, NULL);
+  if (context->_writeCollection != nullptr &&
+      context->_writeCollection[0] == '@') {
+    // replace bind parameter in write-collection name
+    void* found = TRI_LookupByKeyAssociativePointer(&context->_parameters._values, context->_writeCollection);
 
-  if (walker == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+    if (found == nullptr) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, nullptr);
+      return false;
+    }
 
+    TRI_json_t* json = static_cast<TRI_aql_bind_parameter_t*>(found)->_value;
+    if (! TRI_IsStringJson(json)) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, nullptr);
+      return false;
+    }
+    
+    context->_writeCollection = json->_value._string.data; 
+  }
+
+  walker = TRI_CreateStatementWalkerAql(context, true, &InjectParameter, nullptr, nullptr);
+
+  if (walker == nullptr) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
     return false;
   }
 
@@ -378,10 +363,10 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
   TRI_FreeStatementWalkerAql(walker);
   
 
-  walker = TRI_CreateStatementWalkerAql(context, true, &FixAttributeAccess, NULL, NULL);
+  walker = TRI_CreateStatementWalkerAql(context, true, &FixAttributeAccess, nullptr, nullptr);
 
-  if (walker == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
+  if (walker == nullptr) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
 
     return false;
   }
@@ -391,10 +376,6 @@ bool TRI_InjectBindParametersAql (TRI_aql_context_t* const context) {
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

@@ -400,9 +400,12 @@ extern "C" {
 /// - 1573: @LIT{multi-modify query}
 ///    "Will be raised when an AQL query contains more than one data-modifying
 ///   operation."
-/// - 1574: @LIT{modify in subquery}
+/// - 1574: @LIT{modify operation in subquery}
 ///    "Will be raised when an AQL query contains a data-modifying operation
 ///   inside a subquery."
+/// - 1575: @LIT{options must be readable at query compile time}
+///    "Will be raised when an AQL data-modification query contains options
+///   that cannot be figured out at query compile time."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2193,13 +2196,24 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1574: ERROR_QUERY_MODIFY_IN_SUBQUERY
 ///
-/// modify in subquery
+/// modify operation in subquery
 ///
 ///  "Will be raised when an AQL query contains a data-modifying operation
 /// inside a subquery."
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY                                (1574)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
+///
+/// options must be readable at query compile time
+///
+///  "Will be raised when an AQL data-modification query contains options that
+/// cannot be figured out at query compile time."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              (1575)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

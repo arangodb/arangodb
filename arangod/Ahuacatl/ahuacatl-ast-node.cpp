@@ -78,30 +78,57 @@
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a write opertion for a query
+////////////////////////////////////////////////////////////////////////////////
+
 static void SetWriteOperation (TRI_aql_context_t* context,
                                TRI_aql_node_t const* collection,
                                TRI_aql_query_type_e type,
-                               bool ignore) {
-  if (context->_writeCollection != NULL ||
+                               TRI_aql_node_t* options) {
+  if (context->_writeCollection != nullptr ||
       context->_type != TRI_AQL_QUERY_READ) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MULTI_MODIFY, NULL);
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MULTI_MODIFY, nullptr);
+    return;
   }
-  else if (context->_subQueries > 0) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY, NULL);
+
+  if (context->_subQueries > 0) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY, nullptr);
+    return;
   }
-  else {
+
+  if (collection->_type == TRI_AQL_NODE_COLLECTION) {
+    // collection specified by name
     TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(collection, 0);
 
-    if (nameNode == NULL) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    if (nameNode == nullptr) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr); 
+      return;
     }
-    else {
-      context->_writeCollection = TRI_AQL_NODE_STRING(nameNode);
-      context->_writeIgnore = ignore;
-      context->_type = type;
+  
+    context->_writeCollection = TRI_AQL_NODE_STRING(nameNode);
+  }
+  else if (collection->_type == TRI_AQL_NODE_PARAMETER) {
+    // collection specified via bind parameter
+    context->_writeCollection = TRI_AQL_NODE_STRING(collection); 
+  }
+  else {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_INTERNAL, nullptr); 
+    TRI_ASSERT(false);
+    return;
+  }
+
+  if (options != nullptr) {
+    if (! TRI_IsConstantValueNodeAql(options)) {
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, nullptr); 
+      return;
     }
   }
+
+  context->_type = type;
+  context->_writeOptions = options;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +316,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
   }
 
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node, false);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
@@ -331,7 +358,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
   }
 
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node, true);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
@@ -372,12 +399,12 @@ TRI_aql_node_t* TRI_CreateNodeReturnAql (TRI_aql_context_t* const context,
 TRI_aql_node_t* TRI_CreateNodeRemoveAql (TRI_aql_context_t* const context,
                                          const TRI_aql_node_t* const expression,
                                          const TRI_aql_node_t* const collection,
-                                         bool ignore) {
+                                         TRI_aql_node_t* options) {
   CREATE_NODE(TRI_AQL_NODE_REMOVE)
 
   ADD_MEMBER(expression)
 
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, ignore); 
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, options); 
 
   return node;
 }
@@ -386,15 +413,15 @@ TRI_aql_node_t* TRI_CreateNodeRemoveAql (TRI_aql_context_t* const context,
 /// @brief create an AST save node
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_aql_node_t* TRI_CreateNodeSaveAql (TRI_aql_context_t* const context,
-                                       const TRI_aql_node_t* const expression,
-                                       const TRI_aql_node_t* const collection,
-                                       bool ignore) {
-  CREATE_NODE(TRI_AQL_NODE_SAVE)
+TRI_aql_node_t* TRI_CreateNodeInsertAql (TRI_aql_context_t* const context,
+                                         const TRI_aql_node_t* const expression,
+                                         const TRI_aql_node_t* const collection,
+                                         TRI_aql_node_t* options) {
+  CREATE_NODE(TRI_AQL_NODE_INSERT)
 
   ADD_MEMBER(expression)
 
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_SAVE, ignore);  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_INSERT, options);  
 
   return node;
 }
@@ -404,14 +431,20 @@ TRI_aql_node_t* TRI_CreateNodeSaveAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeUpdateAql (TRI_aql_context_t* const context,
-                                         const TRI_aql_node_t* const expression,
+                                         const TRI_aql_node_t* const keyExpression,
+                                         const TRI_aql_node_t* const docExpression,
                                          const TRI_aql_node_t* const collection,
-                                         bool ignore) {
+                                         TRI_aql_node_t* options) {
   CREATE_NODE(TRI_AQL_NODE_UPDATE)
 
-  ADD_MEMBER(expression)
-  
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, ignore);  
+  ADD_MEMBER(docExpression)
+
+  if (keyExpression != nullptr) {
+    // key explicitly specified
+    ADD_MEMBER(keyExpression)
+  }
+
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, options);  
 
   return node;
 }
@@ -421,14 +454,20 @@ TRI_aql_node_t* TRI_CreateNodeUpdateAql (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeReplaceAql (TRI_aql_context_t* const context,
-                                          const TRI_aql_node_t* const expression,
+                                          const TRI_aql_node_t* const keyExpression,
+                                          const TRI_aql_node_t* const docExpression,
                                           const TRI_aql_node_t* const collection,
-                                          bool ignore) {
+                                          TRI_aql_node_t* options) {
   CREATE_NODE(TRI_AQL_NODE_REPLACE)
 
-  ADD_MEMBER(expression)
+  ADD_MEMBER(docExpression)
+
+  if (keyExpression != nullptr) {
+    // key explicitly specified
+    ADD_MEMBER(keyExpression)
+  }
   
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, ignore);  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REPLACE, options);  
 
   return node;
 }
@@ -444,7 +483,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectAql (TRI_aql_context_t* const context,
 
   ADD_MEMBER(list)
   if (name != NULL) {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node, false);
     ADD_MEMBER(variable)
   }
 
@@ -504,7 +543,7 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_ASSIGN)
 
   {
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, name, node, false);
     ADD_MEMBER(variable)
     ADD_MEMBER(expression)
   }
@@ -518,7 +557,8 @@ TRI_aql_node_t* TRI_CreateNodeAssignAql (TRI_aql_context_t* const context,
 
 TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
                                            const char* const name,
-                                           TRI_aql_node_t* const definingNode) {
+                                           TRI_aql_node_t* const definingNode,
+                                           bool allowDuplicateName) {
   CREATE_NODE(TRI_AQL_NODE_VARIABLE)
 
   if (name == NULL) {
@@ -528,11 +568,12 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
 
   // if not a temporary variable
   if (*name != '_') {
-    if (! TRI_AddVariableScopeAql(context, name, definingNode)) {
+    if (! TRI_AddVariableScopeAql(context, name, definingNode, allowDuplicateName)) {
       // duplicate variable name
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
       return NULL;
     }
+
   }
 
   TRI_AQL_NODE_STRING(node) = (char*) name;
@@ -907,7 +948,7 @@ TRI_aql_node_t* TRI_CreateNodeSubqueryAql (TRI_aql_context_t* const context) {
 
   {
     // add the temporary variable
-    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node);
+    TRI_aql_node_t* variable = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node, false);
     ADD_MEMBER(variable)
   }
 
@@ -981,8 +1022,8 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
 
   {
     // TODO: check if 3rd parameters' values are correct for these
-    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname, node);
-    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node);
+    TRI_aql_node_t* variable1 = TRI_CreateNodeVariableAql(context, varname, node, false);
+    TRI_aql_node_t* variable2 = TRI_CreateNodeVariableAql(context, TRI_GetNameParseAql(context), node, false);
 
     ADD_MEMBER(variable1)
     ADD_MEMBER(variable2)

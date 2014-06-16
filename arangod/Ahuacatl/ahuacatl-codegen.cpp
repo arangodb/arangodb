@@ -1632,6 +1632,7 @@ static void ProcessArray (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
   size_t i, n;
 
+  TRI_ASSERT(generator != nullptr);
   ScopeOutput(generator, "{ ");
   n = node->_members._length;
   for (i = 0; i < n; ++i) {
@@ -2665,15 +2666,15 @@ static void ProcessRemove (TRI_aql_codegen_js_t* const generator,
 /// @brief generate code for save keyword
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessSave (TRI_aql_codegen_js_t* const generator,
-                         const TRI_aql_node_t* const node) {
+static void ProcessInsert (TRI_aql_codegen_js_t* const generator,
+                           const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
 
   if (scope == NULL) {
     return;
   }
 
-  ScopeOutput(generator, "aql.SAVE_DOCUMENT(ops, ");
+  ScopeOutput(generator, "aql.INSERT_DOCUMENT(ops, ");
 
   // expression
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
@@ -2696,10 +2697,18 @@ static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
     return;
   }
 
-  ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
-
-  // expression
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  if (node->_members._length > 1) {
+    ScopeOutput(generator, "aql.UPDATE_DOCUMENT_KEY(ops, ");
+    // document
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+    ScopeOutput(generator, ", ");
+    // explicit key specification 
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+  }
+  else {
+    ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+  }
 
   ScopeOutput(generator, ");\n");
   
@@ -2713,21 +2722,9 @@ static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
 
 static void ProcessReplace (TRI_aql_codegen_js_t* const generator,
                             const TRI_aql_node_t* const node) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-
-  if (scope == NULL) {
-    return;
-  }
-
-  ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
-
-  // expression
-  ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
-
-  ScopeOutput(generator, ");\n");
-  
-  // }
-  CloseLoops(generator);
+  // generated code is identical to UPDATE code
+  // the difference will be made later
+  return ProcessUpdate(generator, node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2737,17 +2734,25 @@ static void ProcessReplace (TRI_aql_codegen_js_t* const generator,
 static void ProcessLet (TRI_aql_codegen_js_t* const generator,
                         const TRI_aql_node_t* const node) {
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
-  TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+  TRI_aql_codegen_variable_t* variable = LookupVariable(generator, nameNode->_value._value._string);
 
-  // TODO: if variable not refcounted, remove let statement!
-  ScopeOutput(generator, "var ");
-  ScopeOutputRegister(generator, resultRegister);
+  if (variable == nullptr) {
+    TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
+
+    // TODO: if variable not refcounted, remove let statement!
+    ScopeOutput(generator, "var ");
+    ScopeOutputRegister(generator, resultRegister);
+
+    // enter the new variable in the symbol table
+    EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
+  }
+  else {
+    ScopeOutputRegister(generator, variable->_register);
+  }
+
   ScopeOutput(generator, " = ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   ScopeOutput(generator, ";\n");
-
-  // enter the new variable in the symbol table
-  EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2965,8 +2970,8 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
     case TRI_AQL_NODE_REMOVE:
       ProcessRemove(generator, node);
       break;
-    case TRI_AQL_NODE_SAVE:
-      ProcessSave(generator, node);
+    case TRI_AQL_NODE_INSERT:
+      ProcessInsert(generator, node);
       break;
     case TRI_AQL_NODE_UPDATE:
       ProcessUpdate(generator, node);
@@ -3125,6 +3130,8 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
 
   resultRegister = CreateCode(generator);
 
+  char const* typeString = "read";
+
   if (context->_type != TRI_AQL_QUERY_READ) {
     TRI_ASSERT(context->_writeCollection != NULL);
 
@@ -3133,15 +3140,19 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     switch (context->_type) {
       case TRI_AQL_QUERY_REMOVE:
         OutputString(&generator->_buffer, "REMOVE");
+        typeString = "remove";
         break;
-      case TRI_AQL_QUERY_SAVE:
-        OutputString(&generator->_buffer, "SAVE");
+      case TRI_AQL_QUERY_INSERT:
+        OutputString(&generator->_buffer, "INSERT");
+        typeString = "insert";
         break;
       case TRI_AQL_QUERY_UPDATE:
         OutputString(&generator->_buffer, "UPDATE");
+        typeString = "update";
         break;
       case TRI_AQL_QUERY_REPLACE:
         OutputString(&generator->_buffer, "REPLACE");
+        typeString = "replace";
         break;
       case TRI_AQL_QUERY_READ:
         // cannot happen, but the compiler is unhappy otherwise
@@ -3152,23 +3163,31 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     OutputString(&generator->_buffer, "(ops, '"); 
     OutputString(&generator->_buffer, context->_writeCollection); 
     OutputString(&generator->_buffer, "', "); 
-    OutputString(&generator->_buffer, context->_writeIgnore ? "true" : "false"); 
+
+    if (context->_writeOptions == nullptr) {
+      OutputString(&generator->_buffer, "{ }");
+    }
+    else {
+      if (! TRI_NodeJavascriptAql(&generator->_buffer, context->_writeOptions)) {
+        generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
     OutputString(&generator->_buffer, ");\n"); 
   }
 
   // append result
   OutputString(&generator->_buffer, "return {\n");
-  OutputString(&generator->_buffer, "docs: ");
+  OutputString(&generator->_buffer, "type: \"");
+  OutputString(&generator->_buffer, typeString);
+  OutputString(&generator->_buffer, "\",\ndocs: ");
   OutputString(&generator->_buffer, REGISTER_PREFIX);
   OutputInt(&generator->_buffer, (int64_t) resultRegister);
   OutputString(&generator->_buffer, ",\n");
-
-  OutputString(&generator->_buffer, "extra: extra");
-  OutputString(&generator->_buffer, "\n};\n");
+  OutputString(&generator->_buffer, "extra: extra\n};\n");
 
   OutputString(&generator->_buffer, "})();");
 
-  code = NULL;
+  code = nullptr;
 
   if (generator->_errorCode == TRI_ERROR_NO_ERROR) {
     // put everything together

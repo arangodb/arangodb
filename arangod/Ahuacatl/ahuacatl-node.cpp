@@ -31,11 +31,6 @@
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
   if (type == TRI_AQL_NODE_SCOPE_START ||
       type == TRI_AQL_NODE_SCOPE_END ||
@@ -50,7 +45,7 @@ bool TRI_IsTopLevelTypeAql (const TRI_aql_node_type_e type) {
       type == TRI_AQL_NODE_COLLECT ||
       type == TRI_AQL_NODE_RETURN ||
       type == TRI_AQL_NODE_REMOVE ||
-      type == TRI_AQL_NODE_SAVE ||
+      type == TRI_AQL_NODE_INSERT ||
       type == TRI_AQL_NODE_UPDATE ||
       type == TRI_AQL_NODE_REPLACE) {
     return true;
@@ -116,8 +111,8 @@ const char* TRI_NodeNameAql (const TRI_aql_node_type_e type) {
       return "return";
     case TRI_AQL_NODE_REMOVE:
       return "remove";
-    case TRI_AQL_NODE_SAVE:
-      return "save";
+    case TRI_AQL_NODE_INSERT:
+      return "insert";
     case TRI_AQL_NODE_UPDATE:
       return "update";
     case TRI_AQL_NODE_REPLACE:
@@ -237,7 +232,7 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
     for (i = 0; i < n; ++i) {
       TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
 
-      if (!TRI_IsConstantValueNodeAql(member)) {
+      if (! TRI_IsConstantValueNodeAql(member)) {
         return false;
       }
     }
@@ -251,7 +246,7 @@ bool TRI_IsConstantValueNodeAql (const TRI_aql_node_t* const node) {
       TRI_aql_node_t* member = TRI_AQL_NODE_MEMBER(node, i);
       TRI_aql_node_t* value = TRI_AQL_NODE_MEMBER(member, 0);
 
-      if (!TRI_IsConstantValueNodeAql(value)) {
+      if (! TRI_IsConstantValueNodeAql(value)) {
         return false;
       }
     }
@@ -284,10 +279,6 @@ bool TRI_IsBooleanValueNodeAql (const TRI_aql_node_t* const node) {
 
   return (node->_type == TRI_AQL_NODE_VALUE && node->_value._type == TRI_AQL_TYPE_BOOL);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

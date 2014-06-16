@@ -36,11 +36,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -184,17 +179,45 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief returns a variable if it is defined in the current scope or above
 ////////////////////////////////////////////////////////////////////////////////
+
+static TRI_aql_variable_t* GetVariableInScope (TRI_aql_context_t* const context,
+                                               const char* const name) {
+  size_t n;
+
+  if (name == nullptr) {
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
+    return nullptr;
+  }
+
+  n = context->_currentScopes._length;
+  TRI_ASSERT(n > 0);
+
+  while (n > 0) {
+    void* result;
+    TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_currentScopes, --n);
+    TRI_ASSERT(scope);
+
+    result = TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name);
+
+    if (result != nullptr) {
+      // duplicate variable
+      return static_cast<TRI_aql_variable_t*>(result);
+    }
+
+    if (n == 0) {
+      // reached the outermost scope
+      break;
+    }
+  }
+
+  return nullptr;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a hint for an AQL for
@@ -408,32 +431,7 @@ bool TRI_EndScopeByReturnAql (TRI_aql_context_t* const context) {
 
 bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
                                  const char* const name) {
-  size_t n;
-
-  if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
-    return false;
-  }
-
-  n = context->_currentScopes._length;
-  TRI_ASSERT(n > 0);
-
-  while (n > 0) {
-    TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&context->_currentScopes, --n);
-    TRI_ASSERT(scope);
-
-    if (TRI_LookupByKeyAssociativePointer(&scope->_variables, (void*) name)) {
-      // duplicate variable
-      return true;
-    }
-
-    if (n == 0) {
-      // reached the outermost scope
-      break;
-    }
-  }
-
-  return false;
+  return (GetVariableInScope(context, name) != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,34 +440,42 @@ bool TRI_VariableExistsScopeAql (TRI_aql_context_t* const context,
 
 bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
                               const char* name,
-                              TRI_aql_node_t* const definingNode) {
+                              TRI_aql_node_t* const definingNode,
+                              bool allowDuplicateName) {
   TRI_aql_variable_t* variable;
   TRI_aql_scope_t* scope;
   void* result;
 
   TRI_ASSERT(context);
   TRI_ASSERT(name);
+ 
+  result = GetVariableInScope(context, name); 
 
-  if (TRI_VariableExistsScopeAql(context, name)) {
+  if (result != nullptr && allowDuplicateName) {
+    scope = CurrentScope(context);
+
+    TRI_aql_variable_t* var = static_cast<TRI_aql_variable_t*>(result);
+    var->_isUpdated = true;
+    return true;
+  }
+
+  if (result != nullptr) {
     return false;
   }
 
   variable = TRI_CreateVariableAql(name, definingNode);
-  if (variable == NULL) {
+
+  if (variable == nullptr) {
     return false;
   }
 
   scope = CurrentScope(context);
 
   result = TRI_InsertKeyAssociativePointer(&scope->_variables, variable->_name, (void*) variable, false);
-  TRI_ASSERT(result == NULL);
+  TRI_ASSERT(result == nullptr);
 
   return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

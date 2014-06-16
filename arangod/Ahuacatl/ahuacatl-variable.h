@@ -47,6 +47,7 @@
 typedef struct TRI_aql_variable_s {
   char* _name;
   TRI_aql_node_t* _definingNode;
+  bool _isUpdated;
 }
 TRI_aql_variable_t;
 

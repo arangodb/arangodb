@@ -72,7 +72,7 @@ namespace triagens {
           size_t const n = collections->_length;
 
           for (size_t i = 0; i < n; ++i) {
-            TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
+            TRI_aql_collection_t* collection = static_cast<TRI_aql_collection_t*>(TRI_AtVectorPointer(collections, i));
 
             processCollection(collection);
           }

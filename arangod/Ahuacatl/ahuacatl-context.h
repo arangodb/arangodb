@@ -35,6 +35,7 @@
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
+struct TRI_aql_node_s;
 struct TRI_aql_parser_s;
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -44,18 +45,13 @@ struct TRI_vocbase_s;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of query to execute
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
   TRI_AQL_QUERY_READ,
   TRI_AQL_QUERY_REMOVE,
-  TRI_AQL_QUERY_SAVE,
+  TRI_AQL_QUERY_INSERT,
   TRI_AQL_QUERY_UPDATE,
   TRI_AQL_QUERY_REPLACE
 }
@@ -96,26 +92,17 @@ typedef struct TRI_aql_context_s {
 
   TRI_aql_query_type_e        _type;
   char*                       _writeCollection;
+  struct TRI_aql_node_s*      _writeOptions;
   
   struct TRI_json_s*          _userOptions;
   bool                        _fullCount;
   bool                        _isCoordinator;
-  bool                        _writeIgnore;
 }
 TRI_aql_context_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create and initialize a context
@@ -207,10 +194,6 @@ void TRI_SetErrorContextAql (const char* file,
 
 struct TRI_json_s* TRI_GetOptionContextAql (TRI_aql_context_t* const,
                                             const char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 
