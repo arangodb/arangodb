@@ -792,6 +792,11 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
                                              CollectorCache* cache,
                                              OperationsType const& operations) {
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE  
+  // used only for crash / recovery tests
+  int numMarkers = 0;
+#endif
+
   TRI_voc_tick_t const minTransferTick = document->_tickMax;
  
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -800,6 +805,13 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
     if (source->_tick <= minTransferTick) {
       // we have already transferred this marker in a previous run, nothing to do
       continue;
+    }
+  
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("CollectorThreadTransfer") {
+      if (++numMarkers > 5) {
+        // intentionally kill the server
+        TRI_SegfaultDebugging("CollectorThreadTransfer");
+      }
     }
 
     char const* base = reinterpret_cast<char const*>(source);
@@ -975,6 +987,11 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         break;
       }
     }
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("CollectorThreadTransferFinal") {
+    // intentionally kill the server
+    TRI_SegfaultDebugging("CollectorThreadTransferFinal");
   }
 
   return TRI_ERROR_NO_ERROR;

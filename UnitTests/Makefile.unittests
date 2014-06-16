@@ -29,6 +29,7 @@ unittests: all unittests-verbose unittests-brief
 unittests-brief: \
 	jslint \
 	unittests-config \
+	unittests-recovery \
 	unittests-boost \
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
@@ -183,6 +184,45 @@ start-slave:
 
 curl-request-get:
 	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | tr "\r" " " | sed -e 's/^HTTP\/1\.1 \([0-9]*\).*$$/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
+
+################################################################################
+### @brief test recovery
+################################################################################
+
+.PHONY: unittests-recovery
+.PHONY: execute-recovery-test
+
+if ENABLE_MAINTAINER_MODE
+
+RECOVERY_TESTS = \
+               @top_srcdir@/js/server/tests/recovery/corrupt-wal-marker.js 
+
+execute-recovery-test:
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
+
+unittests-recovery:
+	@echo
+	@echo "================================================================================"
+	@echo "<< RECOVERY TESTS                                                             >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+else
+
+unittests-recovery:
+
+execute-recovery-test:
+
+endif
 
 ################################################################################
 ### @brief test configuration files

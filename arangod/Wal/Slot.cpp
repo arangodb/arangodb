@@ -94,10 +94,15 @@ void Slot::fill (void* src,
   marker->_size = static_cast<TRI_voc_size_t>(size);
   
   // calculate the crc
-  marker->_crc  = 0;
+  marker->_crc = 0;
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, (char const*) marker, static_cast<TRI_voc_size_t>(size));
   marker->_crc = TRI_FinalCrc32(crc);
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("WalSlotCrc") {
+    // intentionally corrupt the marker
+    marker->_crc = 0xdeadbeef;
+  }
  
   // copy data into marker 
   memcpy(_mem, src, size);
