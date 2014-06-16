@@ -2,1091 +2,651 @@
 
 This chapter describe graph related aql functions.
 
+!SUBSECTION Edges and Vertices related functions.
 
-!SUBSECTION GRAPH_PATHS
+This section describes various AQL functions which can be used to recieve information about the graph's vertices, edges, neighbor relationship and shared properties.
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_paths -->
-
-<br />
-`GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
-*returns all paths of a graph.*
-<br />
-This function determines all available paths in a graph identified by *graphName*.
-Except for *graphName* every other parameter is optional.
-<br />
-* String  *graphName*     : The name of the graph
-* String  *direction*     : The direction of the edges
-Possible values are *any*, *inbound* and *outbound* (default)
-* Boolean *followCycles*  : If set to *true* the query follows cycles in the graph,
-default is false
-* Integer *minLength*      : Defines the minimal length a path must
-have to be returned (default is 0)
-* Integer *maxLength*      : Defines the maximal length a path must
-have to be returned (default is 10)
+!SUBSUBSECTION GRAPH_EDGES
 
 <br />
-*Examples*
+`GRAPH_EDGES (graphName, vertexExample, options)`
+*The GRAPH\_EDGES function returns all edges of vertices.*
 <br />
-Return all paths of the graph *social*:
-<br />
-
-```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   db._query("RETURN GRAPH_PATHS('social')").toArray();
-[ 
-  [ 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "196719176", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        } 
-      ], 
-      "edges" : [ ], 
-      "source" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      }, 
-      "destination" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "196719176", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "197112392", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_rev" : "197898824", 
-          "_key" : "aliceAndBob", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      }, 
-      "destination" : { 
-        "_id" : "male/bob", 
-        "_rev" : "197112392", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "196719176", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "197112392", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        }, 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "197505608", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_rev" : "197898824", 
-          "_key" : "aliceAndBob", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        }, 
-        { 
-          "_id" : "relation/bobAndDiana", 
-          "_rev" : "198554184", 
-          "_key" : "bobAndDiana", 
-          "_from" : "male/bob", 
-          "_to" : "female/diana", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      }, 
-      "destination" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "196719176", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "197309000", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_rev" : "198160968", 
-          "_key" : "aliceAndCharly", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      }, 
-      "destination" : { 
-        "_id" : "male/charly", 
-        "_rev" : "197309000", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "196719176", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "197309000", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        }, 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "197505608", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_rev" : "198160968", 
-          "_key" : "aliceAndCharly", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        }, 
-        { 
-          "_id" : "relation/charlyAndDiana", 
-          "_rev" : "198357576", 
-          "_key" : "charlyAndDiana", 
-          "_from" : "male/charly", 
-          "_to" : "female/diana", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/alice", 
-        "_rev" : "196719176", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      }, 
-      "destination" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "197505608", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        } 
-      ], 
-      "edges" : [ ], 
-      "source" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      }, 
-      "destination" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "197112392", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        } 
-      ], 
-      "edges" : [ ], 
-      "source" : { 
-        "_id" : "male/bob", 
-        "_rev" : "197112392", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      }, 
-      "destination" : { 
-        "_id" : "male/bob", 
-        "_rev" : "197112392", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "197112392", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        }, 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "197505608", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/bobAndDiana", 
-          "_rev" : "198554184", 
-          "_key" : "bobAndDiana", 
-          "_from" : "male/bob", 
-          "_to" : "female/diana", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "male/bob", 
-        "_rev" : "197112392", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      }, 
-      "destination" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "197309000", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        } 
-      ], 
-      "edges" : [ ], 
-      "source" : { 
-        "_id" : "male/charly", 
-        "_rev" : "197309000", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      }, 
-      "destination" : { 
-        "_id" : "male/charly", 
-        "_rev" : "197309000", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "197309000", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        }, 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "197505608", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/charlyAndDiana", 
-          "_rev" : "198357576", 
-          "_key" : "charlyAndDiana", 
-          "_from" : "male/charly", 
-          "_to" : "female/diana", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "male/charly", 
-        "_rev" : "197309000", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      }, 
-      "destination" : { 
-        "_id" : "female/diana", 
-        "_rev" : "197505608", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      } 
-    } 
-  ] 
-]
-```
-<br />
-Return all inbound paths of the graph *social* with a maximal
-length of 1 and a minimal length of 2:
-<br />
-
-```
-arangosh>   ~require("internal").db;
--1
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
-[ 
-  [ 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "128496200", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "128299592", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/charlyAndDiana", 
-          "_rev" : "129348168", 
-          "_key" : "charlyAndDiana", 
-          "_from" : "male/charly", 
-          "_to" : "female/diana", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/diana", 
-        "_rev" : "128496200", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      }, 
-      "destination" : { 
-        "_id" : "male/charly", 
-        "_rev" : "128299592", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "128496200", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        }, 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "128299592", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        }, 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "127709768", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/charlyAndDiana", 
-          "_rev" : "129348168", 
-          "_key" : "charlyAndDiana", 
-          "_from" : "male/charly", 
-          "_to" : "female/diana", 
-          "type" : "married" 
-        }, 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_rev" : "129151560", 
-          "_key" : "aliceAndCharly", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/diana", 
-        "_rev" : "128496200", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      }, 
-      "destination" : { 
-        "_id" : "female/alice", 
-        "_rev" : "127709768", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "128496200", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "128102984", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/bobAndDiana", 
-          "_rev" : "129544776", 
-          "_key" : "bobAndDiana", 
-          "_from" : "male/bob", 
-          "_to" : "female/diana", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/diana", 
-        "_rev" : "128496200", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      }, 
-      "destination" : { 
-        "_id" : "male/bob", 
-        "_rev" : "128102984", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "female/diana", 
-          "_rev" : "128496200", 
-          "_key" : "diana", 
-          "name" : "Diana" 
-        }, 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "128102984", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        }, 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "127709768", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/bobAndDiana", 
-          "_rev" : "129544776", 
-          "_key" : "bobAndDiana", 
-          "_from" : "male/bob", 
-          "_to" : "female/diana", 
-          "type" : "friend" 
-        }, 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_rev" : "128889416", 
-          "_key" : "aliceAndBob", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "female/diana", 
-        "_rev" : "128496200", 
-        "_key" : "diana", 
-        "name" : "Diana" 
-      }, 
-      "destination" : { 
-        "_id" : "female/alice", 
-        "_rev" : "127709768", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/bob", 
-          "_rev" : "128102984", 
-          "_key" : "bob", 
-          "name" : "Bob" 
-        }, 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "127709768", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndBob", 
-          "_rev" : "128889416", 
-          "_key" : "aliceAndBob", 
-          "_from" : "female/alice", 
-          "_to" : "male/bob", 
-          "type" : "married" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "male/bob", 
-        "_rev" : "128102984", 
-        "_key" : "bob", 
-        "name" : "Bob" 
-      }, 
-      "destination" : { 
-        "_id" : "female/alice", 
-        "_rev" : "127709768", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      } 
-    }, 
-    { 
-      "vertices" : [ 
-        { 
-          "_id" : "male/charly", 
-          "_rev" : "128299592", 
-          "_key" : "charly", 
-          "name" : "Charly" 
-        }, 
-        { 
-          "_id" : "female/alice", 
-          "_rev" : "127709768", 
-          "_key" : "alice", 
-          "name" : "Alice" 
-        } 
-      ], 
-      "edges" : [ 
-        { 
-          "_id" : "relation/aliceAndCharly", 
-          "_rev" : "129151560", 
-          "_key" : "aliceAndCharly", 
-          "_from" : "female/alice", 
-          "_to" : "male/charly", 
-          "type" : "friend" 
-        } 
-      ], 
-      "source" : { 
-        "_id" : "male/charly", 
-        "_rev" : "128299592", 
-        "_key" : "charly", 
-        "name" : "Charly" 
-      }, 
-      "destination" : { 
-        "_id" : "female/alice", 
-        "_rev" : "127709768", 
-        "_key" : "alice", 
-        "name" : "Alice" 
-      } 
-    } 
-  ] 
-]
-```
-
-!SUBSECTION GRAPH_SHORTEST_PATH
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths -->
-
-<br />
-`GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-*returns all shortest paths of a graph*
-<br />
-This function determines all shortest paths in a graph identified by *graphName*.
-The function accepts an id, an example, a list of examples
-or even an empty example as parameter for
-start and end vertex. If one wants to call this function to receive nearly all
-shortest paths for a graph the
-option *algorithm* should be set to *Floyd-Warshall* to increase performance.
-If no algorithm is provided in the options the function chooses the appropriate
-one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
-The length of a path is by default the amount of edges from one start vertex to
-an end vertex. The option *weight* allows the user to define an edge attribute
-representing the length.
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
 <br />
 * String               *graphName*          : The name of the graph.
-* String|Object|Array  *startVertexExample* : An example for the desired
-start Vertices (see below).
-* String|Object|Array  *endVertexExample*   : An example for the desired
-end Vertices (see below).
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
 * Object               *options*            : Optional options, see below:
 <br />
 Possible options and there defaults:
-* String               *direction*                        : The direction of the edges.
-Possible values are *outbound*, *inbound* and *any* (default).
-* String|Array         *edgeCollectionRestriction*        : One or multiple edge
-collections that should be considered.
-* String|Array         *startVertexCollectionRestriction* : One or multiple vertex
-collections that should be considered.
-* String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
-collections that should be considered.
-* String|Object|Array  *edgeExamples*                     : A filter example for the
-edges in the shortest paths (see below).
-* String               *algorithm*                        : The algorithm to calculate
-the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-used, otherwise the default is *Dijkstra*
-* String               *weight*                           : The name of the attribute of
-the edges containing the length.
-* Number               *defaultWeight*                    : Only used with the option *weight*.
-If an edge does not have the attribute named as defined in option *weight* this default
-is used as length.
-If no default is supplied the default would be positive Infinity so the path could
-not be calculated.
+* String               *direction*                        : The direction
+of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple
+edge collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple
+vertex collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example
+for the edges (see below).
+* String|Object|Array  *neighborExamples*                 : An example for
+the desired neighbors (see below).
+* Number               *minDepth*                         : Defines the minimal
+depth a path to a neighbor must have to be returned (default is 1).
+* Number               *maxDepth*                         : Defines the maximal
+depth a path to a neighbor must have to be returned (default is 1).
+<br />
+Examples for edgeExamples/neighborExamples:
+* {}                : Returns all possible edges/neighbors for this graph.
+* *idString*        : Returns the edge/vertex with the id *idString*.
+* {*key* : *value*} : Returns the edges/vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all edges to locations with a distance of either 700 or 600.:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "highway/221256913", 
+    "_rev" : "221256913", 
+    "_key" : "221256913", 
+    "_from" : "city/Berlin", 
+    "_to" : "city/Munich", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/221846737", 
+    "_rev" : "221846737", 
+    "_key" : "221846737", 
+    "_from" : "city/Berlin", 
+    "_to" : "village/Olpe", 
+    "distance" : 700 
+  }, 
+  { 
+    "_id" : "highway/221256913", 
+    "_rev" : "221256913", 
+    "_key" : "221256913", 
+    "_from" : "city/Berlin", 
+    "_to" : "city/Munich", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/222436561", 
+    "_rev" : "222436561", 
+    "_key" : "222436561", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  }, 
+  { 
+    "_id" : "road/221846737", 
+    "_rev" : "221846737", 
+    "_key" : "221846737", 
+    "_from" : "city/Berlin", 
+    "_to" : "village/Olpe", 
+    "distance" : 700 
+  }, 
+  { 
+    "_id" : "road/222436561", 
+    "_rev" : "222436561", 
+    "_key" : "222436561", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  } 
+]
+```
+<br />
+A route planner example, all outbound edges of munich with a maximal depth of 2 :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> +"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "highway/226630865", 
+    "_rev" : "226630865", 
+    "_key" : "226630865", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "highway/226630865", 
+    "_rev" : "226630865", 
+    "_key" : "226630865", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "road/227810513", 
+    "_rev" : "227810513", 
+    "_key" : "227810513", 
+    "_from" : "city/Cologne", 
+    "_to" : "village/Olpe", 
+    "distance" : 100 
+  }, 
+  { 
+    "_id" : "highway/226630865", 
+    "_rev" : "226630865", 
+    "_key" : "226630865", 
+    "_from" : "city/Munich", 
+    "_to" : "city/Cologne", 
+    "distance" : 650 
+  }, 
+  { 
+    "_id" : "road/228007121", 
+    "_rev" : "228007121", 
+    "_key" : "228007121", 
+    "_from" : "city/Cologne", 
+    "_to" : "village/Rosenheim", 
+    "distance" : 750 
+  }, 
+  { 
+    "_id" : "road/227417297", 
+    "_rev" : "227417297", 
+    "_key" : "227417297", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Rosenheim", 
+    "distance" : 80 
+  }, 
+  { 
+    "_id" : "road/227613905", 
+    "_rev" : "227613905", 
+    "_key" : "227613905", 
+    "_from" : "city/Munich", 
+    "_to" : "village/Olpe", 
+    "distance" : 600 
+  } 
+]
+```
+<br />
+
+
+!SUBSUBSECTION GRAPH_VERTICES
 
 <br />
-Examples for startVertexExample/endVertexExample:
-* {}                : Returns all possible start/end vertices for this graph.
+`GRAPH_VERTICES (graphName, vertexExample, options)`
+*The GRAPH\_VERTICES function returns all vertices.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex.
+According to the optional filters it will only return vertices that have
+outbound, onbound or any (default) edges.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertexExample*      : An example for the desired
+vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the
+edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *vertexCollectionRestriction*      : One or multiple
+vertex collections that should be considered.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
 * *idString*        : Returns the vertex with the id *idString*.
 * {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
-the examples.
-<br />
-
-*Examples*
-<br />
-A route planner example, shortest distance from all villages to other cities:
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
-........> +"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
-........> "startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
-........>  "e.distance, LENGTH(e.paths)]"
-........> ).toArray();
-[ 
-  [ 
-    "village/Rosenheim", 
-    "city/Cologne", 
-    730, 
-    1 
-  ], 
-  [ 
-    "village/Rosenheim", 
-    "city/Berlin", 
-    680, 
-    1 
-  ], 
-  [ 
-    "village/Rosenheim", 
-    "city/Munich", 
-    80, 
-    1 
-  ], 
-  [ 
-    "village/Olpe", 
-    "city/Berlin", 
-    700, 
-    1 
-  ], 
-  [ 
-    "village/Olpe", 
-    "city/Munich", 
-    600, 
-    1 
-  ], 
-  [ 
-    "village/Olpe", 
-    "city/Cologne", 
-    100, 
-    1 
-  ] 
-]
-```
-<br />
-A route planner example, shortest distance from Munich and Cologne to Olpe:
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
-........> +"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
-........>  "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
-........> ).toArray();
-[ 
-  [ 
-    "city/Cologne", 
-    "village/Olpe", 
-    100, 
-    1 
-  ], 
-  [ 
-    "city/Munich", 
-    "village/Olpe", 
-    600, 
-    1 
-  ] 
-]
-```
-<br />
-
-!SUBSECTION GRAPH_TRAVERSAL
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal -->
-
-<br />
-`GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
-*The GRAPH\_TRAVERSAL function traverses through the graph.*
-<br />
-This function performs traversals on the given graph.
-For a more detailed documentation on the optional parameters see
-[Traversals](../Traversals/README.md).
-<br />
-* String               *graphName*          : The name of the graph.
-* String|Object|Array  *startVerte*         : The ID of the start vertex of the traversal.
-* String|Object|Array  *direction*          : The direction of the edges. Possible values
-are *outbound*, *inbound* and *any* (default).
-* Object               *options*            : Optional options, see below:
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
 <br />
 @EXAMPLES
 <br />
-A route planner example, start a traversal from Munich :
+A route planner example, all vertices of the graph
 <br />
 
 ```
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
-........>  " 'outbound') RETURN e"
+arangosh> db._query("FOR e IN GRAPH_VERTICES("
+........> +"'routeplanner', {}) RETURN e"
 ........> ).toArray();
 [ 
   { 
-    "vertex" : { 
-      "_id" : "city/Munich", 
-      "_rev" : "113553992", 
-      "_key" : "Munich", 
-      "isCapital" : true, 
-      "population" : 1000000 
-    } 
+    "_id" : "city/Berlin", 
+    "_rev" : "203824337", 
+    "_key" : "Berlin", 
+    "isCapital" : true, 
+    "population" : 3000000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "city/Cologne", 
-      "_rev" : "113357384", 
-      "_key" : "Cologne", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    } 
+    "_id" : "city/Cologne", 
+    "_rev" : "204020945", 
+    "_key" : "Cologne", 
+    "isCapital" : false, 
+    "population" : 1000000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "village/Olpe", 
-      "_rev" : "114012744", 
-      "_key" : "Olpe", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
+    "_id" : "city/Munich", 
+    "_rev" : "204217553", 
+    "_key" : "Munich", 
+    "isCapital" : true, 
+    "population" : 1000000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "village/Rosenheim", 
-      "_rev" : "114209352", 
-      "_key" : "Rosenheim", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
+    "_id" : "village/Rosenheim", 
+    "_rev" : "204872913", 
+    "_key" : "Rosenheim", 
+    "isCapital" : false, 
+    "population" : 80000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "village/Rosenheim", 
-      "_rev" : "114209352", 
-      "_key" : "Rosenheim", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
-  }, 
-  { 
-    "vertex" : { 
-      "_id" : "village/Olpe", 
-      "_rev" : "114012744", 
-      "_key" : "Olpe", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
+    "_id" : "village/Olpe", 
+    "_rev" : "204676305", 
+    "_key" : "Olpe", 
+    "isCapital" : false, 
+    "population" : 80000 
   } 
 ]
 ```
 <br />
-A route planner example, start a traversal from Munich with a max depth of 1
-so only the direct neighbors of munich are returned:
+A route planner example, all vertices from collection *city*.
 <br />
 
 ```
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
-........> " 'outbound', {maxDepth : 1}) RETURN e"
+arangosh> db._query("FOR e IN GRAPH_VERTICES("
+........> +"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
+........> " : 'city'}) RETURN e"
 ........> ).toArray();
 [ 
   { 
-    "vertex" : { 
-      "_id" : "city/Munich", 
-      "_rev" : "118600264", 
-      "_key" : "Munich", 
-      "isCapital" : true, 
-      "population" : 1000000 
-    } 
+    "_id" : "city/Berlin", 
+    "_rev" : "198646993", 
+    "_key" : "Berlin", 
+    "isCapital" : true, 
+    "population" : 3000000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "city/Cologne", 
-      "_rev" : "118403656", 
-      "_key" : "Cologne", 
-      "isCapital" : false, 
-      "population" : 1000000 
-    } 
+    "_id" : "city/Cologne", 
+    "_rev" : "198843601", 
+    "_key" : "Cologne", 
+    "isCapital" : false, 
+    "population" : 1000000 
   }, 
   { 
-    "vertex" : { 
-      "_id" : "village/Rosenheim", 
-      "_rev" : "119255624", 
-      "_key" : "Rosenheim", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
-  }, 
-  { 
-    "vertex" : { 
-      "_id" : "village/Olpe", 
-      "_rev" : "119059016", 
-      "_key" : "Olpe", 
-      "isCapital" : false, 
-      "population" : 80000 
-    } 
+    "_id" : "city/Munich", 
+    "_rev" : "199040209", 
+    "_key" : "Munich", 
+    "isCapital" : true, 
+    "population" : 1000000 
   } 
 ]
 ```
 <br />
 
-!SUBSECTION GRAPH_TRAVERSAL_TREE
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree -->
+!SUBSUBSECTION GRAPH_COMMON_NEIGHBORS
 
 <br />
-`GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
-*The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
-This function creates a tree format from the result for a better visualization of
-the path.
-This function performs traversals on the given graph.
-For a more detailed documentation on the optional parameters see
-[Traversals](../Traversals/README.md).
+`GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
+optionsVertex1, optionsVertex2)`
+*The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
+defined by the examples.*
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex1Example and vertex2Example.
 <br />
 * String               *graphName*          : The name of the graph.
-* String|Object|Array  *startVerte*         : The ID of the start vertex
-of the traversal.
-* String|Object|Array  *direction*          : The direction of the edges.
-Possible values are *outbound*, *inbound* and *any* (default).
-* String|Object|Array  *connectName*        : The result attribute which
-contains the connection.
-* Object               *options*            : Optional options, see below:
+* String|Object|Array  *vertex1Example*     : An example for the desired
+vertices (see below).
+* String|Object|Array  *vertex2Example*     : An example for the desired
+vertices (see below).
+* Object               *optionsVertex1*     : Optional options, see below:
+* Object               *optionsVertex2*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the
+edges. Possible values are *outbound*, *inbound* and *any* (default).
+* String|Object|Array  *edgeExamples*                     : A filter example
+for the edges to the neighbors (see below).
+* String|Object|Array  *neighborExamples*                 : An example for
+the desired neighbors (see below).
+* String|Array         *edgeCollectionRestriction*        : One or multiple
+edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+depth a path to a neighbor must have to be returned (default is 1).
+* Number               *maxDepth*                         : Defines the maximal
+depth a path to a neighbor must have to be returned (default is 1).
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
 <br />
 @EXAMPLES
 <br />
-A route planner example, start a traversal from Munich :
+A route planner example, all common neighbors of capitals.
 <br />
 
 ```
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'," +
-........>  " 'outbound', 'connnection') RETURN e"
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
 ........> ).toArray();
 [ 
-  [ 
-    { 
-      "_id" : "city/Munich", 
-      "_rev" : "157004360", 
-      "_key" : "Munich", 
-      "isCapital" : true, 
-      "population" : 1000000, 
-      "connnection" : [ 
+  { 
+    "city/Berlin" : { 
+      "city/Munich" : [ 
         { 
           "_id" : "city/Cologne", 
-          "_rev" : "156807752", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000, 
-          "connnection" : [ 
-            { 
-              "_id" : "village/Olpe", 
-              "_rev" : "157463112", 
-              "_key" : "Olpe", 
-              "isCapital" : false, 
-              "population" : 80000 
-            }, 
-            { 
-              "_id" : "village/Rosenheim", 
-              "_rev" : "157659720", 
-              "_key" : "Rosenheim", 
-              "isCapital" : false, 
-              "population" : 80000 
-            } 
-          ] 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "157659720", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "157463112", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  ] 
-]
-```
-<br />
-A route planner example, start a traversal from Munich with a max depth of 1 so
-only the direct neighbors of munich are returned:
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich',"+
-........>  " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
-........> ).toArray();
-[ 
-  [ 
-    { 
-      "_id" : "city/Munich", 
-      "_rev" : "162050632", 
-      "_key" : "Munich", 
-      "isCapital" : true, 
-      "population" : 1000000, 
-      "connnection" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "161854024", 
+          "_rev" : "410852561", 
           "_key" : "Cologne", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "162705992", 
-          "_key" : "Rosenheim", 
+          "_id" : "village/Olpe", 
+          "_rev" : "411507921", 
+          "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
-          "_id" : "village/Olpe", 
-          "_rev" : "162509384", 
-          "_key" : "Olpe", 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "411704529", 
+          "_key" : "Rosenheim", 
           "isCapital" : false, 
           "population" : 80000 
         } 
       ] 
     } 
-  ] 
+  }, 
+  { 
+    "city/Munich" : { 
+      "city/Berlin" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "410852561", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "411507921", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "411704529", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  } 
+]
+```
+<br />
+A route planner example, all common outbound neighbors of munich with any other location
+which have a maximal depth of 2 :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
+........> +"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
+........>  "{direction : 'outbound', maxDepth : 2}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Munich" : { 
+      "city/Berlin" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "416029905", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "416685265", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "416881873", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ], 
+      "city/Cologne" : [ 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "416685265", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "416881873", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  } 
 ]
 ```
 <br />
 
-!SUBSECTION GRAPH_DISTANCE_TO
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_distance -->
+!SUBSUBSECTION GRAPH_COMMON_PROPERTIES
 
 <br />
-`GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
-/// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
-///
-/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
-/// It does not return the actual path but only the distance between two vertices.
+`GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
+*The GRAPH\_COMMON\_PROPERTIES function returns all vertices
+defined by the examples that share common properties
+<br />
+The function accepts an id, an example, a list of examples or even an empty
+example as parameter for vertex1Example and vertex2Example.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *vertex1Example*     : An example for the desired
+vertices (see below).
+* String|Object|Array  *vertex2Example*     : An example for the desired
+vertices (see below).
+* Object               *options*     : Optional options, see below:
+<br />
+Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *vertex2CollectionRestriction* : One or multiple
+vertex collections that should be considered.
+* String|Array         *ignoreProperties* : One or multiple
+attributes of a document that should be ignored.
+<br />
+Examples for vertexExample:
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+match one of the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, all locations with the same properties:
 <br />
 
-!SUBSECTION GRAPH_NEIGHBORS
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+........> +"'routeplanner', {}, {}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : [ 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "74652881", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Munich" : [ 
+      { 
+        "_id" : "city/Berlin", 
+        "_rev" : "74259665", 
+        "_key" : "Berlin", 
+        "isCapital" : true, 
+        "population" : 3000000 
+      }, 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "74456273", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Cologne" : [ 
+      { 
+        "_id" : "village/Rosenheim", 
+        "_rev" : "75308241", 
+        "_key" : "Rosenheim", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      { 
+        "_id" : "village/Olpe", 
+        "_rev" : "75111633", 
+        "_key" : "Olpe", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "74652881", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "village/Rosenheim" : [ 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "74456273", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "village/Olpe", 
+        "_rev" : "75111633", 
+        "_key" : "Olpe", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    ] 
+  }, 
+  { 
+    "village/Olpe" : [ 
+      { 
+        "_id" : "city/Cologne", 
+        "_rev" : "74456273", 
+        "_key" : "Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "village/Rosenheim", 
+        "_rev" : "75308241", 
+        "_key" : "Rosenheim", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    ] 
+  } 
+]
+```
+<br />
+A route planner example, all cities which share same properties except for population.
+<br />
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_neighbors -->
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
+........> +"'routeplanner', {}, {}, {vertex1CollectionRestriction : 'city', " +
+........>  "vertex2CollectionRestriction : 'city'" +
+........> " ,ignoreProperties: 'population'}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "city/Berlin" : [ 
+      { 
+        "_id" : "city/Munich", 
+        "_rev" : "65871057", 
+        "_key" : "Munich", 
+        "isCapital" : true, 
+        "population" : 1000000 
+      } 
+    ] 
+  }, 
+  { 
+    "city/Munich" : [ 
+      { 
+        "_id" : "city/Berlin", 
+        "_rev" : "65477841", 
+        "_key" : "Berlin", 
+        "isCapital" : true, 
+        "population" : 3000000 
+      } 
+    ] 
+  } 
+]
+```
+<br />
+
+
+!SUBSUBSECTION GRAPH_NEIGHBORS
 
 <br />
 `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
-*returns all neighbors of vertices.*
+*The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
@@ -1135,7 +695,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "city/Munich", 
-      "_rev" : "78230088", 
+      "_rev" : "167517393", 
       "_key" : "Munich", 
       "isCapital" : true, 
       "population" : 1000000 
@@ -1143,9 +703,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "highway/79475272", 
-          "_rev" : "79475272", 
-          "_key" : "79475272", 
+          "_id" : "highway/168762577", 
+          "_rev" : "168762577", 
+          "_key" : "168762577", 
           "_from" : "city/Berlin", 
           "_to" : "city/Munich", 
           "distance" : 600 
@@ -1154,14 +714,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Berlin", 
-          "_rev" : "77836872", 
+          "_rev" : "167124177", 
           "_key" : "Berlin", 
           "isCapital" : true, 
           "population" : 3000000 
         }, 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "78230088", 
+          "_rev" : "167517393", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
@@ -1173,7 +733,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Olpe", 
-      "_rev" : "78688840", 
+      "_rev" : "167976145", 
       "_key" : "Olpe", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1181,9 +741,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/80065096", 
-          "_rev" : "80065096", 
-          "_key" : "80065096", 
+          "_id" : "road/169352401", 
+          "_rev" : "169352401", 
+          "_key" : "169352401", 
           "_from" : "city/Berlin", 
           "_to" : "village/Olpe", 
           "distance" : 700 
@@ -1192,14 +752,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Berlin", 
-          "_rev" : "77836872", 
+          "_rev" : "167124177", 
           "_key" : "Berlin", 
           "isCapital" : true, 
           "population" : 3000000 
         }, 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "78688840", 
+          "_rev" : "167976145", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1211,7 +771,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "city/Berlin", 
-      "_rev" : "77836872", 
+      "_rev" : "167124177", 
       "_key" : "Berlin", 
       "isCapital" : true, 
       "population" : 3000000 
@@ -1219,9 +779,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "highway/79475272", 
-          "_rev" : "79475272", 
-          "_key" : "79475272", 
+          "_id" : "highway/168762577", 
+          "_rev" : "168762577", 
+          "_key" : "168762577", 
           "_from" : "city/Berlin", 
           "_to" : "city/Munich", 
           "distance" : 600 
@@ -1230,14 +790,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "78230088", 
+          "_rev" : "167517393", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "city/Berlin", 
-          "_rev" : "77836872", 
+          "_rev" : "167124177", 
           "_key" : "Berlin", 
           "isCapital" : true, 
           "population" : 3000000 
@@ -1249,7 +809,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Olpe", 
-      "_rev" : "78688840", 
+      "_rev" : "167976145", 
       "_key" : "Olpe", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1257,9 +817,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/80654920", 
-          "_rev" : "80654920", 
-          "_key" : "80654920", 
+          "_id" : "road/169942225", 
+          "_rev" : "169942225", 
+          "_key" : "169942225", 
           "_from" : "city/Munich", 
           "_to" : "village/Olpe", 
           "distance" : 600 
@@ -1268,14 +828,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "78230088", 
+          "_rev" : "167517393", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "78688840", 
+          "_rev" : "167976145", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1287,7 +847,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "city/Berlin", 
-      "_rev" : "77836872", 
+      "_rev" : "167124177", 
       "_key" : "Berlin", 
       "isCapital" : true, 
       "population" : 3000000 
@@ -1295,9 +855,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/80065096", 
-          "_rev" : "80065096", 
-          "_key" : "80065096", 
+          "_id" : "road/169352401", 
+          "_rev" : "169352401", 
+          "_key" : "169352401", 
           "_from" : "city/Berlin", 
           "_to" : "village/Olpe", 
           "distance" : 700 
@@ -1306,14 +866,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "78688840", 
+          "_rev" : "167976145", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "city/Berlin", 
-          "_rev" : "77836872", 
+          "_rev" : "167124177", 
           "_key" : "Berlin", 
           "isCapital" : true, 
           "population" : 3000000 
@@ -1325,7 +885,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "city/Munich", 
-      "_rev" : "78230088", 
+      "_rev" : "167517393", 
       "_key" : "Munich", 
       "isCapital" : true, 
       "population" : 1000000 
@@ -1333,9 +893,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/80654920", 
-          "_rev" : "80654920", 
-          "_key" : "80654920", 
+          "_id" : "road/169942225", 
+          "_rev" : "169942225", 
+          "_key" : "169942225", 
           "_from" : "city/Munich", 
           "_to" : "village/Olpe", 
           "distance" : 600 
@@ -1344,14 +904,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "78688840", 
+          "_rev" : "167976145", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "78230088", 
+          "_rev" : "167517393", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
@@ -1376,7 +936,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "city/Cologne", 
-      "_rev" : "131576392", 
+      "_rev" : "172498129", 
       "_key" : "Cologne", 
       "isCapital" : false, 
       "population" : 1000000 
@@ -1384,9 +944,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "highway/133214792", 
-          "_rev" : "133214792", 
-          "_key" : "133214792", 
+          "_id" : "highway/174136529", 
+          "_rev" : "174136529", 
+          "_key" : "174136529", 
           "_from" : "city/Munich", 
           "_to" : "city/Cologne", 
           "distance" : 650 
@@ -1395,14 +955,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "131773000", 
+          "_rev" : "172694737", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "city/Cologne", 
-          "_rev" : "131576392", 
+          "_rev" : "172498129", 
           "_key" : "Cologne", 
           "isCapital" : false, 
           "population" : 1000000 
@@ -1414,7 +974,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Olpe", 
-      "_rev" : "132231752", 
+      "_rev" : "173153489", 
       "_key" : "Olpe", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1422,17 +982,17 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "highway/133214792", 
-          "_rev" : "133214792", 
-          "_key" : "133214792", 
+          "_id" : "highway/174136529", 
+          "_rev" : "174136529", 
+          "_key" : "174136529", 
           "_from" : "city/Munich", 
           "_to" : "city/Cologne", 
           "distance" : 650 
         }, 
         { 
-          "_id" : "road/134394440", 
-          "_rev" : "134394440", 
-          "_key" : "134394440", 
+          "_id" : "road/175316177", 
+          "_rev" : "175316177", 
+          "_key" : "175316177", 
           "_from" : "city/Cologne", 
           "_to" : "village/Olpe", 
           "distance" : 100 
@@ -1441,21 +1001,21 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "131773000", 
+          "_rev" : "172694737", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "city/Cologne", 
-          "_rev" : "131576392", 
+          "_rev" : "172498129", 
           "_key" : "Cologne", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "132231752", 
+          "_rev" : "173153489", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1467,7 +1027,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Rosenheim", 
-      "_rev" : "132428360", 
+      "_rev" : "173350097", 
       "_key" : "Rosenheim", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1475,17 +1035,17 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "highway/133214792", 
-          "_rev" : "133214792", 
-          "_key" : "133214792", 
+          "_id" : "highway/174136529", 
+          "_rev" : "174136529", 
+          "_key" : "174136529", 
           "_from" : "city/Munich", 
           "_to" : "city/Cologne", 
           "distance" : 650 
         }, 
         { 
-          "_id" : "road/134591048", 
-          "_rev" : "134591048", 
-          "_key" : "134591048", 
+          "_id" : "road/175512785", 
+          "_rev" : "175512785", 
+          "_key" : "175512785", 
           "_from" : "city/Cologne", 
           "_to" : "village/Rosenheim", 
           "distance" : 750 
@@ -1494,21 +1054,21 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "131773000", 
+          "_rev" : "172694737", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "city/Cologne", 
-          "_rev" : "131576392", 
+          "_rev" : "172498129", 
           "_key" : "Cologne", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "village/Rosenheim", 
-          "_rev" : "132428360", 
+          "_rev" : "173350097", 
           "_key" : "Rosenheim", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1520,7 +1080,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Rosenheim", 
-      "_rev" : "132428360", 
+      "_rev" : "173350097", 
       "_key" : "Rosenheim", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1528,9 +1088,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/134001224", 
-          "_rev" : "134001224", 
-          "_key" : "134001224", 
+          "_id" : "road/174922961", 
+          "_rev" : "174922961", 
+          "_key" : "174922961", 
           "_from" : "city/Munich", 
           "_to" : "village/Rosenheim", 
           "distance" : 80 
@@ -1539,14 +1099,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "131773000", 
+          "_rev" : "172694737", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "village/Rosenheim", 
-          "_rev" : "132428360", 
+          "_rev" : "173350097", 
           "_key" : "Rosenheim", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1558,7 +1118,7 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
   { 
     "vertex" : { 
       "_id" : "village/Olpe", 
-      "_rev" : "132231752", 
+      "_rev" : "173153489", 
       "_key" : "Olpe", 
       "isCapital" : false, 
       "population" : 80000 
@@ -1566,9 +1126,9 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "road/134197832", 
-          "_rev" : "134197832", 
-          "_key" : "134197832", 
+          "_id" : "road/175119569", 
+          "_rev" : "175119569", 
+          "_key" : "175119569", 
           "_from" : "city/Munich", 
           "_to" : "village/Olpe", 
           "distance" : 600 
@@ -1577,14 +1137,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
       "vertices" : [ 
         { 
           "_id" : "city/Munich", 
-          "_rev" : "131773000", 
+          "_rev" : "172694737", 
           "_key" : "Munich", 
           "isCapital" : true, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "village/Olpe", 
-          "_rev" : "132231752", 
+          "_rev" : "173153489", 
           "_key" : "Olpe", 
           "isCapital" : false, 
           "population" : 80000 
@@ -1598,395 +1158,930 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
 <br />
 
 
+!SUBSECTION Shortest Paths, distances and traversals.
 
-!SUBSECTION GRAPH_EDGES
+This section describes AQL functions, that calculate pathes from a subset of vertices in a graph to another subset of vertices. 
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_edges -->
+!SUBSUBSECTION GRAPH_PATHS
 
 <br />
-`GRAPH_EDGES (graphName, vertexExample, options)`
-*returns all edges of vertices.*
+`GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
+*The GRAPH\_PATHS function returns all paths of a graph.*
 <br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex.
+This function determines all available paths in a graph identified by *graphName*.
+Except for *graphName* every other parameter is optional.
 <br />
-* String               *graphName*          : The name of the graph.
-* String|Object|Array  *vertexExample*      : An example for the desired
-vertices (see below).
-* Object               *options*            : Optional options, see below:
-<br />
-Possible options and there defaults:
-* String               *direction*                        : The direction
-of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-* String|Array         *edgeCollectionRestriction*        : One or multiple
-edge collections that should be considered.
-* String|Array         *startVertexCollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *endVertexCollectionRestriction*   : One or multiple
-vertex collections that should be considered.
-* String|Object|Array  *edgeExamples*                     : A filter example
-for the edges (see below).
-* String|Object|Array  *neighborExamples*                 : An example for
-the desired neighbors (see below).
-* Number               *minDepth*                         : Defines the minimal
-depth a path to a neighbor must have to be returned (default is 1).
-* Number               *maxDepth*                         : Defines the maximal
-depth a path to a neighbor must have to be returned (default is 1).
-<br />
-Examples for edgeExamples/neighborExamples:
-* {}                : Returns all possible edges/neighbors for this graph.
-* *idString*        : Returns the edge/vertex with the id *idString*.
-* {*key* : *value*} : Returns the edges/vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
-match one of the examples.
+* String  *graphName*     : The name of the graph.
+* String  *direction*     : The direction of the edges.
+Possible values are *any*, *inbound* and *outbound* (default).
+* Boolean *followCycles*  : If set to *true* the query follows cycles in the graph,
+default is false.
+* Number *minLength*      : Defines the minimal length a path must
+have to be returned (default is 0).
+* Number *maxLength*      : Defines the maximal length a path must
+have to be returned (default is 10).
 <br />
 @EXAMPLES
 <br />
-A route planner example, all edges to locations with a distance of either 700 or 600.:
+Return all paths of the graph "social":
 <br />
 
 ```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_EDGES("
-........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
-........> ).toArray();
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   db._query("RETURN GRAPH_PATHS('social')").toArray();
 [ 
-  { 
-    "_id" : "highway/29012552", 
-    "_rev" : "29012552", 
-    "_key" : "29012552", 
-    "_from" : "city/Berlin", 
-    "_to" : "city/Munich", 
-    "distance" : 600 
-  }, 
-  { 
-    "_id" : "road/29602376", 
-    "_rev" : "29602376", 
-    "_key" : "29602376", 
-    "_from" : "city/Berlin", 
-    "_to" : "village/Olpe", 
-    "distance" : 700 
-  }, 
-  { 
-    "_id" : "highway/29012552", 
-    "_rev" : "29012552", 
-    "_key" : "29012552", 
-    "_from" : "city/Berlin", 
-    "_to" : "city/Munich", 
-    "distance" : 600 
-  }, 
-  { 
-    "_id" : "road/30192200", 
-    "_rev" : "30192200", 
-    "_key" : "30192200", 
-    "_from" : "city/Munich", 
-    "_to" : "village/Olpe", 
-    "distance" : 600 
-  }, 
-  { 
-    "_id" : "road/29602376", 
-    "_rev" : "29602376", 
-    "_key" : "29602376", 
-    "_from" : "city/Berlin", 
-    "_to" : "village/Olpe", 
-    "distance" : 700 
-  }, 
-  { 
-    "_id" : "road/30192200", 
-    "_rev" : "30192200", 
-    "_key" : "30192200", 
-    "_from" : "city/Munich", 
-    "_to" : "village/Olpe", 
-    "distance" : 600 
-  } 
-]
-```
-<br />
-A route planner example, all outbound edges of munich with a maximal depth of 2 :
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_EDGES("
-........> +"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
-........> ).toArray();
-[ 
-  { 
-    "_id" : "highway/34255432", 
-    "_rev" : "34255432", 
-    "_key" : "34255432", 
-    "_from" : "city/Munich", 
-    "_to" : "city/Cologne", 
-    "distance" : 650 
-  }, 
-  { 
-    "_id" : "highway/34255432", 
-    "_rev" : "34255432", 
-    "_key" : "34255432", 
-    "_from" : "city/Munich", 
-    "_to" : "city/Cologne", 
-    "distance" : 650 
-  }, 
-  { 
-    "_id" : "road/35435080", 
-    "_rev" : "35435080", 
-    "_key" : "35435080", 
-    "_from" : "city/Cologne", 
-    "_to" : "village/Olpe", 
-    "distance" : 100 
-  }, 
-  { 
-    "_id" : "highway/34255432", 
-    "_rev" : "34255432", 
-    "_key" : "34255432", 
-    "_from" : "city/Munich", 
-    "_to" : "city/Cologne", 
-    "distance" : 650 
-  }, 
-  { 
-    "_id" : "road/35631688", 
-    "_rev" : "35631688", 
-    "_key" : "35631688", 
-    "_from" : "city/Cologne", 
-    "_to" : "village/Rosenheim", 
-    "distance" : 750 
-  }, 
-  { 
-    "_id" : "road/35041864", 
-    "_rev" : "35041864", 
-    "_key" : "35041864", 
-    "_from" : "city/Munich", 
-    "_to" : "village/Rosenheim", 
-    "distance" : 80 
-  }, 
-  { 
-    "_id" : "road/35238472", 
-    "_rev" : "35238472", 
-    "_key" : "35238472", 
-    "_from" : "city/Munich", 
-    "_to" : "village/Olpe", 
-    "distance" : 600 
-  } 
-]
-```
-<br />
-
-
-
-!SUBSECTION GRAPH_VERTICES
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_vertices -->
-
-<br />
-`GRAPH_VERTICES (graphName, vertexExample, options)`
-*returns all vertices.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex.
-According to the optional filters it will only return vertices that have
-outbound, onbound or any (default) edges.
-<br />
-* String               *graphName*          : The name of the graph.
-* String|Object|Array  *vertexExample*      : An example for the desired
-vertices (see below).
-* Object               *options*            : Optional options, see below:
-<br />
-Possible options and there defaults:
-* String               *direction*                        : The direction of the
-edges. Possible values are *outbound*, *inbound* and *any* (default).
-* String|Array         *vertexCollectionRestriction*      : One or multiple
-vertex collections that should be considered.
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all vertices of the graph
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-........> +"'routeplanner', {}) RETURN e"
-........> ).toArray();
-[ArangoError 1541: invalid number of arguments for function '_AQL:GRAPH_COMMON_NEIGHBORS()']
-```
-<br />
-A route planner example, all vertices from collection *city*.
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-........> +"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
-........> " : 'city'}) RETURN e"
-........> ).toArray();
-[ ]
-```
-<br />
-
-
-!SUBSECTION GRAPH_COMMON_NEIGHBORS
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors -->
-
-<br />
-`GRAPH_VERTICES (graphName, vertexExample, options)`
-*The GRAPH\_VERTICES function returns all vertices.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex.
-According to the optional filters it will only return vertices that have
-outbound, onbound or any (default) edges.
-<br />
-* String               *graphName*          : The name of the graph.
-* String|Object|Array  *vertexExample*      : An example for the desired
-vertices (see below).
-* Object               *options*            : Optional options, see below:
-<br />
-Possible options and there defaults:
-* String               *direction*                        : The direction of the
-edges. Possible values are *outbound*, *inbound* and *any* (default).
-* String|Array         *vertexCollectionRestriction*      : One or multiple
-vertex collections that should be considered.
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all vertices of the graph
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-........> +"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
-........> ).toArray();
-[ 
-  { 
-    "city/Berlin" : { 
-      "city/Munich" : [ 
+  [ 
+    { 
+      "vertices" : [ 
         { 
-          "_id" : "city/Cologne", 
-          "_rev" : "214651185", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "215306545", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "215503153", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  }, 
-  { 
-    "city/Munich" : { 
-      "city/Berlin" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "214651185", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "215306545", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "215503153", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  } 
-]
-```
-<br />
-A route planner example, all vertices from collection *city*.
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-........> +"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
-........>  "{direction : 'outbound', maxDepth : 2}) RETURN e"
-........> ).toArray();
-[ 
-  { 
-    "city/Munich" : { 
-      "city/Berlin" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "204558641", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "205214001", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "205410609", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
+          "_id" : "female/alice", 
+          "_rev" : "134749393", 
+          "_key" : "alice", 
+          "name" : "Alice" 
         } 
       ], 
-      "city/Cologne" : [ 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
         { 
-          "_id" : "village/Olpe", 
-          "_rev" : "205214001", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
+          "_id" : "female/alice", 
+          "_rev" : "134749393", 
+          "_key" : "alice", 
+          "name" : "Alice" 
         }, 
         { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "205410609", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
+          "_id" : "male/bob", 
+          "_rev" : "135142609", 
+          "_key" : "bob", 
+          "name" : "Bob" 
         } 
-      ] 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "135929041", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "135142609", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "134749393", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "135142609", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "135535825", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "135929041", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        }, 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "136584401", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "134749393", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "135339217", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "136191185", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "135339217", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "134749393", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "135339217", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "135535825", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "136191185", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        }, 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "136387793", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/alice", 
+        "_rev" : "134749393", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "135535825", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "135142609", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "135142609", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "135142609", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "135142609", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "135535825", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "136584401", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "135142609", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "135339217", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "135339217", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "135339217", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "135339217", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "135535825", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "136387793", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "135339217", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "female/diana", 
+        "_rev" : "135535825", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      } 
+    } 
+  ] 
+]
+```
+<br />
+Return all inbound paths of the graph "social" with a maximal
+length of 1 and a minimal length of 2:
+<br />
+
+```
+arangosh>   ~require("internal").db;
+-1
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
+[ 
+  [ 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "281353425", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "281156817", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "282205393", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "281353425", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_rev" : "281156817", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "281353425", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "281156817", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "280566993", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_rev" : "282205393", 
+          "_key" : "charlyAndDiana", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "282008785", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "281353425", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "280566993", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "281353425", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "280960209", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "282402001", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "281353425", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_rev" : "280960209", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_rev" : "281353425", 
+          "_key" : "diana", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "280960209", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "280566993", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_rev" : "282402001", 
+          "_key" : "bobAndDiana", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "281746641", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_rev" : "281353425", 
+        "_key" : "diana", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "280566993", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_rev" : "280960209", 
+          "_key" : "bob", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "280566993", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_rev" : "281746641", 
+          "_key" : "aliceAndBob", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_rev" : "280960209", 
+        "_key" : "bob", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "280566993", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_rev" : "281156817", 
+          "_key" : "charly", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_rev" : "280566993", 
+          "_key" : "alice", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_rev" : "282008785", 
+          "_key" : "aliceAndCharly", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_rev" : "281156817", 
+        "_key" : "charly", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_rev" : "280566993", 
+        "_key" : "alice", 
+        "name" : "Alice" 
+      } 
+    } 
+  ] 
+]
+```
+
+
+!SUBSUBSECTION GRAPH_SHORTEST_PATH
+
+<br />
+`GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
+*The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
+<br />
+This function determines all shortest paths in a graph identified by *graphName*.
+The function accepts an id, an example, a list of examples
+or even an empty example as parameter for
+start and end vertex. If one wants to calls this function to receive nearly all
+shortest paths for a graph the
+option *algorithm* should be set to *Floyd-Warshall* to increase performance.
+If no algorithm is provided in the options the function chooses the appropriate
+one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
+The length of a path is by default the amount of edges from one start vertex to
+an end vertex. The option weight allows the user to define an edge attribute
+representing the length.
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *startVertexExample* : An example for the desired
+start Vertices (see below).
+* String|Object|Array  *endVertexExample*   : An example for the desired
+end Vertices (see below).
+* Object               *options*            : Optional options, see below:
+<br />
+Possible options and there defaults:
+* String               *direction*                        : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Array         *edgeCollectionRestriction*        : One or multiple edge
+collections that should be considered.
+* String|Array         *startVertexCollectionRestriction* : One or multiple vertex
+collections that should be considered.
+* String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
+collections that should be considered.
+* String|Object|Array  *edgeExamples*                     : A filter example for the
+edges in the shortest paths (see below).
+* String               *algorithm*                        : The algorithm to calculate
+the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
+used, otherwise the default is *Dijkstra*
+* String               *weight*                           : The name of the attribute of
+the edges containing the length.
+* Number               *defaultWeight*                    : Only used with the option *weight*.
+If an edge does not have the attribute named as defined in option *weight* this default
+is used as length.
+If no default is supplied the default would be positive Infinity so the path could
+not be calculated.
+<br />
+Examples for startVertexExample/endVertexExample:
+* {}                : Returns all possible start/end vertices for this graph.
+* *idString*        : Returns the vertex with the id *idString*.
+* {*key* : *value*} : Returns the vertices that match this example.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
+the examples.
+<br />
+@EXAMPLES
+<br />
+A route planner example, shortest distance from all villages to other cities:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
+........> +"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
+........> "startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+........>  "e.distance, LENGTH(e.paths)]"
+........> ).toArray();
+[ 
+  [ 
+    "village/Olpe", 
+    "city/Munich", 
+    600, 
+    1 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Cologne", 
+    100, 
+    1 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Berlin", 
+    700, 
+    1 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Berlin", 
+    680, 
+    1 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Munich", 
+    80, 
+    1 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Cologne", 
+    730, 
+    1 
+  ] 
+]
+```
+<br />
+A route planner example, shortest distance from Munich and Cologne to Olpe:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
+........> +"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+........>  "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
+........> ).toArray();
+[ 
+  [ 
+    "city/Cologne", 
+    "village/Olpe", 
+    100, 
+    1 
+  ], 
+  [ 
+    "city/Munich", 
+    "village/Olpe", 
+    600, 
+    1 
+  ] 
+]
+```
+<br />
+
+
+!SUBSUBSECTION GRAPH_TRAVERSAL
+
+<br />
+`GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
+*The GRAPH\_TRAVERSAL function traverses through the graph.*
+<br />
+This function performs traversals on the given graph.
+For a more detailed documentation on the optional parameters see
+[Traversals](../Traversals/README.md).
+<br />
+* String               *graphName*          : The name of the graph.
+* String|Object|Array  *startVerte*         : The ID of the start vertex of the traversal.
+* String|Object|Array  *direction*          : The direction of the edges. Possible values
+are *outbound*, *inbound* and *any* (default).
+* Object               *options*            : Optional options, see below:
+<br />
+@EXAMPLES
+<br />
+A route planner example, start a traversal from Munich :
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+........>  " 'outbound') RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "349117649", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Cologne", 
+      "_rev" : "348921041", 
+      "_key" : "Cologne", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "349576401", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "349773009", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "349773009", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "349576401", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  } 
+]
+```
+<br />
+A route planner example, start a traversal from Munich with a max depth of 1
+so only the direct neighbors of munich are returned:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+........> " 'outbound', {maxDepth : 1}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "city/Munich", 
+      "_rev" : "354294993", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "city/Cologne", 
+      "_rev" : "354098385", 
+      "_key" : "Cologne", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Rosenheim", 
+      "_rev" : "354950353", 
+      "_key" : "Rosenheim", 
+      "isCapital" : false, 
+      "population" : 80000 
+    } 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "village/Olpe", 
+      "_rev" : "354753745", 
+      "_key" : "Olpe", 
+      "isCapital" : false, 
+      "population" : 80000 
     } 
   } 
 ]
@@ -1994,189 +2089,152 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
 <br />
 
 
-
-!SUBSECTION GRAPH_COMMON_PROPERTIES
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_common_properties -->
+!SUBSUBSECTION GRAPH_TRAVERSAL_TREE
 
 <br />
-`GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-*returns all vertices
-defined by the examples that share common properties
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex1Example and vertex2Example.
+`GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
+*The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
+This function creates a tree format from the result for a better visualization of
+the path.
+This function performs traversals on the given graph.
+For a more detailed documentation on the optional parameters see
+[Traversals](../Traversals/README.md).
 <br />
 * String               *graphName*          : The name of the graph.
-* String|Object|Array  *vertex1Example*     : An example for the desired
-vertices (see below).
-* String|Object|Array  *vertex2Example*     : An example for the desired
-vertices (see below).
-* Object               *options*     : Optional options, see below:
-<br />
-Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *vertex2CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *ignoreProperties* : One or multiple
-attributes of a document that should be ignored.
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
+* String|Object|Array  *startVerte*         : The ID of the start vertex
+of the traversal.
+* String|Object|Array  *direction*          : The direction of the edges.
+Possible values are *outbound*, *inbound* and *any* (default).
+* String|Object|Array  *connectName*        : The result attribute which
+contains the connection.
+* Object               *options*            : Optional options, see below:
 <br />
 @EXAMPLES
 <br />
-A route planner example, all locations with the same properties:
+A route planner example, start a traversal from Munich :
 <br />
 
 ```
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
-........> +"'routeplanner', {}, {}) RETURN e"
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'," +
+........>  " 'outbound', 'connnection') RETURN e"
 ........> ).toArray();
 [ 
-  { 
-    "city/Berlin" : [ 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "77156657", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Munich" : [ 
-      { 
-        "_id" : "city/Berlin", 
-        "_rev" : "76763441", 
-        "_key" : "Berlin", 
-        "isCapital" : true, 
-        "population" : 3000000 
-      }, 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "76960049", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Cologne" : [ 
-      { 
-        "_id" : "village/Rosenheim", 
-        "_rev" : "77812017", 
-        "_key" : "Rosenheim", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
-      { 
-        "_id" : "village/Olpe", 
-        "_rev" : "77615409", 
-        "_key" : "Olpe", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "77156657", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "village/Rosenheim" : [ 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "76960049", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      }, 
-      { 
-        "_id" : "village/Olpe", 
-        "_rev" : "77615409", 
-        "_key" : "Olpe", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    ] 
-  }, 
-  { 
-    "village/Olpe" : [ 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "76960049", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      }, 
-      { 
-        "_id" : "village/Rosenheim", 
-        "_rev" : "77812017", 
-        "_key" : "Rosenheim", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    ] 
-  } 
+  [ 
+    { 
+      "_id" : "city/Munich", 
+      "_rev" : "392830161", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000, 
+      "connnection" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "392633553", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000, 
+          "connnection" : [ 
+            { 
+              "_id" : "village/Olpe", 
+              "_rev" : "393288913", 
+              "_key" : "Olpe", 
+              "isCapital" : false, 
+              "population" : 80000 
+            }, 
+            { 
+              "_id" : "village/Rosenheim", 
+              "_rev" : "393485521", 
+              "_key" : "Rosenheim", 
+              "isCapital" : false, 
+              "population" : 80000 
+            } 
+          ] 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "393485521", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "393288913", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  ] 
 ]
 ```
 <br />
-A route planner example, all cities which share same properties except for population.
+A route planner example, start a traversal from Munich with a max depth of 1 so
+only the direct neighbors of munich are returned:
 <br />
 
 ```
 arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
-........> +"'routeplanner', {}, {}, {vertex1CollectionRestriction : 'city', " +
-........>  "vertex2CollectionRestriction : 'city'" +
-........> " ,ignoreProperties: 'population'}) RETURN e"
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich',"+
+........>  " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
 ........> ).toArray();
 [ 
-  { 
-    "city/Berlin" : [ 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "67064113", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Munich" : [ 
-      { 
-        "_id" : "city/Berlin", 
-        "_rev" : "66670897", 
-        "_key" : "Berlin", 
-        "isCapital" : true, 
-        "population" : 3000000 
-      } 
-    ] 
-  } 
+  [ 
+    { 
+      "_id" : "city/Munich", 
+      "_rev" : "109255889", 
+      "_key" : "Munich", 
+      "isCapital" : true, 
+      "population" : 1000000, 
+      "connnection" : [ 
+        { 
+          "_id" : "city/Cologne", 
+          "_rev" : "109059281", 
+          "_key" : "Cologne", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "village/Rosenheim", 
+          "_rev" : "109911249", 
+          "_key" : "Rosenheim", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "village/Olpe", 
+          "_rev" : "109714641", 
+          "_key" : "Olpe", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    } 
+  ] 
 ]
 ```
 <br />
 
 
+!SUBSUBSECTION GRAPH_DISTANCE_TO
 
-!SUBSECTION GRAPH_ABSOLUTE_ECCENTRICITY
+<br />
+`GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+*The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
+<br />
+This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
+It does not return the actual path but only the distance between two vertices.
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity -->
+
+!SUBSECTION Graph measurements.
+
+This section describes AQL functions to calculate various graph related measurements as defined in the mathematical graph theory.
+
+!SUBSUBSECTION GRAPH_ABSOLUTE_ECCENTRICITY
 
 <br />
 `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
@@ -2233,11 +2291,11 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 ........> ).toArray();
 [ 
   { 
+    "city/Berlin" : 1, 
     "city/Munich" : 1, 
     "city/Cologne" : 1, 
-    "city/Berlin" : 1, 
-    "village/Olpe" : 2, 
-    "village/Rosenheim" : 2 
+    "village/Rosenheim" : 2, 
+    "village/Olpe" : 2 
   } 
 ]
 ```
@@ -2255,10 +2313,10 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 [ 
   { 
     "city/Berlin" : 800, 
-    "city/Munich" : 650, 
     "city/Cologne" : 800, 
-    "village/Rosenheim" : 730, 
-    "village/Olpe" : 700 
+    "city/Munich" : 650, 
+    "village/Olpe" : 700, 
+    "village/Rosenheim" : 730 
   } 
 ]
 ```
@@ -2276,8 +2334,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 ........> ).toArray();
 [ 
   { 
-    "city/Munich" : 650, 
     "city/Berlin" : 850, 
+    "city/Munich" : 650, 
     "city/Cologne" : 750 
   } 
 ]
@@ -2285,9 +2343,7 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 <br />
 
 
-!SUBSECTION GRAPH_ECCENTRICITY
-
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_eccentricity -->
+!SUBSUBSECTION GRAPH_ECCENTRICITY
 
 <br />
 `GRAPH_ECCENTRICITY (graphName, options)`
@@ -2324,11 +2380,11 @@ arangosh> db._query("RETURN GRAPH_ECCENTRICITY("
 ........> ).toArray();
 [ 
   { 
-    "city/Berlin" : 1, 
     "city/Munich" : 1, 
     "city/Cologne" : 1, 
-    "village/Rosenheim" : 0.5, 
-    "village/Olpe" : 0.5 
+    "city/Berlin" : 1, 
+    "village/Olpe" : 0.5, 
+    "village/Rosenheim" : 0.5 
   } 
 ]
 ```
@@ -2345,19 +2401,18 @@ arangosh> db._query("RETURN GRAPH_ECCENTRICITY("
 ........> ).toArray();
 [ 
   { 
+    "city/Berlin" : 0.8125, 
     "city/Munich" : 1, 
     "city/Cologne" : 0.8125, 
-    "city/Berlin" : 0.8125, 
-    "village/Olpe" : 0.9285714285714286, 
-    "village/Rosenheim" : 0.8904109589041096 
+    "village/Rosenheim" : 0.8904109589041096, 
+    "village/Olpe" : 0.9285714285714286 
   } 
 ]
 ```
 <br />
 
-!SUBSECTION GRAPH_ABSOLUTE_CLOSENESS
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness -->
+!SUBSUBSECTION GRAPH_ABSOLUTE_CLOSENESS
 
 <br />
 `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
@@ -2414,11 +2469,11 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 ........> ).toArray();
 [ 
   { 
-    "city/Berlin" : 4, 
-    "city/Cologne" : 4, 
     "city/Munich" : 4, 
-    "village/Rosenheim" : 5, 
-    "village/Olpe" : 5 
+    "city/Cologne" : 4, 
+    "city/Berlin" : 4, 
+    "village/Olpe" : 5, 
+    "village/Rosenheim" : 5 
   } 
 ]
 ```
@@ -2436,10 +2491,10 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 [ 
   { 
     "city/Berlin" : 2780, 
-    "city/Cologne" : 2280, 
     "city/Munich" : 1930, 
-    "village/Olpe" : 2080, 
-    "village/Rosenheim" : 2170 
+    "city/Cologne" : 2280, 
+    "village/Rosenheim" : 2170, 
+    "village/Olpe" : 2080 
   } 
 ]
 ```
@@ -2465,9 +2520,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 ```
 <br />
 
-!SUBSECTION GRAPH_CLOSENESS
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_closeness -->
+!SUBSUBSECTION GRAPH_CLOSENESS
 
 <br />
 `GRAPH_CLOSENESS (graphName, options)`
@@ -2505,10 +2559,10 @@ arangosh> db._query("RETURN GRAPH_CLOSENESS("
 [ 
   { 
     "city/Berlin" : 1, 
-    "city/Munich" : 1, 
     "city/Cologne" : 1, 
-    "village/Rosenheim" : 0.8, 
-    "village/Olpe" : 0.8 
+    "city/Munich" : 1, 
+    "village/Olpe" : 0.8, 
+    "village/Rosenheim" : 0.8 
   } 
 ]
 ```
@@ -2525,9 +2579,9 @@ arangosh> db._query("RETURN GRAPH_CLOSENESS("
 ........> ).toArray();
 [ 
   { 
-    "city/Munich" : 1, 
-    "city/Cologne" : 0.8464912280701755, 
     "city/Berlin" : 0.6942446043165468, 
+    "city/Cologne" : 0.8464912280701755, 
+    "city/Munich" : 1, 
     "village/Rosenheim" : 0.8894009216589862, 
     "village/Olpe" : 0.9278846153846155 
   } 
@@ -2556,9 +2610,8 @@ arangosh> db._query("RETURN GRAPH_CLOSENESS("
 ```
 <br />
 
-!SUBSECTION GRAPH_ABSOLUTE_BETWEENNESS
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness -->
+!SUBSUBSECTION GRAPH_ABSOLUTE_BETWEENNESS
 
 <br />
 `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
@@ -2603,7 +2656,7 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 ]
 ```
 <br />
-A route planner example, the absolute closeness of all locations.
+A route planner example, the absolute betweenness of all locations.
 This considers the actual distances.
 <br />
 
@@ -2616,9 +2669,9 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 [ 
   { 
     "city/Berlin" : 0, 
-    "city/Munich" : 6, 
     "city/Cologne" : 0, 
     "village/Olpe" : 2, 
+    "city/Munich" : 6, 
     "village/Rosenheim" : 0 
   } 
 ]
@@ -2646,9 +2699,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 ```
 <br />
 
-!SUBSECTION GRAPH_BETWEENNESS
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_betweenness -->
+!SUBSUBSECTION GRAPH_BETWEENNESS
 
 <br />
 `GRAPH_BETWEENNESS (graphName, options)`
@@ -2683,11 +2735,11 @@ arangosh> db._query("RETURN GRAPH_BETWEENNESS("
 ........> ).toArray();
 [ 
   { 
+    "city/Berlin" : 1, 
     "city/Munich" : 1, 
     "city/Cologne" : 1, 
-    "city/Berlin" : 1, 
-    "village/Olpe" : 0, 
-    "village/Rosenheim" : 0 
+    "village/Rosenheim" : 0, 
+    "village/Olpe" : 0 
   } 
 ]
 ```
@@ -2725,19 +2777,18 @@ arangosh> db._query("RETURN GRAPH_BETWEENNESS("
 ........> ).toArray();
 [ 
   { 
-    "city/Berlin" : 0, 
     "city/Munich" : 1, 
     "city/Cologne" : 0, 
+    "village/Olpe" : 0, 
     "village/Rosenheim" : 0, 
-    "village/Olpe" : 0 
+    "city/Berlin" : 0 
   } 
 ]
 ```
 <br />
 
-!SUBSECTION GRAPH_RADIUS
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_radius -->
+!SUBSUBSECTION GRAPH_RADIUS
 
 <br />
 `GRAPH_RADIUS (graphName, options)`
@@ -2808,9 +2859,8 @@ arangosh> db._query("RETURN GRAPH_RADIUS("
 ```
 <br />
 
-!SUBSECTION GRAPH_DIAMETER
 
-<!-- @startDocuBlock JSF_ahuacatl_general_graph_diameter -->
+!SUBSUBSECTION GRAPH_DIAMETER
 
 <br />
 `GRAPH_DIAMETER (graphName, options)`
@@ -2850,7 +2900,7 @@ arangosh> db._query("RETURN GRAPH_DIAMETER("
 ]
 ```
 <br />
-A route planner example, tthe diameter of the graph.
+A route planner example, the diameter of the graph.
 This considers the actual distances.
 <br />
 
@@ -2880,8 +2930,5 @@ arangosh> db._query("RETURN GRAPH_DIAMETER("
 ]
 ```
 <br />
-
-
-
 
 

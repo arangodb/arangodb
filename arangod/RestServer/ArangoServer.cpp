@@ -981,7 +981,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
     context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
     // run tests
-    char const* input = "require(\"jsunity\").runCommandLineTests();";
+    char const* input = "require(\"test_runner\").runCommandLineTests();";
     TRI_ExecuteJavaScriptString(context->_context, v8::String::New(input), name, true);
 
     if (tryCatch.HasCaught()) {
