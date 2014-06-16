@@ -2508,10 +2508,10 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._extendEdgeDefinitions(ed2);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2661,10 +2661,10 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._editEdgeDefinition(ed2, true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2730,10 +2730,10 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._deleteEdgeDefinition("myEC1");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2792,9 +2792,9 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addOrphanCollection}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2842,9 +2842,9 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 ///   g._getOrphanCollections();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2871,9 +2871,9 @@ Graph.prototype._getOrphanCollections = function() {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeOrphanCollections}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 ///   g._addOrphanCollection("myVC4", true);
 ///   g._getOrphanCollections();
