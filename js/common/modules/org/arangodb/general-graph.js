@@ -2621,7 +2621,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
   //remove used collection from orphanage
   newCollections.forEach(
     function(nc) {
-      if (graph._key = self.__name) {
+      if (graph._key === self.__name) {
         if (self.__vertexCollections[nc] === undefined) {
           self.__vertexCollections[nc] = db[nc];
         }
