@@ -121,17 +121,11 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
     },
     getCursorPositionInSVG = function (ev) {
       var pos = getCursorPosition(ev),
-        off = $('svg').offset();
-      // Hack for Firefox
-      /*
-      var off = {
-        left: 166,
-        top: 171
+        off = $('svg#graphViewerSVG').offset();
+      return {
+        x: pos.x - off.left,
+        y: pos.y - off.top
       };
-      */
-      pos.x -= off.left;
-      pos.y -= off.top;
-      return pos;
     },
     callbacks = {
       nodes: {},
@@ -214,7 +208,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
         idprefix = prefix + "_",
         nodesDown = dispatcher.events.STARTCREATEEDGE(function(startNode, ev) {
           var pos = getCursorPositionInSVG(ev),
-            moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
+             moveCB = edgeShaper.addAnEdgeFollowingTheCursor(pos.x, pos.y);
           dispatcher.bind("svg", "mousemove", function(ev) {
             var pos = getCursorPositionInSVG(ev);
             moveCB(pos.x, pos.y);

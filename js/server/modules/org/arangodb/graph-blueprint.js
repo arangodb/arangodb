@@ -370,7 +370,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
       if (from.length !== 1 || to.length !== 1 || from[0] !== to[0]) {
         throw newGraphError;
       }
-   }
+    }
 
     vertices = db._collection(edgeDefinitions[0].from[0]);
 
