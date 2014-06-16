@@ -506,6 +506,10 @@ extern "C" {
 ///   the collection is not a vertex collection.
 /// - 1928: @LIT{not in orphan collection}
 ///   Vertex collection not in orphan collection of the graph.
+/// - 1929: @LIT{collection used in edge def}
+///   The collection is already used in an edge definition of the graph.
+/// - 1930: @LIT{edge collection not used in graph}
+///   The edge collection is not used in any edge definition of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2677,6 +2681,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          (1928)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
+///
+/// collection used in edge def
+///
+/// The collection is already used in an edge definition of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       (1929)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1930: ERROR_GRAPH_EDGE_COLLECTION_NOT_USED
+///
+/// edge collection not used in graph
+///
+/// The edge collection is not used in any edge definition of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
