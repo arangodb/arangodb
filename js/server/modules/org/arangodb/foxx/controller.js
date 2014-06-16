@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -433,29 +433,30 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_activateAuthentication
+/// @fn JSF_foxx_controller_activateAuthentication
+/// @brief Activate authentication for this app
 ///
 /// `FoxxController#activateAuthentication(opts)`
 ///
 /// To activate authentication for this authentication, first call this function.
 /// Provide the following arguments:
 ///
-/// * *type*: Currently we only support *cookie*, but this will change in the future
-/// * *cookieLifetime*: An integer. Lifetime of cookies in seconds
-/// * *cookieName*: A string used as the name of the cookie
-/// * *sessionLifetime*: An integer. Lifetime of sessions in seconds
+/// * `type`: Currently we only support `cookie`, but this will change in the future.
+/// * `cookieLifetime`: An integer. Lifetime of cookies in seconds.
+/// * `cookieName`: A string used as the name of the cookie.
+/// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
 ///
-/// @EXAMPLES
 ///
-/// ```js
-/// app.activateAuthentication({
-///   type: "cookie",
-///   cookieLifetime: 360000,
-///   cookieName: "my_cookie",
-///   sessionLifetime: 400,
-/// });
-/// ```
-/// @endDocuBlock
+/// *Examples*
+///
+/// @code
+///     app.activateAuthentication({
+///       type: "cookie",
+///       cookieLifetime: 360000,
+///       cookieName: "my_cookie",
+///       sessionLifetime: 400,
+///     });
+/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     'use strict';
@@ -467,7 +468,8 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_login
+/// @fn JSF_foxx_controller_login
+/// @brief Add a login handler
 ///
 /// `FoxxController#login(path, opts)`
 ///
@@ -505,7 +507,8 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_logout
+/// @fn JSF_foxx_controller_logout
+/// @brief Add a logout handler
 ///
 /// `FoxxController#logout(path, opts)`
 ///
@@ -542,7 +545,8 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_register
+/// @fn JSF_foxx_controller_register
+/// @brief Add a register handler
 ///
 /// `FoxxController#register(path, opts)`
 ///
@@ -566,9 +570,8 @@ extend(Controller.prototype, {
 /// *acceptedAttributes* and set it to an array containing strings with the names of
 /// the additional attributes you want to accept. All other attributes in the request
 /// will be ignored.
-///
 /// If you want default attributes for the accepted attributes or set additional fields
-/// (for example *admin*) use the option *defaultAttributes* which should be a hash
+/// (for example *admin*) use the option `defaultAttributes` which should be a hash
 /// mapping attribute names to default values.
 ///
 /// @EXAMPLES
@@ -581,7 +584,6 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   register: function (route, opts) {
     'use strict';
@@ -593,7 +595,8 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_changePassword
+/// @fn JSF_foxx_controller_changePassword
+/// @brief Add a change password handler
 ///
 /// FoxxController#changePassword(route, opts)`
 ///
@@ -628,8 +631,87 @@ extend(Controller.prototype, {
     'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
-  }
+  },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getSessions
+/// @brief Get the sessions object of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getSessions: function () {
+    'use strict';
+    return this.sessions;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_activateAuthentication
+///
+/// `FoxxController#activateAuthentication(opts)`
+///
+/// To activate sessions for this sessions, first call this function.
+/// Provide the following arguments:
+///
+/// * *type*: Currently we only support *cookie*, but this will change in the future. Defaults to *"cookie"*.
+/// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
+/// * *cookieSecret*: A secret string used to sign the cookie (as "*cookieName*_sig"). Optional.
+/// * *autoCreateSession*: Whether to always create a session if none exists. Defaults to *true*.
+/// * *sessionStorageApp*: Mount path of the app to use for sessions. Defaults to */_sessions*
+///
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.activateSessions({
+///   type: "cookie",
+///   cookieName: "my_cookie",
+///   autoCreateSession: true,
+///   sessionStorageApp: "/my-sessions"
+/// });
+/// ```
+////////////////////////////////////////////////////////////////////////////////
+  activateSessions: function (opts) {
+    'use strict';
+    var sessions = require("org/arangodb/foxx/sessions");
+
+    this.sessions = new sessions.Sessions(opts);
+    sessions.decorateController(this.sessions, this);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_logout
+///
+/// `FoxxController#logout(path, opts)`
+///
+/// This adds a path to your app for the destroySession functionality.
+/// You can customize it with custom *before* and *after* function:
+/// *before* is a function that you can define to do something before
+/// the session is destroyed.
+/// *after* is a function that you can define to do something after the
+/// session is destroyed. This defaults to a function that returns a
+/// JSON object with *message* set to "logged out".
+/// Both *before* and *after* should take request and result as arguments.
+/// If you only want to provide an *after* function, you can pass the
+/// function directly instead of an object.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.destroySession('/logout', function (req, res) {
+///   res.json({"message": "Bye, Bye"});
+/// });
+/// ```
+////////////////////////////////////////////////////////////////////////////////
+  destroySession: function (route, opts) {
+    'use strict';
+    var method = opts.method;
+    if (typeof method === 'string') {
+      method = method.toLowerCase();
+    }
+    if (!method || typeof this[method] !== 'function') {
+      method = 'post';
+    }
+    var sessions = require("org/arangodb/foxx/sessions");
+    return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
+  }
 });
 
 exports.Controller = Controller;
