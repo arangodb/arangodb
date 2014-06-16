@@ -130,7 +130,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %left T_OR 
 %left T_AND
 %left T_EQ T_NE 
-%left T_IN T_INTO
+%left T_IN 
+%left T_INTO
 %left T_LT T_GT T_LE T_GE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
