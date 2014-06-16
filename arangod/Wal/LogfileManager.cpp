@@ -477,6 +477,11 @@ void LogfileManager::stop () {
   // close all open logfiles
   LOG_TRACE("closing logfiles");
   closeLogfiles();
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerStop") {
+    // intentionally kill the server
+    TRI_SegfaultDebugging("LogfileManagerStop");
+  }
 
   int res = writeShutdownInfo(true);
 
