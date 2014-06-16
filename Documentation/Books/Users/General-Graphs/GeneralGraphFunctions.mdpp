@@ -26,12 +26,8 @@ There are different types of edge defintions:
 
 !SUBSECTION Edge Definitions
 
-The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
-The edge definitons array is initialised with the following call:
+<!-- @startDocuBlock @startDocuBlock JSF_general_graph_edgeDefinitions -->
 
-```js
-> var edgeDefinitions = graph._edgeDefinitions(edgeDefinition1,......edgeDefinitionN);
-```
 
 To add further edge definitions to the array one must call:
 

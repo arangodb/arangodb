@@ -4437,13 +4437,15 @@ function TRAVERSAL_FUNC (func,
     maxIterations: params.maxIterations,
     uniqueness: params.uniqueness,
     expander: direction,
+    direction: direction,
     strategy: params.strategy,
     order: params.order,
     itemOrder: params.itemOrder,
     startVertex : startVertex,
     endVertex : endVertex,
     weight : params.weight,
-    defaultWeight : params.defaultWeight
+    defaultWeight : params.defaultWeight,
+    prefill : params.prefill
 
   };
 
@@ -4643,18 +4645,6 @@ function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
   return Infinity;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_SHORTEST_PATH_VISITOR (config, result, vertex, path) {
-  "use strict";
-
-  if (config.endVertex && config.endVertex === vertex._id) {
-    result.push(CLONE({ vertex: vertex, path: path , startVertex : config.startVertex}));
-  }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
@@ -4664,21 +4654,74 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
   "use strict";
 
   if (config.endVertex && config.endVertex === vertex._id) {
+    var subPaths = [];
     var dist = 0;
-    if (config.weight) {
-      path.edges.forEach(function (e) {
+    path.edges.forEach(function (e) {
+      if (config.weight) {
         if (typeof e[config.weight] === "number") {
           dist = dist + e[config.weight];
         } else if (config.defaultWeight) {
           dist = dist + config.defaultWeight;
         }
-      });
-    } else {
-      dist = path.edges.length;
-    }
+      } else {
+        dist++;
+      }
+    });
     result.push(
       CLONE({ vertex: vertex, distance: dist , path: path , startVertex : config.startVertex})
     );
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
+  "use strict";
+  if (config.endVertex && config.endVertex === vertex._id) {
+    path.vertices.forEach(function (from) {
+      path.vertices.forEach(function (to) {
+        if (config.prefill.indexOf(JSON.stringify({ from : TO_ID(from), to :  TO_ID(to)})) !== -1) {
+          return;
+        }
+        var positionFrom = path.vertices.indexOf(from);
+        var positionTo = path.vertices.indexOf(to);
+        if (positionFrom > positionTo && config.direction !== 'any') {
+          return;
+        }
+        var startVertex = from._id;
+        var vertex = to;
+
+        var distance = 0;
+        var pathNew  = {vertices : [from], edges : []};
+        while (positionFrom !== positionTo) {
+          var edgePosition;
+          if (positionFrom > positionTo) {
+            edgePosition = positionFrom-1
+          } else {
+            edgePosition = positionFrom
+          }
+          positionFrom > positionTo ? positionFrom = positionFrom -1 : positionFrom ++;
+          pathNew.vertices.push(path.vertices[positionFrom]);
+          pathNew.edges.push(path.edges[edgePosition]);
+          if (config.weight) {
+            if (path.edges[edgePosition][config.weight]  &&
+              typeof path.edges[edgePosition][config.weight] === "number") {
+              distance = distance + path.edges[edgePosition][config.weight];
+            } else if (config.defaultWeight) {
+              distance = distance + config.defaultWeight;
+            }
+          } else {
+            distance++;
+          }
+        }
+        result.push(
+          CLONE({ vertex: vertex, distance: distance , path: pathNew , startVertex : startVertex})
+        );
+      });
+    });
   }
 }
 
@@ -4920,6 +4963,8 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   return result;
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate shortest paths by dijkstra
 ////////////////////////////////////////////////////////////////////////////////
@@ -4931,17 +4976,29 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options)
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
   params = SHORTEST_PATH_PARAMS(params);
-  params.visitor =  TRAVERSAL_DISTANCE_VISITOR;
+  params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
   var result = [];
+
+  var calculated = {};
   graphData.fromVertices.forEach(function (v) {
     graphData.toVertices.forEach(function (t) {
+      if (calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]) {
+        result.push(calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]);
+        return;
+      }
+      params.prefill = Object.keys(calculated);
       var e = TRAVERSAL_FUNC("GENERAL_GRAPH_SHORTEST_PATH",
         factory,
         TO_ID(v),
         TO_ID(t),
         options.direction,
         params);
-      result = result.concat(e);
+      e.forEach(function (f) {
+        if (TO_ID(v) === f.startVertex &&  TO_ID(t) === f.vertex._id) {
+          result.push(f);
+        }
+        calculated[JSON.stringify({ from : f.startVertex, to : f.vertex._id})] = f
+      })
     });
   });
   result.forEach(function (r) {
