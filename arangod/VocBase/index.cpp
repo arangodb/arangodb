@@ -577,7 +577,7 @@ static TRI_json_t* JsonPrimary (TRI_index_t const* idx) {
   }
 
   TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_id"));
+  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, "_key"));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -599,7 +599,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
     return nullptr;
   }
 
-  char* id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_id");
+  char* id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "_key");
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
