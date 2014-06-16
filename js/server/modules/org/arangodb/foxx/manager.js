@@ -750,7 +750,7 @@ function routingAalApp (app, mount, options) {
 
     appContextTempl.mount = mount; // global mount
     appContextTempl.options = options;
-    appContext.configuration = app._options.configuration;
+    appContextTempl.configuration = app._options.configuration;
     appContextTempl.collectionPrefix = prefix; // collection prefix
     appContextTempl.basePath = fs.join(root, app._path);
 
