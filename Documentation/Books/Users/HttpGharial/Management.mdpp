@@ -1,8 +1,18 @@
 !CHAPTER Manage your graphs
 
+The graph module provides functions dealing with graph structures.
+
+!SECTION First Steps with Graphs
+
+A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
+collections*. A vertex can be a document of a *document collection* or of an edge
+collection (so edges can be used as vertices). Which collections are used within
+a graph is defined via *edge definitions*. A graph can contain more than one edge
+definition, at least one is needed.
+
 !SECTION List all graphs
 
-`GET /system/gharial/`*(lists all graphs)*
+`GET /system/gharial/` *(lists all graphs)*
 
 !SUBSECTION Description
 
@@ -32,11 +42,15 @@ content-type: application/json
 
 !SECTION Create a graph
 
-`POST /system/gharial/`*(create a graph)*
+`POST /system/gharial/` *(create a graph)*
 
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_create_info -->
+
+The creation of a graph requires the name of the graph and a definition of its edges.
+<br />
+@EXAMPLES
 
 <!-- @startDocuBlock JSF_general_graph_create_http_examples -->
 
@@ -82,6 +96,8 @@ The name of the graph.
 
 <!-- @startDocuBlock JSF_general_graph_drop_info -->
 
+Removes a graph from the collection *\_graphs*.
+
 <!-- @startDocuBlock JSF_general_graph_drop_http_examples -->
 
 ```
@@ -108,6 +124,10 @@ content-type: application/json
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_list_vertex_info -->
+
+Lists all vertex collections within this graph.
+
+@EXAMPLES
 
 <!-- @startDocuBlock JSF_general_graph_list_vertex_http_examples -->
 
@@ -139,6 +159,9 @@ content-type: application/json
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_collection_add_info -->
+
+Adds a vertex collection to the set of collections of the graph. If the
+collection does not exist, it will be created.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples -->
 
@@ -191,6 +214,10 @@ The name of the vertex collection.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_collection_remove_info -->
+
+Removes a vertex collection from the graph and deletes the collection, if it is not used in any other graph.
+
+@EXAMPLES
 
 <!-- @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples -->
 
@@ -246,7 +273,7 @@ content-type: application/json
 
 !SECTION List all edge definitions in the graph
 
-`GET /system/gharial/graph-name/edge`*(lists all edge definitions)*
+`GET /system/gharial/graph-name/edge` *(lists all edge definitions)*
 
 !SUBSECTION URL parameters
 
@@ -255,6 +282,10 @@ content-type: application/json
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_list_edge_info -->
+
+Lists all edge collections within this graph.
+
+@EXAMPLES
 
 <!-- @startDocuBlock JSF_general_graph_list_edge_http_examples -->
 
@@ -276,7 +307,7 @@ content-type: application/json
 
 !SECTION Add a new edge definition to the graph
 
-`POST /system/gharial/graph-name/edge`*(add a new edge definition)*
+`POST /system/gharial/graph-name/edge` *(add a new edge definition)*
 
 !SUBSECTION URL parameters
 
@@ -285,6 +316,11 @@ content-type: application/json
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_add_info -->
+
+Adds an additional edge definition to the graph.
+This edge definition has to contain a *collection* a list of each *from* and *to* vertex collections.
+A edge definition can only be added if this definition is either not used in any other graph, or it is used with exactly the same definition.
+It is not possible to store a definition "e" from "v1" to "v2" in the one graph, and "e" from "v2" to "v1" in the other graph.
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_add_http_examples -->
 
@@ -330,7 +366,7 @@ content-type: application/json
 
 !SECTION Modify an edge definition
 
-`DELETE /system/gharial/graph-name/edge/definition-name`*(remove a vertex collection)*
+`DELETE /system/gharial/graph-name/edge/definition-name` *(remove a vertex collection)*
 
 !SUBSECTION URL parameters
 
@@ -344,6 +380,9 @@ The name of the edge collection used in the definition.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_modify_info -->
+
+Change one specific edge definition.
+This will modify all occurrences of this definition in all graphs known to your database.
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples -->
 
@@ -396,6 +435,9 @@ The name of the edge collection used in the definition.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_remove_info -->
+
+Remove one edge definition from the graph.
+This will only remove the edge collection, the vertex collections remain untouched and can still be used in your queries.
 
 <!-- @startDocuBlock JSF_general_graph_edge_definition_remove_http_examples -->
 
