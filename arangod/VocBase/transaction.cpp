@@ -31,6 +31,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 
+#include "Utils/Exception.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/replication-logger.h"
@@ -875,8 +876,12 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trx->_waitForSync = true;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("AddTransactionOperationNoSlot") {
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionOperationNoSlot") {
     return TRI_ERROR_DEBUG;
+  }
+
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionOperationNoSlotExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
   triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
@@ -886,8 +891,6 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     return slotInfo.errorCode;
   }
 
-
-    
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header

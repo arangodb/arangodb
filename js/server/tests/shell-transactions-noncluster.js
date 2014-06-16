@@ -30,7 +30,7 @@ var internal = require("internal");
 var arangodb = require("org/arangodb");
 var helper = require("org/arangodb/aql-helper");
 var db = arangodb.db;
-
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
   if (l.length != r.length) {
@@ -3196,10 +3196,9 @@ function transactionCrossCollectionSuite () {
       TRANSACTION(obj);
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
-
-      c1.unload();
-      c2.unload();
-      internal.wait(4);
+ 
+      testHelper.waitUnload(c1);
+      testHelper.waitUnload(c2);
       
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
@@ -3242,10 +3241,8 @@ function transactionCrossCollectionSuite () {
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
 
-      c1.unload();
-      c2.unload();
-
-      internal.wait(4);
+      testHelper.waitUnload(c1);
+      testHelper.waitUnload(c2);
 
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
@@ -3294,8 +3291,8 @@ function transactionCrossCollectionSuite () {
 
       c1.unload();
       c2.unload();
-
-      internal.wait(4);
+      testHelper.waitUnload(c1);
+      testHelper.waitUnload(c2);
 
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
@@ -3303,6 +3300,233 @@ function transactionCrossCollectionSuite () {
       assertEqual([ "a1" ], sortedKeys(c1));
       assertEqual([ "b1" ], sortedKeys(c2));
       assertEqual(1, c2.document("b1").a);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function transactionConstraintsSuite () {
+  var cn = "UnitTestsTransaction";
+
+  var c = null;
+  
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      if (c !== null) {
+        c.drop();
+      }
+
+      c = null;
+      internal.wait(0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashConstraintInsert1 : function () {
+      c = db._create(cn);
+      var idx1 = c.ensureUniqueConstraint("value1");
+      var idx2 = c.ensureUniqueConstraint("value2");
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, value1: i, value2: i });
+      }
+      assertEqual(10, c.count());
+
+      try {
+        c.save({ value1: 9, value2: 17 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(10, c.count());
+      assertEqual(9, c.document("test9").value1);
+      assertEqual(9, c.document("test9").value2);
+        
+      var doc;
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleHash(idx1.id, { value1: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+      
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleHash(idx2.id, { value2: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashConstraintInsert2 : function () {
+      c = db._create(cn);
+      var idx1 = c.ensureUniqueConstraint("value1");
+      var idx2 = c.ensureUniqueConstraint("value2");
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, value1: i, value2: i });
+      }
+      assertEqual(10, c.count());
+
+      try {
+        c.save({ value1: 17, value2: 9 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(10, c.count());
+      assertEqual(9, c.document("test9").value1);
+      assertEqual(9, c.document("test9").value2);
+      
+      var doc;
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleHash(idx1.id, { value1: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+      
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleHash(idx2.id, { value2: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSkipConstraintInsert1 : function () {
+      c = db._create(cn);
+      var idx1 = c.ensureUniqueSkiplist("value1");
+      var idx2 = c.ensureUniqueSkiplist("value2");
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, value1: i, value2: i });
+      }
+      assertEqual(10, c.count());
+
+      try {
+        c.save({ value1: 9, value2: 17 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(10, c.count());
+      assertEqual(9, c.document("test9").value1);
+      assertEqual(9, c.document("test9").value2);
+        
+      var doc;
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleSkiplist(idx1.id, { value1: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+      
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleSkiplist(idx2.id, { value2: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSkipConstraintInsert2 : function () {
+      c = db._create(cn);
+      var idx1 = c.ensureUniqueSkiplist("value1");
+      var idx2 = c.ensureUniqueSkiplist("value2");
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, value1: i, value2: i });
+      }
+      assertEqual(10, c.count());
+
+      try {
+        c.save({ value1: 17, value2: 9 });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(10, c.count());
+      assertEqual(9, c.document("test9").value1);
+      assertEqual(9, c.document("test9").value2);
+      
+      var doc;
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleSkiplist(idx1.id, { value1: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
+      
+      for (i = 0; i < 10; ++i) {
+        doc = c.byExampleSkiplist(idx2.id, { value2: i }).toArray();
+        assertEqual(1, doc.length);
+        doc = doc[0];
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        assertEqual(i, doc.value2);
+      }
     }
 
   };
@@ -3351,436 +3575,451 @@ function transactionServerFailuresSuite () {
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRollbackInsertSingle1 : function () {
-      c = db._create(cn);
+    testReadServerFailures : function () {
+      var failures = [ "ReadDocumentNoLock", "ReadDocumentNoLockExcept" ];
 
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.save({ _key: "foo" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-    },
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertSingle2 : function () {
-      c = db._create(cn);
-
-      c.save({ _key: "foo" });
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.save({ _key: "foo2" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertMulti1 : function () {
-      c = db._create(cn);
-      c.save({ _key: "baz" });
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          c.save({ _key: "foo" });
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.save({ _key: "bar" });
-          fail(); 
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.document("foo");
+          fail();
         }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-      
-      assertEqual(1, c.count());
-      assertEqual("baz", c.document("baz")._key);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertMulti2 : function () {
-      c = db._create(cn);
-
-      var i;
-      for (i = 0; i < 100; ++i) {
-        c.save({ _key: "key" + i });
-      }
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          for (i = 0; i < 100; ++i) {
-            c.save({ _key: "foo" + i });
-          }
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.save({ _key: "bar" });
-          fail(); 
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
-      };
+      });
+    },
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertServerFailuresEmpty : function () {
+      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ]; 
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        internal.debugSetFailAt(f);
       
-      assertEqual(100, c.count());
-      assertEqual("key0", c.document("key0")._key);
-      assertEqual("key99", c.document("key99")._key);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRollbackUpdateSingle1 : function () {
-      c = db._create(cn);
-
-      c.save({ _key: "foo", value: 1 });
-
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.update("foo", { value: 2 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-
-      assertEqual(1, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual(1, c.document("foo").value);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRollbackUpdateSingle2 : function () {
-      c = db._create(cn);
-
-      c.save({ _key: "foo", value: 1 });
-      c.save({ _key: "bar", value: "a" });
-
-      c.update("foo", { value: 2 });
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.update("bar", { value: "b" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual(2, c.document("foo").value);
-      assertEqual("bar", c.document("bar")._key);
-      assertEqual("a", c.document("bar").value);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackUpdateMulti1 : function () {
-      c = db._create(cn);
-      
-      c.save({ _key: "foo", value: 1 });
-      c.save({ _key: "bar", value: "a" });
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          c.update("foo", { value: 2 });
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.update("bar", { value: "b" });
-          fail(); 
+        try {
+          c.save({ _key: "foo", a: 1 });
+          fail();
         }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-      
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual(1, c.document("foo").value);
-      assertEqual("bar", c.document("bar")._key);
-      assertEqual("a", c.document("bar").value);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackUpdateMulti2 : function () {
-      c = db._create(cn);
-      
-      c.save({ _key: "foo", value: 1 });
-      c.save({ _key: "bar", value: "a" });
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.update("foo", { value: 2 });
-          fail(); 
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
-      };
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
+        assertEqual(0, c.count());
+      });
+    },
+   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertServerFailuresNonEmpty : function () {
+      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ]; 
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        c.save({ _key: "bar", foo: "bar" });
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("bar").foo);
+
+        internal.debugSetFailAt(f);
       
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual(1, c.document("foo").value);
-      assertEqual("bar", c.document("bar")._key);
-      assertEqual("a", c.document("bar").value);
-    },
+        try {
+          c.save({ _key: "foo", a: 1 });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRollbackRemoveSingle1 : function () {
-      c = db._create(cn);
-
-      c.save({ _key: "foo" });
-
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.remove("foo");
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-
-      assertEqual(1, c.count());
-      assertEqual("foo", c.document("foo")._key);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRollbackRemoveSingle2 : function () {
-      c = db._create(cn);
-
-      c.save({ _key: "foo" });
-      c.save({ _key: "bar" });
-
-      internal.debugSetFailAt("TRI_WriteOperationDocumentCollection");
-      try {
-        c.remove("foo");
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual("bar", c.document("bar")._key);
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("bar").foo);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRollbackRemoveMulti1 : function () {
-      c = db._create(cn);
+    testInsertServerFailuresConstraint : function () {
+      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        c.save({ _key: "foo", foo: "bar" });
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+
+        internal.debugSetFailAt(f);
       
-      c.save({ _key: "foo" });
-      c.save({ _key: "bar" });
+        try {
+          c.save({ _key: "foo", foo: "baz" });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
 
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertServerFailuresMulti : function () {
+      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ]; 
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        try {
+          TRANSACTION({ 
+            collections: {
+              write: [ cn ],
+            },
+            action: function () {
+              for (var i = 0; i < 10; ++i) {
+                if (i == 9) {
+                  internal.debugSetFailAt(f);
+                }
+                c.save({ _key: "test" + i, a: 1 });
+              }
+            }
+          });
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(0, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveServerFailuresEmpty : function () {
+      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        internal.debugSetFailAt(f);
+      
+        try {
           c.remove("foo");
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.remove("bar");
-          fail(); 
+          fail();
         }
-      };
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-      
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual("bar", c.document("bar")._key);
+        assertEqual(0, c.count());
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRollbackRemoveMulti2 : function () {
-      c = db._create(cn);
-      
-      c.save({ _key: "foo" });
-      c.save({ _key: "bar" });
+    testRemoveServerFailuresNonEmpty : function () {
+      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
 
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        c.save({ _key: "foo", foo: "bar" });
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+
+        internal.debugSetFailAt(f);
+      
+        try {
           c.remove("foo");
-          fail(); 
+          fail();
         }
-      };
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-      
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual("bar", c.document("bar")._key);
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRollbackRemoveMixed1 : function () {
-      c = db._create(cn);
-      
-      var i;
+    testRemoveServerFailuresMulti : function () {
+      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
 
-      for (i = 0; i < 100; ++i) {
-        c.save({ _key: "key" + i, value: i });
-      }
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-
-          for (i = 0; i < 50; ++i) {
-            c.remove("key" + i);
-          }
-
-          for (i = 50; i < 100; ++i) {
-            c.update("key" + i, { value: i - 50 });
-          }
-
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.remove("key50");
-          fail(); 
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        var i;
+        for (i = 0; i < 10; ++i) {
+          c.save({ _key: "test" + i, a: i });
         }
-      };
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-      
-      assertEqual(100, c.count());
+        try {
+          TRANSACTION({ 
+            collections: {
+              write: [ cn ],
+            },
+            action: function () {
+              for (var i = 0; i < 10; ++i) {
+                if (i == 9) {
+                  internal.debugSetFailAt(f);
+                }
+                c.remove("test" + i);
+              }
+            }
+          });
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(10, c.count());
+        for (i = 0; i < 10; ++i) {
+          assertEqual(i, c.document("test" + i).a);
+        }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRollbackRemoveMixed2 : function () {
-      c = db._create(cn);
+    testUpdateServerFailuresNonEmpty : function () {
+      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        c.save({ _key: "foo", foo: "bar" });
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+
+        internal.debugSetFailAt(f);
       
-      c.save({ _key: "foo" });
-      c.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn ]
-        },
-        action : function () {
-          var i;
-
-          for (i = 0; i < 10; ++i) {
-            c.save({ _key: "key" + i, value: i });
-          }
-
-          for (i = 0; i < 5; ++i) {
-            c.remove("key" + i);
-          }
-
-          for (i = 5; i < 10; ++i) {
-            c.update("key" + i, { value: i - 5 });
-          }
-
-          internal.debugSetFailAt("AddCollectionOperation-OOM");
-          c.remove("key5");
-          fail(); 
+        try {
+          c.update("foo", { bar: "baz" });
+          fail();
         }
-      };
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
 
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
+        assertEqual(1, c.count());
+        assertEqual("bar", c.document("foo").foo);
+        assertEqual(undefined, c.document("foo").bar);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateServerFailuresMulti : function () {
+      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        var i;
+        for (i = 0; i < 10; ++i) {
+          c.save({ _key: "test" + i, a: i });
+        } 
+        assertEqual(10, c.count());
+
+        try {
+          TRANSACTION({ 
+            collections: {
+              write: [ cn ],
+            },
+            action: function () {
+              for (var i = 0; i < 10; ++i) {
+                if (i == 9) {
+                  internal.debugSetFailAt(f);
+                }
+                c.update("test" + i, { a: i + 1 });
+              }
+            }
+          });
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(10, c.count());
+        for (i = 0; i < 10; ++i) {
+          assertEqual(i, c.document("test" + i).a);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateServerFailuresMultiUpdate : function () {
+      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        var i;
+        for (i = 0; i < 10; ++i) {
+          c.save({ _key: "test" + i, a: i });
+        } 
+        assertEqual(10, c.count());
+
+        try {
+          TRANSACTION({ 
+            collections: {
+              write: [ cn ],
+            },
+            action: function () {
+              for (var i = 0; i < 10; ++i) {
+                if (i == 9) {
+                  internal.debugSetFailAt(f);
+                }
+                // double update
+                c.update("test" + i, { a: i + 1 });
+                c.update("test" + i, { a: i + 2, b: 2 });
+              }
+            }
+          });
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(10, c.count());
+        for (i = 0; i < 10; ++i) {
+          assertEqual(i, c.document("test" + i).a);
+          assertEqual(undefined, c.document("test" + i).b);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateServerFailures : function () {
+      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        var i;
+        for (i = 0; i < 10; ++i) {
+          c.save({ _key: "test" + i, a: i });
+        }
+
+        internal.debugSetFailAt(f);
       
-      assertEqual(2, c.count());
-      assertEqual("foo", c.document("foo")._key);
-      assertEqual("bar", c.document("bar")._key);
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(10, c.count());
+        for (i = 0; i < 10; ++i) {
+          assertEqual(i, c.document("test" + i).a);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testMixedServerFailures : function () {
+      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ]; 
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+        var i;
+        for (i = 0; i < 100; ++i) {
+          c.save({ _key: "test" + i, a: i });
+        } 
+        assertEqual(100, c.count());
+        
+        internal.debugSetFailAt(f);
+
+        try {
+          TRANSACTION({ 
+            collections: {
+              write: [ cn ],
+            },
+            action: function () {
+              for (i = 100; i < 150; ++i) {
+                c.save({ _key: "test" + i, a: i });
+              }
+              assertEqual(150, c.count());
+
+              for (i = 0; i < 50; ++i) {
+                c.remove("test" + i);
+              }
+              assertEqual(100, c.count());
+
+              for (i = 50; i < 100; ++i) {
+                c.update("test" + i, { a: i - 50, b: "foo" });
+              }
+              assertEqual(100, c.count());
+            }
+          });
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(100, c.count());
+        for (i = 0; i < 100; ++i) {
+          assertEqual(i, c.document("test" + i).a);
+          assertEqual(undefined, c.document("test" + i).b);
+        }
+      });
     }
 
   };
@@ -3802,13 +4041,45 @@ jsunity.run(transactionGraphSuite);
 jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
+jsunity.run(transactionConstraintsSuite);
 
 // only run this test suite if server-side failures are enabled
 if (internal.debugCanUseFailAt()) {
-//  jsunity.run(transactionServerFailuresSuite);
+  jsunity.run(transactionServerFailuresSuite);
 }
 
 return jsunity.done();
+/*
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertServerFailuresMultiConstraint : function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+      c.save({ _key: "test9", a: 1 });
+
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            for (var i = 0; i < 10; ++i) {
+              c.save({ _key: "test" + i, a: 10 });
+            }
+          }
+        });
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      assertEqual(1, c.count());
+      assertEqual(1, c.document("test9").a);
+    },
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
