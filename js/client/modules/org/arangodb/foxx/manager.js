@@ -378,7 +378,7 @@ function cmdUsage () {
   var fm = "foxx-manager";
 
   printf("Example usage:\n");
-  printf(" %s install <foxx> <mount-point>\n", fm);
+  printf(" %s install <foxx> <mount-point> option1=value1\n", fm);
   printf(" %s uninstall <mount-point>\n\n", fm);
 
   printf("Further help:\n");
@@ -460,6 +460,43 @@ function fetchDirectoryForInstall (name) {
   return exports.fetch("directory", name).app;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts command-line options
+////////////////////////////////////////////////////////////////////////////////
+
+function extractCommandLineOptions (args) {
+  'use strict';
+
+  var options = {};
+  var nargs = [];
+  var i;
+
+  var re1 = /^([\-_a-zA-Z0-9]*)=(.*)$/;
+  var re2 = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
+
+  for (i = 0;  i < args.length;  ++i) {
+    var a = args[i];
+    var m = re1.exec(a);
+
+    if (m !== null) {
+      var k = m[1];
+      var v = m[2];
+
+      if (re2.test(v)) {
+        options[k] = parseFloat(v);
+      }
+      else {
+        options[k] = v;
+      }
+    }
+    else {
+      nargs.push(args[i]);
+    }
+  }
+
+  return { 'options': options, 'args': nargs };
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -481,17 +518,37 @@ exports.run = function (args) {
   var printf = arangodb.printf;
   var res;
 
+  function extractOptions () {
+    var co = extractCommandLineOptions(args);
+
+    if (3 < co.args.length) {
+      var options = JSON.parse(co.args[3]);
+
+      if (options.hasOwnProperty("configuration")) {
+        var k;
+
+        for (k in co.options) {
+          if (co.options.hasOwnProperty(k)) {
+            options.configuration[k] = co.options[k];
+          }
+        }
+      }
+      else {
+        options.configuration = co.options;
+      }
+
+      return options;
+    }
+
+    return { configuration: co.options };
+  }
+
   try {
     if (type === 'fetch') {
       exports.fetch(args[1], args[2], args[3]);
     }
     else if (type === 'mount') {
-      if (3 < args.length) {
-        exports.mount(args[1], args[2], JSON.parse(args[3]));
-      }
-      else {
-        exports.mount(args[1], args[2]);
-      }
+      exports.mount(args[1], args[2], extractOptions());
     }
     else if (type === 'rescan') {
       exports.rescan();
@@ -506,16 +563,13 @@ exports.run = function (args) {
       exports.unmount(args[1]);
     }
     else if (type === 'install') {
-      if (3 < args.length) {
-        res = exports.install(args[1], args[2], JSON.parse(args[3]));
-      }
-      else {
-        res = exports.install(args[1], args[2]);
-      }
+      var options = extractOptions();
+      res = exports.install(args[1], args[2], options);
 
       printf("Application %s installed successfully at mount point %s\n", 
              res.appId, 
              res.mount);
+      printf("options used: %s", JSON.stringify(options));
     }
     else if (type === 'replace') {
       if (3 < args.length) {
