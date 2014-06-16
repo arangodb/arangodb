@@ -167,6 +167,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
+        state->operationsCount[collectionId]++;
         break;
       }
 
@@ -184,6 +185,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
+        state->operationsCount[collectionId]++;
         break;
       }
 
@@ -201,6 +203,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
+        state->operationsCount[collectionId]++;
         break;
       }
 

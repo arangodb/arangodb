@@ -40,6 +40,7 @@
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "Utils/Exception.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
@@ -780,8 +781,18 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     DeletePrimaryIndex(document, header, true);
     return res;
   }
+          
+  document->_numberDocuments++;
 
   operation.indexed();
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoOperation") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   res = TRI_AddOperationTransaction(operation, syncRequested);
       
@@ -874,6 +885,14 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   }
         
   operation.indexed();
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoOperation") {
+    return TRI_ERROR_DEBUG;
+  }
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   res = TRI_AddOperationTransaction(operation, syncRequested);
 
@@ -3460,8 +3479,9 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   int64_t uncollected = document->_uncollectedLogfileEntries;
-  
+
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+
   return (uncollected == 0);
 }
 
@@ -5281,6 +5301,16 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   {
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("ReadDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+    
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("ReadDocumentNoLockExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     triagens::arango::CollectionReadLocker collectionLocker(document, lock);
 
@@ -5316,6 +5346,16 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_ASSERT(key != nullptr);
  
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
                                                                   document->_info._cid,
@@ -5326,6 +5366,11 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_doc_mptr_t* header;
   int res;
   {
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
   
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
@@ -5357,6 +5402,17 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     }
   
     operation.indexed();
+    
+    document->_headersPtr->unlink(header);  // PROTECTED by trx in trxCollection
+    document->_numberDocuments--;
+  
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoOperation") {
+      return TRI_ERROR_DEBUG;
+    }
+    
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoOperationExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
     res = TRI_AddOperationTransaction(operation, forceSync);
   }
@@ -5414,14 +5470,30 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   // construct a legend for the shaped json
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentInvalidShape") {
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLegend") {
+    // test what happens when no legend can be created
     return TRI_ERROR_DEBUG;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLegendExcept") {
+    // test what happens if no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   int res = legend.addShape(shaped->_sid, &shaped->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
   triagens::wal::Marker* marker = nullptr;
@@ -5455,12 +5527,23 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   // now insert into indexes
   {
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
   
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoHeader") {
+      // test what happens if no header can be acquired
       return TRI_ERROR_DEBUG;
+    }
+    
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoHeaderExcept") {
+      // test what happens if no header can be acquired
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     // create a new header
@@ -5511,6 +5594,16 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
+ 
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLegend") {
+    // test what happens when no legend can be created
+    return TRI_ERROR_DEBUG;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLegendExcept") {
+    // test what happens when no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   
   // create legend  
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
@@ -5521,6 +5614,10 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   }
     
   {
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLock") {
+      return TRI_ERROR_DEBUG;
+    }
+
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
     // get the header pointer of the previous revision
@@ -5529,6 +5626,16 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
+    }
+  
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoMarker") {
+      // test what happens when no marker can be created
+      return TRI_ERROR_DEBUG;
+    }
+  
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoMarkerExcept") {
+      // test what happens when no marker can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     triagens::wal::Marker* marker = nullptr;

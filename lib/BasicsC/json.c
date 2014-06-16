@@ -1062,7 +1062,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
 
 bool TRI_SaveJson (char const* filename, 
                    TRI_json_t const* object, 
-                   const bool syncFile) {
+                   bool syncFile) {
   char* tmp;
   int fd;
   int res;

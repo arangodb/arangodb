@@ -32,6 +32,7 @@
 
 #include "Cluster/ServerState.h"
 
+#include "Utils/Exception.h"
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
@@ -532,12 +533,18 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          int res = TRI_ReadShapedJsonDocumentCollection(trxCollection,
-                                                         (TRI_voc_key_t) key.c_str(), 
-                                                         mptr,
-                                                         ! isLocked(trxCollection, TRI_TRANSACTION_READ));
-
-          return res;
+          try {
+            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
+                                                        (TRI_voc_key_t) key.c_str(), 
+                                                        mptr,
+                                                        ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -854,17 +861,23 @@ namespace triagens {
          
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE); 
 
-          int res = TRI_InsertShapedJsonDocumentCollection(trxCollection,
-                                                           key, 
-                                                           rid, 
-                                                           mptr,
-                                                           shaped,
-                                                           static_cast<TRI_document_edge_t const*>(data),
-                                                           lock,
-                                                           forceSync,
-                                                           false);
-
-          return res;
+          try {
+            return TRI_InsertShapedJsonDocumentCollection(trxCollection,
+                                                          key, 
+                                                          rid, 
+                                                          mptr,
+                                                          shaped,
+                                                          static_cast<TRI_document_edge_t const*>(data),
+                                                          lock,
+                                                          forceSync,
+                                                          false);
+          } 
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,10 +914,9 @@ namespace triagens {
                            policy, 
                            expectedRevision, 
                            actualRevision, 
-                           forceSync); 
-
+                           forceSync);
+           
           TRI_FreeShapedJson(zone, shaped);
-
           return res;
         }
 
@@ -928,16 +940,22 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          int res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, 
-                                                           (const TRI_voc_key_t) key.c_str(),
-                                                           rid, 
-                                                           mptr, 
-                                                           shaped, 
-                                                           &updatePolicy, 
-                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                                           forceSync);
-          
-          return res;
+          try {
+            return TRI_UpdateShapedJsonDocumentCollection(trxCollection, 
+                                                          (const TRI_voc_key_t) key.c_str(),
+                                                          rid, 
+                                                          mptr, 
+                                                          shaped, 
+                                                          &updatePolicy, 
+                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                                          forceSync);
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,15 +971,21 @@ namespace triagens {
                     bool forceSync) {
           
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
-          
-          int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
-                                                           (TRI_voc_key_t) key.c_str(), 
-                                                           rid,
-                                                           &updatePolicy, 
-                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
-                                                           forceSync);
-
-          return res;
+         
+          try { 
+            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                          (TRI_voc_key_t) key.c_str(), 
+                                                          rid,
+                                                          &updatePolicy, 
+                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE), 
+                                                          forceSync);
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -992,18 +1016,26 @@ namespace triagens {
             return res;
           }
 
-          for (auto it = ids.begin(); it != ids.end(); ++it) {
-            res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
-                                                         (TRI_voc_key_t) (*it).c_str(), 
-                                                         0,
-                                                         nullptr, // policy
-                                                         false,
-                                                         forceSync);
+          try {
+            for (auto it = ids.begin(); it != ids.end(); ++it) {
+              res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                           (TRI_voc_key_t) (*it).c_str(), 
+                                                           0,
+                                                           nullptr, // policy
+                                                           false,
+                                                           forceSync);
 
-            if (res != TRI_ERROR_NO_ERROR) {
-              // halt on first error
-              break;
+              if (res != TRI_ERROR_NO_ERROR) {
+                // halt on first error
+                break;
+              }
             }
+          }
+          catch (triagens::arango::Exception const& ex) {
+            res = ex.code();
+          }
+          catch (...) {
+            res = TRI_ERROR_INTERNAL;
           }
 
           this->unlock(trxCollection, TRI_TRANSACTION_WRITE);
