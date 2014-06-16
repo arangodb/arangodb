@@ -1,0 +1,103 @@
+!CHAPTER Handling Vertices
+
+!SECTION Create a vertex
+
+`POST /system/gharial/graph-name/vertex/collection-name`*(create a vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the vertex collection the edge belongs to.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_vertex_create_info -->
+
+<!-- @startDocuBlock JSF_general_graph_vertex_create_http_examples -->
+
+!SECTION Get a vertex
+
+`GET /system/gharial/graph-name/vertex/collection-name/vertex-key`*(get a vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the vertex collection the vertex belongs to.
+
+`vertex-key (string, required)`  
+The `_key` attribute of the vertex.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_vertex_get_info -->
+
+<!-- @startDocuBlock JSF_general_graph_vertex_get_http_examples -->
+
+!SECTION Modify an vertex
+
+`PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key`*(modify a vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the vertex collection the vertex belongs to.
+
+`vertex-key (string, required)`  
+The `_key` attribute of the vertex.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_vertex_modify_info -->
+
+<!-- @startDocuBlock JSF_general_graph_vertex_modify_http_examples -->
+
+!SECTION Replace an vertex
+
+`PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key`*(replace a vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the vertex collection the vertex belongs to.
+
+`vertex-key (string, required)`  
+The `_key` attribute of the vertex.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_vertex_replace_info -->
+
+<!-- @startDocuBlock JSF_general_graph_vertex_replace_http_examples -->
+
+!SECTION Remove a vertex
+
+`DELETE /system/gharial/graph-name/vertex/collection-name/vertex-key`*(remove a vertex)*
+
+!SUBSECTION URL parameters
+
+`graph-name (string, required)`  
+The name of the graph.
+
+`collection-name (string, required)`  
+The name of the vertex collection the vertex belongs to.
+
+`vertex-key (string, required)`  
+The `_key` attribute of the vertex.
+
+!SUBSECTION Description
+
+<!-- @startDocuBlock JSF_general_graph_vertex_delete_info -->
+
+<!-- @startDocuBlock JSF_general_graph_vertex_delete_http_examples -->
