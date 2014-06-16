@@ -635,7 +635,6 @@ function GeneralGraphCreationSuite() {
         graph._drop(gN2);
       } catch(ignore) {
       }
-
       var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
         g1 = graph._create(gN1, [dr1]),
@@ -2628,9 +2627,9 @@ function OrphanCollectionSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GeneralGraphCommonNeighborsSuite);
+/*jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
-jsunity.run(EdgesAndVerticesSuite);
+jsunity.run(EdgesAndVerticesSuite);*/
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
