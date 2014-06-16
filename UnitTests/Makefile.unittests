@@ -31,6 +31,7 @@ unittests-brief: \
 	unittests-config \
 	unittests-recovery \
 	unittests-boost \
+	unittests-shell-client-readonly\
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
 	unittests-http-server \
@@ -406,6 +407,7 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
+               @top_srcdir@/js/server/tests/shell-readonly.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
                @top_srcdir@/js/server/tests/shell-tasks.js \
@@ -548,6 +550,37 @@ unittests-shell-server-ahuacatl:
 ################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode.js)
+UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode.js)
+.PHONY: unittests-shell-client-readonly
+unittests-shell-client-readonly:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL CLIENT READONLY                                                         >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_READONLY) || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_NO_READONLY) || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
@@ -557,7 +590,6 @@ SHELL_CLIENT_ONLY = \
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
-
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
