@@ -215,6 +215,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "collection does not exist");
   REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection used in edge def");
+  REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
