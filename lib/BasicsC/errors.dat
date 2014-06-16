@@ -296,6 +296,8 @@ ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name alread
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",
 ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the collection is not a vertex collection.",
 ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
+ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection used in edge def","The collection is already used in an edge definition of the graph.",
+ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
 
 ################################################################################
 ## Session errors

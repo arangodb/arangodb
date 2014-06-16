@@ -60,7 +60,51 @@ function GeneralGraphCreationSuite() {
     )
   );
 
+  var gN1 = "UnitTestEdgeDefDeleteGraph1",
+    gN2 = "UnitTestEdgeDefDeleteGraph2",
+    ec1 = "UnitTestEdgeDefDeleteEdgeCol1",
+    ec2 = "UnitTestEdgeDefDeleteEdgeCol2",
+    ec3 = "UnitTestEdgeDefDeleteEdgeCol3",
+    vc1 = "UnitTestEdgeDefDeleteVertexCol1",
+    vc2 = "UnitTestEdgeDefDeleteVertexCol2",
+    vc3 = "UnitTestEdgeDefDeleteVertexCol3",
+    vc4 = "UnitTestEdgeDefDeleteVertexCol4",
+    vc5 = "UnitTestEdgeDefDeleteVertexCol5",
+    vc6 = "UnitTestEdgeDefDeleteVertexCol6";
+
   return {
+
+    setUp: function() {
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+
+    },
+
+    tearDown: function() {
+      db._drop(ec1);
+      db._drop(ec2);
+      db._drop(ec3);
+      db._drop(vc1);
+      db._drop(vc2);
+      db._drop(vc3);
+      db._drop(vc4);
+      db._drop(vc5);
+      db._drop(vc6);
+      try {
+        graph._drop(gN1);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2);
+      } catch(ignore) {
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Graph Creation
@@ -413,58 +457,39 @@ function GeneralGraphCreationSuite() {
     },
 
 
-    test_deleteEdgeDefinitionFromExistingGraph: function() {
-      var gN1 = "UnitTestEdgeDefDeleteGraph1",
-        gN2 = "UnitTestEdgeDefDeleteGraph2",
-        ec1 = "UnitTestEdgeDefDeleteEdgeCol1",
-        ec2 = "UnitTestEdgeDefDeleteEdgeCol2",
-        ec3 = "UnitTestEdgeDefDeleteEdgeCol3",
-        vc1 = "UnitTestEdgeDefDeleteVertexCol1",
-        vc2 = "UnitTestEdgeDefDeleteVertexCol2",
-        vc3 = "UnitTestEdgeDefDeleteVertexCol3",
-        vc4 = "UnitTestEdgeDefDeleteVertexCol4",
-        vc5 = "UnitTestEdgeDefDeleteVertexCol5";
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
-
+    test_deleteEdgeDefinitionFromExistingGraph1: function() {
       var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
-        dr3 = graph._directedRelationDefinition(ec3, [vc4], [vc5]),
-        g1 = graph._create(gN1, [dr1, dr2, dr3]),
-        g2 = graph._create(gN2, [dr3]);
-
-      g1._deleteEdgeDefinition(ec1, false);
-      assertEqual([dr2, dr3], g1.__edgeDefinitions);
-
-      g1._deleteEdgeDefinition(ec2, true);
-      assertEqual([dr3], g1.__edgeDefinitions);
-      assertTrue(db._collection(vc3) === null);
-      assertFalse(db._collection(vc4) === null);
-      assertFalse(db._collection(vc5) === null);
+        g1 = graph._create(gN1, [dr1]);
 
       try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
+        g1._deleteEdgeDefinition(ec1);
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message
+        );
       }
 
     },
 
+    test_deleteEdgeDefinitionFromExistingGraph2: function() {
+
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelationDefinition(ec3, [vc4], [vc5]),
+        g1 = graph._create(gN1, [dr1, dr2, dr3]);
+
+      assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
+      g1._deleteEdgeDefinition(ec1);
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2], g1._getOrphanCollections());
+
+      g1._deleteEdgeDefinition(ec2);
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2, vc3], g1._getOrphanCollections());
+    },
+
     test_extendEdgeDefinitionFromExistingGraph1: function() {
-      var gN1 = "UnitTestEdgeDefExtend1Graph1",
-        ec1 = "UnitTestEdgeDefExtend1EdgeCol1",
-        vc1 = "UnitTestEdgeDefExtend1VertexCol1",
-        vc2 = "UnitTestEdgeDefExtend1VertexCol2",
-        vc3 = "UnitTestEdgeDefExtend1VertexCol3";
 
       try {
         graph._drop(gN1);
@@ -492,24 +517,6 @@ function GeneralGraphCreationSuite() {
     },
 
     test_extendEdgeDefinitionFromExistingGraph2: function() {
-      var gN1 = "UnitTestEdgeDefExtend2Graph1",
-        gN2 = "UnitTestEdgeDefExtend2Graph2",
-        ec1 = "UnitTestEdgeDefExtend2EdgeCol1",
-        ec2 = "UnitTestEdgeDefExtend2EdgeCol2",
-        ec3 = "UnitTestEdgeDefExtend2EdgeCol3",
-        vc1 = "UnitTestEdgeDefExtend2VertexCol1",
-        vc2 = "UnitTestEdgeDefExtend2VertexCol2",
-        vc3 = "UnitTestEdgeDefExtend2VertexCol3",
-        vc4 = "UnitTestEdgeDefExtend2VertexCol4",
-        vc5 = "UnitTestEdgeDefExtend2VertexCol5";
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
 
       var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
@@ -538,16 +545,6 @@ function GeneralGraphCreationSuite() {
     },
 
     test_extendEdgeDefinitionFromExistingGraph3: function() {
-      var gN1 = "UnitTestEdgeDefExtend3Graph1",
-        gN2 = "UnitTestEdgeDefExtend3Graph2",
-        ec1 = "UnitTestEdgeDefExtend3EdgeCol1",
-        ec2 = "UnitTestEdgeDefExtend3EdgeCol2",
-        ec3 = "UnitTestEdgeDefExtend3EdgeCol3",
-        vc1 = "UnitTestEdgeDefExtend3VertexCol1",
-        vc2 = "UnitTestEdgeDefExtend3VertexCol2",
-        vc3 = "UnitTestEdgeDefExtend3VertexCol3",
-        vc4 = "UnitTestEdgeDefExtend3VertexCol4",
-        vc5 = "UnitTestEdgeDefExtend3VertexCol5";
       try {
         graph._drop(gN1);
       } catch(ignore) {
@@ -572,32 +569,9 @@ function GeneralGraphCreationSuite() {
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
 
-
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
-
     },
 
     test_editEdgeDefinitionFromExistingGraph1: function() {
-      var gN1 = "UnitTestEdgeDefEdit1Graph1",
-        ec1 = "UnitTestEdgeDefEdit1EdgeCol1",
-        ec2 = "UnitTestEdgeDefEdit1EdgeCol2",
-        vc1 = "UnitTestEdgeDefEdit1VertexCol1",
-        vc2 = "UnitTestEdgeDefEdit1VertexCol2",
-        vc3 = "UnitTestEdgeDefEdit1VertexCol3",
-        vc4 = "UnitTestEdgeDefEdit1VertexCol4",
-        vc5 = "UnitTestEdgeDefEdit1VertexCol5";
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-
       var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
         g1 = graph._create(gN1, [dr1]);
@@ -607,77 +581,35 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED
+          arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message
         );
-      }
-
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
       }
 
     },
 
     test_editEdgeDefinitionFromExistingGraph2: function() {
-      var gN1 = "UnitTestEdgeDefEdit2Graph1",
-        gN2 = "UnitTestEdgeDefEdit2Graph2",
-        ec1 = "UnitTestEdgeDefEdit2EdgeCol1",
-        vc1 = "UnitTestEdgeDefEdit2VertexCol1",
-        vc2 = "UnitTestEdgeDefEdit2VertexCol2",
-        vc3 = "UnitTestEdgeDefEdit2VertexCol3",
-        vc4 = "UnitTestEdgeDefEdit2VertexCol4",
-        vc5 = "UnitTestEdgeDefEdit2VertexCol5";
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
-        g1 = graph._create(gN1, [dr1]),
+      var dr1 = graph._directedRelationDefinition(ec1, [vc1, vc2], [vc3, vc4]),
+        dr2 = graph._directedRelationDefinition(ec2, [vc1], [vc4]),
+        dr3 = graph._directedRelationDefinition(ec1, [vc5], [vc5]),
+        g1 = graph._create(gN1, [dr1, dr2]),
         g2 = graph._create(gN2, [dr1]);
 
-      g1._editEdgeDefinitions(dr2, true);
-      assertEqual([dr2], g1.__edgeDefinitions);
-      assertEqual([dr2], g2.__edgeDefinitions);
-      assertTrue(db._collection(vc1) === null);
-      assertTrue(db._collection(vc2) === null);
-
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
+      g1._editEdgeDefinitions(dr3);
+      assertEqual([dr3, dr2], g1.__edgeDefinitions);
+      assertEqual([dr3], g2.__edgeDefinitions);
+      g1 = graph._graph(gN1);
+      g2 = graph._graph(gN2);
+      assertTrue(g1._getOrphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g1._getOrphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc4) !== -1);
 
     },
 
     test_editEdgeDefinitionFromExistingGraph3: function() {
-      var prefix = "UnitTestEdgeDefEdit3",
-        gN1 = prefix + "Graph1",
-        gN2 = prefix + "Graph2",
-        ec1 = prefix + "EdgeCol1",
-        ec2 = prefix + "EdgeCol2",
-        vc1 = prefix + "VertexCol1",
-        vc2 = prefix + "VertexCol2",
-        vc3 = prefix + "VertexCol3",
-        vc4 = prefix + "VertexCol4",
-        vc5 = prefix + "VertexCol5",
-        vc6 = prefix + "VertexCol6";
-      try {
-        graph._drop(gN1);
-      } catch(ignore) {
-      }
-      try {
-        graph._drop(gN2);
-      } catch(ignore) {
-      }
 
       var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
         dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
@@ -689,13 +621,15 @@ function GeneralGraphCreationSuite() {
       g2._addOrphanCollection(vc5);
       g2._addOrphanCollection(vc6);
       g1._editEdgeDefinitions(dr2, true);
+
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
-      assertTrue(db._collection(vc1) === null);
-      assertFalse(db._collection(vc2) === null);
-      assertEqual([], g1._getOrphanCollections());
+      g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertEqual([vc6], g2._getOrphanCollections());
+      assertEqual([vc1], g1._getOrphanCollections());
+      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._getOrphanCollections().indexOf(vc6) !== -1);
 
       try {
         graph._drop(gN1);
@@ -2562,8 +2496,8 @@ function OrphanCollectionSuite() {
     },
 
     test_addOrphanCollection1: function() {
-      g1._addOrphanCollection(vC1, false);
-      assertEqual(g1._getOrphanCollections(), [vC1]);
+      g1._addOrphanCollection(vC5, true);
+      assertEqual(g1._getOrphanCollections(), [vC5]);
     },
 
     test_addOrphanCollection2: function() {
@@ -2586,6 +2520,15 @@ function OrphanCollectionSuite() {
       }
       assertTrue(db._collection(vC4) === null);
       assertEqual(g1._getOrphanCollections(), []);
+    },
+
+    test_addOrphanCollection4: function() {
+      try {
+        g1._addOrphanCollection(vC1);
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code);
+        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message);
+      }
     },
 
     test_removeOrphanCollection1: function() {
