@@ -10,11 +10,13 @@
 The name of the graph.
 
 `collection-name (string, required)`  
-The name of the vertex collection the edge belongs to.
+The name of the vertex collection the vertex belongs to.
 
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_create_info -->
+
+Adds a vertex to the given collection.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_create_http_examples -->
 
@@ -57,6 +59,8 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_get_info -->
 
+Gets a vertex from the given collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_get_http_examples -->
 
 ```
@@ -97,6 +101,8 @@ The `_key` attribute of the vertex.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_modify_info -->
+
+Updates the data of the specific vertex in the collection.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_modify_http_examples -->
 
@@ -140,6 +146,8 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_replace_info -->
 
+Replaces the data of a vertex in the collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_replace_http_examples -->
 
 ```
@@ -181,6 +189,8 @@ The `_key` attribute of the vertex.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_delete_info -->
+
+Removes a vertex from the collection.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_delete_http_examples -->
 

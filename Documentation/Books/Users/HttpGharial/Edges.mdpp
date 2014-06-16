@@ -16,6 +16,10 @@ The name of the edge collection the edge belongs to.
 
 <!-- @startDocuBlock JSF_general_graph_edge_create_info -->
 
+Creates a new edge in the collection.
+Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
+Furthermore the edge has to be valid in the definition of this edge collection.
+
 <!-- @startDocuBlock JSF_general_graph_edge_create_http_examples -->
 
 ```
@@ -56,6 +60,8 @@ The `_key` attribute of the edge.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_edge_get_info -->
+
+Gets an edge from the given collection.
 
 <!-- @startDocuBlock JSF_general_graph_edge_get_http_examples -->
 
@@ -100,6 +106,8 @@ The `_key` attribute of the edge.
 
 <!-- @startDocuBlock JSF_general_graph_edge_modify_info -->
 
+Updates the data of the specific edge in the collection.
+
 <!-- @startDocuBlock JSF_general_graph_edge_modify_http_examples -->
 
 ```
@@ -142,6 +150,8 @@ The `_key` attribute of the edge.
 
 <!-- @startDocuBlock JSF_general_graph_edge_replace_info -->
 
+Replaces the data of an edge in the collection.
+
 <!-- @startDocuBlock JSF_general_graph_edge_replace_http_examples -->
 
 ```
@@ -183,6 +193,8 @@ The `_key` attribute of the edge.
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_edge_delete_info -->
+
+Removes an edge from the collection.
 
 <!-- @startDocuBlock JSF_general_graph_edge_delete_http_examples -->
 
