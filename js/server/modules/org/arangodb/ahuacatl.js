@@ -5281,11 +5281,12 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_distance
 ///
-/// `GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+/// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 /// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
-/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 /// It does not return the actual path but only the distance between two vertices.
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
@@ -5823,7 +5824,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
@@ -5835,7 +5836,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// A route planner example, all common outbound neighbors of munich with any other location
 /// which have a maximal depth of 2 :
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
@@ -6115,7 +6116,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
 /// ~ var db = require("internal").db;
@@ -6304,7 +6305,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
 /// ~ var db = require("internal").db;
@@ -6394,7 +6395,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness3}
 /// ~ var db = require("internal").db;
@@ -6475,7 +6476,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all locations.
+/// A route planner example, the absolute betweenness of all locations.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness2}
@@ -6488,7 +6489,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
 /// ~ var db = require("internal").db;
@@ -6596,7 +6597,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
 /// ~ var db = require("internal").db;
@@ -6683,7 +6684,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the cradius of the graph regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
 /// ~ var db = require("internal").db;
@@ -6762,7 +6763,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, tthe diameter of the graph.
+/// A route planner example, the diameter of the graph.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter2}
@@ -6775,7 +6776,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter3}
 /// ~ var db = require("internal").db;
