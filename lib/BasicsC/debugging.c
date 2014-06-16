@@ -112,6 +112,11 @@ void TRI_SegfaultDebugging (char const* message) {
 bool TRI_ShouldFailDebugging (char const* value) {
   char* found;
   char* checkValue;
+  
+  if (FailurePoints == NULL) {
+    // try without the lock first
+    return false;
+  }
 
   checkValue = MakeValue(value);
 

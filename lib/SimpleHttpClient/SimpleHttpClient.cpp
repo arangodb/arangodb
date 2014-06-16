@@ -54,17 +54,15 @@ namespace triagens {
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _requestTimeout(requestTimeout),
       _warn(warn),
-      _locationRewriter(),
+      _state(IN_CONNECT),
+      _written(0),
+      _errorMessage(""),
+      _locationRewriter({0, 0}),
       _nextChunkedSize(0),
-      _result(0), 
+      _result(nullptr), 
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {
 
-      _locationRewriter = { 0, 0 };
-      
-      _errorMessage = "";
-      _written = 0;
-      _state = IN_CONNECT;
       if (_connection->isConnected()) {
         _state = FINISHED;
       }

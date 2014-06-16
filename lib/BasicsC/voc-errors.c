@@ -168,7 +168,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_INVALID_DATE_VALUE, "invalid date value");
   REG_ERROR(ERROR_QUERY_MULTI_MODIFY, "multi-modify query");
   REG_ERROR(ERROR_QUERY_MODIFY_IN_SUBQUERY, "modify operation in subquery");
-  REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "options must be readable at query compile time");
+  REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
+  REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");
@@ -216,6 +217,8 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "collection does not exist");
   REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection used in edge def");
+  REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

@@ -403,9 +403,12 @@ extern "C" {
 /// - 1574: @LIT{modify operation in subquery}
 ///    "Will be raised when an AQL query contains a data-modifying operation
 ///   inside a subquery."
-/// - 1575: @LIT{options must be readable at query compile time}
+/// - 1575: @LIT{query options must be readable at query compile time}
 ///    "Will be raised when an AQL data-modification query contains options
 ///   that cannot be figured out at query compile time."
+/// - 1576: @LIT{query options expected}
+///    "Will be raised when an AQL data-modification query contains an invalid
+///   options specification."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -509,6 +512,10 @@ extern "C" {
 ///   the collection is not a vertex collection.
 /// - 1928: @LIT{not in orphan collection}
 ///   Vertex collection not in orphan collection of the graph.
+/// - 1929: @LIT{collection used in edge def}
+///   The collection is already used in an edge definition of the graph.
+/// - 1930: @LIT{edge collection not used in graph}
+///   The edge collection is not used in any edge definition of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2207,13 +2214,24 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
 ///
-/// options must be readable at query compile time
+/// query options must be readable at query compile time
 ///
 ///  "Will be raised when an AQL data-modification query contains options that
 /// cannot be figured out at query compile time."
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              (1575)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1576: ERROR_QUERY_EXCEPTION_OPTIONS
+///
+/// query options expected
+///
+///  "Will be raised when an AQL data-modification query contains an invalid
+/// options specification."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
@@ -2691,6 +2709,26 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          (1928)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
+///
+/// collection used in edge def
+///
+/// The collection is already used in an edge definition of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       (1929)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1930: ERROR_GRAPH_EDGE_COLLECTION_NOT_USED
+///
+/// edge collection not used in graph
+///
+/// The edge collection is not used in any edge definition of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

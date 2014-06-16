@@ -1072,7 +1072,7 @@ static TRI_json_t* JsonShapeDataNumber (TRI_shaper_t* shaper,
                                         uint64_t size) {
   TRI_shape_number_t v;
 
-  v = * (TRI_shape_number_t const*) data;
+  v = * (TRI_shape_number_t const*) (void const*) data;
 
   return TRI_CreateNumberJson(shaper->_memoryZone, v);
 }
@@ -1561,7 +1561,7 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t v;
   int res;
 
-  v = * (TRI_shape_number_t const*) data;
+  v = * (TRI_shape_number_t const*) (void const*) data;
   // check for special values
 
   // yes, this is intentional

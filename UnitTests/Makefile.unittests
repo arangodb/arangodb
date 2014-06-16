@@ -29,7 +29,9 @@ unittests: all unittests-verbose unittests-brief
 unittests-brief: \
 	jslint \
 	unittests-config \
+	unittests-recovery \
 	unittests-boost \
+	unittests-shell-client-readonly\
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
 	unittests-http-server \
@@ -183,6 +185,45 @@ start-slave:
 
 curl-request-get:
 	@declare -x ACTUAL=$$(curl --dump - -X GET "$(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL)" 2> /dev/null | head -n 1 | tr "\r" " " | sed -e 's/^HTTP\/1\.1 \([0-9]*\).*$$/\1/g'); if [ "x$$ACTUAL" != "x$(EXPECTED)" ]; then echo "request to $(CURL_PROTO)://$(CURL_HOST):$(CURL_PORT)$(CURL_URL) returned $$ACTUAL, expected: $(EXPECTED)"; false; else true; fi
+
+################################################################################
+### @brief test recovery
+################################################################################
+
+.PHONY: unittests-recovery
+.PHONY: execute-recovery-test
+
+if ENABLE_MAINTAINER_MODE
+
+RECOVERY_TESTS = \
+               @top_srcdir@/js/server/tests/recovery/corrupt-wal-marker.js 
+
+execute-recovery-test:
+	@builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
+
+unittests-recovery:
+	@echo
+	@echo "================================================================================"
+	@echo "<< RECOVERY TESTS                                                             >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+else
+
+unittests-recovery:
+
+execute-recovery-test:
+
+endif
 
 ################################################################################
 ### @brief test configuration files
@@ -366,6 +407,7 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
+               @top_srcdir@/js/server/tests/shell-readonly.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
                @top_srcdir@/js/server/tests/shell-tasks.js \
@@ -509,6 +551,37 @@ unittests-shell-server-ahuacatl:
 ################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode.js)
+UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode.js)
+.PHONY: unittests-shell-client-readonly
+unittests-shell-client-readonly:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL CLIENT READONLY                                                         >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_READONLY) || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_NO_READONLY) || test "x$(FORCE)" == "x1"
+	sleep 2
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
 
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
@@ -518,7 +591,6 @@ SHELL_CLIENT_ONLY = \
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
-
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
