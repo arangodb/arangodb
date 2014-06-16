@@ -471,7 +471,7 @@ function extractCommandLineOptions (args) {
   var nargs = [];
   var i;
 
-  var re1 = /^([-_a-zA-Z0-9]*)=(.*)$/;
+  var re1 = /^([\-_a-zA-Z0-9]*)=(.*)$/;
   var re2 = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
 
   for (i = 0;  i < args.length;  ++i) {
