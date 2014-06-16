@@ -4,7 +4,6 @@
 var runTest = require('jsunity').runTest,
   _ = require('underscore'),
   internal = require('internal'),
-  fs = require('fs'),
   runJSUnityTests,
   runJasmineTests,
   runCommandLineTests;
@@ -40,16 +39,11 @@ runJSUnityTests = function (tests) {
 
 runJasmineTests = function (testFiles) {
   'use strict';
-  var result = true,
-    tests,
-    jasmine;
+  var result = true;
 
   if (testFiles.length > 0) {
-    tests = _.map(testFiles, function (x) { return fs.read(x); });
-    jasmine = require('jasmine');
-
     print('\nRunning Jasmine Tests: ' + testFiles.join(', '));
-    result = jasmine.executeTestSuite(tests);
+    result = require('jasmine').executeTestSuite(testFiles, { format: 'progress' });
   }
 
   return result;
