@@ -30,7 +30,6 @@
         this.pageid = pageid;
         this.type = type;
         this.collection.getDocuments(colid, pageid);
-        console.log()
         this.collectionModel = this.collectionsStore.get(colid);
     },
 
