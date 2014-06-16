@@ -563,6 +563,13 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const* self) {
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t* self) {
   if (self->_buffer != NULL) {
+    if (self->_len > 0 && self->_current == self->_buffer) {
+      // we're at the beginning of the buffer
+      // avoid double erasure and exit early
+      *self->_current = '\0';
+      return;
+    }
+
     self->_current = self->_buffer;
     memset(self->_buffer, 0, self->_len + 1);
   }
@@ -632,6 +639,24 @@ void TRI_EraseFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
     memmove(self->_buffer, self->_buffer + len, off - len);
     self->_current -= len;
     memset(self->_current, 0, self->_len - (self->_current - self->_buffer));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the first characters but does not clear the remaining
+/// buffer space
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_MoveFrontStringBuffer (TRI_string_buffer_t * self, size_t len) {
+  size_t off = (size_t) (self->_current - self->_buffer);
+
+  if (off <= len) {
+    TRI_ResetStringBuffer(self);
+  }
+  else if (0 < len) {
+    memmove(self->_buffer, self->_buffer + len, off - len);
+    self->_current -= len;
+    *self->_current = '\0';
   }
 }
 

@@ -43,8 +43,8 @@ struct TRI_doc_mptr_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_primary_index_s {
-  uint32_t _nrAlloc;     // the size of the table
-  uint32_t _nrUsed;      // the number of used entries
+  uint64_t _nrAlloc;     // the size of the table
+  uint64_t _nrUsed;      // the number of used entries
 
   void** _table;         // the table itself
 }

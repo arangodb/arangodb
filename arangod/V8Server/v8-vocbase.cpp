@@ -283,12 +283,12 @@ static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
   return c;
 }
 
-struct CollectionGuard {
-  CollectionGuard (TRI_vocbase_col_t* collection) 
+struct LocalCollectionGuard {
+  LocalCollectionGuard (TRI_vocbase_col_t* collection) 
     : _collection(collection) {
   }
 
-  ~CollectionGuard () {
+  ~LocalCollectionGuard () {
     if (_collection != 0 && ! _collection->_isLocal) {
       FreeCoordinatorCollection(_collection);
     } 
@@ -475,7 +475,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
   }
 
   // document key only
-  if (TRI_ValidateKeyKeyGenerator(*str)) {
+  if (TraditionalKeyGenerator::validateKey(*str)) {
     key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str, str.length());
     return true;
   }
@@ -1910,11 +1910,10 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
 
-  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2014,7 +2013,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2243,7 +2242,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2630,7 +2629,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -2904,7 +2903,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   CollectionNameResolver resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
   
-  CollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
   
   if (key == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -6719,9 +6718,9 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
   result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
 
-  TRI_json_t* keyOptions = document->_keyGenerator->toJson(document->_keyGenerator);
+  TRI_json_t* keyOptions = document->_keyGenerator->toJson();
 
-  if (keyOptions != 0) {
+  if (keyOptions != nullptr) {
     result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);

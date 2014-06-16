@@ -534,6 +534,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
         // we can safely update the master pointer's dataptr value
         found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+        found->_fid = fid;
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
@@ -557,6 +558,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
         // we can safely update the master pointer's dataptr value
         found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+        found->_fid = fid;
       }
     }
     else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
@@ -564,7 +566,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
       char const* key = operation.datafilePosition + m->_offsetKey;
       
       TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-      
+     
       if (found != nullptr && found->_rid > m->_rid) {
         // somebody re-created the document with a newer revision
         auto& dfi = createDfi(cache, fid);  

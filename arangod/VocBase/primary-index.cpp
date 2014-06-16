@@ -39,68 +39,64 @@
 /// @brief initial number of elements in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INITIAL_SIZE (11)
+constexpr uint64_t InitialSize () {
+  return 251;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new element
-////////////////////////////////////////////////////////////////////////////////
-
-static void AddNewElement (TRI_primary_index_t* idx, void* element) {
-  uint64_t hash = ((TRI_doc_mptr_t const*) element)->_hash;
-
-  // search the table
-  uint64_t i = hash % idx->_nrAlloc;
-
-  while (idx->_table[i] != nullptr) {
-    i = TRI_IncModU64(i, idx->_nrAlloc);
-  }
-
-  // add a new element to the associative idx
-  idx->_table[i] = element;
-  idx->_nrUsed++;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the index
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
-                                uint32_t targetSize) {
-  void** oldTable;
-  uint32_t oldAlloc;
-  uint32_t j;
+                                uint64_t targetSize,
+                                bool allowShrink) {
+  TRI_ASSERT(targetSize > 0);
 
-  oldTable = idx->_table;
-  oldAlloc = idx->_nrAlloc;
+  if (idx->_nrAlloc >= targetSize && ! allowShrink) {
+    return true;
+  }
 
-  idx->_nrAlloc = targetSize; 
-#ifdef TRI_INTERNAL_STATS
-  idx->_nrResizes++;
-#endif
+  void** oldTable = idx->_table;
 
-  idx->_table = (void**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (idx->_nrAlloc * sizeof(void*)), true);
+  idx->_table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (targetSize * sizeof(void*)), true));
 
   if (idx->_table == nullptr) {
-    idx->_nrAlloc = oldAlloc;
     idx->_table = oldTable;
 
     return false;
   }
 
-  idx->_nrUsed = 0;
+  if (idx->_nrUsed > 0) {
+    uint64_t const oldAlloc = idx->_nrAlloc;
 
-  // table is already cleared by allocate, copy old data
-  for (j = 0; j < oldAlloc; j++) {
-    if (oldTable[j] != nullptr) {
-      AddNewElement(idx, oldTable[j]);
+    // table is already cleared by allocate, now copy old data
+    for (uint64_t j = 0; j < oldAlloc; j++) {
+      TRI_doc_mptr_t const* element = static_cast<TRI_doc_mptr_t const*>(oldTable[j]);
+
+      if (element != nullptr) {
+        uint64_t const hash = element->_hash;
+        uint64_t i, k;
+
+        i = k = hash % targetSize;
+
+        for (; i < targetSize && idx->_table[i] != nullptr; ++i);
+        if (i == targetSize) {
+          for (i = 0; i < k && idx->_table[i] != nullptr; ++i);
+        }
+
+        TRI_ASSERT_EXPENSIVE(i < targetSize);
+
+        idx->_table[i] = (void*) element;
+      }
     }
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
+  idx->_nrAlloc = targetSize; 
 
   return true;
 }
@@ -113,13 +109,9 @@ static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header,
                                       void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  if (header->_hash != e->_hash) {
-    // first compare hash values
-    return false;
-  }
-
   // only after that compare actual keys
-  return (strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (header->_hash == e->_hash &&
+          strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,10 +121,8 @@ static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header,
 static inline bool IsEqualHashElement (char const* key, uint64_t hash, void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  if (hash != e->_hash) {
-    return false;
-  }
-  return (strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (hash == e->_hash && 
+          strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 // -----------------------------------------------------------------------------
@@ -147,11 +137,13 @@ int TRI_InitPrimaryIndex (TRI_primary_index_t* idx) {
   idx->_nrAlloc = 0;
   idx->_nrUsed  = 0;
 
-  if (nullptr == (idx->_table = (void**) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(void*) * INITIAL_SIZE, true))) {
+  idx->_table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (InitialSize() * sizeof(void*)), true));
+
+  if (idx->_table == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  idx->_nrAlloc = INITIAL_SIZE;
+  idx->_nrAlloc = InitialSize();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -182,13 +174,21 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
   }
 
   // compute the hash
-  uint64_t hash = TRI_FnvHashString((char const*) key);
-  uint64_t i = hash % idx->_nrAlloc;
+  uint64_t const hash = TRI_FnvHashString((char const*) key);
+  uint64_t const n = idx->_nrAlloc;
+  uint64_t i, k;
+
+  i = k = hash % n;
+  
+  TRI_ASSERT_EXPENSIVE(n > 0);
 
   // search the table
-  while (idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i])) {
-    i = TRI_IncModU64(i, idx->_nrAlloc);
+  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   // return whatever we found
   return idx->_table[i];
@@ -204,19 +204,26 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
                                void const** found) {
   *found = nullptr;
 
-  // check for out-of-memory
-  if (idx->_nrAlloc == idx->_nrUsed) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+  if (idx->_nrAlloc < 2 * idx->_nrUsed) {
+    // check for out-of-memory
+    if (! ResizePrimaryIndex(idx, (uint64_t) (2 * idx->_nrAlloc + 1), false)) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
   }
 
-  // compute the hash
-  uint64_t hash = header->_hash;
-  uint64_t i = hash % idx->_nrAlloc;
+  uint64_t const n = idx->_nrAlloc;
+  uint64_t i, k;
 
-  // search the table
-  while (idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i])) {
-    i = TRI_IncModU64(i, idx->_nrAlloc);
+  TRI_ASSERT_EXPENSIVE(n > 0);
+
+  i = k = header->_hash % n;
+  
+  for (; i < n && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   void* old = idx->_table[i];
 
@@ -227,23 +234,9 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
     return TRI_ERROR_NO_ERROR;
   }
 
-  // if we were adding and the table is more than half full, extend it
-  if (idx->_nrAlloc < 2 * idx->_nrUsed) {
-    if (! ResizePrimaryIndex(idx, (uint32_t) (2 * idx->_nrAlloc) + 1)) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    // now we need to recalc the position
-    i = hash % idx->_nrAlloc;
-    // search the table
-    while (idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i])) {
-      i = TRI_IncModU64(i, idx->_nrAlloc);
-    }
-  }
-  
   // add a new element to the associative idx
   idx->_table[i] = (void*) header;
-  idx->_nrUsed++;
+  ++idx->_nrUsed;
 
   return TRI_ERROR_NO_ERROR; 
 }
@@ -254,13 +247,19 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
 
 void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
                                  void const* key) {
-  uint64_t hash = TRI_FnvHashString((char const*) key);
-  uint64_t i = hash % idx->_nrAlloc;
+  uint64_t const hash = TRI_FnvHashString((char const*) key);
+  uint64_t const n = idx->_nrAlloc;
+  uint64_t i, k;
+
+  i = k = hash % n;
 
   // search the table
-  while (idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i])) {
-    i = TRI_IncModU64(i, idx->_nrAlloc);
+  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   // if we did not find such an item return false
   if (idx->_table[i] == nullptr) {
@@ -268,23 +267,27 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   }
 
   // remove item
-  void*old = idx->_table[i];
+  void* old = idx->_table[i];
   idx->_table[i] = nullptr;
   idx->_nrUsed--;
 
   // and now check the following places for items to move here
-  uint64_t k = TRI_IncModU64(i, idx->_nrAlloc);
+  k = TRI_IncModU64(i, n);
 
   while (idx->_table[k] != nullptr) {
-    uint64_t j = (((TRI_doc_mptr_t const*) idx->_table[k])->_hash) % idx->_nrAlloc;
+    uint64_t j = (((TRI_doc_mptr_t const*) idx->_table[k])->_hash) % n;
 
-    if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
+    if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       idx->_table[i] = idx->_table[k];
       idx->_table[k] = nullptr;
       i = k;
     }
 
-    k = TRI_IncModU64(k, idx->_nrAlloc);
+    k = TRI_IncModU64(k, n);
+  }
+
+  if (idx->_nrUsed == 0) {
+    ResizePrimaryIndex(idx, InitialSize(), true);
   }
 
   // return success

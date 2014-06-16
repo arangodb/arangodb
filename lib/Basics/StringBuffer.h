@@ -389,11 +389,21 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the first characters
+/// @brief removes the first characters and clears the remaining buffer space
 ////////////////////////////////////////////////////////////////////////////////
 
         StringBuffer& erase_front (size_t len) {
           TRI_EraseFrontStringBuffer(&_buffer, len);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the first characters but does not clear the remaining 
+/// buffer space
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& move_front (size_t len) {
+          TRI_MoveFrontStringBuffer(&_buffer, len);
           return *this;
         }
 

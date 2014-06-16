@@ -45,13 +45,12 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphCreationSuite() {
-
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
-  var vn1 = "UnitTestVerticies1";
-  var vn2 = "UnitTestVerticies2";
-  var vn3 = "UnitTestVerticies3";
-  var vn4 = "UnitTestVerticies4";
+  var vn1 = "UnitTestVertices1";
+  var vn2 = "UnitTestVertices2";
+  var vn3 = "UnitTestVertices3";
+  var vn4 = "UnitTestVertices4";
   var gn = "UnitTestGraph";
   var edgeDef = graph._edgeDefinitions(
     graph._undirectedRelationDefinition(rn, vn1),
@@ -564,8 +563,11 @@ function GeneralGraphCreationSuite() {
         g2 = graph._create(gN2, [dr2]);
 
       assertEqual([dr1], g1.__edgeDefinitions);
+      g1._addOrphanCollection(vc3);
+      assertEqual([vc3], g1._getOrphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
+      assertEqual([], g1._getOrphanCollections());
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
 
@@ -665,7 +667,8 @@ function GeneralGraphCreationSuite() {
         vc2 = prefix + "VertexCol2",
         vc3 = prefix + "VertexCol3",
         vc4 = prefix + "VertexCol4",
-        vc5 = prefix + "VertexCol5";
+        vc5 = prefix + "VertexCol5",
+        vc6 = prefix + "VertexCol6";
       try {
         graph._drop(gN1);
       } catch(ignore) {
@@ -681,11 +684,17 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1, dr3]),
         g2 = graph._create(gN2, [dr1]);
 
+      g1._addOrphanCollection(vc4);
+      g2._addOrphanCollection(vc5);
+      g2._addOrphanCollection(vc6);
       g1._editEdgeDefinitions(dr2, true);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
       assertTrue(db._collection(vc1) === null);
       assertFalse(db._collection(vc2) === null);
+      assertEqual([], g1._getOrphanCollections());
+      g2 = graph._graph(gN2);
+      assertEqual([vc6], g2._getOrphanCollections());
 
       try {
         graph._drop(gN1);
@@ -1159,7 +1168,7 @@ function ChainedFluentAQLResultsSuite() {
 
     tearDown: dropData,
 
-    test_getAllVerticiesResultingAQL: function() {
+    test_getAllVerticesResultingAQL: function() {
       var query = g._vertices();
       var stmt = query.printQuery();
       assertEqual(stmt, plainVertexQueryStmt(0));
@@ -1167,7 +1176,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getAllVerticies: function() {
+    test_getAllVertices: function() {
       var result = g._vertices().toArray();
       assertEqual(result.length, 7);
       var sorted = _.sortBy(result, "name");
@@ -1206,7 +1215,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesById: function() {
+    test_getVerticesById: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([a_id, b_id]).toArray();
@@ -1234,7 +1243,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, uaName);
     },
 
-    test_getVerticiesByExampleResultingAQL: function() {
+    test_getVerticesByExampleResultingAQL: function() {
       var query = g._vertices([{
         name: uaName
       },{
@@ -1249,7 +1258,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesByExample: function() {
+    test_getVerticesByExample: function() {
       var result = g._vertices([{
         name: uaName
       },{
@@ -1261,7 +1270,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, p1Name);
     },
 
-    test_getVerticiesByExampleAndIdMixResultingAQL: function() {
+    test_getVerticesByExampleAndIdMixResultingAQL: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var query = g._vertices([{
         name: uaName
@@ -1280,7 +1289,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticiesByExampleAndIdMix: function() {
+    test_getVerticesByExampleAndIdMix: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([{
         name: uaName
@@ -2365,6 +2374,7 @@ function GeneralGraphCommonNeighborsSuite() {
 
     testCommonNeighborsIn: function () {
       actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
+
       assertEqual(actual[0][v3][v6][0]._id, v2);
       assertEqual(actual[1][v5][v8][0]._id, v3);
       assertEqual(actual[1][v5][v7][0]._id, v3);
@@ -2379,12 +2389,10 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[1][v5][0][v8] , 1);
       assertEqual(actual[1][v5][1][v7] , 1);
       assertEqual(actual[2][v6][0][v3] , 1);
-      assertEqual(actual[3][v7][0][v5] , 1);
-      assertEqual(actual[3][v7][1][v8] , 1);
-
+      assertEqual(actual[3][v7][1][v5] , 1);
+      assertEqual(actual[3][v7][0][v8] , 1);
       assertEqual(actual[4][v8][0][v5] , 1);
       assertEqual(actual[4][v8][1][v7] , 1);
-
     },
 
 
@@ -2441,10 +2449,10 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[6][v7][0]._id  , v4);
       assertEqual(actual[6][v7][1]._id  , v6);
       assertEqual(actual[6][v7][2]._id  , v8);
-      assertEqual(actual[7][v8][0]._id  , v4);
-      assertEqual(actual[7][v8][1]._id  , v6);
-      assertEqual(actual[7][v8][2]._id  , v7);
-      assertEqual(actual[7][v8][3]._id  , v3);
+      assertEqual(actual[7][v8][0]._id  , v3);
+      assertEqual(actual[7][v8][1]._id  , v4);
+      assertEqual(actual[7][v8][2]._id  , v6);
+      assertEqual(actual[7][v8][3]._id  , v7);
 
       actual = testGraph._amountCommonProperties({} ,{} ,{});
       assertEqual(actual, [
