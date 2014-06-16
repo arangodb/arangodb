@@ -4642,13 +4642,15 @@ function TRAVERSAL_FUNC (func,
     maxIterations: params.maxIterations,
     uniqueness: params.uniqueness,
     expander: direction,
+    direction: direction,
     strategy: params.strategy,
     order: params.order,
     itemOrder: params.itemOrder,
     startVertex : startVertex,
     endVertex : endVertex,
     weight : params.weight,
-    defaultWeight : params.defaultWeight
+    defaultWeight : params.defaultWeight,
+    prefill : params.prefill
 
   };
 
@@ -4848,18 +4850,6 @@ function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
   return Infinity;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief visitor callback function for traversal
-////////////////////////////////////////////////////////////////////////////////
-
-function TRAVERSAL_SHORTEST_PATH_VISITOR (config, result, vertex, path) {
-  "use strict";
-
-  if (config.endVertex && config.endVertex === vertex._id) {
-    result.push(CLONE({ vertex: vertex, path: path , startVertex : config.startVertex}));
-  }
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
@@ -4869,21 +4859,78 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
   "use strict";
 
   if (config.endVertex && config.endVertex === vertex._id) {
+    var subPaths = [];
     var dist = 0;
-    if (config.weight) {
-      path.edges.forEach(function (e) {
+    path.edges.forEach(function (e) {
+      if (config.weight) {
         if (typeof e[config.weight] === "number") {
           dist = dist + e[config.weight];
         } else if (config.defaultWeight) {
           dist = dist + config.defaultWeight;
         }
-      });
-    } else {
-      dist = path.edges.length;
-    }
+      } else {
+        dist++;
+      }
+    });
     result.push(
       CLONE({ vertex: vertex, distance: dist , path: path , startVertex : config.startVertex})
     );
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
+  "use strict";
+  if (config.endVertex && config.endVertex === vertex._id) {
+    path.vertices.forEach(function (from) {
+      path.vertices.forEach(function (to) {
+        if (config.prefill.indexOf(JSON.stringify({ from : TO_ID(from), to :  TO_ID(to)})) !== -1) {
+          return;
+        }
+        var positionFrom = path.vertices.indexOf(from);
+        var positionTo = path.vertices.indexOf(to);
+        if (positionFrom > positionTo && config.direction !== 'any') {
+          return;
+        }
+        var startVertex = from._id;
+        var vertex = to;
+
+        var distance = 0;
+        var pathNew  = {vertices : [from], edges : []};
+        while (positionFrom !== positionTo) {
+          var edgePosition;
+          if (positionFrom > positionTo) {
+            edgePosition = positionFrom-1;
+          } else {
+            edgePosition = positionFrom;
+          }
+          if (positionFrom > positionTo) {
+            positionFrom = positionFrom -1;
+          } else {
+            positionFrom ++;
+          }
+          pathNew.vertices.push(path.vertices[positionFrom]);
+          pathNew.edges.push(path.edges[edgePosition]);
+          if (config.weight) {
+            if (path.edges[edgePosition][config.weight]  &&
+              typeof path.edges[edgePosition][config.weight] === "number") {
+              distance = distance + path.edges[edgePosition][config.weight];
+            } else if (config.defaultWeight) {
+              distance = distance + config.defaultWeight;
+            }
+          } else {
+            distance++;
+          }
+        }
+        result.push(
+          CLONE({ vertex: vertex, distance: distance , path: pathNew , startVertex : startVertex})
+        );
+      });
+    });
   }
 }
 
@@ -5125,6 +5172,8 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   return result;
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate shortest paths by dijkstra
 ////////////////////////////////////////////////////////////////////////////////
@@ -5136,17 +5185,29 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options)
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
   params = SHORTEST_PATH_PARAMS(params);
-  params.visitor =  TRAVERSAL_DISTANCE_VISITOR;
+  params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
   var result = [];
+
+  var calculated = {};
   graphData.fromVertices.forEach(function (v) {
     graphData.toVertices.forEach(function (t) {
+      if (calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]) {
+        result.push(calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]);
+        return;
+      }
+      params.prefill = Object.keys(calculated);
       var e = TRAVERSAL_FUNC("GENERAL_GRAPH_SHORTEST_PATH",
         factory,
         TO_ID(v),
         TO_ID(t),
         options.direction,
         params);
-      result = result.concat(e);
+      e.forEach(function (f) {
+        if (TO_ID(v) === f.startVertex &&  TO_ID(t) === f.vertex._id) {
+          result.push(f);
+        }
+        calculated[JSON.stringify({ from : f.startVertex, to : f.vertex._id})] = f;
+      });
     });
   });
   result.forEach(function (r) {
@@ -5425,11 +5486,12 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_distance
 ///
-/// `GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+/// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 /// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
-/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
+/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 /// It does not return the actual path but only the distance between two vertices.
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
@@ -5967,7 +6029,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
@@ -5979,7 +6041,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// A route planner example, all common outbound neighbors of munich with any other location
 /// which have a maximal depth of 2 :
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
@@ -6259,7 +6321,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
 /// ~ var db = require("internal").db;
@@ -6448,7 +6510,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
 /// ~ var db = require("internal").db;
@@ -6538,7 +6600,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness3}
 /// ~ var db = require("internal").db;
@@ -6619,7 +6681,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all locations.
+/// A route planner example, the absolute betweenness of all locations.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness2}
@@ -6632,7 +6694,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
 /// ~ var db = require("internal").db;
@@ -6740,7 +6802,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all cities regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
 /// ~ var db = require("internal").db;
@@ -6827,7 +6889,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the cradius of the graph regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
 /// ~ var db = require("internal").db;
@@ -6906,7 +6968,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, tthe diameter of the graph.
+/// A route planner example, the diameter of the graph.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter2}
@@ -6919,7 +6981,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the diameter of the graph regarding only
-/// outbound pathes.
+/// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter3}
 /// ~ var db = require("internal").db;

@@ -1472,6 +1472,16 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
 
 
+      actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen')");
+      assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), 0.6);
+      assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.75);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Emil"].toFixed(2), 0.75);
+      assertEqual(actual[0]["UnitTests_Frankfurter/Fritz"].toFixed(1), 0.6);
+      assertEqual(actual[0]["UnitTests_Hamburger/Caesar"].toFixed(1), 0.6);
+      assertEqual(actual[0]["UnitTests_Hamburger/Dieter"], 1);
+      assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 1);
+
+
       actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"], 1);

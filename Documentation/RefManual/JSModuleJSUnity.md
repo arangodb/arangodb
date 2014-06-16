@@ -36,18 +36,4 @@ Then you can run the test suite using @FN{jsunity.runTest}
     2012-01-28T19:10:23Z [10671] INFO 0 tests failed
     2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
 
-Running jsUnity Tests with Coverage{#jsUnityRunningCoverage}
-============================================================
-
-You can use the coverage tool <a
-href="https://github.com/visionmedia/node-jscoverage">@LIT{node-jscoverage}</a>.
-
-Assume that your file live in a directory called `lib`. Use
-
-    node-jscoverage lib lib-cov
-
-to create a copy of the JavaScript files with coverage information.  Start the
-ArangoDB with these files and use @FN{jsunity.runCoverage} instead of
-@FN{jsunity.runTest}.
-
 @BNAVIGATE_jsUnity

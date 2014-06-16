@@ -60,7 +60,8 @@ def fetch_comments(dirpath):
                         if ("@startDocuBlock" in _text) or \
                            ("@endDocuBlock" in _text):
                             fh.write("<!-- %s -->\n\n" % _text)
-                        elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                        elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
+                            "@EXAMPLE_ARANGOSH_RUN" in _text):
                           shouldIgnoreLine = True
                           _filename = re.search("{(.*)}", _text).group(1)
                           dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
@@ -70,7 +71,8 @@ def fetch_comments(dirpath):
                             print "Could not find code for " + _filename
                         else:
                             fh.write("%s\n" % _text)
-                      elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                      elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
+                          "@END_EXAMPLE_ARANGOSH_RUN" in _text):
                         shouldIgnoreLine = False
 
     fh.close()
