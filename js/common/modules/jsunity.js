@@ -28,6 +28,7 @@
 var internal = require("internal");
 var fs = require("fs");
 var console = require("console");
+var _ = require("underscore");
 
 var TOTAL = 0;
 var PASSED = 0;
@@ -395,15 +396,14 @@ function RunCoverage (path, files) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs tests from command-line
+/// @brief runs all jsunity tests
 ////////////////////////////////////////////////////////////////////////////////
 
-function RunCommandLineTests () {
+function RunJSUnityTests (tests) {
   var result = true;
-  var unitTests = internal.unitTests();
 
-  for (var i = 0;  i < unitTests.length;  ++i) {
-    var file = unitTests[i];
+  for (var i = 0;  i < tests.length;  ++i) {
+    var file = tests[i];
     print();
     print("running tests from file '" + file + "'");
 
@@ -420,6 +420,41 @@ function RunCommandLineTests () {
 
     internal.wait(0); // force GC
   }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs all jsunity tests
+////////////////////////////////////////////////////////////////////////////////
+
+function RunJasmineTests (testFiles) {
+  if (testFiles.length > 0) {
+    var tests = _.map(testFiles, function (x) { return fs.read(x); }),
+      jasmine = require('jasmine');
+
+    print('\nRunning Jasmine Tests: ' + testFiles.join(', '));
+    return jasmine.executeTestSuite(tests);
+  } else {
+    return true;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs tests from command-line
+////////////////////////////////////////////////////////////////////////////////
+
+function RunCommandLineTests () {
+  var result = true,
+    unitTests = internal.unitTests(),
+    isSpecRegEx = /.+spec.js/,
+    isSpec = function(unitTest) {
+      return isSpecRegEx.test(unitTest);
+    },
+    jasmine = _.filter(unitTests, isSpec),
+    jsUnity = _.reject(unitTests, isSpec);
+
+  result = RunJSUnityTests(jsUnity) && RunJasmineTests(jasmine);
 
   internal.setUnitTestsResult(result);
 }
