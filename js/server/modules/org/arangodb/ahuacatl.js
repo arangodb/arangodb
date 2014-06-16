@@ -5281,11 +5281,12 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_distance
 ///
-/// `GENERAL_GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
+/// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 /// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSECTION GRAPH_SHORTEST_PATH).
 /// It does not return the actual path but only the distance between two vertices.
+/// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
@@ -5823,7 +5824,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
@@ -5835,7 +5836,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// A route planner example, all common outbound neighbors of munich with any other location
 /// which have a maximal depth of 2 :
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
