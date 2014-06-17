@@ -198,7 +198,8 @@ namespace triagens {
 
         HMAC(evp_md, key, (int) keyLength, (const unsigned char*) message, messageLen, md, &md_len);
 
-        string result = StringUtils::encodeBase64(string((char*)md, md_len));
+        // return value as hex
+        string result = StringUtils::encodeHex(string((char*)md, md_len));
         TRI_SystemFree(md);
 
         return result;
