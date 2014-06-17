@@ -74,7 +74,7 @@ TRI_headers_t::TRI_headers_t ()
     _nrLinked(0),
     _totalSize(0) {
 
-  TRI_InitVectorPointer2(&_blocks, TRI_UNKNOWN_MEM_ZONE, 8);
+  TRI_InitVectorPointer2(&_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,10 +377,10 @@ TRI_doc_mptr_t* TRI_headers_t::request (size_t size) {
     TRI_ASSERT(_begin != nullptr);
     TRI_ASSERT(_end != nullptr);
 
-    _end->_next = result;
-    result->_prev        = _end;
-    result->_next        = nullptr;
-    _end        = result;
+    _end->_next   = result;
+    result->_prev = _end;
+    result->_next = nullptr;
+    _end          = result;
   }
 
   _nrAllocated++;
@@ -410,6 +410,25 @@ void TRI_headers_t::release (TRI_doc_mptr_t* header,
 
   header->setDataPtr(_freelist); // ONLY IN HEADERS
   _freelist = header;
+
+  if (_nrAllocated == 0 && _blocks._length >= 8) {
+    // if this was the last header, we can safely reclaim some
+    // memory by freeing all already-allocated blocks and wiping the freelist
+    // we only do this if we had allocated 8 blocks of headers
+    // this limit is arbitrary, but will ensure we only free memory if 
+    // it is sensible and not everytime the last document is removed
+
+    for (size_t i = 0;  i < _blocks._length;  ++i) {
+      delete[] static_cast<TRI_doc_mptr_t*>(_blocks._buffer[i]);
+      _blocks._buffer[i] = nullptr;
+    }
+
+    // set length to 0
+    _blocks._length = 0;
+    _freelist = nullptr;
+    _begin = nullptr;
+    _end = nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

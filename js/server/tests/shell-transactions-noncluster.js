@@ -3300,6 +3300,48 @@ function transactionCrossCollectionSuite () {
       assertEqual([ "a1" ], sortedKeys(c1));
       assertEqual([ "b1" ], sortedKeys(c2));
       assertEqual(1, c2.document("b1").a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: unload / reload after failed transactions
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnloadReloadFailedTrx : function () {
+      c1 = db._create(cn1);
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key: "a" + i, a: i });
+      }
+      
+      var obj = {
+        collections : {
+          write: [ cn1 ],
+        },
+        action : function () {
+          var i;
+          for (i = 0; i < 100; ++i) {
+            c1.save({ _key: "test" + i });
+          }
+        
+          throw "rollback";  
+        }
+      };
+      
+      for (i = 0; i < 50; ++i) {
+        try {
+          TRANSACTION(obj);
+          fail();
+        }
+        catch (err) {
+        }
+      }
+
+      assertEqual(10, c1.count());
+ 
+      testHelper.waitUnload(c1);
+      
+      assertEqual(10, c1.count());
     }
 
   };
@@ -4049,37 +4091,6 @@ if (internal.debugCanUseFailAt()) {
 }
 
 return jsunity.done();
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback in case of a server-side fail
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertServerFailuresMultiConstraint : function () {
-      internal.debugClearFailAt();
-      db._drop(cn);
-      c = db._create(cn);
-      c.save({ _key: "test9", a: 1 });
-
-      try {
-        TRANSACTION({ 
-          collections: {
-            write: [ cn ],
-          },
-          action: function () {
-            for (var i = 0; i < 10; ++i) {
-              c.save({ _key: "test" + i, a: 10 });
-            }
-          }
-        });
-      }
-      catch (err) {
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-      }
-
-      assertEqual(1, c.count());
-      assertEqual(1, c.document("test9").a);
-    },
-*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

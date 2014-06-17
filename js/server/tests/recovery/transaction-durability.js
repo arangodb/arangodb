@@ -7,23 +7,22 @@ var jsunity = require("jsunity");
 function runSetup () {
   internal.debugClearFailAt();
   
-  var c = [ ], i, j;
-  for (i = 0; i < 10; ++i) {
-    c[i] = db._create("UnitTestsRecovery" + i);
+  db._drop("UnitTestsRecovery");
+  var c = db._create("UnitTestsRecovery");
 
-    for (j = 0; j < 49; ++j) {
-      c[i].save({ a: j, b: "test" + j });
+  db._executeTransaction({
+    collections: {
+      write: "UnitTestsRecovery"
+    },
+    action: function () {
+      var db = require("org/arangodb").db;
+
+      var i, c = db._collection("UnitTestsRecovery");
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
+      }
     }
-
-    c[i].save({ a: 49, b: "test49" }, true); // sync 
-  }
-
-  internal.debugSetFailAt("WalSlotCrc");
-
-  // now corrupt all the collections
-  for (i = 0; i < 10; ++i) {
-    c[i].save({ a: 49, b: "test49" });
-  }
+  });
 
   internal.debugSegfault("crashing server");
 }
@@ -42,18 +41,17 @@ function recoverySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether we can restore the 10 collections
+/// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testRecovery : function () {
-      var i, j, c;
-      for (i = 0; i < 10; ++i) {
-        c = db._collection("UnitTestsRecovery" + i);
-
-        assertEqual(50, c.count());
-        for (j = 0; j < 50; ++j) {
-          assertEqual(j, c.document("test" + j).a); 
-        }
+    testTransactionDurability : function () {
+      var i, c = db._collection("UnitTestsRecovery");
+        
+      assertEqual(100, c.count());
+      for (i = 0; i < 100; ++i) {
+        assertEqual("test" + i, c.document("test" + i)._key); 
+        assertEqual("test" + i, c.document("test" + i).value1); 
+        assertEqual(i, c.document("test" + i).value2); 
       }
     }
         

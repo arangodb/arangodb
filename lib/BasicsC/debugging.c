@@ -110,32 +110,20 @@ void TRI_SegfaultDebugging (char const* message) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
 bool TRI_ShouldFailDebugging (char const* value) {
-  char* found;
-  char* checkValue;
+  char* found = NULL;
   
-  if (FailurePoints == NULL) {
-    // try without the lock first
-    return false;
-  }
-
-  checkValue = MakeValue(value);
-
-  if (checkValue == NULL) {
-    return false;
-  }
-
   TRI_ReadLockReadWriteLock(&FailurePointsLock);
   
-  if (FailurePoints == NULL) {
-    found = NULL;
-  }
-  else {
-    found = strstr(FailurePoints, checkValue);
+  if (FailurePoints != NULL) {
+    char* checkValue = MakeValue(value);
+
+    if (checkValue != NULL) {
+      found = strstr(FailurePoints, checkValue);
+      TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
+    }
   }
   
   TRI_ReadUnlockReadWriteLock(&FailurePointsLock);
-
-  TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
 
   return (found != NULL);
 }

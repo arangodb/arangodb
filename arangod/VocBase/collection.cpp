@@ -534,10 +534,10 @@ static bool CheckCollection (TRI_collection_t* collection) {
           filename = TRI_Concatenate2File(collection->_directory, file);
         }
 
-        TRI_ASSERT(filename != NULL);
-        datafile = TRI_OpenDatafile(filename);
+        TRI_ASSERT(filename != nullptr);
+        datafile = TRI_OpenDatafile(filename, true);
 
-        if (datafile == NULL) {
+        if (datafile == nullptr) {
           collection->_lastError = TRI_errno();
           LOG_ERROR("cannot open datafile '%s': %s", filename, TRI_last_error());
 
@@ -785,7 +785,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
     char* filename = TRI_AtVectorString(vector, i);
     LOG_DEBUG("iterating over collection journal file '%s'", filename);
     
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename);
+    TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
 
     if (datafile != nullptr) {
       TRI_IterateDatafile(datafile, iterator, data);
@@ -1767,7 +1767,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
       }
       
       // open the datafile, and push it into a vector of datafiles
-      df = TRI_OpenDatafile(fqn);
+      df = TRI_OpenDatafile(fqn, true);
 
       if (df == NULL) {
         res = TRI_errno();
@@ -1886,7 +1886,7 @@ bool TRI_IterateTicksCollection (const char* const path,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSystemNameCollection (char const* name) {
-  if (name == NULL) {
+  if (name == nullptr) {
     return false;
   }
 

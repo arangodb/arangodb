@@ -195,7 +195,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not save attribute marker in log");
+      LOG_WARNING("could not save attribute marker in log: %s", TRI_errno_string(slotInfo.errorCode));
       return 0;
     }
 
@@ -344,7 +344,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
     
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not save shape marker in log");
+      LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(slotInfo.errorCode));
       return nullptr;
     }
 
@@ -652,12 +652,16 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // remove the old marker
     // and re-insert the marker with the new pointer
     void* f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
-    TRI_ASSERT(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
   
     // same for the shape dictionary
     // delete and re-insert 
     f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, true);
-    TRI_ASSERT(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
   }
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
@@ -669,14 +673,16 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // are identical in old and new marker) 
     // and re-insert same attribute with adjusted pointer
     void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
-
-    // TODO: sometimes this assertion fails. why?
-    TRI_ASSERT(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, true);
-    TRI_ASSERT(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
   }
 
   return TRI_ERROR_NO_ERROR;

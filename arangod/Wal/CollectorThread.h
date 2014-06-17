@@ -32,6 +32,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "VocBase/barrier.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
@@ -54,16 +55,23 @@ namespace triagens {
 
     struct CollectorOperation {
       CollectorOperation (char const* datafilePosition,
+                          TRI_voc_size_t datafileMarkerSize,
                           char const* walPosition,
-                          TRI_voc_fid_t fid)
+                          TRI_voc_fid_t datafileId)
         : datafilePosition(datafilePosition),
+          datafileMarkerSize(datafileMarkerSize),
           walPosition(walPosition),
-          fid(fid) {
+          datafileId(datafileId) {
+        TRI_ASSERT_EXPENSIVE(datafilePosition != nullptr);
+        TRI_ASSERT_EXPENSIVE(datafileMarkerSize > 0);
+        TRI_ASSERT_EXPENSIVE(walPosition != nullptr);
+        TRI_ASSERT_EXPENSIVE(datafileId > 0);
       }
 
-      char const*         datafilePosition;
-      char const*         walPosition;
-      TRI_voc_fid_t const fid;
+      char const*           datafilePosition;
+      TRI_voc_size_t const  datafileMarkerSize;
+      char const*           walPosition;
+      TRI_voc_fid_t const   datafileId;
     };
 
 // -----------------------------------------------------------------------------
@@ -84,6 +92,7 @@ namespace triagens {
           logfile(logfile),
           totalOperationsCount(totalOperationsCount),
           operations(new std::vector<CollectorOperation>()),
+          barriers(),
           dfi(),
           lastFid(0),
           lastDatafile(nullptr) {
@@ -95,6 +104,25 @@ namespace triagens {
         if (operations != nullptr) {
           delete operations;
         }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a barrier
+////////////////////////////////////////////////////////////////////////////////
+
+      void addBarrier (TRI_barrier_t* barrier) {
+        barriers.push_back(barrier);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free all barriers
+////////////////////////////////////////////////////////////////////////////////
+
+      void freeBarriers () {
+        for (auto it = barriers.begin(); it != barriers.end(); ++it) {
+          TRI_FreeBarrier((*it));
+        }
+        barriers.clear();
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +154,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::vector<CollectorOperation>* operations;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barriers held by the operations
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<TRI_barrier_t*> barriers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile info cache, updated when the collector transfers markers

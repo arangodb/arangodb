@@ -1473,10 +1473,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   // start helper threads
   // .............................................................................
 
-  // start compactor thread
-  TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, NULL, "[compactor]", TRI_CompactorVocBase, vocbase);
-
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
@@ -1606,6 +1602,17 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   TRI_DestroyCompactorVocBase(vocbase);
   TRI_DestroyInitialVocBase(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the compactor thread
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_StartCompactorVocBase (TRI_vocbase_t* vocbase) {
+  LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
+  // start compactor thread
+  TRI_InitThread(&vocbase->_compactor);
+  TRI_StartThread(&vocbase->_compactor, NULL, "[compactor]", TRI_CompactorVocBase, vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

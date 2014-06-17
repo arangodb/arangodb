@@ -489,7 +489,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
   
-  triagens::arango::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
+  triagens::arango::CollectionGuard collectionGuard(vocbase, cache->collectionId, ! _inRecovery);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -498,117 +498,145 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   triagens::arango::TransactionBase trx(true);
 
   TRI_document_collection_t* document = collection->_collection;
+          
+  if (! TRI_TryReadLockReadWriteLock(&document->_compactionLock)) {
+    return TRI_ERROR_LOCK_TIMEOUT;
+  }
 
   // try to acquire the write lock on the collection
   if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
+    TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
     LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->_info._cid);
 
     return TRI_ERROR_LOCK_TIMEOUT;
   }
+ 
+  int res;
     
-  // now we have the write lock on the collection
-  LOG_TRACE("wal collector processing operations for collection '%s'", document->_info._name);
+  try { 
+    // now we have the write lock on the collection
+    LOG_TRACE("wal collector processing operations for collection '%s'", document->_info._name);
 
-  for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
-    auto operation = (*it);
+    for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
+      auto operation = (*it);
 
-    TRI_df_marker_t const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
-    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
-    TRI_voc_fid_t fid = operation.fid;
-  
-    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      TRI_doc_document_key_marker_t const* m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(operation.datafilePosition);
-      char const* key = operation.datafilePosition + m->_offsetKey;
+      TRI_df_marker_t const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
+      TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
+      TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
+      TRI_voc_fid_t const fid = operation.datafileId;
 
-      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+      TRI_ASSERT(walMarker != nullptr);
+      TRI_ASSERT(marker != nullptr);
+    
+      if (walMarker->_type == TRI_WAL_MARKER_DOCUMENT) {
+        wal::document_marker_t const* m = reinterpret_cast<wal::document_marker_t const*>(walMarker);
+        char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-      if (found == nullptr || found->_rid != m->_rid) {
-        // somebody inserted a new revision of the document
-        auto& dfi = createDfi(cache, fid);  
-        dfi._numberDead++;
-        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-        dfi._numberAlive--;
-        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
+        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+
+        if (found == nullptr || found->_rid != m->_revisionId) {
+          // somebody inserted a new revision of the document
+          auto& dfi = createDfi(cache, fid);  
+          dfi._numberDead++;
+          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi._numberAlive--;
+          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+        }
+        else {
+          // update cap constraint info
+          document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
+                                                 TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
+
+          // we can safely update the master pointer's dataptr value
+          found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+          found->_fid = fid;
+        }
+      }
+      else if (walMarker->_type == TRI_WAL_MARKER_EDGE) {
+        wal::edge_marker_t const* m = reinterpret_cast<wal::edge_marker_t const*>(walMarker);
+        char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
+        
+        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+
+        if (found == nullptr || found->_rid != m->_revisionId) {
+          // somebody inserted a new revision of the document
+          auto& dfi = createDfi(cache, fid);  
+          dfi._numberDead++;
+          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi._numberAlive--;
+          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+        }
+        else {
+          // update cap constraint info
+          document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
+                                                 TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
+
+          // we can safely update the master pointer's dataptr value
+          found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
+          found->_fid = fid;
+        }
+      }
+      else if (walMarker->_type == TRI_WAL_MARKER_REMOVE) {
+        wal::remove_marker_t const* m = reinterpret_cast<wal::remove_marker_t const*>(walMarker);
+        char const* key = reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
+        
+        TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+      
+        if (found != nullptr && found->_rid > m->_revisionId) {
+          // somebody re-created the document with a newer revision
+          auto& dfi = createDfi(cache, fid);  
+          dfi._numberDead++;
+          dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+          dfi._numberAlive--;
+          dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
+        }
+      }
+      else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+        // move the pointer to the attribute from WAL to the datafile
+        TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+      }
+      else if (walMarker->_type == TRI_WAL_MARKER_SHAPE) {
+        // move the pointer to the shape from WAL to the datafile
+        TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
       }
       else {
-        // update cap constraint info
-        document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
-                                               TRI_DF_ALIGN_BLOCK(marker->_size));
+        // a marker we won't care about
+      }
+    }
 
-        // we can safely update the master pointer's dataptr value
-        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
-        found->_fid = fid;
-      }
-    }
-    else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(operation.datafilePosition);
-      char const* key = operation.datafilePosition + m->base._offsetKey;
-      
-      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+    // finally update all datafile statistics
+    LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
+    updateDatafileStatistics(document, cache);
 
-      if (found == nullptr || found->_rid != m->base._rid) {
-        // somebody inserted a new revision of the document
-        auto& dfi = createDfi(cache, fid);  
-        dfi._numberDead++;
-        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-        dfi._numberAlive--;
-        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-      }
-      else {
-        // update cap constraint info
-        document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
-                                               TRI_DF_ALIGN_BLOCK(marker->_size));
+    // TODO: the following assertion is only true in a running system
+    // if we just started the server, we don't know how many uncollected operations we have!!
+    // TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+    document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
+    if (document->_uncollectedLogfileEntries < 0) {
+      document->_uncollectedLogfileEntries = 0;
+    }
 
-        // we can safely update the master pointer's dataptr value
-        found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
-        found->_fid = fid;
-      }
-    }
-    else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-      TRI_doc_deletion_key_marker_t const* m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(operation.datafilePosition);
-      char const* key = operation.datafilePosition + m->_offsetKey;
-      
-      TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-     
-      if (found != nullptr && found->_rid > m->_rid) {
-        // somebody re-created the document with a newer revision
-        auto& dfi = createDfi(cache, fid);  
-        dfi._numberDead++;
-        dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-        dfi._numberAlive--;
-        dfi._sizeAlive -= (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-      }
-    }
-    else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
-      // move the pointer to the attribute from WAL to the datafile
-      TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
-    }
-    else if (marker->_type == TRI_DF_MARKER_SHAPE) {
-      // move the pointer to the shape from WAL to the datafile
-      TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
-    }
-    else {
-      // a marker we won't care about (e.g. shapes and attributes)
-    }
+    cache->freeBarriers();
+
+    res = TRI_ERROR_NO_ERROR;
+  } 
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
-  // finally update all datafile statistics
-  LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
-  updateDatafileStatistics(document, cache);
-
-  // TODO: the following assertion is only true in a running system
-  // if we just started the server, we don't know how many uncollected operations we have!!
-  // TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
-  document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
-  if (document->_uncollectedLogfileEntries < 0) {
-    document->_uncollectedLogfileEntries = 0;
-  } 
-
+  // always release the locks
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+
+  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
   
-  LOG_TRACE("wal collector successfully processed operations for collection '%s'", document->_info._name);
+  LOG_TRACE("wal collector processed operations for collection '%s' with status: %s", 
+            document->_info._name,
+            TRI_errno_string(res));
   
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,6 +711,7 @@ int CollectorThread::collect (Logfile* logfile) {
       OperationsType const& ops = state.structuralOperations[cid];
 
       sortedOperations.insert(sortedOperations.begin(), ops.begin(), ops.end());
+      TRI_ASSERT_EXPENSIVE(sortedOperations.size() == ops.size());
     }
 
     // insert document operations - those are sorted by key, not by tick
@@ -744,7 +773,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_vocbase_t* vocbase = dbGuard.database();
   TRI_ASSERT(vocbase != nullptr);
 
-  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId, true);
+  triagens::arango::CollectionGuard collectionGuard(vocbase, collectionId, ! _inRecovery);
   TRI_vocbase_col_t* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
   
@@ -1185,6 +1214,8 @@ leave:
 
       // create a local datafile info struct
       createDfi(cache, datafile->_fid);
+
+      cache->addBarrier(TRI_CreateBarrierElement(&document->_barrierList));
     }
   }
 
@@ -1234,7 +1265,7 @@ void CollectorThread::finishMarker (char const* walPosition,
   TRI_ASSERT(document->_tickMax < tick);
   document->_tickMax = tick;
 
-  cache->operations->emplace_back(CollectorOperation(datafilePosition, walPosition, cache->lastFid));
+  cache->operations->emplace_back(CollectorOperation(datafilePosition, marker->_size, walPosition, cache->lastFid));
 }
 
 // Local Variables:

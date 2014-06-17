@@ -87,6 +87,22 @@ constexpr uint32_t MaxSlots () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to handle one marker during logfile inspection
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ScanMarkerTick (TRI_df_marker_t const* marker, 
+                            void* data, 
+                            TRI_datafile_t* datafile) { 
+  RecoverState* state = reinterpret_cast<RecoverState*>(data);
+
+  TRI_ASSERT(marker != nullptr);
+  TRI_ASSERT(marker->_tick >= state->lastTick);
+  state->lastTick = marker->_tick;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to handle one marker during recovery
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -394,6 +410,13 @@ bool LogfileManager::start () {
     LOG_ERROR("could not open WAL logfiles: %s", TRI_errno_string(res));
     return false;
   }
+
+  res = inspectLogfiles();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not inspect WAL logfiles: %s", TRI_errno_string(res));
+    return false;
+  }
   
   res = startAllocatorThread();
 
@@ -462,8 +485,6 @@ void LogfileManager::stop () {
 
   this->flush(true, true, false);
 
-//  waitForCollector(30.0);
-  
   // stop threads
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
@@ -655,9 +676,20 @@ void LogfileManager::signalSync () {
 /// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate (uint32_t size) {
+SlotInfo LogfileManager::allocate (void const* src,
+                                   uint32_t size) {
   if (! _allowWrites) {
-    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+    // no writes allowed
+    // check if this is a shape or attribute marker, which is allowed even in
+    // read-only mode
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
+
+    if (marker->_type != TRI_WAL_MARKER_ATTRIBUTE &&
+        marker->_type != TRI_WAL_MARKER_SHAPE) {
+      return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+    }
+
+    // fallthrough
   }
 
   if (size > MaxEntrySize()) {
@@ -691,7 +723,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t size,
                                                bool waitForSync) {
 
-  SlotInfo slotInfo = allocate(size);
+  SlotInfo slotInfo = allocate(src, size);
  
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -726,7 +758,7 @@ int LogfileManager::flush (bool waitForSync,
                            bool waitForCollector,
                            bool writeShutdownFile) {
   LOG_TRACE("about to flush active WAL logfile");
-
+  
   Logfile::IdType currentLogfileId;
   {
     READ_LOCKER(_logfilesLock);
@@ -1006,6 +1038,8 @@ Logfile* LogfileManager::getCollectableLogfile () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Logfile* LogfileManager::getRemovableLogfile () {
+  TRI_ASSERT(! _inRecovery);
+
   Logfile::IdType minId = UINT64_MAX;
 
   uint32_t numberOfLogfiles = 0;
@@ -1118,29 +1152,20 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
     usleep(100 * 1000);
   }
 }
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for the collector thread to finish its work
+/// @brief scan a single logfile for the max tick
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LogfileManager::waitForCollector (double maxWaitTime) {
-  double const end = TRI_microtime() + maxWaitTime;
-  LOG_TRACE("waiting for collector thread to finish");
+bool LogfileManager::scanLogfileTick (Logfile const* logfile,
+                                      RecoverState& state) {
+  TRI_ASSERT(logfile != nullptr);
 
-  // wait for the collector thread to finish the collection
-  while (true) {
-    if (! _collectorThread->hasQueuedOperations()) {
-      return true;
-    }
-
-    if (TRI_microtime() >= end) {
-      return false;
-    }
-
-    usleep(100 * 1000);
-  }
+  LOG_TRACE("scanning logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
+  
+  return TRI_IterateDatafile(logfile->df(), &ScanMarkerTick, static_cast<void*>(&state));
 }
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scan a single logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -1151,9 +1176,7 @@ bool LogfileManager::scanLogfile (Logfile const* logfile,
 
   LOG_TRACE("scanning logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
   
-  bool result = TRI_IterateDatafile(logfile->df(), &ScanMarker, static_cast<void*>(&state));
-
-  return result;
+  return TRI_IterateDatafile(logfile->df(), &ScanMarker, static_cast<void*>(&state));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1216,11 +1239,6 @@ bool LogfileManager::runRecovery () {
   // flush any open logfiles so the collector can copy over everything
   this->flush(true, true, false);
   
- /*
-  if (! waitForCollector(24 * 3600.0)) {
-    LOG_FATAL_AND_EXIT("waited too long for collector to finish");
-  } 
-  */
   {
     // reset the list of failed transactions
     WRITE_LOCKER(_logfilesLock);
@@ -1228,6 +1246,17 @@ bool LogfileManager::runRecovery () {
     _droppedDatabases.clear();
     _droppedCollections.clear();
   }
+
+  // unload all collections to reset statistics, start compactor threads etc.
+  res = TRI_InitDatabasesServer(_server);
+   
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  // TODO: how long must we sleep here?
+  sleep(3);
 
   // tell the collector that the recovery is over now
   _inRecovery = false;
@@ -1310,6 +1339,10 @@ int LogfileManager::readShutdownInfo () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerWriteShutdown") {
+    return TRI_ERROR_DEBUG;
+  }
+
   std::string const filename = shutdownFilename();
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -1487,6 +1520,44 @@ int LogfileManager::inventory () {
     }
   }
      
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect all found WAL logfiles
+/// this searches for the max tick in the logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::inspectLogfiles () {
+  LOG_TRACE("inspecting WAL logfiles");
+  
+  RecoverState state;
+  state.lastTick = 0;
+
+  // we're the only ones that access the logfiles at this point
+  // nevertheless, get the read-lock
+  {
+    READ_LOCKER(_logfilesLock);
+
+    // first iterate the logfiles in order and track which collections are in use
+    // this also populates a list of failed transactions
+    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      Logfile* logfile = (*it).second;
+
+      if (logfile != nullptr) {
+        if (! scanLogfileTick(logfile, state)) {
+          LOG_TRACE("WAL inspecting failed when scanning logfile '%s'", logfile->filename().c_str());
+          return TRI_ERROR_INTERNAL;
+        }
+      }
+
+      _hasFoundLastTick = true;
+    }
+  }
+
+  // update the tick with the max tick we found in the WAL
+  TRI_UpdateTickServer(state.lastTick);
+
   return TRI_ERROR_NO_ERROR;
 }
 
