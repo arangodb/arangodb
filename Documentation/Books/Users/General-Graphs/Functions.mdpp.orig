@@ -2,6 +2,17 @@
 
 This chapter describes various functions on a graph.
 
+!SECTION Get vertices from edges.
+
+!SUBSECTION Get vertex *from* of an edge
+
+<!-- @startDocuBlock JSF_general_graph_getFromVertex -->
+
+!SUBSECTION Get vertex *to* of an edge
+
+<!-- @startDocuBlock JSF_general_graph_getToVertex -->
+
+
 !SECTION _listCommonNeighbors
 
 <!-- @startDocuBlock JSF_general_graph_common_neighbors -->

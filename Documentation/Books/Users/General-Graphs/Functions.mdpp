@@ -2,8 +2,58 @@
 
 This chapter describes various functions on a graph.
 
-!SECTION _listCommonNeighbors
+!SECTION Get vertices from edges.
 
+!SUBSECTION Get vertex *from* of an edge
+
+Get the vertex of an edge defined as *_from*
+<br />
+`general-graph._getFromVertex(edgeId)`
+<br />
+Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   g._getFromVertex("relation/aliceAndBob")
+{ 
+  "name" : "Alice", 
+  "_id" : "female/alice", 
+  "_rev" : "236262839", 
+  "_key" : "alice" 
+}
+```
+<br />
+
+!SUBSECTION Get vertex *to* of an edge
+
+Get the vertex of an edge defined as *_to*
+<br />
+`general-graph._getToVertex(edgeId)`
+<br />
+Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh>   var g = examples.loadGraph("social");
+arangosh>   g._getToVertex("relation/aliceAndBob")
+{ 
+  "name" : "Bob", 
+  "_id" : "male/bob", 
+  "_rev" : "70784439", 
+  "_key" : "bob" 
+}
+```
+<br />
+
+
+!SECTION _listCommonNeighbors
 
 <br />
 `general_graph._listCommonNeighbors(vertex1Example, vertex2Examples,
