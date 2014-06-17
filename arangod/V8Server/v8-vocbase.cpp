@@ -5575,6 +5575,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
     o->Set(v8::String::New("position"), v8::Number::New(entry->_position));
     o->Set(v8::String::New("size"), v8::Number::New(entry->_size));
+    o->Set(v8::String::New("realSize"), v8::Number::New(entry->_realSize));
     o->Set(v8::String::New("tick"), V8TickId(entry->_tick));
     o->Set(v8::String::New("type"), v8::Number::New((int) entry->_type));
     o->Set(v8::String::New("status"), v8::Number::New((int) entry->_status));

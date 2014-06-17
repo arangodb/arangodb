@@ -218,11 +218,19 @@ TRI_df_scan_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scan result entry
+///
+/// status:
+///   1 - entry ok
+///   2 - empty entry
+///   3 - empty size
+///   4 - size too small
+///   5 - CRC failed
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_df_scan_entry_s {
   TRI_voc_size_t _position;
   TRI_voc_size_t _size;
+  TRI_voc_size_t _realSize;
   TRI_voc_tick_t _tick;
 
   TRI_df_marker_type_t _type;

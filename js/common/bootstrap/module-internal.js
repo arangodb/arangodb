@@ -10,7 +10,7 @@
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE, 
   SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
-  SYS_SHA256, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
+  SYS_HMAC, SYS_SHA256, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
@@ -557,6 +557,15 @@
   if (typeof SYS_GEN_RANDOM_SALT !== "undefined") {
     exports.genRandomSalt = SYS_GEN_RANDOM_SALT;
     delete SYS_GEN_RANDOM_SALT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hmac
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_HMAC !== "undefined") {
+    exports.hmac = SYS_HMAC;
+    delete SYS_HMAC;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
