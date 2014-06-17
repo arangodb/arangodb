@@ -828,6 +828,9 @@ int ArangoServer::startupServer () {
   }
 
   _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
+  
+  // finally flush the write-ahead log so all data in the WAL goes into the collections
+  wal::LogfileManager::instance()->flush(true, true, true);
 
   // setup the V8 actions
   if (startServer) {

@@ -347,7 +347,7 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
 /// @brief create a v8 collection id value from the internal collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
+static inline v8::Handle<v8::Value> V8CollectionId (TRI_voc_cid_t cid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
 
@@ -358,7 +358,7 @@ static inline v8::Handle<v8::Value> V8CollectionId (const TRI_voc_cid_t cid) {
 /// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
+static inline v8::Handle<v8::Value> V8TickId (TRI_voc_tick_t tick) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
@@ -369,7 +369,7 @@ static inline v8::Handle<v8::Value> V8TickId (const TRI_voc_tick_t tick) {
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
+static inline v8::Handle<v8::Value> V8RevisionId (TRI_voc_rid_t rid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
@@ -380,9 +380,9 @@ static inline v8::Handle<v8::Value> V8RevisionId (const TRI_voc_rid_t rid) {
 /// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> V8DocumentId (const string& collectionName,
-                                                  const string& key) {
-  const string id = DocumentHelper::assembleDocumentId(collectionName, key);
+static inline v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
+                                                  string const& key) {
+  string const id = DocumentHelper::assembleDocumentId(collectionName, key);
 
   return v8::String::New(id.c_str(), (int) id.size());
 }
@@ -6161,6 +6161,12 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// * *indexes.count*: The total number of indexes defined for the
 ///   collection, including the pre-defined indexes (e.g. primary index).
 /// * *indexes.size*: The total memory allocated for indexes in bytes.
+/// * *maxTick*: The tick of the last marker that was stored in a journal
+///   of the collection. This might be 0 if the collection does not yet have
+///   a journal.
+/// * *uncollectedLogfileEntries*: The number of markers in the write-aheads
+///   for this collection that have not been transferred in datafiles /
+///   journals of the collection.
 ///
 /// *Examples*
 ///
@@ -6255,6 +6261,9 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   result->Set(v8::String::New("indexes"), indexes);
   indexes->Set(v8::String::New("count"), v8::Number::New((double) info->_numberIndexes));
   indexes->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeIndexes));
+  
+  indexes->Set(v8::String::New("lastTick"), V8TickId(info->_tickMax));
+  indexes->Set(v8::String::New("uncollectedLogfileEntries"), v8::Number::New((double) info->_uncollectedLogfileEntries));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 

@@ -304,6 +304,7 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t  _authCache;
   TRI_read_write_lock_t      _authInfoLock;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
+  bool                       _hasCompactor;
 
   std::set<TRI_voc_tid_t>*   _oldTransactions;
 
@@ -438,6 +439,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StartCompactorVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the compactor thread
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StopCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load authentication information

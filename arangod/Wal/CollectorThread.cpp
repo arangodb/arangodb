@@ -324,6 +324,8 @@ void CollectorThread::signal () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectorThread::run () {
+  int counter = 0;
+
   while (true) {
     int stop = (int) _stop;
     bool worked = false;
@@ -356,7 +358,12 @@ void CollectorThread::run () {
       // sleep only if there was nothing to do
       CONDITION_LOCKER(guard, _condition);
 
-      guard.wait(Interval);
+      if (! guard.wait(Interval)) {
+        if (++counter > 10) {
+          LOG_TRACE("wal collector has queued operations: %d", (int) hasQueuedOperations());
+          counter = 0;
+        }
+      }
     }
     else if (stop == 1 && ! hasQueuedOperations()) {
       // no operations left to execute, we can exit
@@ -498,7 +505,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   triagens::arango::TransactionBase trx(true);
 
   TRI_document_collection_t* document = collection->_collection;
-          
+  
   if (! TRI_TryReadLockReadWriteLock(&document->_compactionLock)) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
@@ -664,7 +671,7 @@ int CollectorThread::collect (Logfile* logfile) {
   TRI_datafile_t* df = logfile->df();
 
   TRI_ASSERT(df != nullptr);
-
+    
   // create a state for the collector, beginning with the list of failed transactions 
   CollectorState state;
   state.failedTransactions = _logfileManager->getFailedTransactions();
@@ -779,6 +786,10 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   
   TRI_document_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
+  
+  LOG_TRACE("collector transferring markers for '%s', totalOperationsCount: %llu", 
+            document->_info._name,
+            (unsigned long long) totalOperationsCount);
 
   CollectorCache* cache = new CollectorCache(collectionId, 
                                              databaseId, 

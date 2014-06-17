@@ -366,7 +366,8 @@ int figuresOnCoordinator (string const& dbname,
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  
+   
+  // prefill with 0s 
   result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
   if (result == 0) {

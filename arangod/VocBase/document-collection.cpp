@@ -1932,6 +1932,9 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
   info->_shapefileSize    = 0;
   info->_numberShapefiles = 0;
 
+  info->_uncollectedLogfileEntries = document->_uncollectedLogfileEntries;
+  info->_tickMax = document->_tickMax;
+
   return info;
 }
 

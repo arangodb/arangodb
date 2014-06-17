@@ -101,6 +101,7 @@ void Slot::fill (void* src,
     
   TRI_DEBUG_INTENTIONAL_FAIL_IF("WalSlotCrc") {
     // intentionally corrupt the marker
+    LOG_WARNING("intentionally writing corrupt marker into datafile");
     marker->_crc = 0xdeadbeef;
   }
  

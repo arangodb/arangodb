@@ -300,6 +300,9 @@ typedef struct TRI_doc_collection_info_s {
   int64_t         _journalfileSize;
   int64_t         _compactorfileSize;
   int64_t         _shapefileSize;
+
+  TRI_voc_tick_t  _tickMax;
+  uint64_t        _uncollectedLogfileEntries;
 }
 TRI_doc_collection_info_t;
 

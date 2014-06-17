@@ -81,6 +81,7 @@ Slots::~Slots () {
 int Slots::flush (bool waitForSync) {
   Slot::TickType lastTick = 0;
   bool worked;
+  
   int res = closeLogfile(lastTick, worked);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -385,33 +386,34 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
           worked = true;
           return TRI_ERROR_NO_ERROR;
         }
-        else {
-          // fetch the next free logfile (this may create a new one)
-          // note: as we don't have a real marker to write the size does
-          // not matter (we use a size of 1 as  it must be > 0)
-          Logfile::StatusType status = newLogfile(1);
 
-          if (_logfile == nullptr) {
-            usleep(10 * 1000);
-            // try again in next iteration
-          }
-          else if (status == Logfile::StatusType::EMPTY) {
-            // inititialise the empty logfile by writing a header marker
-            int res = writeHeader(slot);
-            
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
+        TRI_ASSERT(_logfile == nullptr);
+        // fetch the next free logfile (this may create a new one)
+        // note: as we don't have a real marker to write the size does
+        // not matter (we use a size of 1 as  it must be > 0)
+        Logfile::StatusType status = newLogfile(1);
 
-            _logfileManager->setLogfileOpen(_logfile);
-          }
-          else {
-            TRI_ASSERT(status == Logfile::StatusType::OPEN);
-          }
+        if (_logfile == nullptr) {
+          usleep(10 * 1000);
+          // try again in next iteration
         }
+        else if (status == Logfile::StatusType::EMPTY) {
+          // inititialise the empty logfile by writing a header marker
+          int res = writeHeader(slot);
+          
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
 
-        worked = true;
-        return TRI_ERROR_NO_ERROR;
+          _logfileManager->setLogfileOpen(_logfile);
+          worked = false;
+          return TRI_ERROR_NO_ERROR;
+        }
+        else {
+          TRI_ASSERT(status == Logfile::StatusType::OPEN);
+          worked = false;
+          return TRI_ERROR_NO_ERROR;
+        }
       }
     }
 
