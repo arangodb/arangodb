@@ -1464,6 +1464,49 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_create
+/// `general-graph._create(graph-name, edge-definitions, orphan-collections)`
+/// *Create a graph*
+///
+///
+/// The creation of a graph requires the name of the graph and a definition of its edges.
+///
+/// For every type of edge definition a convenience method exists that can be used to create a graph.
+/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are refered to as orphan collections within this chapter.
+/// All collections used within the creation process are created if they do not exist.
+///
+/// * *graph-name*: string - unique identifier of the graph
+/// * *edge-definitions*: array - list of edge definition objects
+/// * *orphan-collections*: array - list of additonal vertex collection names
+///
+/// @EXAMPLES
+///
+/// Create an empty graph, edge definitions can be added at runtime:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._create("mygraph");
+/// ~ graph._drop("mygraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Create a graph with edge definitions and orphan collections:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._create("mygraph", [{
+///     collection: "relations",
+///     from: ["male", "female"],
+///     to: ["male", "female"]
+///   ]},[
+///     "sessions"
+///   ]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
