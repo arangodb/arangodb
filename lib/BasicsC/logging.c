@@ -570,8 +570,11 @@ static int GenerateMessage (char* buffer,
 
 static void WriteStderr (TRI_log_level_e level,
                          char const* msg) {
-  if (level == TRI_LOG_LEVEL_FATAL) {
+  if (level == TRI_LOG_LEVEL_FATAL || level == TRI_LOG_LEVEL_ERROR) {
     fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", msg);
+  }
+  else if (level == TRI_LOG_LEVEL_WARNING) {
+    fprintf(stderr, TRI_SHELL_COLOR_YELLOW "%s" TRI_SHELL_COLOR_RESET "\n", msg);
   }
   else {
     fprintf(stderr, "%s\n", msg);
