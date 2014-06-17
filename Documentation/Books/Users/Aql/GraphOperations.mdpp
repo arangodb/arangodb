@@ -12,6 +12,7 @@ This section describes various AQL functions which can be used to recieve inform
 `GRAPH_EDGES (graphName, vertexExample, options)`
 *The GRAPH\_EDGES function returns all edges of vertices.*
 <br />
+<br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
 <br />
@@ -185,6 +186,7 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 `GRAPH_VERTICES (graphName, vertexExample, options)`
 *The GRAPH\_VERTICES function returns all vertices.*
 <br />
+<br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
 According to the optional filters it will only return vertices that have
@@ -302,6 +304,7 @@ arangosh> db._query("FOR e IN GRAPH_VERTICES("
 optionsVertex1, optionsVertex2)`
 *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
 defined by the examples.*
+<br />
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex1Example and vertex2Example.
@@ -472,6 +475,7 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
 `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
 *The GRAPH\_COMMON\_PROPERTIES function returns all vertices
 defined by the examples that share common properties
+<br />
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex1Example and vertex2Example.
@@ -647,6 +651,7 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
 <br />
 `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
 *The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
+<br />
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertex.
@@ -1168,6 +1173,7 @@ This section describes AQL functions, that calculate pathes from a subset of ver
 `GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
 *The GRAPH\_PATHS function returns all paths of a graph.*
 <br />
+<br />
 This function determines all available paths in a graph identified by *graphName*.
 Except for *graphName* every other parameter is optional.
 <br />
@@ -1549,8 +1555,6 @@ length of 1 and a minimal length of 2:
 <br />
 
 ```
-arangosh>   ~require("internal").db;
--1
 arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh>   var g = examples.loadGraph("social");
 arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
@@ -1823,6 +1827,7 @@ arangosh>   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").to
 `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
 *The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
 <br />
+<br />
 This function determines all shortest paths in a graph identified by *graphName*.
 The function accepts an id, an example, a list of examples
 or even an empty example as parameter for
@@ -1957,6 +1962,7 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
 <br />
 `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
 *The GRAPH\_TRAVERSAL function traverses through the graph.*
+<br />
 <br />
 This function performs traversals on the given graph.
 For a more detailed documentation on the optional parameters see
@@ -2094,6 +2100,8 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
 <br />
 `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
 *The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
+<br />
+<br />
 This function creates a tree format from the result for a better visualization of
 the path.
 This function performs traversals on the given graph.
@@ -2226,8 +2234,81 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'
 `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 <br />
+<br />
 This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 It does not return the actual path but only the distance between two vertices.
+<br />
+@EXAMPLES
+<br />
+A route planner example, distance from all villages to other cities:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
+........> +"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
+........> "startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+........>  "e.distance]"
+........> ).toArray();
+[ 
+  [ 
+    "village/Rosenheim", 
+    "city/Cologne", 
+    730 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Berlin", 
+    680 
+  ], 
+  [ 
+    "village/Rosenheim", 
+    "city/Munich", 
+    80 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Munich", 
+    600 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Cologne", 
+    100 
+  ], 
+  [ 
+    "village/Olpe", 
+    "city/Berlin", 
+    700 
+  ] 
+]
+```
+<br />
+A route planner example, distance from Munich and Cologne to Olpe:
+<br />
+
+```
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
+........> +"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+........>  "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
+........> ).toArray();
+[ 
+  [ 
+    "city/Cologne", 
+    "village/Olpe", 
+    100 
+  ], 
+  [ 
+    "city/Munich", 
+    "village/Olpe", 
+    600 
+  ] 
+]
+```
+<br />
 
 
 !SUBSECTION Graph measurements.
@@ -2351,6 +2432,7 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 of the graphs vertices
 <br />
+<br />
 * String               *graphName*          : The name of the graph.
 * Object               *options*     : Optional options, see below:
 <br />
@@ -2418,7 +2500,8 @@ arangosh> db._query("RETURN GRAPH_ECCENTRICITY("
 `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 *The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
 [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-of the vertices defined by the examples.
+of the vertices defined by the examples.*
+<br />
 <br />
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
@@ -2527,7 +2610,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
 `GRAPH_CLOSENESS (graphName, options)`
 *The GRAPH\_CLOSENESS function returns the normalized
 [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-of graphs vertices.
+of graphs vertices.*
+<br />
 <br />
 * String               *graphName*          : The name of the graph.
 * Object               *options*     : Optional options, see below:
@@ -2617,7 +2701,7 @@ arangosh> db._query("RETURN GRAPH_CLOSENESS("
 `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
 *The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-of all vertices in the graph.
+of all vertices in the graph.*
 <br />
 <br />
 * String               *graphName*          : The name of the graph.
@@ -2706,7 +2790,8 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 `GRAPH_BETWEENNESS (graphName, options)`
 *The GRAPH\_BETWEENNESS function returns the
 [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-of graphs vertices.
+of graphs vertices.*
+<br />
 <br />
 * String               *graphName*          : The name of the graph.
 * Object               *options*     : Optional options, see below:
@@ -2794,7 +2879,8 @@ arangosh> db._query("RETURN GRAPH_BETWEENNESS("
 `GRAPH_RADIUS (graphName, options)`
 *The GRAPH\_RADIUS function returns the
 [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-of a graph.
+of a graph.*
+<br />
 <br />
 * String               *graphName*          : The name of the graph.
 * Object               *options*     : Optional options, see below:
@@ -2866,7 +2952,8 @@ arangosh> db._query("RETURN GRAPH_RADIUS("
 `GRAPH_DIAMETER (graphName, options)`
 *The GRAPH\_DIAMETER function returns the
 [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-of a graph.
+of a graph.*
+<br />
 <br />
 * String               *graphName*          : The name of the graph.
 * Object               *options*     : Optional options, see below:

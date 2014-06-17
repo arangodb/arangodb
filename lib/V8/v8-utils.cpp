@@ -2511,6 +2511,48 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the HMAC signature
+///
+/// @FUN{internal.HMAC(@FA{key}, @FA{message}, @FA{algorithm})}
+///
+/// Computes the HMAC for the @FA{message}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_HMAC (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "HMAC(<key>, <text>, <algorithm>)");
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+  string message = TRI_ObjectToString(argv[1]);
+  
+  SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
+  if (argv.Length() > 2 && ! argv[2]->IsUndefined()) {
+    string algorithm = TRI_ObjectToString(argv[2]);
+    StringUtils::tolowerInPlace(&algorithm);
+
+    if (algorithm == "sha1") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA1;
+    }
+    else if (algorithm == "sha256") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA256;
+    }
+    else if (algorithm == "md5") {
+      al = SslInterface::Algorithm::ALGORITHM_MD5;
+    }
+    else {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <algorithm>");
+    }
+  }
+
+  string result = SslInterface::sslHMAC(key.c_str(), key.size(), message.c_str(), message.size(), al);
+  return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current http statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3308,6 +3350,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_NUMBERS", JS_RandomNumbers);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_HMAC", JS_HMAC);
   TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_KILL_EXTERNAL", JS_KillExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);

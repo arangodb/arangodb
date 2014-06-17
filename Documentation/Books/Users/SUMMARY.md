@@ -5,6 +5,8 @@
   * [Mac OS X](Installing/MacOSX.md)
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
+  * [Upgrading in general](Installing/Upgrading.md)
+  * [Set up Cluster](Installing/Cluster.md)	
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)
   * [Getting Familiar](FirstSteps/GettingFamiliar.md)
@@ -73,7 +75,8 @@
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)  
 <!-- 14 -->
 * [General Graphs](General-Graphs/README.md)
-  * [Functions](General-Graphs/GeneralGraphFunctions.md)
+  * [Graph Management](General-Graphs/Management.md)
+  * [Graph Functions](General-Graphs/Functions.md)
   * [Fluent Query Interface](General-Graphs/FluentAQLInterface.md)   
 <!-- 15 -->
 * [Traversals](Traversals/README.md)

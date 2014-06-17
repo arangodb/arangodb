@@ -34,6 +34,12 @@ namespace triagens {
   namespace rest {
     namespace SslInterface {
 
+      enum Algorithm {
+        ALGORITHM_SHA256 = 0,
+        ALGORITHM_SHA1   = 1,
+        ALGORITHM_MD5    = 2
+      };
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
@@ -116,13 +122,13 @@ namespace triagens {
 /// @brief HMAC with sha265 hashing and base64 encoding
 //////////////////////////////////////////////////////////////////////////
 
-      string sslHMAC (char const* key, char const* message, size_t messageLen);
+      string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
 //////////////////////////////////////////////////////////////////////////
 
-      bool verifyHMAC (char const* challenge, char const* secret, size_t secretLen, char const* response, size_t responseLen);
+      bool verifyHMAC (char const* challenge, size_t challengeLength, char const* secret, size_t secretLen, char const* response, size_t responseLen, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief generate a random number using OpenSsl
