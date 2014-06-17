@@ -1427,8 +1427,28 @@ var _list = function() {
   return _.pluck(gdb.toArray(), "_key");
 };
 
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list of edge definitions
+/// @startDocuBlock JSF_general_graph_edge_definitions
+///
+/// The edge definitions for a graph is an array containing arbitrary many directed
+/// and/or undirected relations as defined below.
+/// The list of edge definitions of a graph can be managed by the graph module itself.
+/// This function is the entry point for the management and will return the correct list.
+///
+/// @EXAMPLES
+///
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
+///   var graph = require("org/arangodb/general-graph");
+///   directed-relation = graph._directedRelationDefinition("lives_in", "user", "city");
+///   undirected-relation = graph._directedRelationDefinition("knows", "user");
+///   edgedefinitions = graph._edgeDefinitions(directed-relation, undirected-relation);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1445,9 +1465,23 @@ var _edgeDefinitions = function () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extend a list of edge definitions
+/// @startDocuBlock JSF_general_graph_extend_edge_definitions
+///
+/// In order to add more edge definitions to the graph before creating
+/// this function can be used to add more definitions to the initial list.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
+///   var graph = require("org/arangodb/general-graph");
+///   directed-relation = graph._directedRelationDefinition("lives_in", "user", "city");
+///   undirected-relation = graph._directedRelationDefinition("knows", "user");
+///   edgedefinitions = graph._edgeDefinitions(directed-relation);
+///   edgedefinitions = graph._extendEdgeDefinitions(undirected-relation);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-
 
 var _extendEdgeDefinitions = function (edgeDefinition) {
 
@@ -1991,7 +2025,27 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load a graph.
+/// @startDocuBlock JSF_general_graph_graph
+/// `general-graph._graph(graph-name)`
+/// *Load a graph*
+///
+/// A graph can be loaded by its name.
+///
+/// * *graph-name*: string - unique identifier of the graph
+///
+/// @EXAMPLES
+///
+/// Load a graph:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._graph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
@@ -2070,7 +2124,31 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop a graph.
+/// @startDocuBlock JSF_general_graph_drop
+/// `general-graph._drop(graph-name, drop-collections)`
+/// *Remove a graph*
+///
+/// A graph can be dropped by its name.
+/// This will automatically drop al collections contained in the graph as
+/// long as they are not used within other graphs.
+/// To prohibit the drop of collections, the optional parameter *drop-collections* can be set to *false*.
+///
+/// * *graph-name*: string - unique identifier of the graph
+/// * *drop-collections*: boolean (optional) - Define if collections should be dropped (default: true)
+///
+/// @EXAMPLES
+///
+/// Drop a graph:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
