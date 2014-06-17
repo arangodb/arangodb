@@ -141,7 +141,7 @@
         };
       
       svg = document.createElement("svg");
-      svg.id = "svg";
+      svg.id = "graphViewerSVG";
       document.body.appendChild(svg);
       nodeShaper = new NodeShaper(d3.select("svg"));
       edgeShaper = new EdgeShaper(d3.select("svg"));
@@ -254,7 +254,7 @@
         
         //expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
       
-        helper.simulateMouseEvent("click", "svg");
+        helper.simulateMouseEvent("click", svg.id);
       
         expect($("#control_event_new_node_modal").length).toEqual(1);
       
@@ -270,14 +270,6 @@
           jasmine.any(Number), // Number not yet correctly tested
           jasmine.any(Number) 
         );
-        /*
-        expect(adapter.createNode).toHaveBeenCalledWith(
-          {
-            name: "Bob"
-          },
-          jasmine.any(Function)
-        );
-        */
       });
       
         
@@ -718,7 +710,7 @@
         helper.simulateMouseEvent("click", "control_event_connect");
         helper.simulateMouseEvent("mousedown", "2");
         
-        helper.simulateMouseMoveEvent("svg", x, y);
+        helper.simulateMouseMoveEvent(svg.id, x, y);
         
         line = $("#connectionLine");
         //The Helper event triggers at (0,0) no matter where the node is.

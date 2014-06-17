@@ -95,7 +95,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_http_examples
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
 ///   var url = "/system/gharial";
 ///   body = { 
 ///     name: "myGraph", 
@@ -108,7 +108,7 @@
 ///
 ///   var response = logCurlRequest('POST', url, JSON.stringify(body));
 /// 
-///   assert(response.code === 200);
+///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
 ///
@@ -138,7 +138,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop_http_examples
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialList}
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDrop}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
 ///   var url = "/system/gharial/social";
@@ -177,6 +177,22 @@
 
 /////////////////////// Definitions ////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_list_vertex_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialListVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex";
+///   var response = logCurlRequest('GET', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+
   /** List all vertex collections.
    *
    * Gets the list of all vertex collections.
@@ -201,6 +217,25 @@
     }
   );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertexCol}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex";
+///   body = { 
+///     collection: "otherVertices"
+///   };
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 201);
+///
+///   logJsonResponse(response);
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   /** Create a new vertex collection.
    *
    * Stores a new vertex collection.
@@ -211,7 +246,7 @@
     var body = req.params("collection");
     var g = Graph._graph(name);
     g._addOrphanCollection(body.get("collection"));
-    setGraphResponse(res, g);
+    setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
     type: "string",
@@ -228,6 +263,39 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples
+///
+/// You can remove vertex collections that are not used in any edge collection:
+///
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollection}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g._addOrphanCollection("otherVertices");
+///   var url = "/system/gharial/social/vertex/otherVertices";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// You cannot remove vertex collections that are used in edge collections:
+///
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollectionFailed}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/male";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 400);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Delete a vertex collection.
    *
@@ -252,9 +320,24 @@
     description: "Name of the vertex collection."
   })
   .errorResponse(
-    ArangoError, actions.HTTP_NOT_FOUND,
+    ArangoError, actions.HTTP_BAD,
     "The collection is not found or part of an edge definition."
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_list_edge_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialListEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/edge";
+///   var response = logCurlRequest('GET', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** List all edge collections.
    *
@@ -280,6 +363,27 @@
     }
   );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_definition_add_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdgeCol}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/edge";
+///   body = { 
+///     collection: "lives_in",
+///     from: ["female", "male"],
+///     to: ["city"]
+///   };
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 201);
+///
+///   logJsonResponse(response);
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   /** Create a new edge definition.
    *
    * Stores a new edge definition with the information contained
@@ -292,7 +396,7 @@
     var body = req.params("edgeDefinition");
     var g = Graph._graph(name);
     g._extendEdgeDefinitions(body.forDB());
-    setGraphResponse(res, g);
+    setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
     type: "string",
@@ -309,6 +413,27 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialReplaceEdgeCol}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/edge/relation";
+///   body = { 
+///     collection: "relation",
+///     from: ["female", "male", "animal"],
+///     to: ["female", "male", "animal"]
+///   };
+///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Replace an edge definition.
    *
@@ -353,6 +478,21 @@
     }
   );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_definition_remove_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialEdgeDefinitionRemove}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/edge/relation";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+//
   /** Delete an edge definition.
    *
    * Removes an existing edge definition from this graph.
@@ -385,6 +525,24 @@
 
 ////////////////////// Vertex Operations /////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_create_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/male";
+///   body = {
+///     name: "Francis"
+///   }
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 201);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   /** Create a new vertex.
    *
    * Stores a new vertex with the information contained
@@ -395,7 +553,7 @@
     var collection = req.params("collection");
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].save(body.forDB()));
+    setResponse(res, "vertex", g[collection].save(body.forDB()), actions.HTTP_CREATED);
   })
   .pathParam("graph", {
     type: "string",
@@ -407,9 +565,25 @@
   })
   .bodyParam("vertex", "The document to be stored", Model);
 
-  /** Load a vertex.
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_get_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/female/alice";
+///   var response = logCurlRequest('GET', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///   examples.dropGraph("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  /** Get a vertex.
    *
-   * Loads a vertex with the given id if it is contained
+   * Gets a vertex with the given key if it is contained
    * within your graph.
    */
   controller.get("/:graph/vertex/:collection/:key", function(req, res) {
@@ -440,6 +614,27 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_replace_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialReplaceVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   body = {
+///     name: "Alice Cooper",
+///     age: 26
+///   }
+///   var url = "/system/gharial/social/vertex/female/alice";
+///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Replace a vertex.
    *
@@ -478,6 +673,26 @@
     }
   );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_modify_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialModifyVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   body = {
+///     age: 26
+///   }
+///   var url = "/system/gharial/social/vertex/female/alice";
+///   var response = logCurlRequest('PATCH', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   /** Update a vertex.
    *
    * Updates a vertex with the given id by adding the content in the body.
@@ -514,6 +729,23 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_vertex_delete_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteVertex}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/female/alice";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Delete a vertex.
    *
@@ -552,6 +784,26 @@
 
 //////////////////////////// Edge Operations //////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_create_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/edge/relation";
+///   body = {
+///     type: "friend",
+///     _from: "female/alice",
+///     _to: "female/diana"
+///   };
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 201);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   /** Create a new edge.
    *
    * Stores a new edge with the information contained
@@ -571,7 +823,7 @@
       throw err;
     }
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].save(from, to, body.forDB()));
+    setResponse(res, "edge", g[collection].save(from, to, body.forDB()), actions.HTTP_CREATED);
   })
   .pathParam("graph", {
     type: "string",
@@ -592,6 +844,21 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_get_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var response = logCurlRequest('GET', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Load an edge.
    *
@@ -626,6 +893,24 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_replace_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   body = {
+///     type: "divorced"
+///   }
+///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Replace an edge.
    *
@@ -663,6 +948,24 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_modify_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialPatchEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   body = {
+///     since: "01.01.2001"
+///   }
+///   var response = logCurlRequest('PATCH', url, JSON.stringify(body));
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
   /** Update an edge.
    *
@@ -702,6 +1005,22 @@
       };
     }
   );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_edge_delete_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteEdge}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   examples.loadGraph("social");
+///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var response = logCurlRequest('DELETE', url);
+/// 
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
 
   /** Delete an edge.
    *
