@@ -5,6 +5,8 @@
   * [Mac OS X](Installing/MacOSX.md)
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
+  * [Upgrading in general](Installing/Upgrading.md)
+  * [Set up Cluster](Installing/Cluster.md)	
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)
   * [Getting Familiar](FirstSteps/GettingFamiliar.md)
