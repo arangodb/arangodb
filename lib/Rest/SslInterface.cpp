@@ -182,12 +182,21 @@ namespace triagens {
       }
 
 
-      string sslHMAC (char const* key, char const* message, size_t messageLen) {
-        const EVP_MD * evp_md = EVP_sha256();
+      string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm) {
+        EVP_MD* evp_md = nullptr;
+        
+        if (algorithm == Algorithm::ALGORITHM_SHA1) {
+          evp_md = const_cast<EVP_MD*>(EVP_sha1());
+        }
+        else {
+          // default
+          evp_md = const_cast<EVP_MD*>(EVP_sha256());
+        }
+
         unsigned char* md = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
         unsigned int md_len;
 
-        HMAC(evp_md, key, (int) strlen(key), (const unsigned char*) message, messageLen, md, &md_len);
+        HMAC(evp_md, key, (int) keyLength, (const unsigned char*) message, messageLen, md, &md_len);
 
         string result = StringUtils::encodeBase64(string((char*)md, md_len));
         TRI_SystemFree(md);
@@ -197,15 +206,15 @@ namespace triagens {
 
 
 
-      bool verifyHMAC (char const* challenge, char const* secret, size_t secretLen, char const* response, size_t responseLen) {
+      bool verifyHMAC (char const* challenge, size_t challengeLength, char const* secret, size_t secretLen, char const* response, size_t responseLen, Algorithm algorithm) {
         // challenge = key
         // secret, secretLen = message
         // result must == BASE64(response, responseLen)
 
-        string s = sslHMAC(challenge, secret, secretLen);
+        string s = sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
 
         if (s.length() == responseLen && s.compare( string(response, responseLen) )  == 0) {
-            return true;
+          return true;
         }
 
         return false;
