@@ -138,7 +138,7 @@ function QueryWipeDatafile (collection, type, datafile, scan, lastGoodPos) {
 
   var entry = entries[lastGoodPos];
 
-  WipeDatafile(collection, type, datafile, entry.position + entry.size);
+  WipeDatafile(collection, type, datafile, entry.position + entry.realSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +180,7 @@ function PrintEntries (entries, amount) {
       case 5: s = "FAILED (crc mismatch)";  break;
     }
 
-    printf("  %d: status %s type %d size %d, tick %s\n", i, s, entry.type, entry.size, entry.tick);
+    printf("  %d: status %s type %d size %d, tick %s\n", i, s, entry.type, entry.realSize, entry.tick);
   }
 }
 
@@ -210,7 +210,7 @@ function DeepCheckDatafile (collection, type, datafile, scan) {
   }
 
   if (! stillGood) {
-    printf("  Last good position: %d\n", lastGood.position + lastGood.size);
+    printf("  Last good position: %d\n", lastGood.position + lastGood.realSize);
     printf("\n");
 
     QueryWipeDatafile(collection, type, datafile, scan, lastGoodPos);
@@ -256,7 +256,7 @@ function CheckDatafile (collection, type, datafile, issues, details) {
       break;
 
     case 3:
-      statusMessage = "FATAL (reached corrupt marker)";
+      statusMessage = "FATAL (reached corrupted marker)";
       color = internal.COLORS.COLOR_RED;
       break;
 
@@ -537,8 +537,10 @@ function main (argv) {
   printf("Prints details (Y/N)? ");
 
   var details = false;
+
   while (true) {
     line = console.getline();
+
     if (line === "") {
       printf("Exiting. Please wait.\n");
       return;
@@ -547,6 +549,7 @@ function main (argv) {
     if (line === "yes" || line === "YES" || line === "y" || line === "Y") {
       details = true;
     }
+
     break;
   }
 
