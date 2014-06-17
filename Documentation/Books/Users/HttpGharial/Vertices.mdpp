@@ -10,13 +10,35 @@
 The name of the graph.
 
 `collection-name (string, required)`  
-The name of the vertex collection the edge belongs to.
+The name of the vertex collection the vertex belongs to.
 
 !SUBSECTION Description
 
 <!-- @startDocuBlock JSF_general_graph_vertex_create_info -->
 
+Adds a vertex to the given collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_create_http_examples -->
+
+```
+unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/male
+{"name":"Francis"}
+
+HTTP/1.1 201 Created
+content-type: application/json
+etag: 522071542
+
+{ 
+  "error" : false, 
+  "code" : 201, 
+  "vertex" : { 
+    "_id" : "male/522071542", 
+    "_rev" : "522071542", 
+    "_key" : "522071542" 
+  } 
+}
+
+```
 
 !SECTION Get a vertex
 
@@ -37,7 +59,29 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_get_info -->
 
+Gets a vertex from the given collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_get_http_examples -->
+
+```
+unix> curl --dump - http://localhost:8529/system/gharial/social/vertex/female/alice
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 523578870
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "female/alice", 
+    "_rev" : "523578870", 
+    "_key" : "alice", 
+    "name" : "Alice" 
+  } 
+}
+
+```
 
 !SECTION Modify an vertex
 
@@ -58,7 +102,30 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_modify_info -->
 
+Updates the data of the specific vertex in the collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_modify_http_examples -->
+
+```
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/female/alice
+{"name":"Alice Cooper","age":26}
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 530066934
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "female/alice", 
+    "_rev" : "530066934", 
+    "_oldRev" : "527445494", 
+    "_key" : "alice" 
+  } 
+}
+
+```
 
 !SECTION Replace an vertex
 
@@ -79,7 +146,30 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_replace_info -->
 
+Replaces the data of a vertex in the collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_replace_http_examples -->
+
+```
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/female/alice
+{"age":26}
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 534195702
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "female/alice", 
+    "_rev" : "534195702", 
+    "_oldRev" : "531574262", 
+    "_key" : "alice" 
+  } 
+}
+
+```
 
 !SECTION Remove a vertex
 
@@ -100,4 +190,20 @@ The `_key` attribute of the vertex.
 
 <!-- @startDocuBlock JSF_general_graph_vertex_delete_info -->
 
+Removes a vertex from the collection.
+
 <!-- @startDocuBlock JSF_general_graph_vertex_delete_http_examples -->
+
+```
+unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/vertex/female/alice
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : true 
+}
+
+```

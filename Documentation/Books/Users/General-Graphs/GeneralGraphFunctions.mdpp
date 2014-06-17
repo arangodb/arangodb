@@ -6,7 +6,7 @@ The graph module provides functions dealing with graph structures.
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
 collections*. A vertex can be a document of a *document collection* or of an edge
-collection (so edges can be used as vertices). Wich collections are used within
+collection (so edges can be used as vertices). Which collections are used within
 a graph is defined via *edge definitions*. A graph can contain more than one edge
 definition, at least one is needed.
 
@@ -152,9 +152,9 @@ alternative call:
 ```
 !SUBSECTION Orphan Collections
 
-Each graph has an orphan collection. It consists of arbitrary many vertex collection (type *document*), that are not
+Each graph has a list of orphan collections. It consists of arbitrary many vertex collections (type *document*), that are not
 used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
-it will be removed from the orphan collection automatically.
+it will be removed from the orphan collections automatically.
 
 !SUBSUBSECTION Add
 
@@ -248,7 +248,7 @@ dropCollections: bool - optional. *true* all collections of the graph will be de
 
 
 
-!SECTION Edge
+!SECTION Vertex
 
 !SUBSECTION Save
 
