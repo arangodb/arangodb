@@ -1304,6 +1304,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   vocbase->_path               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
   vocbase->_authInfoLoaded     = false;
+  vocbase->_hasCompactor       = false;
   vocbase->_replicationLogger  = nullptr;
   vocbase->_replicationApplier = nullptr;
 
@@ -1565,6 +1566,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_SignalCondition(&vocbase->_compactorCondition);
   TRI_UnlockCondition(&vocbase->_compactorCondition);
 
+  TRI_ASSERT(vocbase->_hasCompactor);
   res = TRI_JoinThread(&vocbase->_compactor);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1609,10 +1611,32 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StartCompactorVocBase (TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(! vocbase->_hasCompactor);
+
   LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
   TRI_StartThread(&vocbase->_compactor, NULL, "[compactor]", TRI_CompactorVocBase, vocbase);
+  vocbase->_hasCompactor = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the compactor thread
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StopCompactorVocBase (TRI_vocbase_t* vocbase) {
+  if (vocbase->_hasCompactor) {
+    vocbase->_hasCompactor = false;
+
+    LOG_TRACE("stopping compactor for database '%s'", vocbase->_name);
+    int res = TRI_JoinThread(&vocbase->_compactor);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

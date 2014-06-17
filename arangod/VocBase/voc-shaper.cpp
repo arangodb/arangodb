@@ -732,6 +732,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_WARNING("found duplicate attribute name '%s' in collection '%s'", p, name);
+    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", p, name); 
 #endif    
@@ -744,6 +745,7 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_WARNING("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
 #endif    

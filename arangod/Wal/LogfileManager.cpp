@@ -757,17 +757,20 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 int LogfileManager::flush (bool waitForSync,
                            bool waitForCollector,
                            bool writeShutdownFile) {
-  LOG_TRACE("about to flush active WAL logfile");
-  
   Logfile::IdType currentLogfileId;
   {
     READ_LOCKER(_logfilesLock);
     currentLogfileId = _lastOpenedId;
   }
 
+  LOG_TRACE("about to flush active WAL logfile. currentLogfileId: %llu, waitForSync: %d, waitForCollector: %d", 
+            (unsigned long long) currentLogfileId,
+            (int) waitForSync,
+            (int) waitForCollector);
+
   int res = _slots->flush(waitForSync);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res == TRI_ERROR_NO_ERROR || res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
     if (waitForCollector) {
       this->waitForCollector(currentLogfileId); 
     }
@@ -1149,7 +1152,7 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
     }
 
     LOG_TRACE("waiting for collector");
-    usleep(100 * 1000);
+    usleep(50 * 1000);
   }
 }
 
@@ -1235,6 +1238,8 @@ bool LogfileManager::runRecovery () {
   }
 
   TRI_ASSERT(_collectorThread != nullptr);
+
+  LOG_TRACE("issuing recovery flush request");
   
   // flush any open logfiles so the collector can copy over everything
   this->flush(true, true, false);
@@ -1316,18 +1321,25 @@ int LogfileManager::readShutdownInfo () {
   
   // read if of last sealed logfile (maybe 0)
   uint64_t lastSealedId = basics::JsonHelper::stringUInt64(json, "lastSealed");
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (lastSealedId < lastCollectedId) {
     // should not happen normally
     lastSealedId = lastCollectedId;
   }
-  
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
   
   {
     WRITE_LOCKER(_logfilesLock);
     _lastCollectedId = static_cast<Logfile::IdType>(lastCollectedId);
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
+  
+    LOG_TRACE("initial values for WAL logfile manager: tick: %llu, lastCollected: %llu, lastSealed: %llu",
+              (unsigned long long) lastTick,
+              (unsigned long long) _lastCollectedId,
+              (unsigned long long) _lastSealedId);
+
   }
   
   return TRI_ERROR_NO_ERROR; 
@@ -1599,6 +1611,8 @@ int LogfileManager::openLogfiles () {
     (*it).second = logfile;
     ++it;
   }
+
+  _lastOpenedId = _lastSealedId;
 
   return TRI_ERROR_NO_ERROR;
 }
