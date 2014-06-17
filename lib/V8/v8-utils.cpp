@@ -2545,6 +2545,9 @@ static v8::Handle<v8::Value> JS_HMAC (v8::Arguments const& argv) {
     else if (algorithm == "sha256") {
       al = SslInterface::Algorithm::ALGORITHM_SHA256;
     }
+    else if (algorithm == "md5") {
+      al = SslInterface::Algorithm::ALGORITHM_MD5;
+    }
     else {
       TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <algorithm>");
     }
