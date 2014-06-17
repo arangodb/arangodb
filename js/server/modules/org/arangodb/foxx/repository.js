@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120, todo: true, white: false, sloppy: false */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +206,8 @@ _.extend(Repository.prototype, {
 /// `all()`
 ///
 /// Returns an array of models that matches the given example.
+/// **Warning:** ArangoDB doesn't guarantee a specific order in this case, to make
+/// this really useful we have to explicitly provide something to order by.
 ///
 /// *Examples*
 ///
@@ -215,6 +217,13 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  all: function () {
+    'use strict';
+    var rawDocuments = this.collection.all().skip(4).limit(2).toArray();
+    return _.map(rawDocuments, function (rawDocument) {
+      return (new this.modelPrototype(rawDocument));
+    }, this);
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Removing Entries
