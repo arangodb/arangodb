@@ -443,6 +443,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 
     entry._position = (TRI_voc_size_t) (ptr - datafile->_data);
     entry._size = marker->_size;
+    entry._realSize = TRI_DF_ALIGN_BLOCK(marker->_size);
     entry._tick = marker->_tick;
     entry._type = marker->_type;
     entry._status = 1;
