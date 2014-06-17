@@ -1695,7 +1695,7 @@ var createHiddenProperty = function(obj, name, value) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g.female.save({name: "Lynda", _key: "linda"});
-///   g.female.update({name: "Linda", _key: "linda"});
+///   g.female.update("female/linda", {name: "Linda", _key: "linda"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2859,11 +2859,12 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._extendEdgeDefinitions(ed2);
-/// ~ graph._drop("myGraph", true)
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3013,10 +3014,12 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._editEdgeDefinition(ed2, true);
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3075,17 +3078,19 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///
 /// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
 ///
-/// *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
+/// * *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
 /// definition.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._deleteEdgeDefinition("myEC1");
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3137,17 +3142,18 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 ///
 /// `general-graph._addOrphanCollection(orphanCollectionName, createCollection)`
 ///
-/// *orphanCollectionName* - string : name of vertex collection.
-/// *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+/// * *orphanCollectionName* - string : name of vertex collection.
+/// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addOrphanCollection}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
-/// ~ graph._drop("myGraph", true)
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3195,11 +3201,12 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 ///   g._getOrphanCollections();
-/// ~ graph._drop("myGraph", true)
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3225,6 +3232,7 @@ Graph.prototype._getOrphanCollections = function() {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeOrphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
@@ -3232,7 +3240,7 @@ Graph.prototype._getOrphanCollections = function() {
 ///   g._getOrphanCollections();
 ///   g._removeOrphanCollection("myVC3");
 ///   g._getOrphanCollections();
-/// ~ graph._drop("myGraph", true)
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock

@@ -1,38 +1,58 @@
 !CHAPTER Graph Management
 
-!SECTION Create a graph
+In order to create a graph the philosophy of handling the graph content has to introduced.
+A graph contains a set of edge definitions each referring to one edge collection and
+defining constraints on the vertex collections used as start and end points of the edges.
+Furthermore a graph can contain an arbitrary amount of vertex collections, called  orphan collections, that are not used in any edge definition but should be managed by the graph.
+In order to create a graph the functionality to create edge definitions has to be introduced first:
 
-<!-- @startDocuBlock JSF_general_graph_create -->
+!SECTION Edge Definitions
 
-The creation of a graph requires the name of the graph and a definition of its edges.
+The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
 
-For every type of edge definition a convenience method exists that can be used to create a graph.
+!SUBSECTION Initialize the list
 
-```js
-> var graph = require("org/arangodb/graph");
+<br />
+The edge definitions for a graph is an array containing arbitrary many directed
+and/or undirected relations as defined below.
+The list of edge definitions of a graph can be managed by the graph module itself.
+This function is the entry point for the management and will return the correct list.
+<br />
+@EXAMPLES
+<br />
+<br />
 
-> var g = graph._create(graphName, edgeDefinitions);
 ```
-
-There are different types of edge defintions:
-
-!SUBSECTION Edge Definitions
-
-<!-- @startDocuBlock @startDocuBlock JSF_general_graph_edgeDefinitions -->
-
-
-To add further edge definitions to the array one must call:
-
-```js
-> graph._extendEdgeDefinitions(edgeDefinitions, edgeDefinition1,......edgeDefinitionN);
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   directed-relation = graph._directedRelationDefinition("lives_in", "user", "city");
+ReferenceError: Invalid left-hand side in assignment
 ```
+<br />
+
+!SUBSECTION Extend the list
+
+
+<br />
+In order to add more edge definitions to the graph before creating
+this function can be used to add more definitions to the initial list.
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   directed-relation = graph._directedRelationDefinition("lives_in", "user", "city");
+ReferenceError: Invalid left-hand side in assignment
+```
+<br />
 
 
 !SUBSUBSECTION Undirected Relation
 
+
+<br />
 `general-graph._undirectedRelationDefinition(relationName, vertexCollections)`
 *Define an undirected relation.*
-<br />
 <br />
 Defines an undirected relation with the name *relationName* using the
 list of *vertexCollections*. This relation allows the user to store
@@ -81,9 +101,9 @@ arangosh>   graph._undirectedRelationDefinition("marriage", ["female", "male"]);
 !SUBSUBSECTION Directed Relation
 
 
+<br />
 `general-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections)`
 *Define a directed relation.*
-<br />
 <br />
 The *relationName* defines the name of this relation and references to the underlying edge collection.
 The *fromVertexCollections* is an Array of document collections holding the start vertices.
@@ -109,6 +129,140 @@ arangosh>   graph._directedRelationDefinition("has_bought", ["Customer", "Compan
   ]
 }
 ```
+
+
+!SUBSECTION Orphan Collections
+
+Each graph has an orphan collection. It consists of arbitrary many vertex collection (type *document*), that are not
+used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
+it will be removed from the orphan collection automatically.
+
+!SUBSUBSECTION Add
+
+
+Adds a vertex collection to the set of orphan collections of the graph. If the
+collection does not exist, it will be created.
+<br />
+`general-graph._addOrphanCollection(orphanCollectionName, createCollection)`
+<br />
+* *orphanCollectionName* - string : name of vertex collection.
+* *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph")
+arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+arangosh>   var g = graph._create("myGraph", [ed1]);
+arangosh>   g._addOrphanCollection("myVC3", true);
+undefined
+```
+<br />
+
+
+!SUBSUBSECTION Read
+
+
+Returns all vertex collections of the graph, that are not used in an edge definition.
+<br />
+`general-graph._getOrphanCollections()`
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph")
+arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+arangosh>   var g = graph._create("myGraph", [ed1]);
+arangosh>   g._addOrphanCollection("myVC3", true);
+undefined
+arangosh>   g._getOrphanCollections();
+[
+  "myVC3"
+]
+```
+<br />
+
+
+!SUBSUBSECTION Remove
+
+
+Removes an orphan collection from the graph and deletes the collection, if it is not
+used in any graph.
+<br />
+`general-graph._removeOrphanCollection()`
+<br />
+*orphanCollectionName* - string : name of vertex collection.
+*dropCollection* - bool : if true the collection will be dropped if it is not used in any graph.
+Default: true.
+<br />
+@EXAMPLES
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph")
+arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+arangosh>   var g = graph._create("myGraph", [ed1]);
+arangosh>   g._addOrphanCollection("myVC3", true);
+undefined
+arangosh>   g._addOrphanCollection("myVC4", true);
+undefined
+arangosh>   g._getOrphanCollections();
+[
+  "myVC3",
+  "myVC4"
+]
+arangosh>   g._removeOrphanCollection("myVC3");
+undefined
+arangosh>   g._getOrphanCollections();
+[
+  "myVC4"
+]
+```
+<br />
+
+
+!SECTION Create a graph
+
+After having introduced edge definitions and orphan collections a graph can be created.
+
+
+`general-graph._create(graph-name, edge-definitions, orphan-collections)`
+*Create a graph*
+<br />
+<br />
+The creation of a graph requires the name of the graph and a definition of its edges.
+<br />
+For every type of edge definition a convenience method exists that can be used to create a graph.
+Optionaly a list of vertex collections can be added, which are not used in any edge definition.
+These collections are refered to as orphan collections within this chapter.
+All collections used within the creation process are created if they do not exist.
+<br />
+* *graph-name*: string - unique identifier of the graph
+* *edge-definitions*: array - list of edge definition objects
+* *orphan-collections*: array - list of additonal vertex collection names
+<br />
+@EXAMPLES
+<br />
+Create an empty graph, edge definitions can be added at runtime:
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   graph._drop("social");
+true
+```
+<br />
+Create a graph with edge definitions and orphan collections:
+<br />
+
+```
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   graph._drop("social");
+true
+```
+<br />
 
 
 
@@ -141,151 +295,99 @@ alternative call:
   _key: "123"
 };
 ```
-!SUBSECTION Orphan Collections
-
-Each graph has a list of orphan collections. It consists of arbitrary many vertex collections (type *document*), that are not
-used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
-it will be removed from the orphan collections automatically.
-
-!SUBSUBSECTION Add
-
-
-Adds a vertex collection to the set of orphan collections of the graph. If the
-collection does not exist, it will be created.
-<br />
-`general-graph._addOrphanCollection(orphanCollectionName, createCollection)`
-<br />
-*orphanCollectionName* - string : name of vertex collection.
-*createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var graph = require("org/arangodb/general-graph")
-arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-arangosh>   var g = graph._create("myGraph", [ed1, ed2]);
-ReferenceError: ed2 is not defined
-```
-<br />
-
-
-!SUBSUBSECTION Read
-
-
-Returns all vertex collections of the graph, that are not used in an edge definition.
-<br />
-`general-graph._getOrphanCollections()`
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var graph = require("org/arangodb/general-graph")
-arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-arangosh>   var g = graph._create("myGraph", [ed1]);
-[ArangoError 1925: graph already exists]
-```
-<br />
-
-
-!SUBSUBSECTION Remove
-
-
-Removes an orphan collection from the graph and deletes the collection, if it is not
-used in any graph.
-<br />
-`general-graph._removeOrphanCollection()`
-<br />
-*orphanCollectionName* - string : name of vertex collection.
-*dropCollection* - bool : if true the collection will be dropped if it is not used in any graph.
-Default: true.
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var graph = require("org/arangodb/general-graph")
-arangosh>   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-arangosh>   var g = graph._create("myGraph", [ed1]);
-[ArangoError 1925: graph already exists]
-```
-<br />
 
 !SUBSECTION List available graphs
 
-
-<!-- @startDocuBlock JSF_general_graph_list_call -->
 `general-graph._list()` *List all graphs.*
 <br />
 <br />
 
-<!-- @startDocuBlock JSF_general_graph_list_info -->
 
+Lists all graph names stored in this database.
 <br />
 @EXAMPLES
 <br />
 
-<!-- @startDocuBlock JSF_general_graph_list_examples -->
+
+<br />
+
 ```
 arangosh>   var graph = require("org/arangodb/general-graph");
 arangosh>   graph._list();
-[ 
-  "social" 
+[
+  "social"
 ]
 ```
 
+
 !SUBSECTION Load a graph
 
-```js
-> var graph = require("org/arangodb/graph");
 
-> var g = graph._graph("myStore");
+`general-graph._graph(graph-name)`
+*Load a graph*
+<br />
+A graph can be loaded by its name.
+<br />
+* *graph-name*: string - unique identifier of the graph
+<br />
+@EXAMPLES
+<br />
+Load a graph:
+<br />
+
 ```
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   graph._drop("social");
+true
+```
+<br />
 
-- - -
 
 !SUBSECTION Remove a graph
 
 
-Removes a graph from the collection *\_graphs*.
+`general-graph._drop(graph-name, drop-collections)`
+*Remove a graph*
+<br />
+A graph can be dropped by its name.
+This will automatically drop al collections contained in the graph as
+long as they are not used within other graphs.
+To prohibit the drop of collections, the optional parameter *drop-collections* can be set to *false*.
+<br />
+* *graph-name*: string - unique identifier of the graph
+* *drop-collections*: boolean (optional) - Define if collections should be dropped (default: true)
+<br />
+@EXAMPLES
+<br />
+Drop a graph:
+<br />
 
-```js
-> graph._drop(graphId, dropCollections);
+```
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   graph._drop("social");
 true
 ```
-
-graphId: string - id of the graph to be removed
-dropCollections: bool - optional. *true* all collections of the graph will be deleted.
-*false* no collection of the graph will be deleted. Default: *true*
+<br />
 
 
-
-!SECTION Vertex
+!SECTION Edge
 
 !SUBSECTION Save
 
-<!-- @startDocuBlock JSF_general_graph_vertex_collection_save -->
 
-`general-graph.vertexCollectionName.save(data)` *Creates a new vertex*
+Creates and saves a new vertex in collection *vertexCollectionName*
 <br />
+`general-graph.vertexCollectionName.save(data)`
 <br />
-Creates a new vertex in collection *vertexCollectionName*.
 *data*: json - data of vertex
 <br />
 @EXAMPLES
 <br />
 
 ```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   g.male.save({name: "Floyd", _key: "floyd"});
-{
-  "error" : false,
-  "_id" : "male/floyd",
-  "_rev" : "91260521",
-  "_key" : "floyd"
-}
+arangosh>   var graph = require("org/arangodb/general-graph");
+arangosh>   graph._drop("social");
+true
 ```
 <br />
 
@@ -311,14 +413,14 @@ arangosh>   g.male.save({neym: "Jon", _key: "john"});
 {
   "error" : false,
   "_id" : "male/john",
-  "_rev" : "31360617",
+  "_rev" : "31374924",
   "_key" : "john"
 }
 arangosh>   g.male.replace("male/john", {name: "John"});
 {
   "error" : false,
   "_id" : "male/john",
-  "_rev" : "31557225",
+  "_rev" : "31571532",
   "_key" : "john"
 }
 ```
@@ -346,11 +448,16 @@ arangosh>   g.female.save({name: "Lynda", _key: "linda"});
 {
   "error" : false,
   "_id" : "female/linda",
-  "_rev" : "79201897",
+  "_rev" : "86027478",
   "_key" : "linda"
 }
-arangosh>   g.female.update({name: "Linda", _key: "linda"});
-TypeError: Object #<Object> has no method 'split'
+arangosh>   g.female.update("female/linda", {name: "Linda", _key: "linda"});
+{
+  "error" : false,
+  "_id" : "female/linda",
+  "_rev" : "86224086",
+  "_key" : "linda"
+}
 ```
 <br />
 
@@ -375,7 +482,7 @@ arangosh>   g.male.save({name: "Kermit", _key: "kermit"});
 {
   "error" : false,
   "_id" : "male/kermit",
-  "_rev" : "83068521",
+  "_rev" : "89701964",
   "_key" : "kermit"
 }
 arangosh>   db._exists("male/kermit")
@@ -412,7 +519,7 @@ arangosh>   g.relation.save("male/bob", "female/alice", {type: "married", _key: 
 {
   "error" : false,
   "_id" : "relation/bobAndAlice",
-  "_rev" : "45909609",
+  "_rev" : "45923916",
   "_key" : "bobAndAlice"
 }
 ```
@@ -451,14 +558,14 @@ arangosh>   g.relation.save("female/alice", "female/diana", {typo: "nose", _key:
 {
   "error" : false,
   "_id" : "relation/aliceAndDiana",
-  "_rev" : "27362921",
+  "_rev" : "27377228",
   "_key" : "aliceAndDiana"
 }
 arangosh>   g.relation.replace("relation/aliceAndDiana", {type: "knows"});
 {
   "error" : false,
   "_id" : "relation/aliceAndDiana",
-  "_rev" : "27559529",
+  "_rev" : "27573836",
   "_key" : "aliceAndDiana"
 }
 ```
@@ -486,14 +593,14 @@ arangosh>   g.relation.save("female/alice", "female/diana", {type: "knows", _key
 {
   "error" : false,
   "_id" : "relation/aliceAndDiana",
-  "_rev" : "127108713",
+  "_rev" : "132365900",
   "_key" : "aliceAndDiana"
 }
 arangosh>   g.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
 {
   "error" : false,
   "_id" : "relation/aliceAndDiana",
-  "_rev" : "127305321",
+  "_rev" : "132562508",
   "_key" : "aliceAndDiana"
 }
 ```
@@ -519,7 +626,7 @@ arangosh>   g.relation.save("female/alice", "female/diana", {_key: "aliceAndDian
 {
   "error" : false,
   "_id" : "relation/aliceAndDiana",
-  "_rev" : "141657705",
+  "_rev" : "146914892",
   "_key" : "aliceAndDiana"
 }
 arangosh>   db._exists("relation/aliceAndDiana")
@@ -531,56 +638,3 @@ false
 ```
 <br />
 
-
-!SECTION Vertices
-
-!SUBSECTION Get vertex *from* of an edge
-
-
-Get the vertex of an edge defined as *_from*
-<br />
-`general-graph._getFromVertex(edgeId)`
-<br />
-Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   g._getFromVertex("relation/aliceAndBob")
-{
-  "name" : "Alice",
-  "_id" : "female/alice",
-  "_rev" : "175670889",
-  "_key" : "alice"
-}
-```
-<br />
-
-
-!SUBSECTION Get vertex *to* of an edge
-
-
-Get the vertex of an edge defined as *_to*
-<br />
-`general-graph._getToVertex(edgeId)`
-<br />
-Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   g._getToVertex("relation/aliceAndBob")
-{
-  "name" : "Bob",
-  "_id" : "male/bob",
-  "_rev" : "40666729",
-  "_key" : "bob"
-}
-```
-<br />
