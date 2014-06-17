@@ -385,7 +385,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   datafile->_data = static_cast<char*>(data);
   datafile->_next = (char*)(data) + vocSize;
   datafile->_currentSize = vocSize; 
-  datafile->_maximalSize = (TRI_voc_size_t) maximalSize;
+  datafile->_maximalSize = static_cast<TRI_voc_size_t>(maximalSize);
   datafile->_fd = fd;
   datafile->_mmHandle = mmHandle;
   datafile->_state = TRI_DF_STATE_CLOSED;
@@ -533,10 +533,31 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fixes a corrupted datafile
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FixDatafile (TRI_datafile_t* datafile,
+                         TRI_voc_size_t currentSize) {
+  LOG_WARNING("datafile '%s' is corrupted at position %llu. setting it to read-only", 
+              datafile->getName(datafile), 
+              (unsigned long long) currentSize);
+
+  datafile->_currentSize = currentSize;
+  datafile->_maximalSize = static_cast<TRI_voc_size_t>(currentSize);
+  datafile->_next = datafile->_data + datafile->_currentSize;
+  datafile->_full = true;
+  datafile->_state = TRI_DF_STATE_READ;
+  datafile->_isSealed = true;
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckDatafile (TRI_datafile_t* datafile) {
+static bool CheckDatafile (TRI_datafile_t* datafile,
+                           bool isRecovery) {
   TRI_voc_size_t currentSize;
   char* end;
   char* ptr;
@@ -594,7 +615,6 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
     // the following sanity check offers some, but not 100% crash-protection when reading
     // totally corrupted datafiles
     if (! TRI_IsValidMarkerDatafile(marker)) {
-
       if (marker->_type == 0 && marker->_size < 128) {
         // ignore markers with type 0 and a small size
         LOG_WARNING("ignoring suspicious marker in datafile '%s': type: %d, size: %lu", 
@@ -603,37 +623,44 @@ static bool CheckDatafile (TRI_datafile_t* datafile) {
                     (unsigned long) marker->_size);
       }
       else {
-        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-        datafile->_currentSize = currentSize;
-        datafile->_next = datafile->_data + datafile->_currentSize;
-        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+        if (isRecovery) {
+          return FixDatafile(datafile, currentSize);
+        }
+        else {
+          datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+          datafile->_currentSize = currentSize;
+          datafile->_next = datafile->_data + datafile->_currentSize;
+          datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-        LOG_WARNING("marker in datafile '%s' is corrupt: type: %d, size: %lu", 
-                    datafile->getName(datafile), 
-                    (int) marker->_type, 
-                    (unsigned long) marker->_size);
-        return false;
+          LOG_WARNING("marker in datafile '%s' is corrupt: type: %d, size: %lu", 
+                      datafile->getName(datafile), 
+                      (int) marker->_type, 
+                      (unsigned long) marker->_size);
+          return false;
+        }
       }
     }
 
     if (marker->_type != 0) {
-      bool ok;
-
-      ok = CheckCrcMarker(marker);
+      bool ok = CheckCrcMarker(marker);
 
       if (! ok) {
-        datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-        datafile->_currentSize = currentSize;
-        datafile->_next = datafile->_data + datafile->_currentSize;
-        datafile->_state = TRI_DF_STATE_OPEN_ERROR;
+        if (isRecovery) {
+          return FixDatafile(datafile, currentSize);
+        }
+        else {
+          datafile->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+          datafile->_currentSize = currentSize;
+          datafile->_next = datafile->_data + datafile->_currentSize;
+          datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-        LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
-
-        return false;
+          LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
+          return false;
+        }
       }
-
-      TRI_UpdateTickServer(marker->_tick);
     }
+    
+    TRI_UpdateTickServer(marker->_tick);
 
     size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += (TRI_voc_size_t) size;
@@ -1447,20 +1474,17 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
   while (ptr < end) {
     TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
-    bool result;
-    size_t size;
-
     if (marker->_size == 0) {
       return true;
     }
 
-    result = iterator(marker, data, datafile);
+    bool result = iterator(marker, data, datafile);
 
     if (! result) {
       return false;
     }
 
-    size = TRI_DF_ALIGN_BLOCK(marker->_size);
+    size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
     ptr += size;
   }
 
@@ -1473,21 +1497,19 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 /// The datafile will be opened read-only if a footer is found
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
-  TRI_datafile_t* datafile;
-  bool ok;
-
+TRI_datafile_t* TRI_OpenDatafile (char const* filename,
+                                  bool isRecovery) {
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
-  datafile = OpenDatafile(filename, false);
+  TRI_datafile_t* datafile = OpenDatafile(filename, false);
 
-  if (datafile == NULL) {
-    return NULL;
+  if (datafile == nullptr) {
+    return nullptr;
   }
 
-  // check the current marker
-  ok = CheckDatafile(datafile);
+  // check the datafile by scanning markers
+  bool ok = CheckDatafile(datafile, isRecovery);
 
   if (! ok) {
     TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
@@ -1497,7 +1519,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename) {
     // must free datafile here
     TRI_FreeDatafile(datafile);
 
-    return NULL;
+    return nullptr;
   }
 
   // change to read-write if no footer has been found
@@ -1518,16 +1540,16 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
   bool ok;
 
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
   datafile = OpenDatafile(filename, true);
 
-  if (datafile == NULL) {
-    return NULL;
+  if (datafile == nullptr) {
+    return nullptr;
   }
 
   // check the current marker
-  ok = CheckDatafile(datafile);
+  ok = CheckDatafile(datafile, true);
 
   if (! ok) {
     LOG_ERROR("datafile '%s' is corrupt", datafile->getName(datafile));
@@ -1719,19 +1741,16 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
 int TRI_TruncateDatafile (char const* path, 
                           TRI_voc_size_t position) {
-  TRI_datafile_t* datafile;
-  int res;
-
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(path != NULL);
+  TRI_ASSERT(path != nullptr);
 
-  datafile = OpenDatafile(path, true);
+  TRI_datafile_t* datafile = OpenDatafile(path, true);
 
-  if (datafile == NULL) {
+  if (datafile == nullptr) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
-  res = TruncateAndSealDatafile(datafile, position);
+  int res = TruncateAndSealDatafile(datafile, position);
   TRI_CloseDatafile(datafile);
   TRI_FreeDatafile(datafile);
 
@@ -1744,14 +1763,13 @@ int TRI_TruncateDatafile (char const* path,
 
 TRI_df_scan_t TRI_ScanDatafile (char const* path) {
   TRI_df_scan_t scan;
-  TRI_datafile_t* datafile;
 
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(path != NULL);
+  TRI_ASSERT(path != nullptr);
 
-  datafile = OpenDatafile(path, true);
+  TRI_datafile_t* datafile = OpenDatafile(path, true);
 
-  if (datafile != NULL) {
+  if (datafile != nullptr) {
     scan = ScanDatafile(datafile);
     TRI_CloseDatafile(datafile);
     TRI_FreeDatafile(datafile);
@@ -1764,7 +1782,7 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path) {
 
     TRI_InitVector(&scan._entries, TRI_CORE_MEM_ZONE, sizeof(TRI_df_scan_entry_t));
 
-    scan._status = 5;
+    scan._status   = 5;
     scan._isSealed = false;
   }
 

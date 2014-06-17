@@ -199,8 +199,10 @@ RECOVERY_TESTS = \
                @top_srcdir@/js/server/tests/recovery/corrupt-wal-marker.js 
 
 execute-recovery-test:
-	@builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
 unittests-recovery:
 	@echo
@@ -209,11 +211,15 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker"
-
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="insert-update-remove"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="insert-update-remove-distance"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multi-database-durability"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="big-transaction-durability"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-durability"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-durability-multiple"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker-multiple"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker-single"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-shutdown-info"
 	@rm -rf "$(VOCDIR)"
 	@echo
 

@@ -1869,6 +1869,41 @@ int TRI_StartServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises all databases
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitDatabasesServer (TRI_server_t* server) {
+  DatabaseWriteLocker locker(&server->_databasesLock);
+
+  size_t n = server->_databases._nrAlloc;
+
+  // iterate over all databases
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr) {
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+  
+      // iterate over all collections
+      TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
+  
+      // starts unloading of collections
+      for (size_t j = 0;  j < vocbase->_collections._length;  ++j) {
+        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[j]);
+        TRI_UnloadCollectionVocBase(vocbase, collection, true);
+      }
+  
+      TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+      
+      // start the compactor for the database
+      TRI_StartCompactorVocBase(vocbase);
+    }
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2050,6 +2085,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   CreateApplicationDirectory(vocbase->_name, server->_appPath);
   CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
 
+  TRI_StartCompactorVocBase(vocbase);
 
   // increase reference counter
   TRI_UseVocBase(vocbase);

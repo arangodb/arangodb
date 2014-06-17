@@ -769,7 +769,7 @@ int ArangoServer::startupServer () {
   if (! wal::LogfileManager::instance()->open()) {
     LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
   }
-  
+
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 

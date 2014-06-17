@@ -1033,6 +1033,8 @@ typedef struct open_iterator_state_s {
   TRI_doc_datafile_info_t*   _dfi;
   TRI_vector_t               _operations;
   TRI_vocbase_t*             _vocbase; 
+  uint64_t                   _deletions;
+  uint64_t                   _documents;
   uint32_t                   _trxCollections;
   bool                       _trxPrepared;
 }
@@ -1141,6 +1143,8 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   
   key = ((char*) d) + d->_offsetKey;
   document->_keyGenerator->track(key);
+
+  ++state->_documents;
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
@@ -1256,6 +1260,8 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   
   SetRevision(document, d->_rid, false);
   
+  ++state->_deletions;
+  
   if (state->_fid != operation->_fid) {
     // update the state
     state->_fid = operation->_fid;
@@ -1276,9 +1282,9 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
   found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
   // it is a new entry, so we missed the create
-  if (found == NULL) {
+  if (found == nullptr) {
     // update the datafile info
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberDeletion++;
     }
   }
@@ -1295,10 +1301,10 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       dfi = TRI_FindDatafileInfoDocumentCollection(document, found->_fid, true);
     }
 
-    if (dfi != NULL) {
+    if (dfi != nullptr) {
       int64_t size;
 
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
@@ -1309,11 +1315,12 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberDeletion++;
     }
 
     DeletePrimaryIndex(document, found, false);
+    --document->_numberDocuments;
 
     // free the header
     document->_headersPtr->release(found, true);   // ONLY IN OPENITERATOR
@@ -2133,6 +2140,8 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._tid            = 0;
   openState._trxPrepared    = false;
   openState._trxCollections = 0;
+  openState._deletions      = 0;
+  openState._documents      = 0;
   openState._fid            = 0;
   openState._dfi            = NULL;
   openState._vocbase        = collection->_vocbase;
@@ -2145,6 +2154,11 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   
   // read all documents and fill primary index
   TRI_IterateCollection(collection, OpenIterator, &openState);
+           
+  LOG_TRACE("found %llu document markers, %llu deletion markers for collection '%s'",
+            (unsigned long long) openState._documents,
+            (unsigned long long) openState._deletions,
+            collection->_info._name);
 
   // abort any transaction that's unfinished after iterating over all markers
   OpenIteratorAbortTransaction(&openState);

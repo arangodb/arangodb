@@ -700,13 +700,14 @@ bool TRI_IterateDatafile (TRI_datafile_t*,
 /// @brief opens an existing datafile read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_OpenDatafile (char const* filename);
+TRI_datafile_t* TRI_OpenDatafile (char const*,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing, possible corrupt datafile read-write
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename);
+TRI_datafile_t* TRI_ForcedOpenDatafile (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a datafile and all memory regions
