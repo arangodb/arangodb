@@ -2415,7 +2415,70 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get common neighbors of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_common_neighbors
+///
+/// `general_graph._listCommonNeighbors(vertex1Example, vertex2Examples,
+/// optionsVertex1, optionsVertex2)`
+/// *The general_graph._listCommonNeighbors function returns all common neighbors
+/// of the vertices defined by the examples.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *optionsVertex1*     : Optional options, see below:
+/// * Object               *optionsVertex2*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all common neighbors of capitals.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._listCommonNeighbors({isCapital : true}, {isCapital : true});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
+/// {direction : 'outbound', maxDepth : 2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2442,7 +2505,70 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get amount of common neighbors of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_amount_common_neighbors
+///
+/// `general_graph._amountCommonNeighbors(vertex1Example, vertex2Examples,
+/// optionsVertex1, optionsVertex2)`
+/// *The general_graph._amountCommonNeighbors function returns the amount of
+/// common neighbors of the vertices defined by the examples.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *optionsVertex1*     : Optional options, see below:
+/// * Object               *optionsVertex2*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all common neighbors of capitals.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._amountCommonNeighbors({isCapital : true}, {isCapital : true});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._amountCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
+/// {direction : 'outbound', maxDepth : 2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2484,7 +2610,60 @@ Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get common properties of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_common_properties
+///
+/// `general_graph._listCommonProperties(vertex1Example, vertex2Examples,
+/// options)`
+/// *The general_graph._listCommonProperties function returns the vertices of
+/// the graph that share common properties.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *vertex2CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *ignoreProperties* : One or multiple
+///  attributes of a document that should be ignored.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all locations with the same properties:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._listCommonProperties({}, {});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all cities which share same properties except for population.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._listCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
+///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example, options) {
@@ -2509,7 +2688,60 @@ Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get amount of common properties of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_amount_common_properties
+///
+/// `general_graph._amountCommonProperties(vertex1Example, vertex2Examples,
+/// options)`
+/// *The general_graph._amountCommonProperties function returns the amount of vertices of
+/// the graph that share common properties.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *vertex2CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *ignoreProperties* : One or multiple
+///  attributes of a document that should be ignored.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all locations with the same properties:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._amountCommonProperties({}, {});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all cities which share same properties except for population.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._amountCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
+///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Example, options) {
@@ -2536,6 +2768,8 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
   });
   return returnHash;
 };
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions

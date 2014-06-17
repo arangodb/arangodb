@@ -4168,7 +4168,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// length of 1 and a minimal length of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths2}
-///   ~require("internal").db;
+/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
@@ -5286,6 +5286,34 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 /// It does not return the actual path but only the distance between two vertices.
+///
+/// @EXAMPLES
+///
+/// A route planner example, distance from all villages to other cities:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_DISTANCE_TO("
+/// |+"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
+/// |"startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+/// | "e.distance]"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, distance from Munich and Cologne to Olpe:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |db._query("FOR e IN GRAPH_DISTANCE_TO("
+/// |+"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
+/// ).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
