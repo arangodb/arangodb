@@ -7,3 +7,6 @@ You can find packages for various operation systems at our [download](http://www
  
 If you don't want to install ArangoDB at the beginning and just want to experiment with the features, you can use our [online demo](https://www.arangodb.org/tryitout).
 
+In this Chapter you will also learn how to Compile ArangoDB from scratch.
+
+You also get help if you want to update your ArangoDB Version to the newest one! 
