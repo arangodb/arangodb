@@ -1530,6 +1530,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph = require("org/arangodb/general-graph");
 ///   g = graph._create("mygraph", [graph._undirectedRelationDefinition("relation", ["male", "female"])], ["sessions"]);
+/// ~ graph._drop("mygraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
