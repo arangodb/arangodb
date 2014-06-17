@@ -1,0 +1,141 @@
+!CHAPTER Graph Management
+
+In order to create a graph the philosophy of handling the graph content has to introduced.
+A graph contains a set of edge definitions each referring to one edge collection and
+defining constraints on the vertex collections used as start and end points of the edges.
+Furthermore a graph can contain an arbitrary amount of vertex collections, called  orphan collections, that are not used in any edge definition but should be managed by the graph.
+In order to create a graph the functionality to create edge definitions has to be introduced first:
+
+!SECTION Edge Definitions
+
+The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
+
+!SUBSECTION Initialize the list
+
+<!-- @startDocuBlock JSF_general_graph_edge_definitions -->
+
+!SUBSECTION Extend the list
+
+<!-- @startDocuBlock JSF_general_graph_extend_edge_definitions -->
+
+!SUBSUBSECTION Undirected Relation
+
+<!-- @startDocuBlock JSF_general_graph_undirectedRelationDefinition -->
+
+!SUBSUBSECTION Directed Relation
+
+<!-- @startDocuBlock JSF_general_graph_directedRelationDefinition -->
+
+!SUBSECTION Orphan Collections
+
+Each graph has an orphan collection. It consists of arbitrary many vertex collection (type *document*), that are not
+used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
+it will be removed from the orphan collection automatically.
+
+!SUBSUBSECTION Add
+
+<!-- @startDocuBlock JSF_general_graph__addOrphanCollection -->
+
+!SUBSUBSECTION Read
+
+<!-- @startDocuBlock JSF_general_graph__getOrphanCollections -->
+
+!SUBSUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph__removeOrphanCollection -->
+
+!SECTION Create a graph
+
+After having introduced edge definitions and orphan collections a graph can be created.
+
+<!-- @startDocuBlock JSF_general_graph_create -->
+
+
+!SUBSUBSECTION Complete Example to create a graph
+
+Example Call:
+
+```js
+> var graph = require("org/arangodb/graph");
+> var edgeDefinitions = graph._edgeDefinitions();
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelationDefinition("friend_of", ["Customer"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._create("myStore", edgeDefinitions);
+{
+  _id: "_graphs/123",
+  _rev: "123",
+  _key: "123"
+}
+```
+
+alternative call:
+
+```js
+> var graph = require("org/arangodb/graph");
+> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelationDefinition("friend_of", ["Customer"]), graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._create("myStore", edgeDefinitions);
+{
+  _id: "_graphs/123",
+  _rev: "123",
+  _key: "123"
+};
+```
+
+!SUBSECTION List available graphs
+
+<!-- @startDocuBlock JSF_general_graph_list_call -->
+`general-graph._list()` *List all graphs.*
+<br />
+<br />
+
+<!-- @startDocuBlock JSF_general_graph_list_info -->
+
+<br />
+@EXAMPLES
+<br />
+
+<!-- @startDocuBlock JSF_general_graph_list_examples -->
+
+!SUBSECTION Load a graph
+
+<!-- @startDocuBlock JSF_general_graph_graph -->
+
+!SUBSECTION Remove a graph
+
+<!-- @startDocuBlock JSF_general_graph_drop -->
+
+!SECTION Edge
+
+!SUBSECTION Save
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_save -->
+
+!SUBSECTION Replace
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_replace -->
+
+!SUBSECTION Update
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_update -->
+
+!SUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph_vertex_collection_remove -->
+
+!SECTION Edge
+
+!SUBSECTION Save
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_save -->
+
+!SUBSECTION Replace
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_replace -->
+
+!SUBSECTION Update
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_update -->
+
+!SUBSECTION Remove
+
+<!-- @startDocuBlock JSF_general_graph_edge_collection_remove -->
