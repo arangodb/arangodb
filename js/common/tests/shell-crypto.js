@@ -66,7 +66,7 @@ function CryptoSuite () {
         [ "Arangodb", "0862bc79ec789143f75e3282df98c8f4" ],
         [ "ArangoDB is a database", "b88ddc26cfa3a652fdd8bf8e8c069540" ]
       ];
-      
+
       data.forEach(function (value) {
         assertEqual(value[1], crypto.md5(value[0]));
       });
@@ -99,12 +99,63 @@ function CryptoSuite () {
         [ "Arangodb", "38579e73fd7435de7db93028a1b340be77445b46c94dff013c05c696ccae259c" ],
         [ "ArangoDB is a database", "00231e8f9c0a617426ae51e4e230a1b25f6d5b82c10fccc835b514142f235f31" ]
       ];
-      
+
       data.forEach(function (value) {
         assertEqual(value[1], crypto.sha256(value[0]));
       });
     },
-    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hmac, invalid values
+////////////////////////////////////////////////////////////////////////////////
+
+    testHmacInvalid : function () {
+      [ undefined, null, true, false, 0, 1, -1, 32.5, [ ], { } ].forEach(function (value1, i, arr) {
+        arr.forEach(function(value2) {
+          try {
+            crypto.hmac(value1, value2);
+            fail();
+          }
+          catch (err) {
+          }
+        });
+      });
+      try {
+        crypto.hmac("a", "b", "nosuchalgo");
+        fail();
+      }
+      catch (err) {
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hmac
+////////////////////////////////////////////////////////////////////////////////
+
+    testHmac : function () {
+      var data = [
+        [ "secret", "", undefined, "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169" ],
+        [ "secret", "", "sha256", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169" ],
+        [ "secret", "", "SHA256", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169" ],
+        [ "secret", " ", "sha256", "449cae45786ff49422f05eb94182fb6456b10db5c54f2342387168702e4f5197"],
+        [ "secret", "arangodb", "sha256", "85ae370b23a90d5f511a378678edc084f2a0d1190b96f1f543f7e0848a597a6d" ],
+        [ "secret", "Arangodb", "sha256", "95144e880bbc4a4bf10a2b683603c763a38817b544e1c2f6ff1bd3523bf60f9e" ],
+        [ "secret", "ArangoDB is a database", "sha256", "4888d586d3208ca18ebaf78569949a13f3c03585edb007771cd820820a351b0f" ],
+        [ "SECRET", "ArangoDB is a database", "sha256", "a04df5ce362f49439db5e30032b20e0fa64d01c60ceb32a9150e58d3c2c929af" ],
+        [ "secret", "ArangoDB is a database", "sha1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
+        [ "secret", "ArangoDB is a database", "SHA1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
+        [ "secret", "ArangoDB is a database", "md5", "6eecfc947725974efc24bbaaafe15a13" ],
+        [ "secret", "ArangoDB is a database", "MD5", "6eecfc947725974efc24bbaaafe15a13" ]
+      ];
+
+      data.forEach(function (value) {
+        if (value[2] === undefined) {
+          assertEqual(value[3], crypto.hmac(value[0], value[1]));
+        }
+        assertEqual(value[3], crypto.hmac(value[0], value[1], value[2]));
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test random
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +164,7 @@ function CryptoSuite () {
       var i;
 
       for (i = 0; i < 100; ++i) {
-        assertTrue(crypto.rand() != 0);
+        assertTrue(crypto.rand() !== 0);
       }
     }
 
