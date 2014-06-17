@@ -2513,6 +2513,7 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 ///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._extendEdgeDefinitions(ed2);
+/// ~ graph._drop("myGraph", true)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2796,6 +2797,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
+/// ~ graph._drop("myGraph", true)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2847,6 +2849,7 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 ///   g._getOrphanCollections();
+/// ~ graph._drop("myGraph", true)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2879,6 +2882,7 @@ Graph.prototype._getOrphanCollections = function() {
 ///   g._getOrphanCollections();
 ///   g._removeOrphanCollection("myVC3");
 ///   g._getOrphanCollections();
+/// ~ graph._drop("myGraph", true)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
