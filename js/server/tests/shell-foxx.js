@@ -245,6 +245,135 @@ function SetRoutesFoxxControllerSpec () {
   };
 }
 
+function ControllerInjectionSpec () {
+  var app, routes, models;
+
+  return {
+    testInjectFactoryFunction: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        timesCalled = 0;
+
+      app.inject({thing: function() {timesCalled++;}});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertEqual(timesCalled, 1);
+    },
+    testInjectNameValue: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        timesCalled = 0;
+
+      app.inject('thing', function() {timesCalled++;});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertEqual(timesCalled, 1);
+    },
+    testInjectOverwrite: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        wrongFuncCalled = false,
+        timesCalled = 0;
+
+      app.inject({thing: function() {wrongFuncCalled = true;}});
+      app.inject({thing: function() {timesCalled++;}});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertFalse(wrongFuncCalled);
+      assertEqual(timesCalled, 1);
+    },
+    testInjectInRoute: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        calledA = false,
+        calledB = false,
+        calledC = false;
+
+      app.inject({thing: function() {calledA = true;}});
+
+      app.get('/foxx', function () {
+        app.inject({
+          thing: function() {calledB = true;},
+          other: function() {calledC = true;}
+        });
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(calledA);
+      assertFalse(calledB);
+      assertTrue(calledC);
+    },
+    testInjectResultPassedThrough: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        called = false;
+
+      app.inject({thing: function() {return 'value';}});
+
+      app.get('/foxx', function () {
+        assertEqual(this.thing, 'value');
+        called = true;
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+    testInjectSimpleValues: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        called = false;
+
+      var injectables = {
+        obj: {a: 0, b: 1},
+        arr: ['one', 'two'],
+        str: 'hello',
+        num: 42
+      };
+
+      app.inject(injectables);
+
+      app.get('/foxx', function () {
+        assertEqual(typeof this.obj, 'object');
+        assertEqual(typeof this.arr, 'object');
+        assertEqual(typeof this.str, 'string');
+        assertEqual(typeof this.num, 'number');
+        assertTrue(Array.isArray(this.arr));
+        assertEqual(this.obj, injectables.obj);
+        assertEqual(this.arr, injectables.arr);
+        assertEqual(this.str, injectables.str);
+        assertEqual(this.num, injectables.num);
+        called = true;
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    }
+  };
+}
+
 function DocumentationAndConstraintsSpec () {
   var app, routes, models;
 
@@ -872,6 +1001,7 @@ function FoxxControllerWithRootElement () {
 
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
+jsunity.run(ControllerInjectionSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
