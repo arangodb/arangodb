@@ -1,44 +1,20 @@
-!CHAPTER Graph Module
+!SECTION Create a graph
 
-The graph module provides functions dealing with graph structures.
+<!-- @startDocuBlock JSF_general_graph_create -->
 
-!SECTION First Steps with Graphs
+There are different types of edge definitions:
 
-A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
-collections*. A vertex can be a document of a *document collection* or of an edge
-collection (so edges can be used as vertices). Wich collections are used within
-a graph is defined via *edge definitions*. A graph can contain more than one edge
-definition, at least one is needed.
-
-!SUBSECTION Create a graph
-
-The creation of a graph requires the name of the graph and a definition of its edges.
-
-For every type of edge definition a convenience method exists that can be used to create a graph.
-
-```js
-> var graph = require("org/arangodb/graph");
-
-> var g = graph._create(graphName, edgeDefinitions);
-```
-
-There are different types of edge defintions:
-
-!SUBSECTION Edge Definitions
+!SECTION Edge Definitions
 
 The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
-The edge definitons array is initialised with the following call:
 
-```js
-> var edgeDefinitions = graph._edgeDefinitions(edgeDefinition1,......edgeDefinitionN);
-```
+!SUBSECTION Initialize the list
 
-To add further edge definitions to the array one must call:
+<!-- @startDocuBlock JSF_general_graph_edge_definitions -->
 
-```js
-> graph._extendEdgeDefinitions(edgeDefinitions, edgeDefinition1,......edgeDefinitionN);
-```
+!SUBSECTION Extend the list
 
+<!-- @startDocuBlock JSF_general_graph_extend_edge_definitions -->
 
 !SUBSUBSECTION Undirected Relation
 
@@ -47,7 +23,6 @@ To add further edge definitions to the array one must call:
 !SUBSUBSECTION Directed Relation
 
 <!-- @startDocuBlock JSF_general_graph_directedRelationDefinition -->
-
 
 !SUBSUBSECTION Complete Example to create a graph
 

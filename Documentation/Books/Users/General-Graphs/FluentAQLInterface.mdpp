@@ -22,9 +22,8 @@ Therefore you get exactly this two entry points:
 
 <!-- @startDocuBlock JSF_general_graph_edges -->
 
-Select some edges from the graph.
+`graph.edges(examples)` *Select some edges from the graph.*
 <br />
-`graph.edges(examples)`
 <br />
 Creates an AQL statement to select a subset of the edges stored in the graph.
 This is one of the entry points for the fluent AQL interface.
@@ -49,7 +48,7 @@ The description of this module can be found below.
 To request unfiltered edges:
 <br />
 
-```
+```js
 arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
 arangosh>   var g = examples.loadGraph("social");
 arangosh>   g._edges().toArray();
@@ -120,9 +119,8 @@ arangosh>   g._edges({type: "married"}).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_vertices -->
 
-Select some vertices from the graph.
+`graph.vertices(examples)` *Select some vertices from the graph.*
 <br />
-`graph.vertices(examples)`
 <br />
 Creates an AQL statement to select a subset of the vertices stored in the graph.
 This is one of the entry points for the fluent AQL interface.
@@ -215,9 +213,8 @@ The cursor functionality is described in this section.
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_toArray -->
 
-Returns an array containing the complete result.
+`graph-query.toArray()` *Returns an array containing the complete result.*
 <br />
-`graph-query.toArray()`
 <br />
 This function executes the generated query and returns the
 entire result as one array.
@@ -268,9 +265,8 @@ arangosh>   query.toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_hasNext -->
 
-Checks if the query has further results.
+`graph-query.neighbors(examples)` *Checks if the query has further results.*
 <br />
-`graph-query.neighbors(examples)`
 <br />
 The generated statement maintains a cursor for you.
 If this cursor is already present *hasNext()* will
@@ -305,9 +301,8 @@ arangosh>   var query = g._vertices();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_next -->
 
-Request the next element in the result.
+`graph-query.next()` *Request the next element in the result.*
 <br />
-`graph-query.next()`
 <br />
 The generated statement maintains a cursor for you.
 If this cursor is already present *next()* will
@@ -389,9 +384,8 @@ arangosh>   query.next();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_count -->
 
-Returns the number of returned elements if the query is executed.
+`graph-query.count()` *Returns the number of returned elements if the query is executed.*
 <br />
-`graph-query.count()`
 <br />
 This function determines the amount of elements to be expected within the result of the query.
 It can be used at the beginning of execution of the query
@@ -423,9 +417,8 @@ In this section all available query statements are described.
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_edges -->
 
-Select all edges for the vertices selected before.
+`graph-query.edges(examples)` *Select all edges for the vertices selected before.*
 <br />
-`graph-query.edges(examples)`
 <br />
 Creates an AQL statement to select all edges for each of the vertices selected
 in the step before.
@@ -563,9 +556,8 @@ arangosh>   query.edges([{type: "married"}, {type: "friend"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_outEdges -->
 
-Select all outbound edges for the vertices selected before.
+`graph-query.outEdges(examples)` *Select all outbound edges for the vertices selected before.*
 <br />
-`graph-query.outEdges(examples)`
 <br />
 Creates an AQL statement to select all *outbound* edges for each of the vertices selected
 in the step before.
@@ -678,9 +670,8 @@ arangosh>   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_inEdges -->
 
-Select all inbound edges for the vertices selected before.
+`graph-query.inEdges(examples)` *Select all inbound edges for the vertices selected before.*
 <br />
-`graph-query.inEdges(examples)`
 <br />
 Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 in the step before.
@@ -761,9 +752,8 @@ arangosh>   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_vertices -->
 
-Select all vertices connected to the edges selected before.
+`graph-query.vertices(examples)` *Select all vertices connected to the edges selected before.*
 <br />
-`graph-query.vertices(examples)`
 <br />
 Creates an AQL statement to select all vertices for each of the edges selected
 in the step before.
@@ -863,9 +853,8 @@ arangosh>   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_fromVertices -->
 
-Select all vertices where the edges selected before start.
+`graph-query.vertices(examples)` *Select all vertices where the edges selected before start.*
 <br />
-`graph-query.vertices(examples)`
 <br />
 Creates an AQL statement to select the set of vertices where the edges selected
 in the step before start at.
@@ -953,9 +942,8 @@ arangosh>   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_toVertices -->
 
-Select all vertices targeted by the edges selected before.
+`graph-query.vertices(examples)` *Select all vertices targeted by the edges selected before.*
 <br />
-`graph-query.vertices(examples)`
 <br />
 Creates an AQL statement to select the set of vertices where the edges selected
 in the step before end in.
@@ -1023,9 +1011,8 @@ arangosh>   query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_neighbors -->
 
-Select all neighbors of the vertices selected in the step before.
+`graph-query.neighbors(examples)` *Select all neighbors of the vertices selected in the step before.*
 <br />
-`graph-query.neighbors(examples)`
 <br />
 Creates an AQL statement to select all neighbors for each of the vertices selected
 in the step before.
@@ -1112,10 +1099,8 @@ arangosh>   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_restrict -->
 
-Restricts the last statement in the chain to return
-only elements of a specified set of collections
+`graph-query.restrict(restrictions)` *Restricts the last statement in the chain to return only elements of a specified set of collections*
 <br />
-`graph-query.restrict(restrictions)`
 <br />
 By default all collections in the graph are searched for matching elements
 whenever vertices and edges are requested.
@@ -1208,9 +1193,8 @@ arangosh>   query.edges().vertices().restrict(["female", "male", "products"]).to
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_filter -->
 
-Filter the result of the query
+`graph-query.filter(examples)` *Filter the result of the query*
 <br />
-`graph-query.filter(examples)`
 <br />
 This can be used to further specfiy the expected result of the query.
 The result set is reduced to the set of elements that matches the given *examples*.
@@ -1295,11 +1279,12 @@ arangosh>   query.toVertices().outEdges().filter({type: "married"}).toArray();
 
 <!-- @startDocuBlock JSF_general_graph_fluent_aql_path -->
 
-The result of the query is the path to all elements.
+`graph-query.path()` *The result of the query is the path to all elements.*
+<br />
 <br />
 By defaut the result of the generated AQL query is the set of elements passing the last matches.
-So having a `vertices()` query as the last step the result will be set of vertices.
-Using `path()` as the last action before requesting the result
+So having a *vertices()* query as the last step the result will be set of vertices.
+Using *path()* as the last action before requesting the result
 will modify the result such that the path required to find the set vertices is returned.
 <br />
 @EXAMPLES
