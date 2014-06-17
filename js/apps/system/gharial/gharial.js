@@ -96,6 +96,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_http_examples
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
+///   var graph = require("org/arangodb/general-graph");
+/// | if (graph._exists("myGraph")) {
+/// |    graph._drop("myGraph");
+///   }
 ///   var url = "/system/gharial";
 ///   body = { 
 ///     name: "myGraph", 
@@ -112,7 +116,6 @@
 ///
 ///   logJsonResponse(response);
 ///
-///   var graph = require("org/arangodb/general-graph");
 ///   graph._drop("myGraph");
 ///   
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -850,7 +853,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -899,7 +902,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     type: "divorced"
 ///   }
@@ -954,7 +957,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPatchEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     since: "01.01.2001"
 ///   }
@@ -1011,7 +1014,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
@@ -1055,10 +1058,6 @@
       };
     }
   );
-
-
-
-
 }());
 
 // -----------------------------------------------------------------------------
