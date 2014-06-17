@@ -1,0 +1,89 @@
+!CHAPTER Graph Functions
+
+Write Intro!
+
+!SECTION Some Methods
+
+```javascript
+graph.listCommonNeighbors(vertex1, vertex2, options)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:
+* see getNeighbors
+
+```javascript
+graph.amountCommonNeighbors(vertex1, vertex2, options)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:
+* see getNeighbors
+
+
+
+```javascript
+graph.listCommonProperties((vertex1, vertex2)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+
+
+```javascript
+graph.amountCommonProperties((vertex1, vertex2)
+```
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+
+
+
+
+```javascript
+graph.pathTo(vertex1, vertex2, options)
+```
+
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options:  see determinePredecessors
+
+
+```javascript
+graph.distanceTo(vertex1, vertex2, options)
+```
+
+
+vertex1: string - vertex id
+vertex2: string - vertex id
+options: see determinePredecessors
+
+```javascript
+graph.getNeighbors(vertex1, options)
+```
+
+vertex1: string - vertex id
+options:
+
+* direction:
+  "inbound" -> consider only inbound edges
+  "outbount" -> consider only outbound edges
+  "any"(default) -> consider both directions
+* weight: attribute-name -> use this attribute to determine edgeweight
+* weight_function: function -> use this function to calculate the weight
+* default-weight -> us this value if weight could not be calculated otherwise, default is Infinity
+* only: function -> will be invoked on any edge, neighbors will only be included if this returns true or is not defined.
+
+
+```javascript
+graph.measurement(vertex1, measurement)
+```
+
+vertex1: string - vertex id
+measurement: String
+*  "eccentricity": Calculates the eccentricity of the vertex
+*  "betweenness": Calculates the betweenness of the vertex
+*  "closeness": Calculates the closeness of the vertex
