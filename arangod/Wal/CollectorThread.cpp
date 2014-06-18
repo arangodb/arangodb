@@ -858,7 +858,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
                                              CollectorCache* cache,
                                              OperationsType const& operations) {
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE  
+#ifdef TRI_ENABLE_FAILURE_TESTS
   // used only for crash / recovery tests
   int numMarkers = 0;
 #endif
