@@ -105,7 +105,7 @@ STATE_ARANGOSH_RUN = 2
 state = STATE_BEGIN
 
 ################################################################################
-### @brief parse file
+### @brief optioon states
 ################################################################################
 
 OPTION_NORMAL = 0
@@ -113,6 +113,25 @@ OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
 
 fstate = OPTION_NORMAL
+
+################################################################################
+### @brief append input
+################################################################################
+
+def appendInput (partialCmd, cmd, addNL):
+    nl = ""
+
+    if addNL:
+        nl = "\\n"
+
+    if partialCmd == "":
+        return "arangosh> " + cmd + nl
+    else:
+        return partialCmd + "........> " + cmd + nl
+
+################################################################################
+### @brief get file names
+################################################################################
 
 filenames = []
 
@@ -148,19 +167,18 @@ for filename in argv:
         fstate = OPTION_NORMAL
         OutputDir = filename
 
-## .............................................................................
-## loop over input files
-## .............................................................................
+################################################################################
+### @brief loop over input files
+################################################################################
     
 r1 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 r2 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
 r3 = re.compile(r'^@END_EXAMPLE_')
+r4 = re.compile(r'^ +')
 
-name = ""
-
-fstate = OPTION_NORMAL
 strip = None
 
+name = ""
 partialCmd = ""
 partialLine = ""
 
@@ -209,10 +227,12 @@ for filename in filenames:
 
             continue
 
-        # we are within a example handle any continued line magic
+        # we are within a example
         line = line[len(strip):]
-        m = r3.match(line)
         showCmd = True
+
+        # end-example test
+        m = r3.match(line)
 
         if m:
             name = ""
@@ -221,33 +241,40 @@ for filename in filenames:
             state = STATE_BEGIN
             continue
 
+        # fix special characters
         cmd = line.replace("\\", "\\\\").replace("'", "\\'")
 
+        # handle any continued line magic
         if line != "":
             if line[0] == "|":
-                partialLine = partialLine + line[1:] + "\n"
-                cmd = cmd[1:]
-
-                if partialCmd == "":
-                    partialCmd = "arangosh> " + cmd + "\\n"
+                if line.startswith("| "):
+                    line = line[2:]
+                    cmd = cmd[2:]
                 else:
-                    partialCmd = partialCmd + "........> " + cmd + "\\n"
+                    line = line[1:]
+                    cmd = cmd[1:]
 
+                partialLine = partialLine + line + "\n"
+                partialCmd = appendInput(partialCmd, cmd, True)
                 continue
 
             if line[0] == "~":
-                line = line[1:]
+                if line.startswith("~ "):
+                    line = line[2:]
+                else:
+                    line = line[1:]
+
                 showCmd = False
+
+            elif line.startswith("  "):
+                line = line[2:]
+                cmd = cmd[2:]
 
         line = partialLine + line
         partialLine = ""
 
         if showCmd:
-            if partialCmd == "":
-                cmd = "arangosh> " + cmd
-            else:
-                cmd = partialCmd + "........> " + cmd
-
+            cmd = appendInput(partialCmd, cmd, False)
             partialCmd = ""
         else:
             cmd = None

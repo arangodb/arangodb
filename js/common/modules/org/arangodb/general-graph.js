@@ -2575,10 +2575,13 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
-/// {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._listCommonNeighbors(
+/// |   'city/Munich', 
+/// |   {},
+/// |   {direction : 'outbound', maxDepth : 2},
+///     {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
