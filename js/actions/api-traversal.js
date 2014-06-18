@@ -382,13 +382,17 @@ function notFound (req, res, code, message) {
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
+///     var cv = "persons";
+///     var ce = "knows";
+///     var users = db._collection(cv);
+///     var knows = db._collection(ce);
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
 ///       graphName: g.__name,
 ///       expander: "var connections = [ ];" +
 ///                 "if (vertex.name === \"Alice\") {" +
-///                 "config.getInEdges(vertex).forEach(function (e) {" +
+///                 "config.datasource.getInEdges(vertex).forEach(function (e) {" +
 ///                 "connections.push({ " + 
 ///                 "vertex: require(\"internal\").db._document(e._from), " + 
 ///                 "edge: e" +
@@ -396,7 +400,7 @@ function notFound (req, res, code, message) {
 ///                 "});" + 
 ///                 "}" +
 ///                 "if (vertex.name === \"Eve\") {" +
-///                 "config.getOutEdges(vertex).forEach(function (e) {" + 
+///                 "config.datasource.getOutEdges(vertex).forEach(function (e) {" + 
 ///                 "connections.push({" +
 ///                 "vertex: require(\"internal\").db._document(e._to), " +
 ///                 "edge: e" +
@@ -464,7 +468,7 @@ function notFound (req, res, code, message) {
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       itemOrder: "backward"
 ///     };
