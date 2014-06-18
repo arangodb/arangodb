@@ -403,6 +403,10 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  updateByExample: function (example, updates) {
+    'use strict';
+    this.collection.updateByExample(example, updates);
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Counting Entries
