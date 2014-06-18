@@ -429,6 +429,10 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  count: function () {
+    'use strict';
+    return this.collection.count();
+  }
 });
 
 Repository.extend = backbone_helpers.extend;
