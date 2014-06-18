@@ -787,6 +787,10 @@ int ArangoServer::startupServer () {
     if (startServer) {
       ++concurrency;
     }
+
+#ifdef __APPLE__
+    system("say -v hysterical 'welcome to ArangoDB'");
+#endif
   }
   else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
     if (concurrency == 1) {

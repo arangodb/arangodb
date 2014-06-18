@@ -22,21 +22,22 @@ Furthermore the edge has to be valid in the definition of this edge collection.
 
 <!-- @startDocuBlock JSF_general_graph_edge_create_http_examples -->
 
+
 ```
 unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation
 {"type":"friend","_from":"female/alice","_to":"female/diana"}
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 543501814
+etag: 608373699
 
 { 
   "error" : false, 
   "code" : 201, 
   "edge" : { 
-    "_id" : "relation/543501814", 
-    "_rev" : "543501814", 
-    "_key" : "543501814" 
+    "_id" : "relation/608373699", 
+    "_rev" : "608373699", 
+    "_key" : "608373699" 
   } 
 }
 
@@ -66,18 +67,18 @@ Gets an edge from the given collection.
 <!-- @startDocuBlock JSF_general_graph_edge_get_http_examples -->
 
 ```
-unix> curl --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+unix> curl --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 546188790
+etag: 611191747
 
 { 
   "error" : false, 
   "code" : 200, 
-  "vertex" : { 
+  "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "546188790", 
+    "_rev" : "611191747", 
     "_key" : "aliceAndBob", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
@@ -111,20 +112,20 @@ Updates the data of the specific edge in the collection.
 <!-- @startDocuBlock JSF_general_graph_edge_modify_http_examples -->
 
 ```
-unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
-{"since":"01.01.2001"}
+unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
+{"type":"divorced"}
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 555494902
+etag: 616500163
 
 { 
   "error" : false, 
   "code" : 200, 
-  "vertex" : { 
+  "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "555494902", 
-    "_oldRev" : "554053110", 
+    "_rev" : "616500163", 
+    "_oldRev" : "615189443", 
     "_key" : "aliceAndBob" 
   } 
 }
@@ -155,20 +156,20 @@ Replaces the data of an edge in the collection.
 <!-- @startDocuBlock JSF_general_graph_edge_replace_http_examples -->
 
 ```
-unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
-{"type":"divorced"}
+unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
+{"since":"01.01.2001"}
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 551366134
+etag: 620760003
 
 { 
   "error" : false, 
   "code" : 200, 
-  "vertex" : { 
+  "edge" : { 
     "_id" : "relation/aliceAndBob", 
-    "_rev" : "551366134", 
-    "_oldRev" : "550055414", 
+    "_rev" : "620760003", 
+    "_oldRev" : "619318211", 
     "_key" : "aliceAndBob" 
   } 
 }
@@ -199,7 +200,7 @@ Removes an edge from the collection.
 <!-- @startDocuBlock JSF_general_graph_edge_delete_http_examples -->
 
 ```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/vertex/relation/aliceAndBob
+unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
 
 HTTP/1.1 200 OK
 content-type: application/json
@@ -207,7 +208,7 @@ content-type: application/json
 { 
   "error" : false, 
   "code" : 200, 
-  "vertex" : true 
+  "edge" : true 
 }
 
 ```

@@ -59,8 +59,9 @@ def fetch_comments(dirpath):
                       if not shouldIgnoreLine:
                         if ("@startDocuBlock" in _text) or \
                            ("@endDocuBlock" in _text):
-                            fh.write("<!-- %s -->\n\n" % _text)
-                        elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                            fh.write("%s\n\n" % _text)
+                        elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
+                             "@EXAMPLE_ARANGOSH_RUN" in _text):
                           shouldIgnoreLine = True
                           _filename = re.search("{(.*)}", _text).group(1)
                           dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
@@ -70,14 +71,15 @@ def fetch_comments(dirpath):
                             print "Could not find code for " + _filename
                         else:
                             fh.write("%s\n" % _text)
-                      elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text):
+                      elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
+                           "@END_EXAMPLE_ARANGOSH_RUN" in _text):
                         shouldIgnoreLine = False
 
     fh.close()
 
 if __name__ == "__main__":
     open("allComments.txt", "w").close()  
-    path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server",
+    path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server","arangod/RestServer",
             "lib/Admin","lib/HttpServer",
             "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]
     for i in path:
