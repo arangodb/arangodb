@@ -3197,20 +3197,20 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__getOrphanCollections
+/// @startDocuBlock JSF_general_graph__orphanCollections
 /// Returns all vertex collections of the graph, that are not used in an edge definition.
 ///
-/// `general-graph._getOrphanCollections()`
+/// `general-graph._orphanCollections()`
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
-///   g._getOrphanCollections();
+///   g._orphanCollections();
 /// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3218,7 +3218,7 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getOrphanCollections = function() {
+Graph.prototype._orphanCollections = function() {
   return this.__orphanCollections;
 };
 
@@ -3242,9 +3242,9 @@ Graph.prototype._getOrphanCollections = function() {
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addOrphanCollection("myVC3", true);
 ///   g._addOrphanCollection("myVC4", true);
-///   g._getOrphanCollections();
+///   g._orphanCollections();
 ///   g._removeOrphanCollection("myVC3");
-///   g._getOrphanCollections();
+///   g._orphanCollections();
 /// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///

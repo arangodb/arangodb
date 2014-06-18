@@ -482,11 +482,11 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
       g1._deleteEdgeDefinition(ec1);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2], g1._getOrphanCollections());
+      assertEqual([vc1, vc2], g1._orphanCollections());
 
       g1._deleteEdgeDefinition(ec2);
       assertEqual([dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2, vc3], g1._getOrphanCollections());
+      assertEqual([vc1, vc2, vc3], g1._orphanCollections());
     },
 
     test_extendEdgeDefinitionFromExistingGraph1: function() {
@@ -562,10 +562,10 @@ function GeneralGraphCreationSuite() {
 
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addOrphanCollection(vc3);
-      assertEqual([vc3], g1._getOrphanCollections());
+      assertEqual([vc3], g1._orphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      assertEqual([], g1._getOrphanCollections());
+      assertEqual([], g1._orphanCollections());
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
 
@@ -600,12 +600,12 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr3], g2.__edgeDefinitions);
       g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertTrue(g1._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g1._getOrphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc4) !== -1);
+      assertTrue(g1._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g1._orphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc4) !== -1);
 
     },
 
@@ -626,10 +626,10 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr2], g2.__edgeDefinitions);
       g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertEqual([vc1], g1._getOrphanCollections());
-      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc6) !== -1);
+      assertEqual([vc1], g1._orphanCollections());
+      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc6) !== -1);
 
       try {
         graph._drop(gN1);
@@ -2492,12 +2492,12 @@ function OrphanCollectionSuite() {
     },
 
     test_getOrphanCollection: function() {
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
     test_addOrphanCollection1: function() {
       g1._addOrphanCollection(vC5, true);
-      assertEqual(g1._getOrphanCollections(), [vC5]);
+      assertEqual(g1._orphanCollections(), [vC5]);
     },
 
     test_addOrphanCollection2: function() {
@@ -2508,7 +2508,7 @@ function OrphanCollectionSuite() {
         assertEqual(e.errorMessage, vC4 + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
     test_addOrphanCollection3: function() {
@@ -2519,7 +2519,7 @@ function OrphanCollectionSuite() {
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
     test_addOrphanCollection4: function() {
@@ -2544,9 +2544,9 @@ function OrphanCollectionSuite() {
     test_removeOrphanCollection2: function() {
       g1._addOrphanCollection(vC4, true);
       g1._addOrphanCollection(vC5, true);
-      assertEqual(g1._getOrphanCollections(), [vC4, vC5]);
+      assertEqual(g1._orphanCollections(), [vC4, vC5]);
       g1._removeOrphanCollection(vC4, false);
-      assertEqual(g1._getOrphanCollections(), [vC5]);
+      assertEqual(g1._orphanCollections(), [vC5]);
       try {
         g1._removeOrphanCollection(vC4);
       } catch (e) {
