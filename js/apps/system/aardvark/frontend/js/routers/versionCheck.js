@@ -9,6 +9,7 @@
       url: "/_admin/aardvark/disableVersionCheck"
     });
   };
+
   var isVersionCheckEnabled = function(cb) {
     $.ajax({
       type: "GET",
@@ -62,8 +63,10 @@
           window.versionHelper.fromString(data.version);
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
-            //No new version.
-            return;
+            return; // no new version.
+          }
+          if (/-devel$/.test(data.version)) {
+            return; // ignore version in devel
           }
           isVersionCheckEnabled(showInterface.bind(window, currentVersion, json));
         };
