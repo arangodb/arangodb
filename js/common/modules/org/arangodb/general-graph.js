@@ -3224,14 +3224,14 @@ Graph.prototype._orphanCollections = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__removeVertexCollection
-/// Removes an orphan collection from the graph and deletes the collection, if it is not
-/// used in any graph.
+/// Removes an orphan collection from the graph. Optionally it deletes the collection,
+/// if it is not used in any graph.
 ///
 /// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
 ///
 /// *vertexCollectionName*: string - name of vertex collection.
-/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is not used in any graph.
-/// Default: false.
+/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is
+/// not used in any graph. Default: false.
 ///
 /// @EXAMPLES
 ///
