@@ -13,9 +13,32 @@
 var jasmine = require('jasmine/core'),
   _ = require('underscore'),
   fs = require('fs'),
-  Reporter = require('jasmine/reporter').Reporter;
+  Reporter = require('jasmine/reporter').Reporter,
+  tasks = require('org/arangodb/tasks');
 
 jasmine = jasmine.core(jasmine);
+
+// Works except params, because tasks takes an object of params,
+// setTimeout an array.
+jasmine.getGlobal().setTimeout = function (func) {
+  func();
+  // This would be the real implementation, but this will lead to the
+  // task never terminating
+
+  // var timeoutId = (new Date()).toString();
+
+  // tasks.register({
+  //   id: timeoutId,
+  //   offset: delay,
+  //   command: func
+  // });
+
+  // return timeoutId;
+};
+
+jasmine.getGlobal().clearTimeout = function (timeoutId) {
+  tasks.unregister(timeoutId);
+};
 
 exports.executeTestSuite = function (specFileNames, options) {
   'use strict';
@@ -24,6 +47,10 @@ exports.executeTestSuite = function (specFileNames, options) {
 
   // Explicitly add require
   sandbox.require = require;
+  sandbox.createSpy = jasmine.createSpy;
+  sandbox.createSpyObj = jasmine.createSpyObj;
+
+  sandbox.catchExceptions(false);
 
   /**
    * The `jsApiReporter` also receives spec results, and is used by any environment
@@ -50,5 +77,6 @@ exports.executeTestSuite = function (specFileNames, options) {
   });
 
   sandbox.execute();
+
   return !arangoReporter.hasErrors();
 };
