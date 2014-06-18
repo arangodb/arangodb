@@ -95,6 +95,7 @@
   };
 
   var loadGraph = function(name) {
+    dropGraph(name);
     switch (name) {
       case "knows_graph":
         return createTraversalExample();
