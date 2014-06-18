@@ -74,7 +74,7 @@
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
 ///   examples.loadGraph("routeplanner");
-///   var url = "/system/gharial";
+///   var url = "/_api/gharial";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -100,7 +100,7 @@
 /// | if (graph._exists("myGraph")) {
 /// |    graph._drop("myGraph");
 ///   }
-///   var url = "/system/gharial";
+///   var url = "/_api/gharial";
 ///   body = { 
 ///     name: "myGraph", 
 ///     edgeDefinitions: [{
@@ -116,7 +116,7 @@
 ///
 ///   logJsonResponse(response);
 ///
-///   graph._drop("myGraph");
+///   graph._drop("myGraph", true);
 ///   
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -144,12 +144,15 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDrop}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social";
+///   var url = "/_api/gharial/social";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+///   db._drop("male");
+///   db._drop("female");
+///   db._drop("relation");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +188,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialListVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex";
+///   var url = "/_api/gharial/social/vertex";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -225,7 +228,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertexCol}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex";
+///   var url = "/_api/gharial/social/vertex";
 ///   body = { 
 ///     collection: "otherVertices"
 ///   };
@@ -276,7 +279,7 @@
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._addVertexCollection("otherVertices");
-///   var url = "/system/gharial/social/vertex/otherVertices";
+///   var url = "/_api/gharial/social/vertex/otherVertices";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
@@ -289,7 +292,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollectionFailed}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/male";
+///   var url = "/_api/gharial/social/vertex/male";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 400);
@@ -330,7 +333,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialListEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge";
+///   var url = "/_api/gharial/social/edge";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -369,7 +372,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdgeCol}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge";
+///   var url = "/_api/gharial/social/edge";
 ///   body = { 
 ///     collection: "lives_in",
 ///     from: ["female", "male"],
@@ -420,7 +423,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialReplaceEdgeCol}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation";
+///   var url = "/_api/gharial/social/edge/relation";
 ///   body = { 
 ///     collection: "relation",
 ///     from: ["female", "male", "animal"],
@@ -484,7 +487,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialEdgeDefinitionRemove}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation";
+///   var url = "/_api/gharial/social/edge/relation";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
@@ -531,7 +534,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/male";
+///   var url = "/_api/gharial/social/vertex/male";
 ///   body = {
 ///     name: "Francis"
 ///   }
@@ -571,7 +574,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/female/alice";
+///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -625,14 +628,13 @@
 ///     name: "Alice Cooper",
 ///     age: 26
 ///   }
-///   var url = "/system/gharial/social/vertex/female/alice";
+///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
 /// 
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
-///   var graph = require("org/arangodb/general-graph");
-///   graph._drop("social");
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,14 +684,13 @@
 ///   body = {
 ///     age: 26
 ///   }
-///   var url = "/system/gharial/social/vertex/female/alice";
+///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PATCH', url, JSON.stringify(body));
 /// 
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
-///   var graph = require("org/arangodb/general-graph");
-///   graph._drop("social");
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -736,14 +737,13 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/female/alice";
+///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
-///   var graph = require("org/arangodb/general-graph");
-///   graph._drop("social");
+///   examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +790,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation";
+///   var url = "/_api/gharial/social/edge/relation";
 ///   body = {
 ///     type: "friend",
 ///     _from: "female/alice",
@@ -851,7 +851,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
+///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -900,7 +900,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
+///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     type: "divorced"
 ///   }
@@ -955,7 +955,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPatchEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
+///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     since: "01.01.2001"
 ///   }
@@ -1012,7 +1012,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
+///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
