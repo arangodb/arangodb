@@ -157,8 +157,8 @@
   /** Drops an existing graph
    *
    * Drops an existing graph object by name.
-   * By default all collections not used by other graphs will be dropped as
-   * well. It can be optionally configured to not drop the collections.
+   * Optionally all collections not used by other graphs can be dropped as
+   * well.
    */
   controller.del("/:graph", function(req, res) {
     var name = req.params("graph");
