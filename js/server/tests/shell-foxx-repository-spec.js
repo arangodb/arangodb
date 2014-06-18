@@ -73,6 +73,7 @@ describe('Repository Methods', function () {
       'firstExample',
       'remove',
       'removeByExample',
+      'update',
       'updateByExample',
       'replace',
       'replaceByExample'
@@ -250,7 +251,16 @@ describe('Repository Methods', function () {
   });
 
   describe('for updating entries', function () {
-    it('should update by id');
+    it('should update by id', function () {
+      var id = createSpy('id'),
+        updates = createSpy('updates'),
+        idAndRev = createSpy('idAndRev');
+
+      collection.update.and.returnValue(idAndRev);
+      instance.updateById(id, updates);
+
+      expect(collection.update.calls.argsFor(0)).toEqual([id, updates]);
+    });
 
     it('should update by example', function () {
       var example = createSpy('example'),
