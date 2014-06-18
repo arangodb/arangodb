@@ -255,7 +255,7 @@ function ControllerInjectionSpec () {
         res = {},
         timesCalled = 0;
 
-      app.inject({thing: function() {timesCalled++;}});
+      app.addInjector({thing: function() {timesCalled++;}});
 
       app.get('/foxx', function () {});
 
@@ -270,7 +270,7 @@ function ControllerInjectionSpec () {
         res = {},
         timesCalled = 0;
 
-      app.inject('thing', function() {timesCalled++;});
+      app.addInjector('thing', function() {timesCalled++;});
 
       app.get('/foxx', function () {});
 
@@ -286,8 +286,8 @@ function ControllerInjectionSpec () {
         wrongFuncCalled = false,
         timesCalled = 0;
 
-      app.inject({thing: function() {wrongFuncCalled = true;}});
-      app.inject({thing: function() {timesCalled++;}});
+      app.addInjector({thing: function() {wrongFuncCalled = true;}});
+      app.addInjector({thing: function() {timesCalled++;}});
 
       app.get('/foxx', function () {});
 
@@ -305,10 +305,10 @@ function ControllerInjectionSpec () {
         calledB = false,
         calledC = false;
 
-      app.inject({thing: function() {calledA = true;}});
+      app.addInjector({thing: function() {calledA = true;}});
 
       app.get('/foxx', function () {
-        app.inject({
+        app.addInjector({
           thing: function() {calledB = true;},
           other: function() {calledC = true;}
         });
@@ -328,10 +328,10 @@ function ControllerInjectionSpec () {
         res = {},
         called = false;
 
-      app.inject({thing: function() {return 'value';}});
+      app.addInjector({thing: function() {return 'value';}});
 
-      app.get('/foxx', function () {
-        assertEqual(this.thing, 'value');
+      app.get('/foxx', function (req, res, injected) {
+        assertEqual(injected.thing, 'value');
         called = true;
       });
 
@@ -345,25 +345,25 @@ function ControllerInjectionSpec () {
         res = {},
         called = false;
 
-      var injectables = {
+      var injectors = {
         obj: {a: 0, b: 1},
         arr: ['one', 'two'],
         str: 'hello',
         num: 42
       };
 
-      app.inject(injectables);
+      app.addInjector(injectors);
 
-      app.get('/foxx', function () {
-        assertEqual(typeof this.obj, 'object');
-        assertEqual(typeof this.arr, 'object');
-        assertEqual(typeof this.str, 'string');
-        assertEqual(typeof this.num, 'number');
-        assertTrue(Array.isArray(this.arr));
-        assertEqual(this.obj, injectables.obj);
-        assertEqual(this.arr, injectables.arr);
-        assertEqual(this.str, injectables.str);
-        assertEqual(this.num, injectables.num);
+      app.get('/foxx', function (req, res, injected) {
+        assertEqual(typeof injected.obj, 'object');
+        assertEqual(typeof injected.arr, 'object');
+        assertEqual(typeof injected.str, 'string');
+        assertEqual(typeof injected.num, 'number');
+        assertTrue(Array.isArray(injected.arr));
+        assertEqual(injected.obj, injectors.obj);
+        assertEqual(injected.arr, injectors.arr);
+        assertEqual(injected.str, injectors.str);
+        assertEqual(injected.num, injectors.num);
         called = true;
       });
 
