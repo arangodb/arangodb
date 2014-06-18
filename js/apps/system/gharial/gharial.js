@@ -61,7 +61,7 @@
       setResponse(res, "graph", {
         name: g.__name,
         edgeDefinitions: g.__edgeDefinitions,
-        orphanCollections: g._getOrphanCollections()
+        orphanCollections: g._orphanCollections()
       }, code);
     };
 
