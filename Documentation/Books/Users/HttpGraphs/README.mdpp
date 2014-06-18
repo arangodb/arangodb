@@ -1,5 +1,10 @@
 !CHAPTER HTTP Interface for Graphs
 
+**Warning Deprecated**
+
+This api is deprecated and will be removed soon.
+Please use [General Graphs](../HttpGharial/README.md) instead.
+
 `POST /_api/graph`*(create graph)*
 
 !SUBSECTION Query parameters

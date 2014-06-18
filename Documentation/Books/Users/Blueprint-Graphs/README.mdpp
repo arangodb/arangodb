@@ -1,4 +1,10 @@
+
 !CHAPTER Graphs
+
+**Warning Deprecated**
+
+This module is deprecated and will be removed soon.
+Please use [General Graphs](../General-Graphs/README.md) instead.
 
 A Graph consists of vertices and edges. The vertex collection contains the
 documents forming the vertices. The edge collection contains the documents
