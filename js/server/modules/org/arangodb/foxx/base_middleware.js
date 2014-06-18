@@ -110,7 +110,7 @@ BaseMiddleware = function () {
 ///
 /// Set the status @FA{code} of your response, for example:
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///    response.status(404);
@@ -129,7 +129,7 @@ BaseMiddleware = function () {
 ///
 /// Set a header attribute, for example:
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     response.set("Content-Length", 123);
@@ -172,7 +172,7 @@ BaseMiddleware = function () {
 /// Set the content type to JSON and the body to the JSON encoded @FA{object}
 /// you provided.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     response.json({'born': 'December 12, 1915'});

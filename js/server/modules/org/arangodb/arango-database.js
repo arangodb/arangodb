@@ -167,7 +167,7 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// - @LIT{params}: optional arguments passed to the function specified in 
 ///   @LIT{action}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude shell_transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +301,7 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ///
 /// Returns the index with @FA{index-handle} or null if no such index exists.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude shell_index-read-db
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,7 +357,7 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// Drops the index with @FA{index-handle}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude shell_index-drop-index-db
 ////////////////////////////////////////////////////////////////////////////////

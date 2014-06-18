@@ -200,7 +200,7 @@ function notFound (req, res, code, message) {
 /// The server will responded with `HTTP 500` when an error occurs inside the
 /// traversal or if a traversal performs more than `maxIterations` iterations.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// In the following examples the underlying graph will contain five persons
 /// `Alice`, `Bob`, `Charlie`, `Dave` and `Eve`.

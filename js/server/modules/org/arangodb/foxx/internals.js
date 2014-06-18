@@ -46,7 +46,7 @@ var is = require("org/arangodb/is"),
 /// following function (which is only internal, and not exported) you can create
 /// an UrlObject with a given URL, a constraint and a method. For example:
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     internal.constructUrlObject('/lecker/gans', null, 'get');
