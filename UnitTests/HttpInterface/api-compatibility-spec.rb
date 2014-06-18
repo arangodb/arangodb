@@ -129,7 +129,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(20200)
+      compatibility.should eq(20300)
     end
 
   end
