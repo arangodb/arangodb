@@ -8,23 +8,23 @@ installing ArangoDB locally.
 
 !SUBSECTION For Linux
 
-- Visit the official [ArangoDB download page](http://www.arangodb.org/download)
+* Visit the official [ArangoDB download page](http://www.arangodb.org/download)
   and download the correct package for your Linux distribution
-- Install the package using your favorite package manager
-- Start up the database server, normally this is done by
+* Install the package using your favorite package manager
+* Start up the database server, normally this is done by
   executing */etc/init.d/arangod start*. The exact command
   depends on your Linux distribution
 
 !SUBSECTION For MacOS X
 
-- Execute *brew install arangodb*
-- And start the server using */usr/local/sbin/arangod &*
+* Execute *brew install arangodb*
+* And start the server using */usr/local/sbin/arangod &*
 
 !SUBSECTION For Microsoft Windows
 
-- Visit the official [ArangoDB download page](http://www.arangodb.org/download)
+* Visit the official [ArangoDB download page](http://www.arangodb.org/download)
   and download the installer for Windows
-- Start up the database server
+* Start up the database server
 
 After these steps there should be a running instance of *_arangod_* -
 the ArangoDB database server.

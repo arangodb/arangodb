@@ -5,15 +5,15 @@ You can find binary packages for various Linux distributions
 
 We provide packages for:
 
-- Centos
-- Debian
-- Fedora
-- [Linux-Mint](#linux-mint)
-- Mandriva
-- OpenSUSE
-- RedHat RHEL
-- SUSE SLE
-- Ubuntu
+* Centos
+* Debian
+* Fedora
+* [Linux-Mint](#linux-mint)
+* Mandriva
+* OpenSUSE
+* RedHat RHEL
+* SUSE SLE
+* Ubuntu
 
 
 !SECTION Using a Package Manager to install ArangoDB
@@ -42,6 +42,7 @@ Other versions of ArangoDB or other architectures should work similarly.
 !SUBSECTION Linux-Mint
 
 Download and import GPG-PublicKey:
+
 
     wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.org/repositories/PublicKey
     apt-key add RPM-GPG-KEY-www.arangodb.org
