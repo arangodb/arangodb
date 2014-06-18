@@ -673,16 +673,20 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
     char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+    void* f;
    
     MUTEX_LOCKER(shaper->_attributeLock); 
  
     // remove attribute by name (p points to new location of name, but names
     // are identical in old and new marker) 
     // and re-insert same attribute with adjusted pointer
-    void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("attribute already existed in attribute names dictionary");
+    }
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
@@ -690,6 +694,9 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("attribute already existed in attribute ids dictionary");
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
