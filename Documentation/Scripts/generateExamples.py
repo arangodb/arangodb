@@ -32,10 +32,10 @@
 ### Copyright holder is triAGENS GmbH, Cologne, Germany
 ###
 ### @author Dr. Frank Celler
-### @author Copyright 2011-2012, triagens GmbH, Cologne, Germany
+### @author Copyright 2011-2014, triagens GmbH, Cologne, Germany
 ################################################################################
 
-import re, sys, string
+import re, sys, string, os
 
 argv = sys.argv
 argv.pop(0)
@@ -108,21 +108,13 @@ state = STATE_BEGIN
 ### @brief parse file
 ################################################################################
 
-r1 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
-r2 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
-r3 = re.compile(r'^@END_EXAMPLE_')
-
-name = ""
-
 OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
 
 fstate = OPTION_NORMAL
-strip = None
 
-partialCmd = ""
-partialLine = ""
+filenames = []
 
 for filename in argv:
     if filename == "--arangosh-setup":
@@ -133,108 +125,14 @@ for filename in argv:
         fstate = OPTION_OUTPUT_DIR
         continue
 
-    ## .............................................................................
-    ## input file
-    ## .............................................................................
-    
     if fstate == OPTION_NORMAL:
-        f = open(filename, "r")
-        state = STATE_BEGIN
-
-        for line in f:
-            if strip is None:
-                strip = ""
-
-            line = line.rstrip('\n')
-
-            # read the start line and remember the prefix which must be skipped
-
-            if state == STATE_BEGIN:
-                m = r1.match(line)
-
-                if m:
-                    strip = m.group(1)
-                    name = m.group(2)
-
-                    if name in ArangoshFiles:
-                        print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
-                        
-                    ArangoshFiles[name] = True
-                    ArangoshOutput[name] = []
-                    state = STATE_ARANGOSH_OUTPUT
-                    continue
-
-                m = r2.match(line)
-
-                if m:
-                    strip = m.group(1)
-                    name = m.group(2)
-
-                    if name in ArangoshFiles:
-                        print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
-                    
-                    ArangoshCases.append(name)    
-                    ArangoshFiles[name] = True
-                    ArangoshRun[name] = ""
-                    state = STATE_ARANGOSH_RUN
-                    continue
-
-                continue
-
-            # we are within a example handle any continued line magic
-            line = line[len(strip):]
-            m = r3.match(line)
-            showCmd = True
-
-            if m:
-                name = ""
-                partialLine = ""
-                partialCmd = ""
-                state = STATE_BEGIN
-                continue
-
-            cmd = line.replace("\\", "\\\\").replace("'", "\\'")
-
-            if line != "":
-                if line[0] == "|":
-                    partialLine = partialLine + line[1:] + "\n"
-                    cmd = cmd[1:]
-
-                    if partialCmd == "":
-                        partialCmd = "arangosh> " + cmd + "\\n"
-                    else:
-                        partialCmd = partialCmd + "........> " + cmd + "\\n"
-
-                    continue
-
-                if line[0] == "~":
-                    line = line[1:]
-                    showCmd = False
-
-            line = partialLine + line
-            partialLine = ""
-
-            if showCmd:
-                if partialCmd == "":
-                    cmd = "arangosh> " + cmd
-                else:
-                    cmd = partialCmd + "........> " + cmd
-                    
-                partialCmd = ""
-            else:
-                cmd = None
-
-            if state == STATE_ARANGOSH_OUTPUT:
-                ArangoshOutput[name].append([line, cmd])
-
-            elif state == STATE_ARANGOSH_RUN:
-                ArangoshRun[name] += line + "\n"
-
-        f.close()
-
-    ## .............................................................................
-    ## arangosh setup file
-    ## .............................................................................
+        if os.path.isdir(filename):
+            for root, dirs, files in os.walk(filename):
+                for file in files:
+                    if file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp"):
+                        filenames.append(os.path.join(root, file))
+        else:
+            filenames.append(filename)
 
     elif fstate == OPTION_ARANGOSH_SETUP:
         fstate = OPTION_NORMAL
@@ -246,13 +144,121 @@ for filename in argv:
 
         f.close()
     
-    ## .............................................................................
-    ## output directory
-    ## .............................................................................
-
     elif fstate == OPTION_OUTPUT_DIR:
         fstate = OPTION_NORMAL
         OutputDir = filename
+
+## .............................................................................
+## loop over input files
+## .............................................................................
+    
+r1 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
+r2 = re.compile(r'^(/// )?@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
+r3 = re.compile(r'^@END_EXAMPLE_')
+
+name = ""
+
+fstate = OPTION_NORMAL
+strip = None
+
+partialCmd = ""
+partialLine = ""
+
+for filename in filenames:
+
+    f = open(filename, "r")
+    state = STATE_BEGIN
+
+    for line in f:
+        if strip is None:
+            strip = ""
+
+        line = line.rstrip('\n')
+
+        # read the start line and remember the prefix which must be skipped
+
+        if state == STATE_BEGIN:
+            m = r1.match(line)
+
+            if m:
+                strip = m.group(1)
+                name = m.group(2)
+
+                if name in ArangoshFiles:
+                    print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
+
+                ArangoshFiles[name] = True
+                ArangoshOutput[name] = []
+                state = STATE_ARANGOSH_OUTPUT
+                continue
+
+            m = r2.match(line)
+
+            if m:
+                strip = m.group(1)
+                name = m.group(2)
+
+                if name in ArangoshFiles:
+                    print >> sys.stderr, "%s\nduplicate file name '%s'\n%s\n" % ('#' * 80, name, '#' * 80)
+
+                ArangoshCases.append(name)    
+                ArangoshFiles[name] = True
+                ArangoshRun[name] = ""
+                state = STATE_ARANGOSH_RUN
+                continue
+
+            continue
+
+        # we are within a example handle any continued line magic
+        line = line[len(strip):]
+        m = r3.match(line)
+        showCmd = True
+
+        if m:
+            name = ""
+            partialLine = ""
+            partialCmd = ""
+            state = STATE_BEGIN
+            continue
+
+        cmd = line.replace("\\", "\\\\").replace("'", "\\'")
+
+        if line != "":
+            if line[0] == "|":
+                partialLine = partialLine + line[1:] + "\n"
+                cmd = cmd[1:]
+
+                if partialCmd == "":
+                    partialCmd = "arangosh> " + cmd + "\\n"
+                else:
+                    partialCmd = partialCmd + "........> " + cmd + "\\n"
+
+                continue
+
+            if line[0] == "~":
+                line = line[1:]
+                showCmd = False
+
+        line = partialLine + line
+        partialLine = ""
+
+        if showCmd:
+            if partialCmd == "":
+                cmd = "arangosh> " + cmd
+            else:
+                cmd = partialCmd + "........> " + cmd
+
+            partialCmd = ""
+        else:
+            cmd = None
+
+        if state == STATE_ARANGOSH_OUTPUT:
+            ArangoshOutput[name].append([line, cmd])
+
+        elif state == STATE_ARANGOSH_RUN:
+            ArangoshRun[name] += line + "\n"
+
+    f.close()
 
 ################################################################################
 ### @brief generate arangosh example

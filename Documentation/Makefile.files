@@ -346,12 +346,13 @@ examples:
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
 		--output-dir @builddir@/Documentation/Examples \
 		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/js/actions/*.js \
-		@srcdir@/Documentation/DbaManual/*.md \
-		@srcdir@/Documentation/UserManual/*.md \
-		@srcdir@/Documentation/ImplementorManual/*.md \
-		@srcdir@/arangod/RestHandler/*.cpp \
-		@srcdir@/lib/Admin/*.cpp \
+		@srcdir@/js/actions \
+		@srcdir@/js/client \
+		@srcdir@/js/common \
+		@srcdir@/js/server \
+		@srcdir@/Documentation/Books/Users \
+		@srcdir@/arangod/RestHandler \
+		@srcdir@/lib/Admin \
 		> /tmp/arangosh.examples
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
