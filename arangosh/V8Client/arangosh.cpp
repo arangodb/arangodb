@@ -174,7 +174,13 @@ static uint64_t GcInterval = 10;
 /// @brief console object
 ////////////////////////////////////////////////////////////////////////////////
       
-static V8LineEditor* _console = 0;
+static V8LineEditor* Console = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief voice mode
+////////////////////////////////////////////////////////////////////////////////
+      
+static bool VoiceMode = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              JavaScript functions
@@ -441,6 +447,12 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   ;
 #endif
   
+#ifdef __APPLE__
+  description
+    ("voice", "enable voice based welcome")
+  ;
+#endif
+
   description
     ("chunk-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
     ("prompt", &Prompt, "command prompt")
@@ -490,6 +502,11 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   // disable excessive output in non-interactive mode
   if (! ExecuteScripts.empty() || ! ExecuteString.empty() || ! CheckScripts.empty() || ! UnitTests.empty() || ! JsLint.empty()) {
     BaseClient.shutup();
+  }
+
+  // voice mode
+  if (options.has("voice")) {
+    VoiceMode = true;
   }
 
   // return the positional arguments
@@ -1346,9 +1363,9 @@ static std::string BuildPrompt () {
 #else
 
 static void SignalHandler (int signal) {
-  if (_console != 0) {
-    _console->close();
-    _console = 0;
+  if (Console != 0) {
+    Console->close();
+    Console = 0;
   }
   printf("\n");
 
@@ -1364,8 +1381,8 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(v8::String::New("(shell)"));
 
-  _console = new V8LineEditor(context, ".arangosh.history");
-  _console->open(BaseClient.autoComplete());
+  Console = new V8LineEditor(context, ".arangosh.history");
+  Console->open(BaseClient.autoComplete());
 
   // install signal handler for CTRL-C
 #ifdef _WIN32
@@ -1385,6 +1402,12 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 #endif 
 
   uint64_t nrCommands = 0;
+
+#ifdef __APPLE__
+  if (VoiceMode) {
+    system("say -v zarvox 'welcome to Arango shell' &");
+  }
+#endif
 
   while (true) {
     // set up prompts
@@ -1426,18 +1449,20 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
 #ifdef TRI_HAVE_LINENOISE
       // linenoise doesn't need escape sequences for escape sequences
-      goodPrompt = string(TRI_SHELL_COLOR_BOLD_GREEN) + dynamicPrompt + string(TRI_SHELL_COLOR_RESET);
-      badPrompt  = string(TRI_SHELL_COLOR_BOLD_RED)   + dynamicPrompt + string(TRI_SHELL_COLOR_RESET);
+      goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
+      badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
 
 #else
       // readline does...
-      goodPrompt = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_GREEN) + string(ArangoClient::PROMPT_IGNORE_END) +
-                   dynamicPrompt +
-                   string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
+      goodPrompt = string()
+                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_GREEN + ArangoClient::PROMPT_IGNORE_END
+                 + dynamicPrompt
+                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
 
-      badPrompt  = string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_BOLD_RED)   + string(ArangoClient::PROMPT_IGNORE_END) +
-                   dynamicPrompt + 
-                   string(ArangoClient::PROMPT_IGNORE_START) + string(TRI_SHELL_COLOR_RESET) + string(ArangoClient::PROMPT_IGNORE_END);
+      badPrompt = string()
+                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_RED + ArangoClient::PROMPT_IGNORE_END
+                + dynamicPrompt
+                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
 #endif
     }
     else {
@@ -1455,7 +1480,13 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       }
     }
 
-    char* input = _console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+#ifdef __APPLE__
+  if (VoiceMode && promptError) {
+    system("say -v 'whisper' 'oh, no' &");
+  }
+#endif
+
+    char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
     if (input == 0) {
       break;
@@ -1484,7 +1515,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
       }
     }
 
-    _console->addHistory(input);
+    Console->addHistory(input);
 
     v8::HandleScope scope;
     v8::TryCatch tryCatch;
@@ -1525,9 +1556,15 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     BaseClient.flushLog();
   }
 
-  _console->close();
-  delete _console;
-  _console = 0;
+#ifdef __APPLE__
+  if (VoiceMode) {
+    system("say -v zarvox 'Good-Bye' &");
+  }
+#endif
+
+  Console->close();
+  delete Console;
+  Console = 0;
 
   BaseClient.printLine("");
 
