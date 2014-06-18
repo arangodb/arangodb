@@ -84,12 +84,23 @@ constructNickname = function (httpMethod, url) {
     .toLowerCase();
 };
 
-constructRoute = function (method, route, callback) {
+constructRoute = function (method, route, callback, controller) {
   'use strict';
   return {
     url: constructUrlObject(route, undefined, method),
     action: {
-      callback: callback
+      callback: function(req, res) {
+        Object.keys(controller.injectors).forEach(function(key) {
+          if (Object.prototype.hasOwnProperty.call(controller.injected, key)) return;
+          var injector = controller.injectors[key];
+          if (typeof injector === 'function') {
+            controller.injected[key] = injector();
+          } else {
+            controller.injected[key] = injector;
+          }
+        });
+        callback(req, res, controller.injected);
+      }
     },
     docs: {
       parameters: [],
