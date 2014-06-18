@@ -23,9 +23,10 @@ def findStartCode(textFile,full_path):
 def getTextFromSourceFile(searchText, full_path):
   f=open("allComments.txt", 'rU')
   s=f.read()
-  match = re.search(r'@startDocuBlock\s+'+re.escape(searchText)+'(.+?)@endDocuBlock', s,re.DOTALL)
+  match = re.search(r'@startDocuBlock\s+'+ searchText + "(?:\s+|$)" +'(.+?)@endDocuBlock', s,re.DOTALL)
   if match:
     textExtracted = match.group(1)
+    textExtracted = textExtracted.replace("<br />","\n")  
     replaceText(textExtracted, full_path, searchText)
 
 def replaceText(text, pathOfFile, searchText):
@@ -35,7 +36,7 @@ def replaceText(text, pathOfFile, searchText):
   f.close()
   f=open(pathOfFile,'w')
 
-  replaced=re.sub('@startDocuBlock\s+'+ searchText + "(?:\s+|$)",text,s)
+  replaced=re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
 
   f.write(replaced)
   f.close()
