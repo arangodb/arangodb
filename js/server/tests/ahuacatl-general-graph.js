@@ -1579,7 +1579,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 /// @brief test suite for GRAPH_TRAVERSAL() and GRAPH_SHORTEST_PATH function
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryGeneralCycleSSuite() {
+function ahuacatlQueryGeneralCyclesSuite() {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2099,7 +2099,7 @@ function ahuacatlQueryGeneralCycleSSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 jsunity.run(ahuacatlQueryGeneralCommonTestSuite);
-jsunity.run(ahuacatlQueryGeneralCycleSSuite);
+jsunity.run(ahuacatlQueryGeneralCyclesSuite);
 jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
