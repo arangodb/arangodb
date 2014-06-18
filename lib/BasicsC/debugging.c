@@ -28,6 +28,8 @@
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
 
+#ifdef TRI_ENABLE_FAILURE_TESTS
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -37,21 +39,13 @@
 /// the string is a comma-separated list of point names
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
 static char* FailurePoints;
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-write lock for thread-safe access to the failure-points list
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
 TRI_read_write_lock_t FailurePointsLock;
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -62,8 +56,6 @@ TRI_read_write_lock_t FailurePointsLock;
 /// search for it (e.g. searching for just "foo" would find "foo" and "foobar",
 /// so we'll be putting the value inside some delimiter: ",foo,")
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
 
 static char* MakeValue (char const* value) {
   char* delimited;
@@ -84,8 +76,6 @@ static char* MakeValue (char const* value) {
   return delimited;
 }
 
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -95,19 +85,13 @@ static char* MakeValue (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging (char const* message) {
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
   fprintf(stderr, "causing intentional segfault: %s\n", message);
   *((char*) -1) = '!';
-#endif
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we should fail at a specific failure point
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
 
 bool TRI_ShouldFailDebugging (char const* value) {
   char* found = NULL;
@@ -128,16 +112,11 @@ bool TRI_ShouldFailDebugging (char const* value) {
   return (found != NULL);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a failure point
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddFailurePointDebugging (char const* value) {
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
   char* found;
   char* checkValue;
 
@@ -194,10 +173,6 @@ void TRI_AddFailurePointDebugging (char const* value) {
         
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
   TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
-
-#else
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,9 +180,6 @@ void TRI_AddFailurePointDebugging (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging (char const* value) {
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
   char* checkValue;
 
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
@@ -263,10 +235,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
   }
-
-#else
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +242,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging () {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
 
   if (FailurePoints != NULL) {
@@ -285,26 +251,6 @@ void TRI_ClearFailurePointsDebugging () {
   FailurePoints = NULL;
   
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
-
-#else
-
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether failure point debugging can be used
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CanUseFailurePointsDebugging () {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
-  return true;
-
-#else
-
-  return false;
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,12 +258,8 @@ bool TRI_CanUseFailurePointsDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseDebugging () {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
   FailurePoints = NULL;
   TRI_InitReadWriteLock(&FailurePointsLock);
-
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,8 +267,6 @@ void TRI_InitialiseDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownDebugging () {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
   if (FailurePoints != NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
   }
@@ -334,9 +274,9 @@ void TRI_ShutdownDebugging () {
   FailurePoints = NULL;
 
   TRI_DestroyReadWriteLock(&FailurePointsLock);
+}
 
 #endif
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

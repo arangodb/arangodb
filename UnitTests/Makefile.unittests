@@ -192,7 +192,7 @@ curl-request-get:
 .PHONY: unittests-recovery
 .PHONY: execute-recovery-test
 
-if ENABLE_MAINTAINER_MODE
+if ENABLE_FAILURE_TESTS
 
 RECOVERY_TESTS = \
                @top_srcdir@/js/server/tests/recovery/corrupt-wal-marker.js 
@@ -560,9 +560,11 @@ unittests-shell-server-ahuacatl:
 ################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
+
 UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode.js)
 UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode.js)
 .PHONY: unittests-shell-client-readonly
+
 unittests-shell-client-readonly:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 	@echo
