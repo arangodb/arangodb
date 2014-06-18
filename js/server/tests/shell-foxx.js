@@ -245,6 +245,135 @@ function SetRoutesFoxxControllerSpec () {
   };
 }
 
+function ControllerInjectionSpec () {
+  var app, routes, models;
+
+  return {
+    testInjectFactoryFunction: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        timesCalled = 0;
+
+      app.addInjector({thing: function() {timesCalled++;}});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertEqual(timesCalled, 1);
+    },
+    testInjectNameValue: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        timesCalled = 0;
+
+      app.addInjector('thing', function() {timesCalled++;});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertEqual(timesCalled, 1);
+    },
+    testInjectOverwrite: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        wrongFuncCalled = false,
+        timesCalled = 0;
+
+      app.addInjector({thing: function() {wrongFuncCalled = true;}});
+      app.addInjector({thing: function() {timesCalled++;}});
+
+      app.get('/foxx', function () {});
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertFalse(wrongFuncCalled);
+      assertEqual(timesCalled, 1);
+    },
+    testInjectInRoute: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        calledA = false,
+        calledB = false,
+        calledC = false;
+
+      app.addInjector({thing: function() {calledA = true;}});
+
+      app.get('/foxx', function () {
+        app.addInjector({
+          thing: function() {calledB = true;},
+          other: function() {calledC = true;}
+        });
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(calledA);
+      assertFalse(calledB);
+      assertTrue(calledC);
+    },
+    testInjectResultPassedThrough: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        called = false;
+
+      app.addInjector({thing: function() {return 'value';}});
+
+      app.get('/foxx', function (req, res, injected) {
+        assertEqual(injected.thing, 'value');
+        called = true;
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+    testInjectSimpleValues: function () {
+      var app = new FoxxController(fakeContext),
+        req = {},
+        res = {},
+        called = false;
+
+      var injectors = {
+        obj: {a: 0, b: 1},
+        arr: ['one', 'two'],
+        str: 'hello',
+        num: 42
+      };
+
+      app.addInjector(injectors);
+
+      app.get('/foxx', function (req, res, injected) {
+        assertEqual(typeof injected.obj, 'object');
+        assertEqual(typeof injected.arr, 'object');
+        assertEqual(typeof injected.str, 'string');
+        assertEqual(typeof injected.num, 'number');
+        assertTrue(Array.isArray(injected.arr));
+        assertEqual(injected.obj, injectors.obj);
+        assertEqual(injected.arr, injectors.arr);
+        assertEqual(injected.str, injectors.str);
+        assertEqual(injected.num, injectors.num);
+        called = true;
+      });
+
+      app.routingInfo.routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    }
+  };
+}
+
 function DocumentationAndConstraintsSpec () {
   var app, routes, models;
 
@@ -872,6 +1001,7 @@ function FoxxControllerWithRootElement () {
 
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
+jsunity.run(ControllerInjectionSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
