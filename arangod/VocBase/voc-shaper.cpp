@@ -646,15 +646,19 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
     char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
     TRI_shape_t* l = (TRI_shape_t*) p;
+    void* f;
 
     MUTEX_LOCKER(shaper->_shapeLock);
 
     // remove the old marker
     // and re-insert the marker with the new pointer
-    void* f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
+    f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("shape already existed in shape ids array");
+    }
   
     // same for the shape dictionary
     // delete and re-insert 
@@ -662,6 +666,9 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("shape already existed in shape dictionary");
+    }
   }
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
