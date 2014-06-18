@@ -59,7 +59,7 @@ var API = "_api/index";
 /// available in the `identifiers` as hash map with the index handle as
 /// keys.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Return information about all indexes:
 ///
@@ -130,7 +130,7 @@ function get_api_indexes (req, res) {
 /// If the index does not exist, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexPrimaryIndex}
 ///     var cn = "products";
@@ -244,7 +244,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a cap constraint
 ///
@@ -332,7 +332,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a geo index with a location attribute:
 ///
@@ -414,7 +414,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating an unique constraint:
 ///
@@ -496,7 +496,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a skiplist:
 ///
@@ -558,7 +558,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a fulltext index:
 ///
@@ -616,7 +616,7 @@ function get_api_index (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a bitarray index:
 ///
@@ -785,7 +785,7 @@ function post_api_index (req, res) {
 ///
 /// @RESTRETURNCODE{404}
 /// If the `index-handle` is unknown, then an `HTTP 404` is returned.
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
 ///     var cn = "products";

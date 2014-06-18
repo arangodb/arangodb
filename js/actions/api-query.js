@@ -70,7 +70,7 @@ var PARSE = require("internal").AQL_PARSE;
 /// or if the query contains a parse error. The body of the response will
 /// contain the error details embedded in a JSON object.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Valid query:
 ///

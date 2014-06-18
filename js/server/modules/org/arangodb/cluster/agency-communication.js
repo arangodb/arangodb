@@ -850,7 +850,7 @@ exports.Communication = function() {
 ///
 /// This returns a singleton instance for the agency or creates it.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     agency  = communication._createAgency();

@@ -226,7 +226,7 @@ function matchError (req, res, doc, errorCode) {
 /// is returned if it failed.
 /// The response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
 ///     var url = "/_api/graph/";
@@ -337,7 +337,7 @@ function post_graph_graph (req, res) {
 /// a different version. This response code may only be returned if `graph-name`
 /// is specified in the request.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// get graph by name
 ///
@@ -435,7 +435,7 @@ function get_graph_graph (req, res) {
 /// "If-Match" header or `rev` is given and the current graph has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// delete graph by name
 ///
@@ -542,7 +542,7 @@ function delete_graph_graph (req, res) {
 /// is returned if the graph was created successfully and `waitForSync` was
 /// `false`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -644,7 +644,7 @@ function post_graph_vertex (req, res, g) {
 /// "If-None-Match" header or `rev` is given and the current graph has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// get vertex properties by name
 ///
@@ -736,7 +736,7 @@ function get_graph_vertex (req, res, g) {
 /// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -905,7 +905,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -994,7 +994,7 @@ function put_graph_vertex (req, res, g) {
 /// "If-Match" header or `rev` is given and the current vertex has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1149,7 +1149,7 @@ function process_labels_filter (data, labels, collname) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Select all vertices
 ///
@@ -1259,7 +1259,7 @@ function post_graph_all_vertices (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Select all vertices
 ///
@@ -1428,7 +1428,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// is returned if the edge was created successfully and `waitForSync` was
 /// `false`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1541,7 +1541,7 @@ function post_graph_edge (req, res, g) {
 /// "If-None-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1632,7 +1632,7 @@ function get_graph_edge (req, res, g) {
 /// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1806,7 +1806,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1897,7 +1897,7 @@ function put_graph_edge (req, res, g) {
 /// "If-Match" header or `rev` is given and the current edge has 
 /// a different version
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1958,7 +1958,7 @@ function patch_graph_edge (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Select all edges
 ///
@@ -2085,7 +2085,7 @@ function post_graph_all_edges (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Select all edges
 ///

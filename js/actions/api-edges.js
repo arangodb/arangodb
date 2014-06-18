@@ -61,7 +61,7 @@ var API = "/_api/edges";
 /// Returns the list of edges starting or ending in the vertex identified by
 /// `vertex-handle`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Any direction
 ///

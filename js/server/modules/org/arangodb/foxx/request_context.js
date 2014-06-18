@@ -201,7 +201,7 @@ extend(RequestContext.prototype, {
 ///
 /// You can also provide a description of this parameter.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.get("/foxx/:id", function {
@@ -245,7 +245,7 @@ extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter, if it is required and
 /// if you can provide the parameter multiple times.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.get("/foxx", function {
@@ -363,7 +363,7 @@ extend(RequestContext.prototype, {
 ///
 /// It also adds documentation for this error response to the generated documentation.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///
@@ -407,7 +407,7 @@ extend(RequestContext.prototype, {
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
 /// This can be used for authentication or authorization for example.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.get("/foxx", function {
@@ -433,7 +433,7 @@ extend(RequestContext.prototype, {
 /// the status code and the reason you provided (the route handler won't be called).
 /// This will also add the according documentation for this route.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.get("/foxx", function {
@@ -489,7 +489,7 @@ _.each([
 /// Defines an `errorResponse` for all routes of this controller. For details on
 /// `errorResponse` see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
@@ -510,7 +510,7 @@ _.each([
 /// Defines an `onlyIf` for all routes of this controller. For details on
 /// `onlyIf` see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.allroutes.onlyIf(myPersonalCheck);
@@ -531,7 +531,7 @@ _.each([
 /// Defines an `onlyIfAuthenticated` for all routes of this controller. For details on
 /// `onlyIfAuthenticated` see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");

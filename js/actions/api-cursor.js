@@ -149,7 +149,7 @@ var internal = require("internal");
 /// @RESTRETURNCODE{405}
 /// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Executes a query and extract the result in a single go:
 ///
@@ -335,7 +335,7 @@ function post_api_cursor(req, res) {
 /// If no cursor with the specified identifier can be found, the server will respond
 /// with `HTTP 404`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Valid request for next batch:
 ///
@@ -448,7 +448,7 @@ function put_api_cursor (req, res) {
 /// is returned if the server is not aware of the cursor. It is also
 /// returned if a cursor is used after it has been destroyed.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDelete}
 ///     var url = "/_api/cursor";

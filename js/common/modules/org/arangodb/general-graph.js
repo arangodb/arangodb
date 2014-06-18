@@ -413,7 +413,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///   * A list containing example objects and/or strings.
 ///       All edges matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered edges:
 ///
@@ -469,7 +469,7 @@ AQLGenerator.prototype.edges = function(example) {
 ///   * A list containing example objects and/or strings.
 ///       All edges matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered outbound edges:
 ///
@@ -525,7 +525,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///   * A list containing example objects and/or strings.
 ///       All edges matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered inbound edges:
 ///
@@ -612,7 +612,7 @@ AQLGenerator.prototype._vertices = function(example, options) {
 ///   * A list containing example objects and/or strings.
 ///       All vertices matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered vertices:
 ///
@@ -682,7 +682,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   * A list containing example objects and/or strings.
 ///       All vertices matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered starting vertices:
 ///
@@ -750,7 +750,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   * A list containing example objects and/or strings.
 ///       All vertices matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered starting vertices:
 ///
@@ -824,7 +824,7 @@ AQLGenerator.prototype.getLastVar = function() {
 /// Using `path()` as the last action before requesting the result
 /// will modify the result such that the path required to find the set vertices is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Request the iteratively explored path using vertices and edges:
 ///
@@ -887,7 +887,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ///   * A list containing example objects and/or strings.
 ///       All vertices matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To request unfiltered neighbors:
 ///
@@ -987,7 +987,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// * A list of strings defining a set of collection names.
 ///   Elements from all collections in this set are used for matching
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Request all directly connected vertices unrestricted:
 /// 
@@ -1064,7 +1064,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///   * A list containing example objects and/or strings.
 ///       All elements matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Request vertices unfiltered:
 ///  
@@ -1157,7 +1157,7 @@ AQLGenerator.prototype.execute = function() {
 /// However keeping a reference to the query before
 /// executing allows to chain further statements to it.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To collect the entire result of a query toArray can be used:
 ///
@@ -1188,7 +1188,7 @@ AQLGenerator.prototype.toArray = function() {
 /// The query object maintains a cursor of the query for you.
 /// *count()* does not change the cursor position.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To count the number of matched elements: 
 ///
@@ -1220,7 +1220,7 @@ AQLGenerator.prototype.count = function() {
 /// If the query has not yet been executed *hasNext()*
 /// will execute it and create the cursor for you.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Start query execution with hasNext: 
 ///
@@ -1262,7 +1262,7 @@ AQLGenerator.prototype.hasNext = function() {
 /// will execute it and create the cursor for you.
 /// It will throw an error of your query has no further results.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Request some elements with next: 
 ///
@@ -1309,7 +1309,7 @@ AQLGenerator.prototype.next = function() {
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To define simple relation with only one vertex collection:
 ///
@@ -1366,7 +1366,7 @@ var _undirectedRelationDefinition = function (relationName, vertexCollections) {
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1412,7 +1412,7 @@ var _directedRelationDefinition = function (
 /// @startDocuBlock JSF_general_graph_list_info
 /// Lists all graph names stored in this database.
 ///
-/// @EXAMPLES
+/// *Examples*
 /// @endDocuBlock
 /// @startDocuBlock JSF_general_graph_list_examples
 ///
@@ -1439,7 +1439,7 @@ var _list = function() {
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
@@ -1471,7 +1471,7 @@ var _edgeDefinitions = function () {
 /// In order to add more edge definitions to the graph before creating
 /// this function can be used to add more definitions to the initial list.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1519,7 +1519,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// * *edge-definitions*: array - list of edge definition objects
 /// * *orphan-collections*: array - list of additonal vertex collection names
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Create an empty graph, edge definitions can be added at runtime:
 ///
@@ -1855,7 +1855,7 @@ var updateBindCollections = function(graph) {
 ///
 /// *data*: json - data of vertex
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1876,7 +1876,7 @@ var updateBindCollections = function(graph) {
 /// *data*: json - data of vertex
 /// *options*: json - (optional) - see collection documentation
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1898,7 +1898,7 @@ var updateBindCollections = function(graph) {
 /// *data*: json - data of vertex
 /// *options*: json - (optional) - see collection documentation
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1919,7 +1919,7 @@ var updateBindCollections = function(graph) {
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
 /// (see [edge remove](#edge.remove)).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1944,7 +1944,7 @@ var updateBindCollections = function(graph) {
 /// *to*: string -  of ingoing vertex
 /// *data*: json - data of edge
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1974,7 +1974,7 @@ var updateBindCollections = function(graph) {
 /// *data*: json - data of edge
 /// *options*: json - (optional) - see collection documentation
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1996,7 +1996,7 @@ var updateBindCollections = function(graph) {
 /// *data*: json - data of edge
 /// *options*: json - (optional) - see collection documentation
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -2016,7 +2016,7 @@ var updateBindCollections = function(graph) {
 ///
 /// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -2058,7 +2058,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ///
 /// * *graph-name*: string - unique identifier of the graph
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Load a graph:
 ///
@@ -2161,7 +2161,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// * *graphName*: string - unique identifier of the graph
 /// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Drop a graph:
 ///
@@ -2353,7 +2353,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ///   * A list containing example objects and/or strings.
 ///       All edges matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// In the examples the *toArray* function is used to print the result.
 /// The description of this module can be found below.
@@ -2405,7 +2405,7 @@ Graph.prototype._edges = function(edgeExample) {
 ///   * A list containing example objects and/or strings.
 ///       All vertices matching at least one of the elements in the list are returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// In the examples the *toArray* function is used to print the result.
 /// The description of this module can be found below.
@@ -2442,7 +2442,7 @@ Graph.prototype._vertices = function(example) {
 ///
 /// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -2472,7 +2472,7 @@ Graph.prototype._getFromVertex = function(edgeId) {
 ///
 /// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -2559,7 +2559,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -2575,10 +2575,13 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
-/// {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._listCommonNeighbors(
+/// |   'city/Munich', 
+/// |   {},
+/// |   {direction : 'outbound', maxDepth : 2},
+///     {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2649,7 +2652,7 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -2745,7 +2748,7 @@ Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all locations with the same properties:
 ///
@@ -2823,7 +2826,7 @@ Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example,
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all locations with the same properties:
 ///
@@ -2886,7 +2889,7 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 ///
 /// *edgeDefinition* - [string] : the edge definition to extend the graph
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph")
@@ -3045,7 +3048,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// *edgeDefinition* - [string] : the edge definition to replace the existing edge
 /// definition with the same attribute *collection*.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
@@ -3117,7 +3120,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// * *edgeCollectionName*: string - name of edge collection defined in *collection* of the edge
 /// definition.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
@@ -3183,7 +3186,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 /// * *vertexCollectionName* - string : name of vertex collection.
 /// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
 ///   var graph = require("org/arangodb/general-graph")
@@ -3237,7 +3240,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 ///
 /// `general-graph._orphanCollections()`
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
@@ -3268,7 +3271,7 @@ Graph.prototype._orphanCollections = function() {
 /// *dropCollection*: bool (optional) - if true the collection will be dropped if it is
 /// not used in any graph. Default: false.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
 ///   var graph = require("org/arangodb/general-graph")

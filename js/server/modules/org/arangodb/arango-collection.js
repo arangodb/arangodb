@@ -145,7 +145,7 @@ ArangoCollection.prototype.truncate = function () {
 ///
 /// Returns the index with @FA{index-handle} or null if no such index exists.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });
@@ -512,7 +512,7 @@ ArangoCollection.prototype.last = function (count) {
 ///
 /// As alternative you can supply a list of paths and values.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @TINYEXAMPLE{shell-simple-query-first-example,finds a document with a given name}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1055,7 +1055,7 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 /// Note that this does not imply any restriction of the number of revisions
 /// of documents.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Restrict the number of document to at most 10 documents:
 ///
@@ -1178,7 +1178,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 /// In case that the index was successfully created, the index identifier is
 /// returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude shell-index-create-unique-constraint
 ////////////////////////////////////////////////////////////////////////////////
@@ -1207,7 +1207,7 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude shell-index-create-hash-index
 ////////////////////////////////////////////////////////////////////////////////
@@ -1253,7 +1253,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Create an geo index for a list attribute:
 ///
