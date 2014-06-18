@@ -50,7 +50,7 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::startThread (void* arg) {
-  Thread * ptr = (Thread *) arg;
+  Thread * ptr = static_cast<Thread*>(arg);
 
   ptr->runMe();
   ptr->cleanup();
