@@ -66,7 +66,7 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 /// @RESTRETURNCODE{200}
 /// if success `HTTP 200` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionsGetAll}
 ///     var url = "/_api/aqlfunction";
@@ -149,7 +149,7 @@ function get_api_aqlfunction (req, res) {
 /// If the JSON representation is malformed or mandatory data is missing from the
 /// request, the server will respond with `HTTP 400`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
 ///     var url = "/_api/aqlfunction";
@@ -230,7 +230,7 @@ function post_api_aqlfunction (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the specified user user function does not exist, the server will respond with `HTTP 404`.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// deletes a function:
 ///

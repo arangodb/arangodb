@@ -112,7 +112,7 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// The server will respond with `HTTP 404` in case a non-existing collection is
 /// accessed in the query.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Valid query:
 ///

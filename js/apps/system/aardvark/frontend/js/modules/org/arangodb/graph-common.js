@@ -265,7 +265,7 @@ Edge = function (graph, properties) {
 ///
 /// Returns the identifier of the @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-id
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +281,7 @@ Edge.prototype.getId = function () {
 ///
 /// Returns the label of the @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-label
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,7 +297,7 @@ Edge.prototype.getLabel = function () {
 ///
 /// Returns the property @FA{name} an @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-property
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,7 +313,7 @@ Edge.prototype.getProperty = function (name) {
 ///
 /// Returns all propety names an @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-property-keys
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,7 +329,7 @@ Edge.prototype.getPropertyKeys = function () {
 ///
 /// Returns all properties and their values of an @FA{edge}
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-properties
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,7 +345,7 @@ Edge.prototype.properties = function () {
 ///
 /// Returns the vertex at the head of the @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-in-vertex
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,7 +361,7 @@ Edge.prototype.getInVertex = function () {
 ///
 /// Returns the vertex at the tail of the @FA{edge}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-get-out-vertex
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,7 +377,7 @@ Edge.prototype.getOutVertex = function () {
 ///
 /// Returns the peer vertex of the @FA{edge} and the @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arango> v1 = g.addVertex("1");
@@ -481,7 +481,7 @@ Vertex = function (graph, properties) {
 /// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
 /// properties defined in @FA{data}. Returns the edge object.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-add-in-edge
 ///
@@ -510,7 +510,7 @@ Vertex.prototype.addInEdge = function (out, id, label, data) {
 /// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
 /// properties defined in @FA{data}. Returns the edge object.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-add-out-edge
 ///
@@ -555,7 +555,7 @@ Vertex.prototype.outDegree = function () {
 /// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
 /// @LIT{undefined} is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-get-id
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,7 +571,7 @@ Vertex.prototype.getId = function () {
 ///
 /// Returns the property @FA{name} a @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-get-property
 ////////////////////////////////////////////////////////////////////////////////
@@ -587,7 +587,7 @@ Vertex.prototype.getProperty = function (name) {
 ///
 /// Returns all propety names a @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-get-property-keys
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,7 +603,7 @@ Vertex.prototype.getPropertyKeys = function () {
 ///
 /// Returns all properties and their values of a @FA{vertex}
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-properties
 ////////////////////////////////////////////////////////////////////////////////
@@ -748,7 +748,7 @@ Graph.prototype.getOrAddVertex = function (id) {
 /// label @FA{label} and contains the properties defined in @FA{data}.
 /// out and in can either be vertices or their IDs
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-add-edge
 ///
@@ -790,7 +790,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 /// Creates a new vertex and returns the vertex object. The vertex contains
 /// the properties defined in @FA{data}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Without any properties:
 ///

@@ -40,7 +40,7 @@ var TemplateMiddleware,
 /// a set of helper functions.
 /// Then use `before` to attach the initialized middleware to your Foxx.Controller
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     templateMiddleware = new TemplateMiddleware("templates", {
@@ -73,7 +73,7 @@ TemplateMiddleware = function (templateCollection, helper) {
 /// search by the path attribute.  It will then render the template with the
 /// given data.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     response.render("high/way", {username: 'Application'})

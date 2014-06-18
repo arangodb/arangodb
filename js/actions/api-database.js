@@ -65,7 +65,7 @@ var API = "_api/database";
 /// @RESTRETURNCODE{403}
 /// is returned if the request was not executed in the `_system` database.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGet}
 ///     var url = "/_api/database";
@@ -95,7 +95,7 @@ var API = "_api/database";
 /// @RESTRETURNCODE{400}
 /// is returned if the request is invalid.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetUser}
 ///     var url = "/_api/database/user";
@@ -137,7 +137,7 @@ var API = "_api/database";
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetInfo}
 ///     var url = "/_api/database/current";
@@ -263,7 +263,7 @@ function get_api_database (req, res) {
 /// @RESTRETURNCODE{409}
 /// is returned if a database with the specified name already exists.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Creating a database named `example`.
 ///
@@ -418,7 +418,7 @@ function post_api_database (req, res) {
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseDrop}
 ///     var url = "/_api/database";

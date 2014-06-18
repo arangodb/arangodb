@@ -417,7 +417,7 @@ setupIndexQueries();
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Limit the amount of documents using `limit`
 ///
@@ -544,7 +544,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAny}
 ///     var cn = "products";
@@ -658,7 +658,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Without distance:
 ///
@@ -839,7 +839,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Without distance:
 ///
@@ -1008,7 +1008,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFulltext}
 ///     var cn = "products";
@@ -1123,7 +1123,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Matching an attribute:
 ///
@@ -1277,7 +1277,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// If a matching document was found:
 ///
@@ -1406,7 +1406,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Retrieving the first n documents:
 ///
@@ -1525,7 +1525,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Retrieving the last n documents:
 ///
@@ -1650,7 +1650,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRange}
 ///     var cn = "products";
@@ -1782,7 +1782,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
 ///     var cn = "products";
@@ -1950,7 +1950,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
 ///     var cn = "products";
@@ -2113,7 +2113,7 @@ actions.defineHttp({
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// @EXAMPLES
+/// *Examples*
 /// using old syntax for options
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
