@@ -68,6 +68,7 @@ describe('Repository Methods', function () {
     collection = createSpyObj('collection', [
       'all',
       'save',
+      'count',
       'document',
       'byExample',
       'firstExample',
@@ -275,6 +276,10 @@ describe('Repository Methods', function () {
   });
 
   describe('for counting entries', function () {
-    it('should count all');
+    it('should count all', function () {
+      var count = createSpy('count');
+      collection.count.and.returnValue(count);
+      expect(instance.count()).toBe(count);
+    });
   });
 });
