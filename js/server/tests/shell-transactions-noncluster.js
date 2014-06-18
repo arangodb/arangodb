@@ -661,6 +661,204 @@ function transactionCollectionsSuite () {
       };
 
       assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlRead : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : { 
+          read : [ cn1 ]
+        },
+        action : function () {
+          var docs = db._query("FOR i IN @@cn1 RETURN i", { "@cn1" : cn1 }).toArray();
+          assertEqual(10, docs.length);
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlReadMulti : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+        c2.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : { 
+          read : [ cn1, cn2 ]
+        },
+        action : function () {
+          var docs = db._query("FOR i IN @@cn1 FOR j IN @@cn2 RETURN i", { "@cn1" : cn1, "@cn2" : cn2 }).toArray();
+          assertEqual(100, docs.length);
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlReadMultiUndeclared : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+        c2.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          // intentionally empty 
+        },
+        action : function () {
+          var docs = db._query("FOR i IN @@cn1 FOR j IN @@cn2 RETURN i", { "@cn1" : cn1, "@cn2" : cn2 }).toArray();
+          assertEqual(100, docs.length);
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlWrite : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().operations;
+          assertEqual(10, ops.executed);
+          assertEqual(0, c1.count());
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+      assertEqual(0, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlReadWrite : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+        c2.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          read: [ cn1 ],
+          write: [ cn2 ]
+        },
+        action : function () {
+          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 }).getExtra().operations;
+          assertEqual(10, ops.executed);
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+      
+      assertEqual(10, c1.count());
+      assertEqual(0, c2.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlWriteUndeclared : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+        c2.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          read: [ cn1 ]
+        },
+        action : function () {
+          try{
+            db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+            fail();
+          }
+          catch (err) {
+            assertEqual(arangodb.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+          }
+
+          assertEqual(10, c1.count());
+          return true;
+        }
+      };
+
+      assertTrue(TRANSACTION(obj));
+      
+      assertEqual(10, c1.count());
+      assertEqual(10, c2.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: trx with embedded AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlMultiWrite : function () {
+      var i = 0;
+      for (i = 0; i < 10; ++i) {
+        c1.save({ _key : "test" + i });
+        c2.save({ _key : "test" + i });
+      }
+
+      var obj = {
+        collections : {
+          write: [ cn1, cn2 ]
+        },
+        action : function () {
+          var ops;
+          ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().operations;
+          assertEqual(10, ops.executed);
+          assertEqual(0, c1.count());
+
+          ops = db._query("FOR i IN @@cn2 REMOVE i._key IN @@cn2", { "@cn2" : cn2 }).getExtra().operations;
+          assertEqual(10, ops.executed);
+          assertEqual(0, c2.count());
+          return true;
+        }
+      };
+          
+      assertTrue(TRANSACTION(obj));
+      
+      assertEqual(0, c1.count());
+      assertEqual(0, c2.count());
     }
 
   };
