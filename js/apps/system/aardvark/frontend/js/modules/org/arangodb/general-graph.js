@@ -2627,7 +2627,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
           self.__vertexCollections[nc] = db[nc];
         }
         try {
-          graphObj._removeVertexCollection(nc);
+          graphObj._removeVertexCollection(nc, false);
         } catch (e) {
         }
       }

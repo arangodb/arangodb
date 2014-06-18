@@ -2564,9 +2564,10 @@ function OrphanCollectionSuite() {
       g1._addVertexCollection(vC5, true);
       assertEqual(g1._orphanCollections(), [vC4, vC5]);
       g1._removeVertexCollection(vC4, false);
+      assertTrue(db._collection(vC4) !== null);
       assertEqual(g1._orphanCollections(), [vC5]);
       try {
-        g1._removeVertexCollection(vC4);
+        g1._removeVertexCollection(vC4, true);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
