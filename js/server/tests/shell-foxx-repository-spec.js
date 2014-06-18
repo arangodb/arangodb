@@ -159,7 +159,17 @@ describe('Repository Methods', function () {
   });
 
   describe('for removing entries', function () {
-    it('should allow to remove a model');
+    it('should allow to remove a model', function () {
+      var model = new Model(),
+        id = createSpy('id');
+
+      spyOn(model, 'get').and.returnValue(id);
+
+      instance.remove(model);
+
+      expect(collection.remove.calls.argsFor(0)).toEqual([id]);
+      expect(model.get.calls.argsFor(0)).toEqual(['_id']);
+    });
 
     it('should allow to remove by ID', function () {
       var id = createSpy('id');
