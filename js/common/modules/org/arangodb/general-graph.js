@@ -2120,16 +2120,16 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
-/// `general-graph._drop(graph-name, drop-collections)`
+/// `general-graph._drop(graphName, dropCollections)`
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
 /// This will automatically drop al collections contained in the graph as
 /// long as they are not used within other graphs.
-/// To prohibit the drop of collections, the optional parameter *drop-collections* can be set to *false*.
+/// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
-/// * *graph-name*: string - unique identifier of the graph
-/// * *drop-collections*: boolean (optional) - Define if collections should be dropped (default: true)
+/// * *graphName*: string - unique identifier of the graph
+/// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
 ///
 /// @EXAMPLES
 ///
@@ -2158,7 +2158,7 @@ var _drop = function(graphId, dropCollections) {
     throw err;
   }
 
-  if (dropCollections !== false) {
+  if (dropCollections === true) {
     var graph = gdb.document(graphId);
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
@@ -2978,7 +2978,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
           self.__vertexCollections[nc] = db[nc];
         }
         try {
-          graphObj._removeOrphanCollection(nc);
+          graphObj._removeVertexCollection(nc, false);
         } catch (e) {
         }
       }
@@ -2990,7 +2990,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
     function(po) {
       if (graphCollections.indexOf(po) === -1) {
         delete graphObj.__vertexCollections[po];
-        graphObj._addOrphanCollection(po);
+        graphObj._addVertexCollection(po);
       }
     }
   );
@@ -3136,23 +3136,23 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__addOrphanCollection
+/// @startDocuBlock JSF_general_graph__addVertexCollection
 /// Adds a vertex collection to the set of orphan collections of the graph. If the
 /// collection does not exist, it will be created.
 ///
-/// `general-graph._addOrphanCollection(orphanCollectionName, createCollection)`
+/// `general-graph._addVertexCollection(vertexCollectionName, createCollection)`
 ///
-/// * *orphanCollectionName* - string : name of vertex collection.
+/// * *vertexCollectionName* - string : name of vertex collection.
 /// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addOrphanCollection}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3", true);
+///   g._addVertexCollection("myVC3", true);
 /// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3160,17 +3160,17 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._addOrphanCollection = function(orphanCollectionName, createCollection) {
+Graph.prototype._addVertexCollection = function(vertexCollectionName, createCollection) {
   //check edgeCollection
-  var ec = db._collection(orphanCollectionName);
+  var ec = db._collection(vertexCollectionName);
   var err;
   if (ec === null) {
     if (createCollection !== false) {
-      db._create(orphanCollectionName);
+      db._create(vertexCollectionName);
     } else {
       err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-      err.errorMessage = orphanCollectionName + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      err.errorMessage = vertexCollectionName + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
     }
   } else if (ec.type() !== 2) {
@@ -3179,33 +3179,33 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
     err.errorMessage = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message;
     throw err;
   }
-  if (this.__vertexCollections[orphanCollectionName] !== undefined) {
+  if (this.__vertexCollections[vertexCollectionName] !== undefined) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
     throw err;
   }
 
-  this.__orphanCollections.push(orphanCollectionName);
+  this.__orphanCollections.push(vertexCollectionName);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__getOrphanCollections
+/// @startDocuBlock JSF_general_graph__orphanCollections
 /// Returns all vertex collections of the graph, that are not used in an edge definition.
 ///
-/// `general-graph._getOrphanCollections()`
+/// `general-graph._orphanCollections()`
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__getOrphanCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3", true);
-///   g._getOrphanCollections();
+///   g._addVertexCollection("myVC3", true);
+///   g._orphanCollections();
 /// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3213,33 +3213,33 @@ Graph.prototype._addOrphanCollection = function(orphanCollectionName, createColl
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getOrphanCollections = function() {
+Graph.prototype._orphanCollections = function() {
   return this.__orphanCollections;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph__removeOrphanCollection
+/// @startDocuBlock JSF_general_graph__removeVertexCollection
 /// Removes an orphan collection from the graph and deletes the collection, if it is not
 /// used in any graph.
 ///
-/// `general-graph._removeOrphanCollection()`
+/// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
 ///
-/// *orphanCollectionName* - string : name of vertex collection.
-/// *dropCollection* - bool : if true the collection will be dropped if it is not used in any graph.
-/// Default: true.
+/// *vertexCollectionName*: string - name of vertex collection.
+/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is not used in any graph.
+/// Default: false.
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeOrphanCollections}
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
 ///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
-///   g._addOrphanCollection("myVC3", true);
-///   g._addOrphanCollection("myVC4", true);
-///   g._getOrphanCollections();
-///   g._removeOrphanCollection("myVC3");
-///   g._getOrphanCollections();
+///   g._addVertexCollection("myVC3", true);
+///   g._addVertexCollection("myVC4", true);
+///   g._orphanCollections();
+///   g._removeVertexCollection("myVC3");
+///   g._orphanCollections();
 /// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3247,15 +3247,15 @@ Graph.prototype._getOrphanCollections = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._removeOrphanCollection = function(orphanCollectionName, dropCollection) {
+Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCollection) {
   var err;
-  if (db._collection(orphanCollectionName) === null) {
+  if (db._collection(vertexCollectionName) === null) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
     throw err;
   }
-  var index = this.__orphanCollections.indexOf(orphanCollectionName);
+  var index = this.__orphanCollections.indexOf(vertexCollectionName);
   if (index === -1) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code;
@@ -3265,10 +3265,10 @@ Graph.prototype._removeOrphanCollection = function(orphanCollectionName, dropCol
   this.__orphanCollections.splice(index, 1);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
-  if (dropCollection !== false) {
+  if (dropCollection === true) {
     var graphs = getGraphCollection().toArray();
-    if (checkIfMayBeDropped(orphanCollectionName, null, graphs)) {
-      db._drop(orphanCollectionName);
+    if (checkIfMayBeDropped(vertexCollectionName, null, graphs)) {
+      db._drop(vertexCollectionName);
     }
   }
 };
