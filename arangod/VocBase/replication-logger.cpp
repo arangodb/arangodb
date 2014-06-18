@@ -55,11 +55,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief struct to hold a client action
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,18 +65,9 @@ typedef struct logger_client_s {
 }
 logger_client_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a client id
@@ -144,10 +130,6 @@ static void FreeClients (TRI_replication_logger_t* logger) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           LOGGING
 // -----------------------------------------------------------------------------
@@ -155,11 +137,6 @@ static void FreeClients (TRI_replication_logger_t* logger) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut function
@@ -200,18 +177,9 @@ static void FreeClients (TRI_replication_logger_t* logger) {
 
 #define APPEND_JSON(buffer, json)   FAIL_IFNOT(TRI_StringifyJson, buffer, json)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of pre-allocated string buffers for logging
@@ -225,60 +193,9 @@ static size_t NumBuffers = 16;
 
 static size_t BufferSize = 256;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_replication_operation_e TranslateDocumentOperation (TRI_voc_document_operation_e type,
-                                                               TRI_document_collection_t const* document) {
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT || type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    const bool isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
-
-    return isEdgeCollection ? MARKER_EDGE : MARKER_DOCUMENT;
-  }
-  else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    return MARKER_REMOVE;
-  }
-
-  return REPLICATION_INVALID;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append a collection name or id to a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-static bool AppendCollection (TRI_replication_logger_t* logger,
-                              TRI_string_buffer_t* buffer,
-                              TRI_voc_cid_t cid) {
-  if (cid > 0) {
-    char* name;
-
-    name = TRI_GetCollectionNameByIdVocBase(logger->_vocbase, cid);
-
-    if (name != NULL) {
-      APPEND_STRING(buffer, name);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, name);
-
-      return true;
-    }
-  }
-    
-  APPEND_STRING(buffer, "_unknown");
-  return true;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the logger's cap constraint
@@ -707,135 +624,6 @@ static bool StringifyDropIndex (TRI_string_buffer_t* buffer,
   APPEND_UINT64(buffer, (uint64_t) iid);
   APPEND_STRING(buffer, "\"}");
 
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-static bool StringifyDocumentOperation (TRI_replication_logger_t* logger,
-                                        TRI_string_buffer_t* buffer,
-                                        TRI_document_collection_t* document,
-                                        TRI_voc_document_operation_e type,
-                                        TRI_df_marker_t const* marker,
-                                        TRI_doc_mptr_t const* oldHeader,
-                                        bool withCid) {
-  TRI_voc_key_t key;
-  TRI_voc_rid_t oldRev;
-  TRI_voc_rid_t rid;
-  
-  if (buffer == NULL) {
-    return false;
-  }
-
-  if (TRI_ReserveStringBuffer(buffer, 256) != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
-  
-  if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-    oldRev = 0;
-  }
-  else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-    oldRev = 0;
-    if (oldHeader != NULL) {
-      oldRev = oldHeader->_rid;
-    }
-  }
-  else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    oldRev = 0;
-    if (oldHeader != NULL) {
-      oldRev = oldHeader->_rid;
-    }
-  }
-  else {
-    return false;
-  }
-  
-  APPEND_CHAR(buffer, '{');
-  
-  if (withCid) {
-    if (! StringifyCollection(buffer, document->_info._cid, document->_info._name)) {
-      return false;
-    }
-    APPEND_CHAR(buffer, ',');
-  }
-  
-  if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-    TRI_doc_deletion_key_marker_t const* m = (TRI_doc_deletion_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    rid = m->_rid;
-  }
-  else {
-    return false;
-  }
-
-  APPEND_STRING(buffer, "\"key\":\""); 
-  // key is user-defined, but does not need escaping
-  APPEND_STRING(buffer, key); 
-  APPEND_STRING(buffer, "\",\"rev\":\""); 
-  APPEND_UINT64(buffer, (uint64_t) rid); 
-
-  if (oldRev > 0) {
-    APPEND_STRING(buffer, "\",\"oldRev\":\""); 
-    APPEND_UINT64(buffer, (uint64_t) oldRev); 
-  }
-
-  // document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    TRI_shaped_json_t shaped;
-    
-    APPEND_STRING(buffer, "\",\"data\":{");
-    
-    // common document meta-data
-    APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
-    APPEND_STRING(buffer, key);
-    APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"");
-    APPEND_UINT64(buffer, (uint64_t) rid);
-    APPEND_CHAR(buffer, '"');
-
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
-      TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
-      TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
-
-      APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(logger, buffer, e->_fromCid)) {
-        return false;
-      }
-      APPEND_STRING(buffer, "\\/");
-      APPEND_STRING(buffer, fromKey);
-      APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(logger, buffer, e->_toCid)) {
-        return false;
-      }
-      APPEND_STRING(buffer, "\\/");
-      APPEND_STRING(buffer, toKey);
-      APPEND_CHAR(buffer, '"');
-    }
-
-    // the actual document data
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true);  // PROTECTED by trx in logger
-
-    APPEND_STRING(buffer, "}}");
-  }
-  else {
-    APPEND_STRING(buffer, "\"}");
-  }
-  
   return true;
 }
 
@@ -1349,18 +1137,9 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
   return TRI_Concatenate2File(vocbase->_path, "REPLICATION-LOGGER-CONFIG");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication logger
@@ -1501,18 +1280,9 @@ void TRI_FreeReplicationLogger (TRI_replication_logger_t* logger) {
   TRI_Free(TRI_CORE_MEM_ZONE, logger);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication logger configuration
@@ -1865,18 +1635,9 @@ TRI_json_t* TRI_JsonReplicationLogger (TRI_replication_logger_t* logger) {
   return json;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              public log functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replicate a transaction
@@ -2171,70 +1932,6 @@ int TRI_LogDropIndexReplication (TRI_vocbase_t* vocbase,
 
   return res;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogDocumentReplication (TRI_vocbase_t* vocbase,
-                                TRI_document_collection_t* document,
-                                TRI_voc_document_operation_e docType,
-                                TRI_df_marker_t const* marker,
-                                TRI_doc_mptr_t const* oldHeader,
-                                TRI_server_id_t generatingServer) {
-  TRI_string_buffer_t* buffer;
-  TRI_replication_logger_t* logger;
-  TRI_replication_operation_e type;
-  char* name;
-  int res;
-
-  name = document->_info._name;
-  
-  if (TRI_ExcludeCollectionReplication(name)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  logger = vocbase->_replicationLogger;
-  type = TranslateDocumentOperation(docType, document);
-  
-  if (! CheckAndLock(logger, generatingServer)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  if (type == REPLICATION_INVALID) {
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  buffer = GetBuffer(logger);
-
-  if (! StringifyDocumentOperation(logger,
-                                   buffer, 
-                                   document, 
-                                   docType, 
-                                   marker, 
-                                   oldHeader, 
-                                   true)) {
-    ReturnBuffer(logger, buffer);
-    TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  res = LogEvent(logger, 0, true, type, buffer);
-  TRI_ReadUnlockReadWriteLock(&logger->_statusLock);
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor
