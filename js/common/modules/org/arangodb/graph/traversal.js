@@ -25,6 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +48,7 @@ var ArangoTraverser;
 ////////////////////////////////////////////////////////////////////////////////
   
 function clone (obj) {
-  if (obj === null || typeof(obj) !== "object") {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
 

@@ -87,6 +87,8 @@ Controller = function (context, options) {
     urlPrefix = context.prefix + "/" + urlPrefix;
   }
 
+  this.injected = Object.create(null);
+  this.injectors = Object.create(null);
   this.routingInfo.urlPrefix = urlPrefix;
   this.collectionPrefix = context.collectionPrefix;
 
@@ -133,6 +135,15 @@ extend(Controller.prototype, {
     return this.applicationContext.collection(name);
   },
 
+  addInjector: function (name, factory) {
+    'use strict';
+    if (factory === undefined) {
+      _.extend(this.injectors, name);
+    } else {
+      this.injectors[name] = factory;
+    }
+  },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_controller_handleRequest
 /// @brief Handle a request
@@ -147,7 +158,7 @@ extend(Controller.prototype, {
 
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = internal.constructRoute(method, route, callback),
+    var newRoute = internal.constructRoute(method, route, callback, this),
       requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement),
       summary;
 

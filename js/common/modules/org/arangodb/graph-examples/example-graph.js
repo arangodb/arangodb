@@ -31,6 +31,23 @@
 
   var Graph = require("org/arangodb/general-graph");
 
+  var createTraversalExample = function() {
+    var g = Graph._create("knows_graph",
+      [Graph._undirectedRelationDefinition("knows", "persons")]
+    );
+    var a = g.persons.save({name: "Alice", _key: "alice"})._id;
+    var b = g.persons.save({name: "Bob", _key: "bob"})._id;
+    var c = g.persons.save({name: "Charlie", _key: "charlie"})._id;
+    var d = g.persons.save({name: "Dave", _key: "dave"})._id;
+    var e = g.persons.save({name: "Eve", _key: "eve"})._id;
+    g.knows.save(a, b, {});
+    g.knows.save(b, c, {});
+    g.knows.save(b, d, {});
+    g.knows.save(e, a, {});
+    g.knows.save(e, b, {});
+    return g;
+  };
+
   var createSocialGraph = function() {
     var edgeDefinition = [];
     edgeDefinition.push(Graph._undirectedRelationDefinition("relation", ["female", "male"]));
@@ -72,14 +89,15 @@
 
 
   var dropGraph = function(name) {
-    return Graph._drop(name);
+    if (Graph._exists(name)) {
+      return Graph._drop(name, true);
+    }
   };
 
   var loadGraph = function(name) {
-    if (Graph._exists(name)) {
-      dropGraph(name);
-    }
     switch (name) {
+      case "knows_graph":
+        return createTraversalExample();
       case "routeplanner":
         return createRoutePlannerGraph();
       case "social":
