@@ -1,7 +1,5 @@
 /*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
-/*global require, assertEqual, assertNotEqual,
-  print, print_plain, COMPARE_STRING, NORMALIZE_STRING, 
-  help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -41,38 +39,49 @@ function changeOperationModePositiveCaseTestSuite () {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
     },
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief tear down
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
 
-          tearDown : function () {
-          },
+    tearDown : function () {
+      // reset server-mode after executing this test
+      db._executeTransaction({
+        collections: { }, 
+        action: function () {
+          var db = require('internal').db; 
+          db._changeMode('Normal');
+        } 
+      });
+    },
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief tests if the change of the operation mode of the arango server
-          ///        can be done.
-          ///        Note: this test needs an arango server with endpoint unix:...
-          ///        See target unittests-shell-client-readonly
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if the change of the operation mode of the arango server
+///        can be done.
+///        Note: this test needs an arango server with endpoint unix:...
+///        See target unittests-shell-client-readonly
+////////////////////////////////////////////////////////////////////////////////
 
-          testChangeMode : function () {
-            var result = 
-            db._executeTransaction({collections: {}, 
-              action: function () {
-                var db = require('internal').db; 
-                var result = db._changeMode('ReadOnly');
-                return result;
-              } 
-            });
-            assertTrue(result);    
-          }
+    testChangeMode : function () {
+      // we need to use a transaction (the transaction is shipped to the
+      // server and executed there) to execute the changeMode function call on
+      // the server...
+      var result = db._executeTransaction({
+        collections: { }, 
+        action: function () {
+          var db = require('internal').db; 
+          var result = db._changeMode('ReadOnly');
+          return result;
+        } 
+      });
+      assertTrue(result);    
+    }
 
   };
 }

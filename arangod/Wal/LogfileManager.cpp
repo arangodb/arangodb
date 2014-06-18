@@ -680,16 +680,7 @@ SlotInfo LogfileManager::allocate (void const* src,
                                    uint32_t size) {
   if (! _allowWrites) {
     // no writes allowed
-    // check if this is a shape or attribute marker, which is allowed even in
-    // read-only mode
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
-
-    if (marker->_type != TRI_WAL_MARKER_ATTRIBUTE &&
-        marker->_type != TRI_WAL_MARKER_SHAPE) {
-      return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
-    }
-
-    // fallthrough
+    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
   if (size > MaxEntrySize()) {
@@ -749,6 +740,35 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set all open logfiles to status sealed
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::setAllSealed () {
+  READ_LOCKER(_logfilesLock);
+
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr) {
+      Logfile::StatusType status = logfile->status();
+
+      if (status == Logfile::StatusType::OPEN || 
+          status == Logfile::StatusType::SEAL_REQUESTED) {
+        // set all logfiles to sealed status so they can be collected
+
+        // we don't care about the previous status here
+        logfile->forceStatus(Logfile::StatusType::SEALED);
+
+        if (logfile->id() > _lastSealedId) {
+          // adjust last sealed id
+          _lastSealedId = logfile->id();
+        }
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
@@ -757,31 +777,55 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 int LogfileManager::flush (bool waitForSync,
                            bool waitForCollector,
                            bool writeShutdownFile) {
-  Logfile::IdType currentLogfileId;
+  TRI_ASSERT(! _inRecovery);
+
+  Logfile::IdType lastOpenLogfileId;
+  Logfile::IdType lastSealedLogfileId;
+
   {
     READ_LOCKER(_logfilesLock);
-    currentLogfileId = _lastOpenedId;
+    lastOpenLogfileId   = _lastOpenedId;
+    lastSealedLogfileId = _lastSealedId;
+  }
+
+  if (lastOpenLogfileId == 0) {
+    return TRI_ERROR_NO_ERROR;
   }
 
   LOG_TRACE("about to flush active WAL logfile. currentLogfileId: %llu, waitForSync: %d, waitForCollector: %d", 
-            (unsigned long long) currentLogfileId,
+            (unsigned long long) lastOpenLogfileId,
             (int) waitForSync,
             (int) waitForCollector);
 
   int res = _slots->flush(waitForSync);
 
-  if (res == TRI_ERROR_NO_ERROR || res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-    if (waitForCollector) {
-      this->waitForCollector(currentLogfileId); 
-    }
+  if (res != TRI_ERROR_NO_ERROR && 
+      res != TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
+    LOG_ERROR("unexpected error in WAL flush request: %s", TRI_errno_string(res));
+    return res;
+  }
 
-    if (writeShutdownFile) {
-      // update the file with the last tick, last sealed etc.  
-      return writeShutdownInfo(false);
+  if (waitForCollector) {
+    if (res == TRI_ERROR_NO_ERROR) {
+      // we need to wait for the collector...
+      this->waitForCollector(lastOpenLogfileId); 
+    }
+    else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
+      // current logfile is empty and cannot be collected
+      // we need to wait for the collector to collect the previously sealed datafile
+
+      if (lastSealedLogfileId > 0) {
+        this->waitForCollector(lastSealedLogfileId); 
+      }
     }
   }
 
-  return res;
+  if (writeShutdownFile) {
+    // update the file with the last tick, last sealed etc.  
+    return writeShutdownInfo(false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -954,6 +998,11 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
   static const uint64_t SleepTime = 10 * 1000;
   static const uint64_t MaxIterations = 1000;
   size_t iterations = 0;
+    
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+    // intentionally don't return a logfile
+    return nullptr;
+  }
 
   while (++iterations < 1000) {
     {
@@ -982,7 +1031,6 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
           // and physically remove the file
           // note: this will also delete the logfile object!
           removeLogfile(logfile, false);
-
         }
         else {
           ++it;
@@ -1103,6 +1151,12 @@ void LogfileManager::setCollectionRequested (Logfile* logfile) {
 
   {
     WRITE_LOCKER(_logfilesLock);
+    if (logfile->status() == Logfile::StatusType::COLLECTION_REQUESTED) {
+      // the collector already asked for this file, but couldn't process it
+      // due to some exception
+      return;
+    }
+
     logfile->setStatus(Logfile::StatusType::COLLECTION_REQUESTED);
   }
   
@@ -1229,6 +1283,10 @@ bool LogfileManager::runRecovery () {
     _droppedDatabases   = state.droppedDatabases;
     _droppedCollections = state.droppedCollections;
   }
+  
+  // "seal" any open logfiles so the collector can copy over everything
+  this->setAllSealed();
+
 
   int res = startCollectorThread();
 
@@ -1239,10 +1297,8 @@ bool LogfileManager::runRecovery () {
 
   TRI_ASSERT(_collectorThread != nullptr);
 
-  LOG_TRACE("issuing recovery flush request");
-  
-  // flush any open logfiles so the collector can copy over everything
-  this->flush(true, true, false);
+  LOG_TRACE("waiting for collector to catch up");
+  waitForCollector(_lastOpenedId);
   
   {
     // reset the list of failed transactions
@@ -1252,6 +1308,16 @@ bool LogfileManager::runRecovery () {
     _droppedCollections.clear();
   }
 
+  // finished recovery
+  _inRecovery = false;
+  // from now on, we allow writes to the logfile
+  allowWrites(true);
+  
+  // tell the collector that the recovery is over now
+  _collectorThread->recoveryDone();
+  _allocatorThread->recoveryDone();
+  
+
   // unload all collections to reset statistics, start compactor threads etc.
   res = TRI_InitDatabasesServer(_server);
    
@@ -1259,17 +1325,6 @@ bool LogfileManager::runRecovery () {
     LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
     return false;
   }
-
-  // TODO: how long must we sleep here?
-  sleep(3);
-
-  // tell the collector that the recovery is over now
-  _inRecovery = false;
-  _collectorThread->recoveryDone();
-  _allocatorThread->recoveryDone();
-  
-  // from now on, we allow writes to the logfile
-  allowWrites(true);
 
   if (logfilesToCollect > 0) {
     LOG_INFO("WAL recovery finished successfully");
@@ -1607,13 +1662,17 @@ int LogfileManager::openLogfiles () {
         id > _lastSealedId) {
       _lastSealedId = id;
     }
-      
+    
+    if ((logfile->status() == Logfile::StatusType::SEALED || logfile->status() == Logfile::StatusType::OPEN) &&
+         id > _lastOpenedId) {
+      _lastOpenedId = id;
+    }
+
+    
     (*it).second = logfile;
     ++it;
   }
-
-  _lastOpenedId = _lastSealedId;
-
+    
   return TRI_ERROR_NO_ERROR;
 }
 

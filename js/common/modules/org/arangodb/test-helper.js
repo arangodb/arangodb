@@ -55,10 +55,21 @@ exports.Helper = {
 
     collection.unload();
     internal.flushWal();
+
+    var iterations = 0;
    
     while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
       collection.unload();
-      internal.wait(1);
+      internal.wait(0.25);
+
+      ++iterations;
+
+      if (iterations === 20) {
+        require("console").log("waiting for collection " + collection.name() + " to unload");
+      }
+      else if (iterations === 400) {
+        throw "waited too long for unload of collection " + collection.name();
+      }
     }
   },
 

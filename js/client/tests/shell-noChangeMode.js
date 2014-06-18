@@ -1,7 +1,5 @@
 /*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
-/*global require, assertEqual, assertNotEqual,
-  print, print_plain, COMPARE_STRING, NORMALIZE_STRING, 
-  help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -42,42 +40,44 @@ function changeOperationModeNegativeCaseTestSuite () {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
     },
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief tear down
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
 
-          tearDown : function () {
-          },
+    tearDown : function () {
+    },
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief tests if the change of the operation mode of the arango server
-          ///        can be done.
-          ///        Note: this test needs an arango server with endpoint unix:...
-          ///        See target unittests-shell-client-readonly
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if the change of the operation mode of the arango server
+///        can be done.
+///        Note: this test needs an arango server with endpoint unix:...
+///        See target unittests-shell-client-readonly
+////////////////////////////////////////////////////////////////////////////////
 
-          testTryChangeMode : function () {
-            var modified = true;
-            try {
-              db._executeTransaction({collections: {}, 
-                action: function () {
-                  var db = require('internal').db; 
-                  var result = db._changeMode('ReadOnly');
-                  return result;
-                } 
-              });} catch(e) {
-                assertEqual(arangodb.errors.ERROR_FORBIDDEN.code, e.errorNum);
-                modified = false;
-              }
-            assertFalse(modified);    
-          }
+    testTryChangeMode : function () {
+      try {
+        db._executeTransaction({
+          collections: {}, 
+          action: function () {
+            var db = require('internal').db; 
+            var result = db._changeMode('ReadOnly');
+            return result;
+          } 
+        });
+
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.errors.ERROR_FORBIDDEN.code, e.errorNum);
+      }
+    }
 
   };
 }

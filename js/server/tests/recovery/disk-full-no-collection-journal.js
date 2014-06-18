@@ -8,16 +8,30 @@ function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery");
-  var c = db._create("UnitTestsRecovery"), i;
+  var c = db._create("UnitTestsRecovery");
+      
+  internal.debugSetFailAt("CreateJournalDocumentCollection");
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "foobarbaz" + i });
-  }
+  db._executeTransaction({
+    collections: {
+      write: "UnitTestsRecovery"
+    },
+    action: function () {
+      var db = require("org/arangodb").db;
 
-  internal.debugSetFailAt("LogfileManagerWriteShutdown");
+      var i, c = db._collection("UnitTestsRecovery");
+      for (i = 0; i < 100000; ++i) {
+        c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
+      }
 
-  // flush the logfile but do not write shutdown info
-  internal.flushWal(true, true);
+      for (i = 0; i < 100000; i += 2) {
+        c.remove("test" + i, true);
+      }
+    }
+  });
+
+  internal.flushWal();
+  internal.wait(5);
 
   internal.debugSegfault("crashing server");
 }
@@ -36,18 +50,22 @@ function recoverySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether we can restore the 10 collections
+/// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testNoShutdownInfo : function () {
-      var c = db._collection("UnitTestsRecovery");
-      
-      assertEqual(1000, c.count());
-
-      var i;
-      for (i = 0; i < 1000; ++i) {
-        assertEqual(i, c.document("test" + i).value1);
-        assertEqual("foobarbaz" + i, c.document("test" + i).value2);
+    testDiskFullNoJournal : function () {
+      var i, c = db._collection("UnitTestsRecovery");
+        
+      assertEqual(50000, c.count());
+      for (i = 0; i < 100000; ++i) {
+        if (i % 2 == 0) {
+          assertFalse(c.exists("test" + i));
+        }
+        else {
+          assertEqual("test" + i, c.document("test" + i)._key); 
+          assertEqual("test" + i, c.document("test" + i).value1); 
+          assertEqual(i, c.document("test" + i).value2); 
+        }
       }
     }
         

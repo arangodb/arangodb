@@ -258,11 +258,9 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
   if (journal == NULL) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      document->_state = TRI_COL_STATE_READ;
     }
     else {
       document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-      document->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
     return NULL;
@@ -1807,6 +1805,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillInternalIndexes (TRI_document_collection_t* document) {
+  TRI_ASSERT(! triagens::wal::LogfileManager::instance()->isInRecovery());
+
   int res = TRI_ERROR_NO_ERROR;
   
   for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
@@ -2389,18 +2389,25 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("CreateJournalDocumentCollection") {
+      // simulate disk full
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      errno = ENOSPC;
+      return nullptr;
+    }
+     
     journal = TRI_CreateDatafile(filename, fid, journalSize, true);
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
   }
 
-  if (journal == NULL) {
+  if (journal == nullptr) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
       document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      document->_state = TRI_COL_STATE_READ;
     }
     else {
       document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-      document->_state = TRI_COL_STATE_WRITE_ERROR;
     }
 
     return NULL;
@@ -2815,11 +2822,16 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  // fill internal indexes (this is, the edges index at the moment) 
-  FillInternalIndexes(document);
+  // secondary indexes must not be loaded during recovery
+  // this is because creating indexes might write attribute markers into the WAL,
+  // but the WAL is read-only at the point of recovery
+  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    // fill internal indexes (this is, the edges index at the moment) 
+    FillInternalIndexes(document);
 
-  // fill user-defined secondary indexes
-  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+    // fill user-defined secondary indexes
+    TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+  }
 
   return document;
 }
@@ -3474,17 +3486,11 @@ static int ComparePidName (void const* left, void const* right) {
 /// note: the write-lock for the collection must be held to call this
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t* document, 
-                                             TRI_voc_rid_t rid,
-                                             bool force,
-                                             int64_t logfileEntries) {
+void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t* document, 
+                                           TRI_voc_rid_t rid,
+                                           bool force) {
   if (rid > 0) {
     SetRevision(document, rid, force);
-  }
-
-  if (! document->_info._isVolatile) {
-    // only count logfileEntries if the collection is durable
-    document->_uncollectedLogfileEntries += logfileEntries;
   }
 }
 

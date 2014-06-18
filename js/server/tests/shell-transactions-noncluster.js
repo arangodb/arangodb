@@ -4035,6 +4035,7 @@ function transactionServerFailuresSuite () {
               write: [ cn ],
             },
             action: function () {
+              var i;
               for (i = 100; i < 150; ++i) {
                 c.save({ _key: "test" + i, a: i });
               }
@@ -4062,6 +4063,121 @@ function transactionServerFailuresSuite () {
           assertEqual(undefined, c.document("test" + i).b);
         }
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test disk full during collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testDiskFullWhenCollectingTransaction : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      // should not cause any problems yet, but later
+      internal.debugSetFailAt("CreateJournalDocumentCollection");
+      
+      // adjust the configuration and make sure we flush all reserve logfiles
+      internal.adjustWal({ reserveLogfiles: 1 });
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      for (i = 0; i < 4; ++i) {
+        // write something into the logs so we can flush 'em
+        c.save({ _key: "foo" });
+        c.remove("foo");
+        internal.flushWal(true, false);
+      }
+       
+      // one more to populate a new logfile 
+      c.save({ _key: "foo" });
+      c.remove("foo");
+      
+      TRANSACTION({ 
+        collections: {
+          write: [ cn ],
+        },
+        action: function () {
+          var i;
+          for (i = 100; i < 150; ++i) {
+            c.save({ _key: "test" + i, a: i });
+          }
+          assertEqual(150, c.count());
+
+          // make sure we fill up the logfile
+          for (i = 0; i < 100000; ++i) {
+            c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
+          }
+        }
+      });
+
+      assertEqual(100150, c.count());
+      var fig = c.figures();
+      assertEqual(100160, fig.uncollectedLogfileEntries);
+
+      internal.debugClearFailAt();
+      internal.flushWal(true, true);
+
+      assertEqual(100150, c.count());
+
+      testHelper.waitUnload(c);
+      
+      // data should be there after unload
+      assertEqual(100150, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: disk full during transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testDiskFullDuringTransaction : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 150; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+            assertEqual(150, c.count());
+
+            // should not cause any problems
+            internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
+
+            for (i = 0; i < 200000; ++i) {
+              c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
+            }
+
+            fail();
+          }
+        });
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
     }
 
   };
@@ -4075,6 +4191,11 @@ function transactionServerFailuresSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+// only run this test suite if server-side failures are enabled
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(transactionServerFailuresSuite);
+}
+
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
@@ -4084,11 +4205,6 @@ jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);
-
-// only run this test suite if server-side failures are enabled
-if (internal.debugCanUseFailAt()) {
-  jsunity.run(transactionServerFailuresSuite);
-}
 
 return jsunity.done();
 

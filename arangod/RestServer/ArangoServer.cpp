@@ -832,6 +832,8 @@ int ArangoServer::startupServer () {
   // finally flush the write-ahead log so all data in the WAL goes into the collections
   wal::LogfileManager::instance()->flush(true, true, true);
 
+  // WAL recovery done after here
+
   // setup the V8 actions
   if (startServer) {
     _applicationV8->prepareActions();
@@ -873,9 +875,6 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   _applicationServer->start();
-
-  // load authentication
-  TRI_LoadAuthInfoVocBase(vocbase);
 
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start

@@ -1460,8 +1460,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     return NULL;
   }
 
-  TRI_ReloadAuthInfo(vocbase);
-
   ScanTrxCollection(vocbase);
 
   // .............................................................................
@@ -1637,14 +1635,6 @@ int TRI_StopCompactorVocBase (TRI_vocbase_t* vocbase) {
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief load authentication information
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_LoadAuthInfoVocBase (TRI_vocbase_t* vocbase) {
-  vocbase->_authInfoLoaded = TRI_LoadAuthInfo(vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
