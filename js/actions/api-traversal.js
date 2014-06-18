@@ -388,15 +388,15 @@ function notFound (req, res, code, message) {
 ///       graphName: g.__name,
 ///       expander: "var connections = [ ];" +
 ///                 "if (vertex.name === \"Alice\") {" +
-///                 "config.getInEdges(vertex).forEach(function (e) {" +
-///                 "connections.push({ " +
-///                 "vertex: require(\"internal\").db._document(e._from), " +
+///                 "config.datasource.getInEdges(vertex).forEach(function (e) {" +
+///                 "connections.push({ " + 
+///                 "vertex: require(\"internal\").db._document(e._from), " + 
 ///                 "edge: e" +
 ///                 "});" +
 ///                 "});" +
 ///                 "}" +
 ///                 "if (vertex.name === \"Eve\") {" +
-///                 "config.getOutEdges(vertex).forEach(function (e) {" +
+///                 "config.datasource.getOutEdges(vertex).forEach(function (e) {" + 
 ///                 "connections.push({" +
 ///                 "vertex: require(\"internal\").db._document(e._to), " +
 ///                 "edge: e" +
@@ -464,7 +464,7 @@ function notFound (req, res, code, message) {
 ///     var url = "/_api/traversal";
 ///     var body = {
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       itemOrder: "backward"
 ///     };
