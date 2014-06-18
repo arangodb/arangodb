@@ -587,13 +587,12 @@ function post_api_traversal(req, res) {
           "invalid edgeCollection");
     }
 
-  } else if (typeof json.graphName !== "string") {
-    return badParam(req, res, "invalid graphname");
+  } else {
+    if (typeof json.graphName !== "string" || !graph._exists(json.graphName)) {
+      return badParam(req, res, "invalid graphname");
+    }
+    datasource = traversal.generalGraphDatasourceFactory(json.graphName);
   }
-  if (!graph._exists(json.graphName)) {
-    return badParam(req, res, "invalid graphname");
-  }
-  datasource = traversal.generalGraphDatasourceFactory(json.graphName);
 
 
   // set up filters
