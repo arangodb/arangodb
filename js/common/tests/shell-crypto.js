@@ -166,8 +166,30 @@ function CryptoSuite () {
       for (i = 0; i < 100; ++i) {
         assertTrue(crypto.rand() !== 0);
       }
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constantEquals
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstantEquals : function () {
+      var time = require('internal').time;
+      var data = [
+        [ "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", "", false ],
+        [ "", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", false ],
+        [ "449cae45786ff49422f05eb94182fb6456b10db5c54f2342387168702e4f5197", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", false ],
+        [ "85ae370b23a90d5f511a378678edc084f2a0d1190b96f1f543f7e0848a597a6d", "449cae45786ff49422f05eb94182fb6456b10db5c54f2342387168702e4f5197", false ],
+        [ "95144e880bbc4a4bf10a2b683603c763a38817b544e1c2f6ff1bd3523bf60f9e", "85ae370b23a90d5f511a378678edc084f2a0d1190b96f1f543f7e0848a597a6d", false ],
+        [ "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", true ],
+        [ "449cae45786ff49422f05eb94182fb6456b10db5c54f2342387168702e4f5197", "449cae45786ff49422f05eb94182fb6456b10db5c54f2342387168702e4f5197", true ],
+        [ "85ae370b23a90d5f511a378678edc084f2a0d1190b96f1f543f7e0848a597a6d", "85ae370b23a90d5f511a378678edc084f2a0d1190b96f1f543f7e0848a597a6d", true ],
+        [ "95144e880bbc4a4bf10a2b683603c763a38817b544e1c2f6ff1bd3523bf60f9e", "95144e880bbc4a4bf10a2b683603c763a38817b544e1c2f6ff1bd3523bf60f9e", true ]
+      ];
+
+      data.forEach(function(value) {
+        assertEqual(value[2], crypto.constantEquals(value[0], value[1]));
+      });
+    }
   };
 }
 
