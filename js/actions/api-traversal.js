@@ -47,21 +47,21 @@ var graph = require("org/arangodb/general-graph");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a "bad parameter" error
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 function badParam (req, res, message) {
-  actions.resultBad(req, 
-                    res, 
-                    arangodb.ERROR_HTTP_BAD_PARAMETER, 
+  actions.resultBad(req,
+                    res,
+                    arangodb.ERROR_HTTP_BAD_PARAMETER,
                     message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a "not found" error
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 function notFound (req, res, code, message) {
-  actions.resultNotFound(req, 
-                         res, 
+  actions.resultNotFound(req,
+                         res,
                          code,
                          message);
 }
@@ -77,9 +77,9 @@ function notFound (req, res, code, message) {
 /// Starts a traversal starting from a given vertex and following.
 /// edges contained in a given edgeCollection. The request must
 /// contain the following attributes.
-///  
+///
 /// - `startVertex`: id of the startVertex, e.g. `"users/foo"`.
-/// 
+///
 /// - `edgeCollection`: **Deprecated** name of the collection that contains the edges.
 ///
 /// - `graphName`: name of the graph that contains the edges.
@@ -95,15 +95,15 @@ function notFound (req, res, code, message) {
 ///             If there is at least one `"exclude"` or `"prune"` respectivly
 ///             is contained, it's effect will occur.
 ///
-/// - `minDepth` (optional, ANDed with any existing filters): 
+/// - `minDepth` (optional, ANDed with any existing filters):
 ///    visits only nodes in at least the given depth
 ///
-/// - `maxDepth` (optional, ANDed with any existing filters): 
+/// - `maxDepth` (optional, ANDed with any existing filters):
 ///    visits only nodes in at most the given depth
 ///
 /// - `visitor` (optional): body (JavaScript) code of custom visitor function
 ///          function signature: (config, result, vertex, path) -> void
-///          visitor function can do anything, but its return value is ignored. To 
+///          visitor function can do anything, but its return value is ignored. To
 ///          populate a result, use the `result` variable by reference
 ///
 /// - `direction` (optional): direction for traversal
@@ -120,7 +120,7 @@ function notFound (req, res, code, message) {
 ///           expander must return an array of the connections for `vertex`
 ///           each connection is an object with the attributes `edge` and `vertex`
 /// - `sort` (optional): body (JavaScript) code of a custom comparison function
-///           for the edges. The signature of this function is 
+///           for the edges. The signature of this function is
 ///           (l, r) -> integer (where l and r are edges) and must
 ///           return -1 if l is smaller than, +1 if l is greater than,
 ///           and 0 if l and r are equal. The reason for this is the
@@ -157,8 +157,8 @@ function notFound (req, res, code, message) {
 ///
 /// If the Traversal is successfully executed `HTTP 200` will be returned.
 /// Additionally the `result` object will be returned by the traversal.
-/// 
-/// For successful traversals, the returned JSON object has the 
+///
+/// For successful traversals, the returned JSON object has the
 /// following properties:
 ///
 /// - `error`: boolean flag to indicate if an error occurred (`false`
@@ -193,7 +193,7 @@ function notFound (req, res, code, message) {
 /// will respond with `HTTP 400`.
 ///
 /// @RESTRETURNCODE{404}
-/// The server will responded with `HTTP 404` if the specified edge collection 
+/// The server will responded with `HTTP 404` if the specified edge collection
 /// does not exist, or the specified start vertex cannot be found.
 ///
 /// @RESTRETURNCODE{500}
@@ -256,7 +256,7 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
+///     var body = {
 ///       startVertex: a,
 ///       graphName: g.__name,
 ///       direction: "any",
@@ -383,25 +383,25 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
+///     var body = {
 ///       startVertex: a,
 ///       graphName: g.__name,
 ///       expander: "var connections = [ ];" +
 ///                 "if (vertex.name === \"Alice\") {" +
 ///                 "config.getInEdges(vertex).forEach(function (e) {" +
-///                 "connections.push({ " + 
-///                 "vertex: require(\"internal\").db._document(e._from), " + 
+///                 "connections.push({ " +
+///                 "vertex: require(\"internal\").db._document(e._from), " +
 ///                 "edge: e" +
 ///                 "});" +
-///                 "});" + 
+///                 "});" +
 ///                 "}" +
 ///                 "if (vertex.name === \"Eve\") {" +
-///                 "config.getOutEdges(vertex).forEach(function (e) {" + 
+///                 "config.getOutEdges(vertex).forEach(function (e) {" +
 ///                 "connections.push({" +
 ///                 "vertex: require(\"internal\").db._document(e._to), " +
 ///                 "edge: e" +
-///                 "});" + 
-///                 "});" + 
+///                 "});" +
+///                 "});" +
 ///                 "}" +
 ///                 "return connections;"
 ///     };
@@ -420,8 +420,8 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
-///       startVertex: a, 
+///     var body = {
+///       startVertex: a,
 ///       graphName: g.__name,
 ///       direction: "any",
 ///       strategy: "depthfirst"
@@ -441,7 +441,7 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
+///     var body = {
 ///       startVertex: a,
 ///       graphName: g.__name,
 ///       direction: "any",
@@ -462,7 +462,7 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
+///     var body = {
 ///       startVertex: a,
 ///       edgeCollection: knows.name(),
 ///       direction: "any",
@@ -484,12 +484,12 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = { 
+///     var body = {
 ///       startVertex: a,
 ///       graphName: g.__name,
 ///       direction: "any",
 ///       uniqueness: {
-///         vertices: "none", 
+///         vertices: "none",
 ///         edges: "global"
 ///       }
 ///     };
@@ -547,7 +547,7 @@ function post_api_traversal(req, res) {
   // check start vertex
   // -----------------------------------------
 
-  if (json.startVertex === undefined || 
+  if (json.startVertex === undefined ||
       typeof json.startVertex !== "string") {
     return badParam(req, res, "missing or invalid startVertex");
   }
@@ -566,7 +566,7 @@ function post_api_traversal(req, res) {
   if (json.graphName === undefined) {
     // check edge collection
     // -----------------------------------------
-    
+
     if (json.edgeCollection === undefined) {
       return badParam(req, res, "missing graphname");
     }
@@ -581,7 +581,7 @@ function post_api_traversal(req, res) {
     catch (ignore) {
     }
 
-    if (edgeCollection === undefined || 
+    if (edgeCollection === undefined ||
         edgeCollection === null) {
         return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
           "invalid edgeCollection");
@@ -589,17 +589,16 @@ function post_api_traversal(req, res) {
 
   } else if (typeof json.graphName !== "string") {
     return badParam(req, res, "invalid graphname");
-  } else {
-    if (!graph._exists(json.graphName)) {
-      return badParam(req, res, "invalid graphname");
-    }
-    datasource = traversal.generalGraphDatasourceFactory(json.graphName);
   }
+  if (!graph._exists(json.graphName)) {
+    return badParam(req, res, "invalid graphname");
+  }
+  datasource = traversal.generalGraphDatasourceFactory(json.graphName);
 
-  
+
   // set up filters
   // -----------------------------------------
-  
+
   var filters = [ ];
   if (json.minDepth !== undefined) {
     filters.push(traversal.minDepthFilter);
@@ -620,7 +619,7 @@ function post_api_traversal(req, res) {
   if (filters.length === 0) {
     filters.push(traversal.visitAllFilter);
   }
-  
+
   // set up visitor
   // -----------------------------------------
 
@@ -672,14 +671,14 @@ function post_api_traversal(req, res) {
       return badParam(req, res, "invalid sort function");
     }
   }
-  
+
   // assemble config object
   // -----------------------------------------
 
   var config = {
     params: json,
     datasource: datasource,
-    strategy: json.strategy, 
+    strategy: json.strategy,
     order: json.order,
     itemOrder: json.itemOrder,
     expander: expander,
@@ -695,11 +694,11 @@ function post_api_traversal(req, res) {
   if (edgeCollection !== undefined) {
     config.edgeCollection = edgeCollection;
   }
-  
+
   // assemble result object
   // -----------------------------------------
 
-  var result = { 
+  var result = {
     visited: {
       vertices: [ ],
       paths: [ ]
@@ -710,12 +709,12 @@ function post_api_traversal(req, res) {
     try {
       var init = new Function('result', json.init);
       init(result);
-    } 
+    }
     catch (err7) {
       return badParam(req, res, "invalid init function");
     }
   }
-  
+
   // run the traversal
   // -----------------------------------------
 
@@ -743,7 +742,7 @@ function post_api_traversal(req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gateway 
+/// @brief gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -753,8 +752,8 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.POST: 
-          post_api_traversal(req, res); 
+        case actions.POST:
+          post_api_traversal(req, res);
           break;
 
         default:
