@@ -66,6 +66,7 @@ describe('Repository Methods', function () {
 
   beforeEach(function () {
     collection = createSpyObj('collection', [
+      'all',
       'save',
       'document',
       'byExample',
@@ -139,7 +140,22 @@ describe('Repository Methods', function () {
       expect(collection.firstExample.calls.argsFor(0)).toEqual([example]);
     });
 
-    it('should find all');
+    it('should find all', function () {
+      var cursor = createSpyObj('cursor', ['skip', 'limit', 'toArray']),
+        result = [{}],
+        models;
+
+      collection.all.and.returnValue(cursor);
+      cursor.skip.and.returnValue(cursor);
+      cursor.limit.and.returnValue(cursor);
+      cursor.toArray.and.returnValue(result);
+
+      // TODO: Would prefer to mock the constructor and check for the specific instance
+      models = instance.all({ skip: 4, limit: 2 });
+      expect(models[0] instanceof Model).toBe(true);
+      expect(cursor.skip.calls.argsFor(0)).toEqual([4]);
+      expect(cursor.limit.calls.argsFor(0)).toEqual([2]);
+    });
   });
 
   describe('for removing entries', function () {
