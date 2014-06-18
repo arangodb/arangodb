@@ -3078,7 +3078,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///
 /// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
 ///
-/// * *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
+/// * *edgeCollectionName*: string - name of edge collection defined in *collection* of the edge
 /// definition.
 ///
 /// @EXAMPLES
