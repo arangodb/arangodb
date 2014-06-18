@@ -77,7 +77,7 @@ var internal = require("internal");
 /// @RESTRETURNCODE{405}
 /// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEndpointGet}
 ///     var url = "/_api/endpoint";
@@ -142,7 +142,7 @@ var internal = require("internal");
 /// @RESTRETURNCODE{405}
 /// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
 ///
-/// @EXAMPLES
+/// *Examples*
 /// Adding an endpoint `tcp://127.0.0.1:8532` with two mapped databases 
 /// (`mydb1` and `mydb2`). `mydb1` will become the default database for the
 /// endpoint.
@@ -246,7 +246,7 @@ var internal = require("internal");
 /// @RESTRETURNCODE{405}
 /// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Deleting an existing endpoint
 ///
