@@ -33,6 +33,7 @@ var actions = require("org/arangodb/actions");
 var db = require("internal").db;
 var traversal = require("org/arangodb/graph/traversal");
 var Traverser = traversal.Traverser;
+var graph = require("org/arangodb/general-graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -79,7 +80,9 @@ function notFound (req, res, code, message) {
 ///  
 /// - `startVertex`: id of the startVertex, e.g. `"users/foo"`.
 /// 
-/// - `edgeCollection`: name of the collection that contains the edges.
+/// - `edgeCollection`: **Deprecated** name of the collection that contains the edges.
+///
+/// - `graphName`: name of the graph that contains the edges.
 ///
 /// - `filter` (optional, default is to include all nodes):
 ///         body (JavaScript code) of custom filter function
@@ -213,90 +216,49 @@ function notFound (req, res, code, message) {
 /// Follow only outbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalOutbound}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound"}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Follow only inbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalInbound}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "inbound"}';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Follow any direction of edges:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalAny}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       uniqueness: {
 ///         vertices: "none",
@@ -308,32 +270,18 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Excluding `Charlie` and `Bob`:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterExclude}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
 ///         body += '"filter" : "if (vertex.name === \\"Bob\\" || ';
 ///         body += 'vertex.name === \\"Charlie\\") {';
@@ -345,32 +293,18 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Do not follow edges from `Bob`:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterPrune}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
 ///         body += '"filter" : "if (vertex.name === \\"Bob\\") {';
 ///         body += 'return \\"prune\\";'
@@ -381,32 +315,18 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Visit only nodes in a depth of at least 2:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMinDepth}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
 ///         body += '"minDepth" : 2}';
 ///
@@ -414,32 +334,18 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Visit only nodes in a depth of at most 1:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxDepth}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
 ///         body += '"maxDepth" : 1}';
 ///
@@ -447,32 +353,18 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Count all visited nodes and return a list of nodes only:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorCountAndList}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"edgeCollection" : "' + knows.name() + '", ';
+///         body += '"graphName" : "' + g.__name + '", ';
 ///         body += '"direction" : "outbound", ';
 ///         body += '"init" : "result.visited = 0; result.myVertices = [ ];", ';
 ///         body += '"visitor" : "result.visited++; result.myVertices.push(vertex);"}';
@@ -481,36 +373,22 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Expand only inbound edges of `Alice` and outbound edges of `Eve`:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorExpander}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       expander: "var connections = [ ];" +
 ///                 "if (vertex.name === \"Alice\") {" +
-///                 "config.edgeCollection.inEdges(vertex).forEach(function (e) {" +
+///                 "config.getInEdges(vertex).forEach(function (e) {" +
 ///                 "connections.push({ " + 
 ///                 "vertex: require(\"internal\").db._document(e._from), " + 
 ///                 "edge: e" +
@@ -518,7 +396,7 @@ function notFound (req, res, code, message) {
 ///                 "});" + 
 ///                 "}" +
 ///                 "if (vertex.name === \"Eve\") {" +
-///                 "config.edgeCollection.outEdges(vertex).forEach(function (e) {" + 
+///                 "config.getOutEdges(vertex).forEach(function (e) {" + 
 ///                 "connections.push({" +
 ///                 "vertex: require(\"internal\").db._document(e._to), " +
 ///                 "edge: e" +
@@ -532,33 +410,19 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Follow the `depthfirst` strategy:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalDepthFirst}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a, 
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       strategy: "depthfirst"
 ///     };
@@ -567,33 +431,19 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using `postorder` ordering:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalPostorder}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       order: "postorder"
 ///     };
@@ -602,29 +452,15 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Using `backward` item-ordering:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalBackwardItemOrder}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
@@ -637,34 +473,20 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Edges should only be included once globally,
 /// but nodes are included every time they are visited:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalEdgeUniqueness}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     var c = users.save({name: "Charlie"})._id;
-///     var d = users.save({name: "Dave"})._id;
-///     var e = users.save({name: "Eve"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, c, {});
-///     knows.save(b, d, {});
-///     knows.save(e, a, {});
-///     knows.save(e, b, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
 ///     var body = { 
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       uniqueness: {
 ///         vertices: "none", 
@@ -676,8 +498,7 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// If the underlying graph is cyclic, `maxIterations` should be set:
@@ -689,20 +510,17 @@ function notFound (req, res, code, message) {
 ///
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxIterations}
-///     var cv = "persons";
-///     var ce = "knows";
-///     db._drop(cv);
-///     db._drop(ce);
-///     var users = db._create(cv);
-///     var knows = db._createEdgeCollection(ce);
-///     var a = users.save({name: "Alice"})._id;
-///     var b = users.save({name: "Bob"})._id;
-///     knows.save(a, b, {});
-///     knows.save(b, a, {});
+///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var g = examples.loadGraph("knows_graph");
+///     var a = g.persons.document("alice")._id;
+///     var b = g.persons.document("bob")._id;
+///     g.knows.truncate();
+///     g.knows.save(a, b, {});
+///     g.knows.save(b, a, {});
 ///     var url = "/_api/traversal";
 ///     var body = {
 ///       startVertex: a,
-///       edgeCollection: knows.name(),
+///       graphName: g.__name,
 ///       direction: "any",
 ///       uniqueness: {
 ///         vertices: "none",
@@ -715,8 +533,7 @@ function notFound (req, res, code, message) {
 ///     assert(response.code === 500);
 ///
 ///     logJsonResponse(response);
-///     db._drop(cv);
-///     db._drop(ce);
+///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -742,26 +559,43 @@ function post_api_traversal(req, res) {
   catch (err) {
     return notFound(req, res, arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND, "invalid startVertex");
   }
-  
-  // check edge collection
-  // -----------------------------------------
 
-  if (json.edgeCollection === undefined || 
-      typeof json.edgeCollection !== "string") {
-    return badParam(req, res, "missing or invalid edgeCollection");
-  }
-
+  var datasource;
   var edgeCollection;
-  try {
-    edgeCollection = db._collection(json.edgeCollection);
-  }
-  catch (err2) {
+
+  if (json.graphName === undefined) {
+    // check edge collection
+    // -----------------------------------------
+    
+    if (json.edgeCollection === undefined) {
+      return badParam(req, res, "missing graphname");
+    }
+    if (typeof json.edgeCollection !== "string") {
+      return badParam(req, res, "invalid edgecollection");
+    }
+
+    try {
+      edgeCollection = db._collection(json.edgeCollection);
+      datasource = traversal.collectionDatasourceFactory(edgeCollection);
+    }
+    catch (ignore) {
+    }
+
+    if (edgeCollection === undefined || 
+        edgeCollection === null) {
+        return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+          "invalid edgeCollection");
+    }
+
+  } else if (typeof json.graphName !== "string") {
+    return badParam(req, res, "invalid graphname");
+  } else {
+    if (!graph._exists(json.graphName)) {
+      return badParam(req, res, "invalid graphname");
+    }
+    datasource = traversal.generalGraphDatasourceFactory(json.graphName);
   }
 
-  if (edgeCollection === undefined || 
-      edgeCollection === null) {
-    return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "invalid edgeCollection");
-  }
   
   // set up filters
   // -----------------------------------------
@@ -844,8 +678,7 @@ function post_api_traversal(req, res) {
 
   var config = {
     params: json,
-    edgeCollection: edgeCollection,
-    datasource: traversal.collectionDatasourceFactory(edgeCollection),
+    datasource: datasource,
     strategy: json.strategy, 
     order: json.order,
     itemOrder: json.itemOrder,
@@ -858,6 +691,10 @@ function post_api_traversal(req, res) {
     maxIterations: json.maxIterations,
     uniqueness: json.uniqueness
   };
+
+  if (edgeCollection !== undefined) {
+    config.edgeCollection = edgeCollection;
+  }
   
   // assemble result object
   // -----------------------------------------
