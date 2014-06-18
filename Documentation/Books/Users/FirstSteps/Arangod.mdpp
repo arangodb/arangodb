@@ -1,6 +1,5 @@
 !CHAPTER Details about the ArangoDB Server
 
-
 The ArangoDB database server has two modes of operation: As a server, where it
 will answer to client requests and as an emergency console, in which you can
 access the database directly. The latter - as the name suggests - should 
@@ -20,10 +19,12 @@ be able to access the server using HTTP requests on port 8529. Look
 [here](#frequently_used_options) for a list of 
 frequently used options – see [here](../CommandLineOptions/README.md) for a complete list.
 
-    unix> /usr/local/sbin/arangod /tmp/vocbase
-    20ZZ-XX-YYT12:37:08Z [8145] INFO using built-in JavaScript startup files
-    20ZZ-XX-YYT12:37:08Z [8145] INFO ArangoDB (version 1.x.y) is ready for business
-    20ZZ-XX-YYT12:37:08Z [8145] INFO Have Fun!
+```
+unix> /usr/local/sbin/arangod /tmp/vocbase
+20ZZ-XX-YYT12:37:08Z [8145] INFO using built-in JavaScript startup files
+20ZZ-XX-YYT12:37:08Z [8145] INFO ArangoDB (version 1.x.y) is ready for business
+20ZZ-XX-YYT12:37:08Z [8145] INFO Have Fun!
+```
 
 After starting the server, point your favorite browser to:
 
@@ -104,11 +105,8 @@ If a TCP/IP endpoint is specified without a port number, then the default port (
 
 Endpoints can also be changed at runtime. Please refer to HTTP Interface for Endpoints for more details.
 
-`--server.disable-authentication value`
-
-Setting value to true will turn off authentication on the server side so all clients can execute any action without authorisation and privilege checks.
-
-The default value is false.
+<!-- ArangoServer.h -->
+@startDocuBlock server_authentication
 
 `--server.keep-alive-timeout`
 

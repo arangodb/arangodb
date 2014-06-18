@@ -10,11 +10,11 @@ compiler.
 
 There are the following possibilities:
 
-- all-in-one: this version contains the source code of the ArangoDB, all 
+* all-in-one: this version contains the source code of the ArangoDB, all 
  generated files from the autotools, FLEX, and BISON as well 
  as a version of V8, libev, and ICU.
 
-- devel: this version contains the development version of the ArangoDB.
+* devel: this version contains the development version of the ArangoDB.
   Use this branch, if you want to make changes to ArangoDB 
   source.
 
@@ -43,22 +43,22 @@ Note: there are separate instructions for the **devel** version in the next sect
 
 Verify that your system contains:
 
-- the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
+* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
   compiler and library support for C++11. To be on the safe side with gcc/g++, you will
   need version number 4.8 or higher. For "clang" and "clang++", you will need at least
   version 3.4.
-- the GNU make
+* the GNU make
 
 In addition you will need the following library:
 
-- the GNU readline library
-- the OpenSSL library
-- Go 1.2 (or higher)
+* the GNU readline library
+* the OpenSSL library
+* Go 1.2 (or higher)
 
 Under Mac OS X you also need to install:
 
-- Xcode
-- scons
+* Xcode
+* scons
 
 !SUBSECTION Download the Source
 
@@ -108,10 +108,12 @@ Check the binary by starting it using the command line.
 This will start up the ArangoDB and listen for HTTP requests on port 12345 bound
 to IP address 127.0.0.1. You should see the startup messages similar to the following:
 
+```
 2013-10-14T12:47:29Z [29266] INFO ArangoDB xxx ... </br>
 2013-10-14T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.12345' for non-encrypted requests </br>
 2013-10-14T12:47:30Z [29266] INFO Authentication is turned off </br>
 2013-10-14T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun! </br>
+```
 
 If it fails with a message about the database directory, please make sure the
 database directory you specified exists and can be written into.
@@ -189,12 +191,12 @@ versions of the programs and/or libraries.
 
 If necessary, install or download the prerequisites:
 
-- GNU C/C++ 4.8 or higher (see http://gcc.gnu.org) 
-- Google's V8 engine (see http://code.google.com/p/v8)
-- SCons for compiling V8 (see http://www.scons.org)
-- libev (see http://software.schmorp.de/pkg/libev.html) 
-- OpenSSL (http://openssl.org/)
-- Go (http://golang.org/)
+* GNU C/C++ 4.8 or higher (see http://gcc.gnu.org) 
+* Google's V8 engine (see http://code.google.com/p/v8)
+* SCons for compiling V8 (see http://www.scons.org)
+* libev (see http://software.schmorp.de/pkg/libev.html) 
+* OpenSSL (http://openssl.org/)
+* Go (http://golang.org/)
 
 Most linux systems already supply RPM or DEP for these
 packages. Please note that you have to install the development packages.
@@ -227,7 +229,7 @@ In order to configure the build environment please execute
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
 
-Please note that it may be required to set the `--host` and `--target` variables when 
+Please note that it may be required to set the *--host* and *--target* variables when 
 running the configure command. For example, if you compile on MacOS, you should add the 
 following options to the configure command:
 
@@ -235,10 +237,8 @@ following options to the configure command:
 
 The host and target values for other architectures vary. 
 
-Now continue with @ref CompilingAIOCompile.
-
 If you also plan to make changes to the source code of ArangoDB, add the following
-option to the `configure` command: `--enable-maintainer-mode`. Using this option,
+option to the *configure* command: *--enable-maintainer-mode*. Using this option,
 you can make changes to the lexer and parser files and some other source files that
 will generate other files. Enabling this option will add extra dependencies to
 BISON, FLEX, and PYTHON. These external tools then need to be available in the 
@@ -314,7 +314,7 @@ used so you cannot make changes to the parser and scanner files.  You need at
 least BISON 2.4.1 and FLEX 2.5.35.  This option also allows you to make changes
 to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
-additional test cases to be executed in a `make unittests` run. You also need to
+additional test cases to be executed in a *make unittests* run. You also need to
 install the Boost test framework for this.
 
 !SUBSECTION Compiling Go
@@ -329,7 +329,7 @@ For other systems, you may follow the instructions
 To make ArangoDB use a specific version of go, you may copy the go binaries
 into the 3rdParty/go-32 or 3rdParty/go-64 directories of ArangoDB (depending
 on your architecture), and then tell ArangoDB to use this specific go version
-by using the `--enable-internal-go` configure option.
+by using the *--enable-internal-go* configure option.
 
 User duralog provided some the following script to pull the latest release 
 version of go into the ArangoDB source directory and build it:
