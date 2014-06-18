@@ -61,7 +61,7 @@
       setResponse(res, "graph", {
         name: g.__name,
         edgeDefinitions: g.__edgeDefinitions,
-        orphanCollections: g._getOrphanCollections()
+        orphanCollections: g._orphanCollections()
       }, code);
     };
 
@@ -96,6 +96,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_http_examples
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
+///   var graph = require("org/arangodb/general-graph");
+/// | if (graph._exists("myGraph")) {
+/// |    graph._drop("myGraph");
+///   }
 ///   var url = "/system/gharial";
 ///   body = { 
 ///     name: "myGraph", 
@@ -112,7 +116,6 @@
 ///
 ///   logJsonResponse(response);
 ///
-///   var graph = require("org/arangodb/general-graph");
 ///   graph._drop("myGraph");
 ///   
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -154,8 +157,8 @@
   /** Drops an existing graph
    *
    * Drops an existing graph object by name.
-   * By default all collections not used by other graphs will be dropped as
-   * well. It can be optionally configured to not drop the collections.
+   * Optionally all collections not used by other graphs can be dropped as
+   * well.
    */
   controller.del("/:graph", function(req, res) {
     var name = req.params("graph");
@@ -245,7 +248,7 @@
     var name = req.params("graph");
     var body = req.params("collection");
     var g = Graph._graph(name);
-    g._addOrphanCollection(body.get("collection"));
+    g._addVertexCollection(body.get("collection"));
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
@@ -272,7 +275,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollection}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._addOrphanCollection("otherVertices");
+///   g._addVertexCollection("otherVertices");
 ///   var url = "/system/gharial/social/vertex/otherVertices";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
@@ -301,14 +304,12 @@
    *
    * Removes a vertex collection from this graph.
    * If this collection is used in one or more edge definitions 
-   * All data stored in the collection is dropped as well as long
-   * as it is not used in other graphs.
    */
   controller.del("/:graph/vertex/:collection", function(req, res) {
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g = Graph._graph(name);
-    g._removeOrphanCollection(def_name);
+    g._removeVertexCollection(def_name);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -850,7 +851,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('GET', url);
 /// 
 ///   assert(response.code === 200);
@@ -899,7 +900,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     type: "divorced"
 ///   }
@@ -954,7 +955,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialPatchEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   body = {
 ///     since: "01.01.2001"
 ///   }
@@ -1011,7 +1012,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDeleteEdge}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/system/gharial/social/vertex/relation/aliceAndBob";
+///   var url = "/system/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
 ///   assert(response.code === 200);
@@ -1055,10 +1056,6 @@
       };
     }
   );
-
-
-
-
 }());
 
 // -----------------------------------------------------------------------------

@@ -121,6 +121,22 @@ exports.checkAndMarkNonce = function (value) {
   return internal.checkAndMarkNonce(value);
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Compares two strings in constant time
+////////////////////////////////////////////////////////////////////////////////
+
+exports.constantEquals = function (a, b) {
+  var length, result, i;
+  length = a.length > b.length ? a.length : b.length;
+  result = true;
+  for (i = 0; i < length; i++) {
+    if (a.charCodeAt(i) !== b.charCodeAt(i)) {
+      result = false;
+    }
+  }
+  return result;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

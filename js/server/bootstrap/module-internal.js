@@ -87,10 +87,34 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns mount point for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+  function systemMountPoint (appName) {
+    'use strict';
+
+    if (appName === "aardvark") {
+      return "/_admin/aardvark";
+    }
+
+    if (appName === "gharial") {
+      return "/_api/gharial";
+    }
+
+    if (appName === "cerberus") {
+      return "/system/cerberus";
+    }
+
+    return false;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief resets engine in development mode
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.resetEngine = function () {
+    'use strict';
+
     internal.flushModuleCache();
     require("org/arangodb/actions").reloadRouting();
   };
@@ -138,6 +162,8 @@
 
     // autoload specific actions
     internal.actionLoaded = function () {
+      'use strict';
+
       console.debug("autoloading actions");
 
       var modules = internal.db._collection("_modules");
@@ -181,6 +207,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.initializeFoxx = function () {
+    'use strict';
+
     var fm = require("org/arangodb/foxx/manager");
 
     try {
@@ -204,20 +232,18 @@
       }
 
       apps.forEach(function (appName) {
+        var mount = systemMountPoint(appName);
+
         // for all unknown system apps: check that the directory actually exists
-        if (appName !== "aardvark" &&
-            ! fs.isDirectory(fs.join(systemAppPath, appName))) {
+        if (! mount && ! fs.isDirectory(fs.join(systemAppPath, appName))) {
           return;
         }
           
         try {
-          var mount;
-          if (appName === 'aardvark') {
-            mount = '/_admin/' + appName;
-          }
-          else {
+          if (! mount) {
             mount = '/system/' + appName;
           }
+
           var found = aal.firstExample({ type: "mount", mount: mount });
 
           if (found === null) {

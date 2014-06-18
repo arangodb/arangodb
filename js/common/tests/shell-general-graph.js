@@ -75,11 +75,11 @@ function GeneralGraphCreationSuite() {
 
     setUp: function() {
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -96,11 +96,11 @@ function GeneralGraphCreationSuite() {
       db._drop(vc5);
       db._drop(vc6);
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
     },
@@ -417,7 +417,7 @@ function GeneralGraphCreationSuite() {
 
     test_creationOfGraphShouldNotAffectCollections: function() {
       if(graph._exists(gn)) {
-        graph._drop(gn);
+        graph._drop(gn, true);
       }
       var edgeDef2 = [graph._directedRelationDefinition(rn, vn1, vn2)];
       var g = graph._create(gn, edgeDef2);
@@ -481,17 +481,17 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
       g1._deleteEdgeDefinition(ec1);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2], g1._getOrphanCollections());
+      assertEqual([vc1, vc2], g1._orphanCollections());
 
       g1._deleteEdgeDefinition(ec2);
       assertEqual([dr3], g1.__edgeDefinitions);
-      assertEqual([vc1, vc2, vc3], g1._getOrphanCollections());
+      assertEqual([vc1, vc2, vc3], g1._orphanCollections());
     },
 
     test_extendEdgeDefinitionFromExistingGraph1: function() {
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
 
@@ -509,7 +509,7 @@ function GeneralGraphCreationSuite() {
       }
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
 
@@ -533,11 +533,11 @@ function GeneralGraphCreationSuite() {
       }
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -545,11 +545,11 @@ function GeneralGraphCreationSuite() {
 
     test_extendEdgeDefinitionFromExistingGraph3: function() {
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -560,11 +560,11 @@ function GeneralGraphCreationSuite() {
         g2 = graph._create(gN2, [dr2]);
 
       assertEqual([dr1], g1.__edgeDefinitions);
-      g1._addOrphanCollection(vc3);
-      assertEqual([vc3], g1._getOrphanCollections());
+      g1._addVertexCollection(vc3);
+      assertEqual([vc3], g1._orphanCollections());
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      assertEqual([], g1._getOrphanCollections());
+      assertEqual([], g1._orphanCollections());
       g1._extendEdgeDefinitions(dr3);
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
 
@@ -599,12 +599,12 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr3], g2.__edgeDefinitions);
       g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertTrue(g1._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g1._getOrphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc4) !== -1);
+      assertTrue(g1._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g1._orphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc3) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc4) !== -1);
 
     },
 
@@ -616,26 +616,26 @@ function GeneralGraphCreationSuite() {
         g1 = graph._create(gN1, [dr1, dr3]),
         g2 = graph._create(gN2, [dr1]);
 
-      g1._addOrphanCollection(vc4);
-      g2._addOrphanCollection(vc5);
-      g2._addOrphanCollection(vc6);
+      g1._addVertexCollection(vc4);
+      g2._addVertexCollection(vc5);
+      g2._addVertexCollection(vc6);
       g1._editEdgeDefinitions(dr2, true);
 
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
       g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertEqual([vc1], g1._getOrphanCollections());
-      assertTrue(g2._getOrphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._getOrphanCollections().indexOf(vc6) !== -1);
+      assertEqual([vc1], g1._orphanCollections());
+      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
+      assertTrue(g2._orphanCollections().indexOf(vc6) !== -1);
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -661,7 +661,7 @@ function GeneralGraphAQLQueriesSuite() {
 
   var dropInclExcl = function() {
     if (graph._exists(graphName)) {
-      graph._drop(graphName);
+      graph._drop(graphName, true);
     }
   };
 
@@ -980,7 +980,7 @@ function ChainedFluentAQLResultsSuite() {
 
   var dropData = function() {
     try {
-      graph._drop(gn);
+      graph._drop(gn, true);
     } catch(ignore) {
 
     }
@@ -1828,10 +1828,26 @@ function EdgesAndVerticesSuite() {
     },
 
     tearDown : function() {
-      graph._drop(unitTestGraphName);
+      graph._drop(unitTestGraphName, true);
     },
 
-    test_dropGraph : function () {
+    test_dropGraph1 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myEdgeColName = "unitTestEdgeCollection4711";
+      var myVertexColName = vc1;
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+        )
+      );
+      graph._drop(myGraphName, true);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVertexColName) !== null);
+      assertTrue(db._collection(myEdgeColName) === null);
+    },
+
+    test_dropGraph2 : function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
       var myVertexColName = vc1;
@@ -1844,7 +1860,7 @@ function EdgesAndVerticesSuite() {
       graph._drop(myGraphName);
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(myVertexColName) !== null);
-      assertTrue(db._collection(myEdgeColName) === null);
+      assertTrue(db._collection(myEdgeColName) !== null);
     },
 
     test_createGraphWithCollectionDuplicateOK : function () {
@@ -1856,7 +1872,7 @@ function EdgesAndVerticesSuite() {
         )
       );
       assertTrue(graph._exists(myGraphName));
-      graph._drop(myGraphName);
+      graph._drop(myGraphName, true);
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(vc1) !== null);
       assertTrue(db._collection(ec1) !== null);
@@ -1887,6 +1903,8 @@ function EdgesAndVerticesSuite() {
       var myED = "unitTestEdgeCollection4711";
       var myVD1 = "unitTestVertexCollection4711";
       var myVD2 = "unitTestVertexCollection4712";
+      try {graph._drop(myGraphName, true)} catch (ignore){}
+      try {db._drop(myED)} catch (ignore){}
       try {
         graph._create(
           myGraphName,
@@ -2056,7 +2074,7 @@ function EdgesAndVerticesSuite() {
       var myEC02 = "unitTestEdgeCollection02";
       var myVC01 = "unitTestVertexCollection01";
       try {
-        graph._drop(myGraphName);
+        graph._drop(myGraphName, true);
         db._drop(myEC02);
         db._drop(myVC01);
       } catch (ignore) {
@@ -2082,7 +2100,7 @@ function EdgesAndVerticesSuite() {
       edge = g[ec1].remove(edgeId1);
       assertTrue(edge);
       assertFalse(db._exists(edge2._id));
-      graph._drop(myGraphName);
+      graph._drop(myGraphName, true);
       assertFalse(graph._exists(myGraphName));
     },
 
@@ -2100,10 +2118,10 @@ function EdgesAndVerticesSuite() {
       var vC3 = "unitTestVertexCollectionCircle3";
       var vC4 = "unitTestVertexCollectionCircle4";
       try {
-        graph._drop(gN1);
-        graph._drop(gN2);
-        graph._drop(gN3);
-        graph._drop(gN4);
+        graph._drop(gN1, true);
+        graph._drop(gN2, true);
+        graph._drop(gN3, true);
+        graph._drop(gN4, true);
         db._drop(eC1);
         db._drop(eC2);
         db._drop(eC3);
@@ -2179,10 +2197,10 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._exists(vertexId3));
       assertTrue(db._exists(vertexId4));
 
-      graph._drop(gN1);
-      graph._drop(gN2);
-      graph._drop(gN3);
-      graph._drop(gN4);
+      graph._drop(gN1, true);
+      graph._drop(gN2, true);
+      graph._drop(gN3, true);
+      graph._drop(gN4, true);
     },
 
     test_getInVertex : function() {
@@ -2483,70 +2501,71 @@ function OrphanCollectionSuite() {
     },
 
     tearDown : function() {
-      graph._drop(gN1);
-      graph._drop(gN2);
+      graph._drop(gN1, true);
+      graph._drop(gN2, true);
       try {db[vC1].drop()} catch (e) {}
       try {db[vC4].drop()} catch (e) {}
     },
 
     test_getOrphanCollection: function() {
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addOrphanCollection1: function() {
-      g1._addOrphanCollection(vC5, true);
-      assertEqual(g1._getOrphanCollections(), [vC5]);
+    test_addVertexCollection1: function() {
+      g1._addVertexCollection(vC5, true);
+      assertEqual(g1._orphanCollections(), [vC5]);
     },
 
-    test_addOrphanCollection2: function() {
+    test_addVertexCollection2: function() {
       try {
-        g1._addOrphanCollection(vC4, false);
+        g1._addVertexCollection(vC4, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
         assertEqual(e.errorMessage, vC4 + ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addOrphanCollection3: function() {
+    test_addVertexCollection3: function() {
       try {
-        g1._addOrphanCollection(eC1, false);
+        g1._addVertexCollection(eC1, false);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message);
       }
       assertTrue(db._collection(vC4) === null);
-      assertEqual(g1._getOrphanCollections(), []);
+      assertEqual(g1._orphanCollections(), []);
     },
 
-    test_addOrphanCollection4: function() {
+    test_addVertexCollection4: function() {
       try {
-        g1._addOrphanCollection(vC1);
+        g1._addVertexCollection(vC1);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message);
       }
     },
 
-    test_removeOrphanCollection1: function() {
+    test_removeVertexCollection1: function() {
       var name = "completelyNonsenseNameForACollectionBLUBBBBB"
       try {
-        g1._removeOrphanCollection(name);
+        g1._removeVertexCollection(name);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message);
       }
     },
 
-    test_removeOrphanCollection2: function() {
-      g1._addOrphanCollection(vC4, true);
-      g1._addOrphanCollection(vC5, true);
-      assertEqual(g1._getOrphanCollections(), [vC4, vC5]);
-      g1._removeOrphanCollection(vC4, false);
-      assertEqual(g1._getOrphanCollections(), [vC5]);
+    test_removeVertexCollection2: function() {
+      g1._addVertexCollection(vC4, true);
+      g1._addVertexCollection(vC5, true);
+      assertEqual(g1._orphanCollections(), [vC4, vC5]);
+      g1._removeVertexCollection(vC4, false);
+      assertTrue(db._collection(vC4) !== null);
+      assertEqual(g1._orphanCollections(), [vC5]);
       try {
-        g1._removeOrphanCollection(vC4);
+        g1._removeVertexCollection(vC4, true);
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
