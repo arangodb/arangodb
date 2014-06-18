@@ -509,6 +509,12 @@ void ArangoServer::buildApplicationServer () {
 
 #endif
 
+#ifdef __APPLE__
+  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
+    ("voice", "enable voice based welcome")
+  ;
+#endif
+
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("development-mode", "start server in development mode")
   ;
@@ -819,10 +825,6 @@ int ArangoServer::startupServer () {
     if (startServer) {
       ++concurrency;
     }
-
-#ifdef __APPLE__
-    system("say -v hysterical 'welcome to ArangoDB'");
-#endif
   }
   else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
     if (concurrency == 1) {
@@ -975,7 +977,19 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   ConsoleThread console(_applicationServer, _applicationV8, vocbase);
   console.start();
 
+#ifdef __APPLE__
+  if (_applicationServer->programOptions().has("voice")) {
+    system("say -v zarvox 'welcome to ArangoDB' &");
+  }
+#endif
+
   _applicationServer->wait();
+
+#ifdef __APPLE__
+  if (_applicationServer->programOptions().has("voice")) {
+    system("say -v zarvox 'good-bye' &");
+  }
+#endif
 
   // .............................................................................
   // and cleanup
