@@ -245,7 +245,7 @@
     var name = req.params("graph");
     var body = req.params("collection");
     var g = Graph._graph(name);
-    g._addOrphanCollection(body.get("collection"));
+    g._addVertexCollection(body.get("collection"));
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
@@ -272,7 +272,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialRemoveVertexCollection}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._addOrphanCollection("otherVertices");
+///   g._addVertexCollection("otherVertices");
 ///   var url = "/system/gharial/social/vertex/otherVertices";
 ///   var response = logCurlRequest('DELETE', url);
 /// 
@@ -308,7 +308,7 @@
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g = Graph._graph(name);
-    g._removeOrphanCollection(def_name);
+    g._removeVertexCollection(def_name);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
