@@ -102,7 +102,8 @@ void Marker::storeSizedString (size_t offset,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DEBUG_WAL
-std::string Marker::hexifyPart (char const* offset, size_t length) const {
+std::string Marker::hexifyPart (char const* offset, 
+                                size_t length) const {
   size_t destLength;
   char* s = TRI_EncodeHexString(offset, length, &destLength);
 
@@ -121,7 +122,8 @@ std::string Marker::hexifyPart (char const* offset, size_t length) const {
 ////////////////////////////////////////////////////////////////////////////////
   
 #ifdef DEBUG_WAL
-std::string Marker::stringifyPart (char const* offset, size_t length) const {
+std::string Marker::stringifyPart (char const* offset, 
+                                   size_t length) const {
   char* s = TRI_PrintableString(offset, length);
 
   if (s != nullptr) {
@@ -164,9 +166,9 @@ AttributeMarker::AttributeMarker (TRI_voc_tick_t databaseId,
 
   attribute_marker_t* m = reinterpret_cast<attribute_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
-  m->_attributeId = attributeId;
+  m->_attributeId  = attributeId;
 
   storeSizedString(sizeof(attribute_marker_t), attributeName);
 
@@ -222,7 +224,7 @@ ShapeMarker::ShapeMarker (TRI_voc_tick_t databaseId,
 
   shape_marker_t* m = reinterpret_cast<shape_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
 
   memcpy(this->shape(), shape, shape->_size); 
@@ -380,7 +382,7 @@ CreateCollectionMarker::CreateCollectionMarker (TRI_voc_tick_t databaseId,
 
   collection_create_marker_t* m = reinterpret_cast<collection_create_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   
   storeSizedString(sizeof(collection_create_marker_t), properties);
@@ -435,7 +437,7 @@ DropCollectionMarker::DropCollectionMarker (TRI_voc_tick_t databaseId,
 
   collection_drop_marker_t* m = reinterpret_cast<collection_drop_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   
 #ifdef DEBUG_WAL
@@ -488,7 +490,7 @@ RenameCollectionMarker::RenameCollectionMarker (TRI_voc_tick_t databaseId,
 
   collection_rename_marker_t* m = reinterpret_cast<collection_rename_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   
   storeSizedString(sizeof(collection_rename_marker_t), name);
@@ -544,7 +546,7 @@ ChangeCollectionMarker::ChangeCollectionMarker (TRI_voc_tick_t databaseId,
 
   collection_change_marker_t* m = reinterpret_cast<collection_change_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId   = databaseId;
   m->_collectionId = collectionId;
   
   storeSizedString(sizeof(collection_change_marker_t), properties);
@@ -599,7 +601,7 @@ BeginTransactionMarker::BeginTransactionMarker (TRI_voc_tick_t databaseId,
 
   transaction_begin_marker_t* m = reinterpret_cast<transaction_begin_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId    = databaseId;
   m->_transactionId = transactionId; 
   
 #ifdef DEBUG_WAL
@@ -651,7 +653,7 @@ CommitTransactionMarker::CommitTransactionMarker (TRI_voc_tick_t databaseId,
 
   transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId    = databaseId;
   m->_transactionId = transactionId; 
   
 #ifdef DEBUG_WAL
@@ -703,7 +705,7 @@ AbortTransactionMarker::AbortTransactionMarker (TRI_voc_tick_t databaseId,
 
   transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
 
-  m->_databaseId = databaseId;
+  m->_databaseId    = databaseId;
   m->_transactionId = transactionId; 
   
 #ifdef DEBUG_WAL
