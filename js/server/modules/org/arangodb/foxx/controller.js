@@ -135,7 +135,7 @@ extend(Controller.prototype, {
     return this.applicationContext.collection(name);
   },
 
-  inject: function(name, factory) {
+  addInjector: function(name, factory) {
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {

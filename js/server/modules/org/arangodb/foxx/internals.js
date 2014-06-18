@@ -89,7 +89,7 @@ constructRoute = function (method, route, callback, controller) {
   return {
     url: constructUrlObject(route, undefined, method),
     action: {
-      callback: function() {
+      callback: function(req, res) {
         Object.keys(controller.injectors).forEach(function(key) {
           if (Object.prototype.hasOwnProperty.call(controller.injected, key)) return;
           var injector = controller.injectors[key];
@@ -99,7 +99,7 @@ constructRoute = function (method, route, callback, controller) {
             controller.injected[key] = injector;
           }
         });
-        callback.apply(controller.injected, arguments);
+        callback(req, res, controller.injected);
       }
     },
     docs: {
