@@ -2983,7 +2983,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
           self.__vertexCollections[nc] = db[nc];
         }
         try {
-          graphObj._removeVertexCollection(nc);
+          graphObj._removeVertexCollection(nc, false);
         } catch (e) {
         }
       }
@@ -3229,9 +3229,9 @@ Graph.prototype._orphanCollections = function() {
 ///
 /// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
 ///
-/// *vertexCollectionName* - string : name of vertex collection.
-/// *dropCollection* - bool : if true the collection will be dropped if it is not used in any graph.
-/// Default: true.
+/// *vertexCollectionName*: string - name of vertex collection.
+/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is not used in any graph.
+/// Default: false.
 ///
 /// @EXAMPLES
 ///
@@ -3270,7 +3270,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
   this.__orphanCollections.splice(index, 1);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
-  if (dropCollection !== false) {
+  if (dropCollection === true) {
     var graphs = getGraphCollection().toArray();
     if (checkIfMayBeDropped(vertexCollectionName, null, graphs)) {
       db._drop(vertexCollectionName);

@@ -301,8 +301,6 @@
    *
    * Removes a vertex collection from this graph.
    * If this collection is used in one or more edge definitions 
-   * All data stored in the collection is dropped as well as long
-   * as it is not used in other graphs.
    */
   controller.del("/:graph/vertex/:collection", function(req, res) {
     var name = req.params("graph");
