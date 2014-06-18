@@ -17,7 +17,12 @@ runJSUnityTests = function (tests) {
   var result = true;
 
   _.each(tests, function (file) {
-    print("\nRunning JSUnity test from file '" + file + "'");
+    if (result) {
+      print("\nRunning JSUnity test from file '" + file + "'");
+    }
+    else {
+      print("\nSkipping JSUnity test from file '" + file + "' due to previous errors");
+    }
 
     try {
       result = result && runTest(file);

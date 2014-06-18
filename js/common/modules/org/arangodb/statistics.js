@@ -63,10 +63,16 @@ function createStatisticsCollection (name) {
   var collection = db._collection(name);
 
   if (collection === null) {
-    var r = db._create(name, { isSystem: true, waitForSync: false });
-    
+    var r = null;
+
+    try {
+      r = db._create(name, { isSystem: true, waitForSync: false });
+    }
+    catch (err) {
+    }
+
     if (! r) {
-      return;
+      return false;
     }
 
     collection = db._collection(name);
@@ -75,6 +81,8 @@ function createStatisticsCollection (name) {
   if (collection !== null) {
     collection.ensureSkiplist("time");
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +99,7 @@ function createStatisticsCollections () {
   'use strict';
 
   if (initialized) {
-    return;
+    return true;
   }
 
   initialized = true;
@@ -100,8 +108,12 @@ function createStatisticsCollections () {
   var i;
 
   for (i = 0;  i < names.length;  ++i) {
-    createStatisticsCollection(names[i]);
+    if (! createStatisticsCollection(names[i])) {
+      return false;
+    }
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,7 +490,9 @@ exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
 exports.historian = function () {
   "use strict";
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var statsRaw = db._statisticsRaw;
   var statsCol = db._statistics;
@@ -537,7 +551,9 @@ exports.historian = function () {
 exports.historianAverage = function () {
   "use strict";
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var stats15m = db._statistics15;
 
@@ -589,7 +605,9 @@ exports.historianAverage = function () {
 exports.garbageCollector = function () {
   'use strict';
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var time = internal.time();
 

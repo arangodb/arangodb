@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH */
+         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_ADJUST */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -109,6 +109,15 @@
   if (typeof WAL_FLUSH !== "undefined") {
     internal.flushWal = WAL_FLUSH;
     delete WAL_FLUSH;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the write-ahead log configuration
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof WAL_ADJUST !== "undefined") {
+    internal.adjustWal = WAL_ADJUST;
+    delete WAL_ADJUST;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

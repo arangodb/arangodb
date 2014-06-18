@@ -112,8 +112,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
-	--ruby.action-directory @top_srcdir@/mr/actions \
-	--ruby.modules-path @top_srcdir@/mr/server/modules:@top_srcdir@/mr/common/modules \
+        --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
 
@@ -201,8 +200,8 @@ RECOVERY_TESTS = \
 execute-recovery-test:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
-	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
-	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
+	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
 unittests-recovery:
 	@echo
@@ -211,16 +210,19 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multi-database-durability"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-no-collection-journal"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-shutdown-info-with-flush"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-shutdown-info-no-flush"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-shutdown-info-multiple-logs"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="insert-update-remove"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="insert-update-remove-distance"
-	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multi-database-durability"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="big-transaction-durability"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-durability"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-durability-multiple"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker-multiple"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="corrupt-wal-marker-single"
-	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-shutdown-info"
-	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(VOCDIR)" core
 	@echo
 
 else
@@ -414,6 +416,7 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-readonly.js \
+               @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
                @top_srcdir@/js/server/tests/shell-tasks.js \
@@ -564,7 +567,7 @@ unittests-shell-client-readonly:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL CLIENT READONLY                                                         >>"
+	@echo "<< SHELL CLIENT READONLY                                                      >>"
 	@echo "================================================================================"
 	@echo
 

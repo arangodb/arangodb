@@ -179,6 +179,10 @@ static void FreeOperations (TRI_transaction_t* trx) {
     if (mustRollback) { 
       document->_info._revision = trxCollection->_originalRevision; 
     }
+    else if (! document->_info._isVolatile) {
+      // only count logfileEntries if the collection is durable
+      document->_uncollectedLogfileEntries += trxCollection->_operations->size();
+    }
 
     delete trxCollection->_operations;
     trxCollection->_operations = nullptr;
@@ -908,6 +912,8 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     // operation is directly executed
     operation.handle();
 
+    ++document->_uncollectedLogfileEntries;
+
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
@@ -937,7 +943,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     copy->handle();
   }
 
-  TRI_UpdateStatisticsDocumentCollection(document, operation.rid, false, 1);
+  TRI_UpdateRevisionDocumentCollection(document, operation.rid, false);
 
   return TRI_ERROR_NO_ERROR;
 }

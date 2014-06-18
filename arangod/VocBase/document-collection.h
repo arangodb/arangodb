@@ -676,10 +676,9 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 /// note: the write-lock for the collection must be held to call this
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateStatisticsDocumentCollection (TRI_document_collection_t*, 
-                                             TRI_voc_rid_t,
-                                             bool,
-                                             int64_t);
+void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t*, 
+                                           TRI_voc_rid_t,
+                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection is fully collected

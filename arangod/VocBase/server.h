@@ -70,6 +70,7 @@ typedef struct TRI_server_s {
   bool                        _disableReplicationLoggers;
   bool                        _disableReplicationAppliers;
   bool                        _iterateMarkersOnOpen;
+  bool                        _hasCreatedSystemDatabase;
 
   bool                        _initialised;
 }

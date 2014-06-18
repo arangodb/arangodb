@@ -3782,10 +3782,30 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the WAL configuration at runtime
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_AdjustWal (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "adjustWal(<object>)");
+  }
+  
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+  if (object->Has(TRI_V8_STRING("reserveLogfiles"))) {
+    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("reserveLogfiles")), true));
+    triagens::wal::LogfileManager::instance()->reserveLogfiles(logfiles);
+  }
+
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the currently open WAL logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_Flush (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   bool waitForSync = false; 
@@ -6262,8 +6282,8 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
   indexes->Set(v8::String::New("count"), v8::Number::New((double) info->_numberIndexes));
   indexes->Set(v8::String::New("size"), v8::Number::New((double) info->_sizeIndexes));
   
-  indexes->Set(v8::String::New("lastTick"), V8TickId(info->_tickMax));
-  indexes->Set(v8::String::New("uncollectedLogfileEntries"), v8::Number::New((double) info->_uncollectedLogfileEntries));
+  result->Set(v8::String::New("lastTick"), V8TickId(info->_tickMax));
+  result->Set(v8::String::New("uncollectedLogfileEntries"), v8::Number::New((double) info->_uncollectedLogfileEntries));
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 
@@ -7061,7 +7081,7 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Object> err;
   TRI_vocbase_col_t const* collection = UseCollection(argv.Holder(), &err);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     return scope.Close(v8::ThrowException(err));
   }
   
@@ -10132,7 +10152,8 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "LIST_ENDPOINTS", JS_ListEndpoints, true);
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
-  TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_Flush, true);
+  TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_FlushWal, true);
+  TRI_AddGlobalFunctionVocbase(context, "WAL_ADJUST", JS_AdjustWal, true);
 
   // .............................................................................
   // create global variables

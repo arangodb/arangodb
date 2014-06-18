@@ -432,16 +432,11 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_vocbase_col_t* collection;
-  void** beg;
-  void** end;
-  void** ptr;
-
   LOG_DEBUG("starting to load authentication and authorisation information");
 
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
+  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
-  if (collection == NULL) {
+  if (collection == nullptr) {
     LOG_INFO("collection '_users' does not exist, no authentication available");
     return false;
   }
@@ -459,27 +454,26 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
-
-  beg = document->_primaryIndex._table;
-  end = beg + document->_primaryIndex._nrAlloc;
-  ptr = beg;
+  
+  void** beg = document->_primaryIndex._table;
+  void** end = beg + document->_primaryIndex._nrAlloc;
+  void** ptr = beg;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
       TRI_vocbase_auth_t* auth;
-      TRI_doc_mptr_t const* d;
       TRI_shaped_json_t shapedJson;
 
-      d = (TRI_doc_mptr_t const*) *ptr;
+      TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->getDataPtr());  // PROTECTED by trx here
 
       auth = ConvertAuthInfo(vocbase, document, &shapedJson);
 
-      if (auth != NULL) {
+      if (auth != nullptr) {
         TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
 
-        if (old != NULL) {
+        if (old != nullptr) {
           FreeAuthInfo(old);
         }
       }
@@ -562,7 +556,10 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
-  return TRI_LoadAuthInfo(vocbase);
+  bool result = TRI_LoadAuthInfo(vocbase);
+
+  vocbase->_authInfoLoaded = result;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

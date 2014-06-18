@@ -118,11 +118,12 @@ Slot::TickType Slots::lastCommittedTick () {
 SlotInfo Slots::nextUnused (uint32_t size) {
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
+  int iterations = 0;
   bool hasWaited = false;
 
   TRI_ASSERT(size > 0);
 
-  while (true) {
+  while (++iterations < 1000) {
     {
       MUTEX_LOCKER(_lock);
 
@@ -152,6 +153,8 @@ SlotInfo Slots::nextUnused (uint32_t size) {
             // advance to next slot 
             slot = &_slots[_handoutIndex];
             _logfileManager->setLogfileSealRequested(_logfile);
+
+            _logfile = nullptr;
           }
 
           // fetch the next free logfile (this may create a new one)
@@ -159,6 +162,11 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
           if (_logfile == nullptr) {
             usleep(10 * 1000);
+  
+            TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+              return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+            }
+
             // try again in next iteration
           }
           else if (status == Logfile::StatusType::EMPTY) {
@@ -210,6 +218,8 @@ SlotInfo Slots::nextUnused (uint32_t size) {
       guard.wait(10 * 1000);
     }
   }
+              
+  return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +277,7 @@ SyncRegion Slots::getSyncRegion () {
         break;
       }
 
-      // LOG_INFO("group commit");
+      // this is a group commit!!
 
       // update the region
       region.size += (uint32_t) (static_cast<char*>(slot->mem()) - (region.mem + region.size) + slot->size());
@@ -345,13 +355,14 @@ void Slots::returnSyncRegion (SyncRegion const& region) {
 
 int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
                          bool& worked) {
+  int iterations = 0;
   bool hasWaited = false;
   worked = false;
 
-  while (true) {
+  while (++iterations < 1000) {
     {
       MUTEX_LOCKER(_lock);
-
+        
       lastCommittedTick = _lastCommittedTick;
 
       Slot* slot = &_slots[_handoutIndex];
@@ -375,16 +386,20 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
           int res = writeFooter(slot);
 
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("could not write logfile footer: %s", TRI_errno_string(res));
             return res;
           }
           
           _logfileManager->setLogfileSealRequested(_logfile);
+          
+          // advance to next slot 
+          slot = &_slots[_handoutIndex];
 
           // invalidate the logfile so for the next write we'll use a
           // new one
           _logfile = nullptr; 
-          worked = true;
-          return TRI_ERROR_NO_ERROR;
+
+          // fall-through intentional
         }
 
         TRI_ASSERT(_logfile == nullptr);
@@ -394,6 +409,10 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
         Logfile::StatusType status = newLogfile(1);
 
         if (_logfile == nullptr) {
+          TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+            return TRI_ERROR_ARANGO_NO_JOURNAL;
+          }
+
           usleep(10 * 1000);
           // try again in next iteration
         }
@@ -402,11 +421,15 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
           int res = writeHeader(slot);
           
           if (res != TRI_ERROR_NO_ERROR) {
+            LOG_ERROR("could not write logfile header: %s", TRI_errno_string(res));
             return res;
           }
+          
+          // advance to next slot 
+          slot = &_slots[_handoutIndex];
 
           _logfileManager->setLogfileOpen(_logfile);
-          worked = false;
+          worked = true;
           return TRI_ERROR_NO_ERROR;
         }
         else {
@@ -434,6 +457,8 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
       guard.wait(10 * 1000);
     }
   }
+
+  return TRI_ERROR_ARANGO_NO_JOURNAL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -441,7 +466,7 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::writeHeader (Slot* slot) {            
-  TRI_df_header_marker_t header = _logfile->getHeaderMarker();
+  TRI_df_header_marker_t&& header = _logfile->getHeaderMarker();
   size_t const size = header.base._size;
 
   TRI_df_marker_t* mem = reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
@@ -461,7 +486,7 @@ int Slots::writeHeader (Slot* slot) {
 int Slots::writeFooter (Slot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
-  TRI_df_footer_marker_t footer = _logfile->getFooterMarker();
+  TRI_df_footer_marker_t&& footer = _logfile->getFooterMarker();
   size_t const size = footer.base._size;
   
   TRI_df_marker_t* mem = reinterpret_cast<TRI_df_marker_t*>(_logfile->reserve(size));
