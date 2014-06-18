@@ -202,9 +202,9 @@ describe ArangoDB do
         doc = additional_edge_definition( graph_name, second_def )
         edge_definition.push(second_def)
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['name'].should eq(graph_name)
         doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
@@ -245,9 +245,9 @@ describe ArangoDB do
         create_graph( graph_name, edge_definition )
         doc = additional_vertex_collection( graph_name, product_collection )
 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['graph']['name'].should eq(graph_name)
         doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
@@ -337,9 +337,9 @@ describe ArangoDB do
       it "can create a vertex" do
         name = "Alice"
         doc = create_vertex(graph_name, user_collection, {"name" => name}) 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
       end
 
@@ -436,9 +436,9 @@ describe ArangoDB do
         v2 = create_vertex(graph_name, user_collection, {}) 
         v2 = v2.parsed_response['vertex']['_id']
         doc = create_edge(graph_name, friend_collection, v1, v2, {}) 
-        doc.code.should eq(200)
+        doc.code.should eq(201)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(201)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
       end
 
