@@ -12,75 +12,27 @@ definition, at least one is needed.
 
 !SECTION List all graphs
 
-`GET /system/gharial/` *(lists all graphs)*
+`GET /system/gharial/`*(lists all graphs)*
 
 !SUBSECTION Description
-
-<!-- @startDocuBlock JSF_general_graph_list_info -->
 
 Lists all graph names stored in this database.
 <br />
 @EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_list_http_examples -->
-
-```
-unix> curl --dump - http://localhost:8529/system/gharial
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "graphs" : [ 
-    "routeplanner", 
-    "social" 
-  ] 
-}
-```
+@startDocuBlock JSF_general_graph_list_http_examples
 
 !SECTION Create a graph
 
-`POST /system/gharial/` *(create a graph)*
+`POST /system/gharial/`*(create a graph)*
 
 !SUBSECTION Description
-
-<!-- @startDocuBlock JSF_general_graph_create_info -->
 
 The creation of a graph requires the name of the graph and a definition of its edges.
 <br />
 @EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_create_http_examples -->
-
-```
-unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial
-{"name":"myGraph","edgeDefinitions":[{"collection":"edges","from":["startVertices"],"to":["endVertices"]}]}
-
-HTTP/1.1 201 Created
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 201, 
-  "graph" : { 
-    "name" : "myGraph", 
-    "edgeDefinitions" : [ 
-      { 
-        "collection" : "edges", 
-        "from" : [ 
-          "startVertices" 
-        ], 
-        "to" : [ 
-          "endVertices" 
-        ] 
-      } 
-    ], 
-    "orphanCollections" : [ ] 
-  } 
-}
-```
+@startDocuBlock JSF_general_graph_create_http_examples
 
 !SECTION Drop a graph
 
@@ -94,24 +46,11 @@ The name of the graph.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_drop_info -->
-
 Removes a graph from the collection *\_graphs*.
+<br />
+@EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_drop_http_examples -->
-
-```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200 
-}
-
-```
+@startDocuBlock JSF_general_graph_create_http_examples
 
 !SECTION List all vertex collections in the graph
 
@@ -121,32 +60,15 @@ content-type: application/json
 
 `graph-name (string, required)`
 
-!SUBSECTION Description
+The name of the graph.
 
-<!-- @startDocuBlock JSF_general_graph_list_vertex_info -->
+!SUBSECTION Description
 
 Lists all vertex collections within this graph.
 
 @EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_list_vertex_http_examples -->
-
-```
-unix> curl --dump - http://localhost:8529/system/gharial/social/vertex
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "collections" : [ 
-    "female", 
-    "male" 
-  ] 
-}
-
-```
+@startDocuBlock JSF_general_graph_list_vertex_http_examples
 
 !SECTION Add a new vertex collection to the graph
 
@@ -156,47 +78,16 @@ content-type: application/json
 
 `graph-name (string, required)`
 
-!SUBSECTION Description
+The name of the graph.
 
-<!-- @startDocuBlock JSF_general_graph_vertex_collection_add_info -->
+!SUBSECTION Description
 
 Adds a vertex collection to the set of collections of the graph. If the
 collection does not exist, it will be created.
 
-<!-- @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/vertex
-{"collection":"otherVertices"}
-
-HTTP/1.1 201 Created
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 201, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ 
-      { 
-        "collection" : "relation", 
-        "from" : [ 
-          "female", 
-          "male" 
-        ], 
-        "to" : [ 
-          "female", 
-          "male" 
-        ] 
-      } 
-    ], 
-    "orphanCollections" : [ 
-      "otherVertices" 
-    ] 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_vertex_collection_add_http_examples
 
 !SECTION Remove a vertex collection form the graph
 
@@ -213,160 +104,50 @@ The name of the vertex collection.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_vertex_collection_remove_info -->
-
 Removes a vertex collection from the graph and deletes the collection, if it is not used in any other graph.
 
 @EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples -->
-
-<br />
-You can remove vertex collections that are not used in any edge collection:
-<br />
-
-```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/vertex/otherVertices
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ 
-      { 
-        "collection" : "relation", 
-        "from" : [ 
-          "female", 
-          "male" 
-        ], 
-        "to" : [ 
-          "female", 
-          "male" 
-        ] 
-      } 
-    ], 
-    "orphanCollections" : [ ] 
-  } 
-}
-
-```
-<br />
-You cannot remove vertex collections that are used in edge collections:
-<br />
-
-```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/vertex/male
-
-HTTP/1.1 400 Bad Request
-content-type: application/json
-
-{ 
-  "error" : "The collection is not found or part of an edge definition." 
-}
-
-```
-<br />
+@startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples
 
 !SECTION List all edge definitions in the graph
 
-`GET /system/gharial/graph-name/edge` *(lists all edge definitions)*
+`GET /system/gharial/graph-name/edge`*(lists all edge definitions)*
 
 !SUBSECTION URL parameters
 
 `graph-name (string, required)`
 
 !SUBSECTION Description
-
-<!-- @startDocuBlock JSF_general_graph_list_edge_info -->
 
 Lists all edge collections within this graph.
 
 @EXAMPLES
 
-<!-- @startDocuBlock JSF_general_graph_list_edge_http_examples -->
-
-```
-unix> curl --dump - http://localhost:8529/system/gharial/social/edge
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "collections" : [ 
-    "relation" 
-  ] 
-}
-
-```
+@startDocuBlock JSF_general_graph_list_edge_http_examples
 
 !SECTION Add a new edge definition to the graph
 
-`POST /system/gharial/graph-name/edge` *(add a new edge definition)*
+`POST /system/gharial/graph-name/edge`*(add a new edge definition)*
 
 !SUBSECTION URL parameters
 
 `graph-name (string, required)`
 
 !SUBSECTION Description
-
-<!-- @startDocuBlock JSF_general_graph_edge_definition_add_info -->
 
 Adds an additional edge definition to the graph.
 This edge definition has to contain a *collection* a list of each *from* and *to* vertex collections.
 A edge definition can only be added if this definition is either not used in any other graph, or it is used with exactly the same definition.
 It is not possible to store a definition "e" from "v1" to "v2" in the one graph, and "e" from "v2" to "v1" in the other graph.
 
-<!-- @startDocuBlock JSF_general_graph_edge_definition_add_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge
-{"collection":"lives_in","from":["female","male"],"to":["city"]}
-
-HTTP/1.1 201 Created
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 201, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ 
-      { 
-        "collection" : "relation", 
-        "from" : [ 
-          "female", 
-          "male" 
-        ], 
-        "to" : [ 
-          "female", 
-          "male" 
-        ] 
-      }, 
-      { 
-        "collection" : "lives_in", 
-        "from" : [ 
-          "female", 
-          "male" 
-        ], 
-        "to" : [ 
-          "city" 
-        ] 
-      } 
-    ], 
-    "orphanCollections" : [ ] 
-  } 
-}
-```
+@startDocuBlock JSF_general_graph_edge_definition_add_http_examples
 
 !SECTION Modify an edge definition
 
-`DELETE /system/gharial/graph-name/edge/definition-name` *(remove a vertex collection)*
+`DELETE /system/gharial/graph-name/edge/definition-name`*(remove a vertex collection)*
 
 !SUBSECTION URL parameters
 
@@ -379,45 +160,12 @@ The name of the edge collection used in the definition.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_definition_modify_info -->
-
 Change one specific edge definition.
 This will modify all occurrences of this definition in all graphs known to your database.
 
-<!-- @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation
-{"collection":"relation","from":["female","male","animal"],"to":["female","male","animal"]}
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ 
-      { 
-        "collection" : "relation", 
-        "from" : [ 
-          "female", 
-          "male", 
-          "animal" 
-        ], 
-        "to" : [ 
-          "female", 
-          "male", 
-          "animal" 
-        ] 
-      } 
-    ], 
-    "orphanCollections" : [ ] 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_definition_modify_http_examples
 
 !SECTION Remove an edge definition form the graph
 
@@ -434,27 +182,9 @@ The name of the edge collection used in the definition.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_definition_remove_info -->
-
 Remove one edge definition from the graph.
 This will only remove the edge collection, the vertex collections remain untouched and can still be used in your queries.
 
-<!-- @startDocuBlock JSF_general_graph_edge_definition_remove_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/edge/relation
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ ], 
-    "orphanCollections" : [ ] 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_definition_remove_http_examples

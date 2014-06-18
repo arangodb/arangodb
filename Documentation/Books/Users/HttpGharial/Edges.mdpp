@@ -14,34 +14,13 @@ The name of the edge collection the edge belongs to.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_create_info -->
-
 Creates a new edge in the collection.
 Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
 Furthermore the edge has to be valid in the definition of this edge collection.
 
-<!-- @startDocuBlock JSF_general_graph_edge_create_http_examples -->
+@EXAMPLES
 
-
-```
-unix> curl -X POST --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation
-{"type":"friend","_from":"female/alice","_to":"female/diana"}
-
-HTTP/1.1 201 Created
-content-type: application/json
-etag: 608373699
-
-{ 
-  "error" : false, 
-  "code" : 201, 
-  "edge" : { 
-    "_id" : "relation/608373699", 
-    "_rev" : "608373699", 
-    "_key" : "608373699" 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_create_http_examples
 
 !SECTION Get an edge
 
@@ -60,33 +39,12 @@ The `_key` attribute of the edge.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_get_info -->
 
 Gets an edge from the given collection.
 
-<!-- @startDocuBlock JSF_general_graph_edge_get_http_examples -->
+@EXAMPLES
 
-```
-unix> curl --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
-
-HTTP/1.1 200 OK
-content-type: application/json
-etag: 611191747
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "edge" : { 
-    "_id" : "relation/aliceAndBob", 
-    "_rev" : "611191747", 
-    "_key" : "aliceAndBob", 
-    "_from" : "female/alice", 
-    "_to" : "male/bob", 
-    "type" : "married" 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_get_http_examples
 
 !SECTION Modify an edge
 
@@ -105,32 +63,11 @@ The `_key` attribute of the edge.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_modify_info -->
-
 Updates the data of the specific edge in the collection.
 
-<!-- @startDocuBlock JSF_general_graph_edge_modify_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
-{"type":"divorced"}
-
-HTTP/1.1 200 OK
-content-type: application/json
-etag: 616500163
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "edge" : { 
-    "_id" : "relation/aliceAndBob", 
-    "_rev" : "616500163", 
-    "_oldRev" : "615189443", 
-    "_key" : "aliceAndBob" 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_modify_http_examples
 
 !SECTION Replace an edge
 
@@ -149,32 +86,11 @@ The `_key` attribute of the edge.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_replace_info -->
-
 Replaces the data of an edge in the collection.
 
-<!-- @startDocuBlock JSF_general_graph_edge_replace_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
-{"since":"01.01.2001"}
-
-HTTP/1.1 200 OK
-content-type: application/json
-etag: 620760003
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "edge" : { 
-    "_id" : "relation/aliceAndBob", 
-    "_rev" : "620760003", 
-    "_oldRev" : "619318211", 
-    "_key" : "aliceAndBob" 
-  } 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_replace_http_examples
 
 !SECTION Remove an edge
 
@@ -193,22 +109,8 @@ The `_key` attribute of the edge.
 
 !SUBSECTION Description
 
-<!-- @startDocuBlock JSF_general_graph_edge_delete_info -->
-
 Removes an edge from the collection.
 
-<!-- @startDocuBlock JSF_general_graph_edge_delete_http_examples -->
+@EXAMPLES
 
-```
-unix> curl -X DELETE --dump - http://localhost:8529/system/gharial/social/edge/relation/aliceAndBob
-
-HTTP/1.1 200 OK
-content-type: application/json
-
-{ 
-  "error" : false, 
-  "code" : 200, 
-  "edge" : true 
-}
-
-```
+@startDocuBlock JSF_general_graph_edge_delete_http_examples
