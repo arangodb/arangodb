@@ -343,7 +343,7 @@ _.extend(Repository.prototype, {
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
     return model;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
@@ -362,6 +362,13 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  replaceByExample: function (example, model) {
+    'use strict';
+    var data = model.forDB(),
+      idAndRev = this.collection.replaceByExample(example, data);
+    model.set(idAndRev);
+    return model;
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Updating Entries

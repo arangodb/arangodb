@@ -73,7 +73,8 @@ describe('Repository Methods', function () {
       'firstExample',
       'remove',
       'removeByExample',
-      'replace'
+      'replace',
+      'replaceByExample'
     ]);
     instance = new FoxxRepository(collection, { model: Model });
   });
@@ -228,7 +229,23 @@ describe('Repository Methods', function () {
       expect(collection.replace.calls.argsFor(0)).toEqual([id, data]);
     });
 
-    it('should replace by example');
+    it('should replace by example', function () {
+      var model = new Model({}),
+        idAndRev = createSpy('idAndRev'),
+        example = createSpy('example'),
+        data = createSpy('data'),
+        result;
+
+      spyOn(model, 'forDB').and.returnValue(data);
+      spyOn(model, 'set');
+      collection.replaceByExample.and.returnValue(idAndRev);
+
+      result = instance.replaceByExample(example, model);
+
+      expect(result).toBe(model);
+      expect(model.set.calls.argsFor(0)).toEqual([idAndRev]);
+      expect(collection.replaceByExample.calls.argsFor(0)).toEqual([example, data]);
+    });
   });
 
   describe('for updating entries', function () {
