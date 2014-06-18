@@ -2125,16 +2125,16 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
-/// `general-graph._drop(graph-name, drop-collections)`
+/// `general-graph._drop(graphName, dropCollections)`
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
 /// This will automatically drop al collections contained in the graph as
 /// long as they are not used within other graphs.
-/// To prohibit the drop of collections, the optional parameter *drop-collections* can be set to *false*.
+/// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
-/// * *graph-name*: string - unique identifier of the graph
-/// * *drop-collections*: boolean (optional) - Define if collections should be dropped (default: true)
+/// * *graphName*: string - unique identifier of the graph
+/// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
 ///
 /// @EXAMPLES
 ///
@@ -2163,7 +2163,7 @@ var _drop = function(graphId, dropCollections) {
     throw err;
   }
 
-  if (dropCollections !== false) {
+  if (dropCollections === true) {
     var graph = gdb.document(graphId);
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(

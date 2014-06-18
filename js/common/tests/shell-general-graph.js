@@ -76,11 +76,11 @@ function GeneralGraphCreationSuite() {
 
     setUp: function() {
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -97,11 +97,11 @@ function GeneralGraphCreationSuite() {
       db._drop(vc5);
       db._drop(vc6);
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
     },
@@ -418,7 +418,7 @@ function GeneralGraphCreationSuite() {
 
     test_creationOfGraphShouldNotAffectCollections: function() {
       if(graph._exists(gn)) {
-        graph._drop(gn);
+        graph._drop(gn, true);
       }
       var edgeDef2 = [graph._directedRelationDefinition(rn, vn1, vn2)];
       var g = graph._create(gn, edgeDef2);
@@ -492,7 +492,7 @@ function GeneralGraphCreationSuite() {
     test_extendEdgeDefinitionFromExistingGraph1: function() {
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
 
@@ -510,7 +510,7 @@ function GeneralGraphCreationSuite() {
       }
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
 
@@ -534,11 +534,11 @@ function GeneralGraphCreationSuite() {
       }
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -546,11 +546,11 @@ function GeneralGraphCreationSuite() {
 
     test_extendEdgeDefinitionFromExistingGraph3: function() {
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -632,11 +632,11 @@ function GeneralGraphCreationSuite() {
       assertTrue(g2._orphanCollections().indexOf(vc6) !== -1);
 
       try {
-        graph._drop(gN1);
+        graph._drop(gN1, true);
       } catch(ignore) {
       }
       try {
-        graph._drop(gN2);
+        graph._drop(gN2, true);
       } catch(ignore) {
       }
 
@@ -662,7 +662,7 @@ function GeneralGraphAQLQueriesSuite() {
 
   var dropInclExcl = function() {
     if (graph._exists(graphName)) {
-      graph._drop(graphName);
+      graph._drop(graphName, true);
     }
   };
 
@@ -981,7 +981,7 @@ function ChainedFluentAQLResultsSuite() {
 
   var dropData = function() {
     try {
-      graph._drop(gn);
+      graph._drop(gn, true);
     } catch(ignore) {
 
     }
@@ -1829,10 +1829,26 @@ function EdgesAndVerticesSuite() {
     },
 
     tearDown : function() {
-      graph._drop(unitTestGraphName);
+      graph._drop(unitTestGraphName, true);
     },
 
-    test_dropGraph : function () {
+    test_dropGraph1 : function () {
+      var myGraphName = unitTestGraphName + "2";
+      var myEdgeColName = "unitTestEdgeCollection4711";
+      var myVertexColName = vc1;
+      graph._create(
+        myGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+        )
+      );
+      graph._drop(myGraphName, true);
+      assertFalse(graph._exists(myGraphName));
+      assertTrue(db._collection(myVertexColName) !== null);
+      assertTrue(db._collection(myEdgeColName) === null);
+    },
+
+    test_dropGraph2 : function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
       var myVertexColName = vc1;
@@ -1845,7 +1861,7 @@ function EdgesAndVerticesSuite() {
       graph._drop(myGraphName);
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(myVertexColName) !== null);
-      assertTrue(db._collection(myEdgeColName) === null);
+      assertTrue(db._collection(myEdgeColName) !== null);
     },
 
     test_createGraphWithCollectionDuplicateOK : function () {
@@ -1857,7 +1873,7 @@ function EdgesAndVerticesSuite() {
         )
       );
       assertTrue(graph._exists(myGraphName));
-      graph._drop(myGraphName);
+      graph._drop(myGraphName, true);
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(vc1) !== null);
       assertTrue(db._collection(ec1) !== null);
@@ -1888,6 +1904,8 @@ function EdgesAndVerticesSuite() {
       var myED = "unitTestEdgeCollection4711";
       var myVD1 = "unitTestVertexCollection4711";
       var myVD2 = "unitTestVertexCollection4712";
+      try {graph._drop(myGraphName, true)} catch (ignore){}
+      try {db._drop(myED)} catch (ignore){}
       try {
         graph._create(
           myGraphName,
@@ -2057,7 +2075,7 @@ function EdgesAndVerticesSuite() {
       var myEC02 = "unitTestEdgeCollection02";
       var myVC01 = "unitTestVertexCollection01";
       try {
-        graph._drop(myGraphName);
+        graph._drop(myGraphName, true);
         db._drop(myEC02);
         db._drop(myVC01);
       } catch (ignore) {
@@ -2083,7 +2101,7 @@ function EdgesAndVerticesSuite() {
       edge = g[ec1].remove(edgeId1);
       assertTrue(edge);
       assertFalse(db._exists(edge2._id));
-      graph._drop(myGraphName);
+      graph._drop(myGraphName, true);
       assertFalse(graph._exists(myGraphName));
     },
 
@@ -2101,10 +2119,10 @@ function EdgesAndVerticesSuite() {
       var vC3 = "unitTestVertexCollectionCircle3";
       var vC4 = "unitTestVertexCollectionCircle4";
       try {
-        graph._drop(gN1);
-        graph._drop(gN2);
-        graph._drop(gN3);
-        graph._drop(gN4);
+        graph._drop(gN1, true);
+        graph._drop(gN2, true);
+        graph._drop(gN3, true);
+        graph._drop(gN4, true);
         db._drop(eC1);
         db._drop(eC2);
         db._drop(eC3);
@@ -2180,10 +2198,10 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._exists(vertexId3));
       assertTrue(db._exists(vertexId4));
 
-      graph._drop(gN1);
-      graph._drop(gN2);
-      graph._drop(gN3);
-      graph._drop(gN4);
+      graph._drop(gN1, true);
+      graph._drop(gN2, true);
+      graph._drop(gN3, true);
+      graph._drop(gN4, true);
     },
 
     test_getInVertex : function() {
@@ -2485,8 +2503,8 @@ function OrphanCollectionSuite() {
     },
 
     tearDown : function() {
-      graph._drop(gN1);
-      graph._drop(gN2);
+      graph._drop(gN1, true);
+      graph._drop(gN2, true);
       try {db[vC1].drop()} catch (e) {}
       try {db[vC4].drop()} catch (e) {}
     },
