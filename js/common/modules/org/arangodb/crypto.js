@@ -126,9 +126,10 @@ exports.checkAndMarkNonce = function (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.constantEquals = function (a, b) {
-  var length = a.length > b.length ? a.length : b.length;
-  var result = true;
-  for (var i = 0; i < length; i++) {
+  var length, result, i;
+  length = a.length > b.length ? a.length : b.length;
+  result = true;
+  for (i = 0; i < length; i++) {
     if (a.charCodeAt(i) !== b.charCodeAt(i)) {
       result = false;
     }
