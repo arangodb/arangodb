@@ -425,9 +425,6 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
             return res;
           }
           
-          // advance to next slot 
-          slot = &_slots[_handoutIndex];
-
           _logfileManager->setLogfileOpen(_logfile);
           worked = true;
           return TRI_ERROR_NO_ERROR;

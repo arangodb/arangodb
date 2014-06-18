@@ -1342,11 +1342,10 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
-  TRI_log_buffer_t* buf;
   size_t i;
 
   for (i = 0;  i < buffer->_length;  ++i) {
-    buf = TRI_AtVector(buffer, i);
+    TRI_log_buffer_t* buf = TRI_AtVector(buffer, i);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
   }
