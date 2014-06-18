@@ -7,7 +7,9 @@ def file_content(filepath):
     """ Fetches and formats file's content to perform the required operation.
     """
 
-    filelines = tuple(open(filepath, 'r'))
+    infile = open(filepath, 'r')
+    filelines = tuple(infile)
+    infile.close()
 
     comment_indexes = []
     comments = []
@@ -30,7 +32,10 @@ def example_content(filepath, fh):
 
   fh.write("\n```\n")
 
-  filelines = tuple(open(filepath, 'r'))
+  infile = open(filepath, 'r')
+  filelines = tuple(infile)
+  infile.close()
+
   for line in enumerate(filelines):
     fh.write("%s" % line[1])
 
