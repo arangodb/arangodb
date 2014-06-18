@@ -174,6 +174,11 @@ extend(Controller.prototype, {
 
     this.applicationContext.clearComments();
 
+    if (method === 'post' || method === 'put' || method === 'patch') {
+      var UndocumentedBody = require('org/arangodb/foxx').Model.extend();
+      requestContext.bodyParam("undocumented body", "Undocumented body param", UndocumentedBody);
+    }
+
     return requestContext;
   },
 
