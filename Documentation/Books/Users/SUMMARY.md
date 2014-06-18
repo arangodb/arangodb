@@ -205,6 +205,7 @@
     * [Edge Methods](ModuleGraph/EdgeMethods.md)
   * ["actions"](ModuleActions/README.md)
   * ["planner"](ModulePlanner/README.md)
+  * [Task Management](ModuleTasks/README.md)
   * [Using jsUnity](UsingJsUnity/README.md)
 <!-- 28 -->
 * [Administrating ArangoDB](AdministratingArango/README.md)
