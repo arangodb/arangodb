@@ -89,9 +89,11 @@ constructRoute = function (method, route, callback, controller) {
   return {
     url: constructUrlObject(route, undefined, method),
     action: {
-      callback: function(req, res) {
-        Object.keys(controller.injectors).forEach(function(key) {
-          if (Object.prototype.hasOwnProperty.call(controller.injected, key)) return;
+      callback: function (req, res) {
+        Object.keys(controller.injectors).forEach(function (key) {
+          if (Object.prototype.hasOwnProperty.call(controller.injected, key)) {
+            return;
+          }
           var injector = controller.injectors[key];
           if (typeof injector === 'function') {
             controller.injected[key] = injector();

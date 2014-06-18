@@ -1487,11 +1487,15 @@ var _edgeDefinitions = function () {
 var _extendEdgeDefinitions = function (edgeDefinition) {
   var args = arguments, i = 0;
 
-  Object.keys(args).forEach(function (x) {
-    i++;
-    if (i === 1) {return;}
-    edgeDefinition.push(args[x]);
-  });
+  Object.keys(args).forEach(
+    function (x) {
+      i++;
+      if (i === 1) {
+        return;
+      }
+      edgeDefinition.push(args[x]);
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1633,6 +1637,211 @@ var createHiddenProperty = function(obj, name, value) {
     writable: true
   });
   obj[name] = value;
+};
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper for updating binded collections
+////////////////////////////////////////////////////////////////////////////////
+var removeEdge = function (edgeId, options, self) {
+  options = options || {};
+  var edgeCollection = edgeId.split("/")[0];
+  var graphs = getGraphCollection().toArray();
+  self.__idsToRemove.push(edgeId);
+  self.__collectionsToLock.push(edgeCollection);
+  graphs.forEach(
+    function(graph) {
+      var edgeDefinitions = graph.edgeDefinitions;
+      if (graph.edgeDefinitions) {
+        edgeDefinitions.forEach(
+          function(edgeDefinition) {
+            var from = edgeDefinition.from;
+            var to = edgeDefinition.to;
+            var collection = edgeDefinition.collection;
+            // if collection of edge to be deleted is in from or to
+            if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+              //search all edges of the graph
+              var edges = db[collection].toArray();
+              edges.forEach(
+                function (edge) {
+                  // if from is
+                  if(self.__idsToRemove.indexOf(edge._id) === -1) {
+                    if (edge._from === edgeId || edge._to === edgeId) {
+                      removeEdge(edge._id, options, self);
+                    }
+                  }
+                }
+              );
+            }
+          }
+        );
+      }
+    }
+  );
+  return;
+};
+
+var bindEdgeCollections = function(self, edgeCollections) {
+  _.each(edgeCollections, function(key) {
+    var obj = db._collection(key);
+    var wrap = wrapCollection(obj);
+    // save
+    var old_save = wrap.save;
+    wrap.save = function(from, to, data) {
+      //check, if edge is allowed
+      self.__edgeDefinitions.forEach(
+        function(edgeDefinition) {
+          if (edgeDefinition.collection === key) {
+            var fromCollection = from.split("/")[0];
+            var toCollection = to.split("/")[0];
+            if (! _.contains(edgeDefinition.from, fromCollection)
+              || ! _.contains(edgeDefinition.to, toCollection)) {
+              throw "Edge is not allowed between " + from + " and " + to + ".";
+            }
+          }
+        }
+      );
+      return old_save(from, to, data);
+    };
+
+    // remove
+    wrap.remove = function(edgeId, options) {
+      var result;
+      //if _key make _id (only on 1st call)
+      if (edgeId.indexOf("/") === -1) {
+        edgeId = key + "/" + edgeId;
+      }
+      removeEdge(edgeId, options, self);
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+      return result;
+    };
+
+    self[key] = wrap;
+  });
+};
+
+var bindVertexCollections = function(self, vertexCollections) {
+  _.each(vertexCollections, function(key) {
+    var obj = db._collection(key);
+    var result;
+    var wrap = wrapCollection(obj);
+    var old_remove = wrap.remove;
+    wrap.remove = function(vertexId, options) {
+      //delete all edges using the vertex in all graphs
+      var graphs = getGraphCollection().toArray();
+      var vertexCollectionName = vertexId.split("/")[0];
+      self.__collectionsToLock.push(vertexCollectionName);
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                if (from.indexOf(vertexCollectionName) !== -1
+                  || to.indexOf(vertexCollectionName) !== -1
+                  ) {
+                  var edges = db._collection(collection).toArray();
+                  edges.forEach(
+                    function(edge) {
+                      if (edge._from === vertexId || edge._to === vertexId) {
+                        removeEdge(edge._id, options, self);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          }
+        }
+      );
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+            if (params.options) {
+              db._remove(params.vertexId, params.options);
+            } else {
+              db._remove(params.vertexId);
+            }
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options,
+            vertexId: vertexId
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+
+      return result;
+    };
+    self[key] = wrap;
+  });
+
+};
+var updateBindCollections = function(graph) {
+  //remove all binded collections
+  Object.keys(graph).forEach(
+    function(key) {
+      if(key.substring(0,1) !== "_") {
+        delete graph[key];
+      }
+    }
+  );
+  graph.__edgeDefinitions.forEach(
+    function(edgeDef) {
+      bindEdgeCollections(graph, [edgeDef.collection]);
+      bindVertexCollections(graph, edgeDef.from);
+      bindVertexCollections(graph, edgeDef.to);
+    }
+  );
+  bindVertexCollections(graph, graph.__orphanCollections);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1834,187 +2043,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
+  updateBindCollections(self);
 
-  // fills this.__idsToRemove and this.__collectionsToLock
-  var removeEdge = function (edgeId, options) {
-    options = options || {};
-    var edgeCollection = edgeId.split("/")[0];
-    var graphs = getGraphCollection().toArray();
-    self.__idsToRemove.push(edgeId);
-    self.__collectionsToLock.push(edgeCollection);
-    graphs.forEach(
-      function(graph) {
-        var edgeDefinitions = graph.edgeDefinitions;
-        if (graph.edgeDefinitions) {
-          edgeDefinitions.forEach(
-            function(edgeDefinition) {
-              var from = edgeDefinition.from;
-              var to = edgeDefinition.to;
-              var collection = edgeDefinition.collection;
-              // if collection of edge to be deleted is in from or to
-              if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
-                //search all edges of the graph
-                var edges = db[collection].toArray();
-                edges.forEach(
-                  function (edge) {
-                    // if from is
-                    if(self.__idsToRemove.indexOf(edge._id) === -1) {
-                      if (edge._from === edgeId || edge._to === edgeId) {
-                        removeEdge(edge._id, options);
-                      }
-                    }
-                  }
-                );
-              }
-            }
-          );
-        }
-      }
-    );
-    return;
-  };
-
-
-  _.each(vertexCollections, function(obj, key) {
-    var result;
-    var wrap = wrapCollection(obj);
-    var old_remove = wrap.remove;
-    wrap.remove = function(vertexId, options) {
-      //delete all edges using the vertex in all graphs
-      var graphs = getGraphCollection().toArray();
-      var vertexCollectionName = vertexId.split("/")[0];
-      self.__collectionsToLock.push(vertexCollectionName);
-      graphs.forEach(
-        function(graph) {
-          var edgeDefinitions = graph.edgeDefinitions;
-          if (graph.edgeDefinitions) {
-            edgeDefinitions.forEach(
-              function(edgeDefinition) {
-                var from = edgeDefinition.from;
-                var to = edgeDefinition.to;
-                var collection = edgeDefinition.collection;
-                if (from.indexOf(vertexCollectionName) !== -1
-                  || to.indexOf(vertexCollectionName) !== -1
-                  ) {
-                  var edges = db._collection(collection).toArray();
-                  edges.forEach(
-                    function(edge) {
-                      if (edge._from === vertexId || edge._to === vertexId) {
-                        removeEdge(edge._id, options);
-                      }
-                    }
-                  );
-                }
-              }
-            );
-          }
-        }
-      );
-
-      try {
-        db._executeTransaction({
-          collections: {
-            write: self.__collectionsToLock
-          },
-          action: function (params) {
-            var db = require("internal").db;
-            params.ids.forEach(
-              function(edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-            if (params.options) {
-              db._remove(params.vertexId, params.options);
-            } else {
-              db._remove(params.vertexId);
-            }
-          },
-          params: {
-            ids: self.__idsToRemove,
-            options: options,
-            vertexId: vertexId
-          }
-        });
-        result = true;
-      } catch (e) {
-        result = false;
-      }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
-
-      return result;
-    };
-
-    self[key] = wrap;
-  });
-
-  _.each(edgeCollections, function(obj, key) {
-    var wrap = wrapCollection(obj);
-    // save
-    var old_save = wrap.save;
-    wrap.save = function(from, to, data) {
-      //check, if edge is allowed
-      edgeDefinitions.forEach(
-        function(edgeDefinition) {
-          if (edgeDefinition.collection === key) {
-            var fromCollection = from.split("/")[0];
-            var toCollection = to.split("/")[0];
-            if (! _.contains(edgeDefinition.from, fromCollection)
-              || ! _.contains(edgeDefinition.to, toCollection)) {
-              throw "Edge is not allowed between " + from + " and " + to + ".";
-            }
-          }
-        }
-      );
-      return old_save(from, to, data);
-    };
-
-    // remove
-    wrap.remove = function(edgeId, options) {
-      var result;
-      //if _key make _id (only on 1st call)
-      if (edgeId.indexOf("/") === -1) {
-        edgeId = key + "/" + edgeId;
-      }
-      removeEdge(edgeId, options);
-
-      try {
-        db._executeTransaction({
-          collections: {
-            write: self.__collectionsToLock
-          },
-          action: function (params) {
-            var db = require("internal").db;
-            params.ids.forEach(
-              function(edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-          },
-          params: {
-            ids: self.__idsToRemove,
-            options: options
-          }
-        });
-        result = true;
-      } catch (e) {
-        result = false;
-      }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
-      return result;
-    };
-
-    self[key] = wrap;
-  });
 };
 
 
@@ -2205,6 +2235,7 @@ var _drop = function(graphId, dropCollections) {
   gdb.remove(graphId);
   return true;
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all edge collections of the graph.
@@ -2907,9 +2938,11 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
 
   this.__edgeDefinitions.push(edgeDefinition);
+  db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
   this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
   edgeDefinition.from.forEach(
     function(vc) {
+      self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
       if (orphanIndex !== -1) {
@@ -2923,6 +2956,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   );
   edgeDefinition.to.forEach(
     function(vc) {
+      self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
       if (orphanIndex !== -1) {
@@ -2934,6 +2968,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
       }
     }
   );
+  updateBindCollections(this);
 
 };
 
@@ -3066,6 +3101,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
       changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
     }
   );
+  updateBindCollections(this);
 
 };
 
@@ -3133,6 +3169,8 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
       }
     }
   );
+  updateBindCollections(this);
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3187,6 +3225,8 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
   }
 
   this.__orphanCollections.push(vertexCollectionName);
+  this[vertexCollectionName] = db[vertexCollectionName];
+  updateBindCollections(this);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
 };
@@ -3263,6 +3303,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
     throw err;
   }
   this.__orphanCollections.splice(index, 1);
+  delete this[vertexCollectionName];
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
   if (dropCollection === true) {
@@ -3271,6 +3312,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
       db._drop(vertexCollectionName);
     }
   }
+  updateBindCollections(this);
 };
 
 
