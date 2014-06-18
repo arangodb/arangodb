@@ -245,6 +245,11 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  remove: function (model) {
+    'use strict';
+    var id = model.get('_id');
+    this.collection.remove(id);
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeById
