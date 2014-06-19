@@ -144,12 +144,22 @@ extend(SwaggerDocs.prototype, {
     'use strict';
     this.models[jsonSchema.id] = jsonSchema;
 
-    this.docs.parameters.push({
-      name: paramName,
-      paramType: "body",
-      description: description,
-      dataType: jsonSchema.id
+    var param = _.find(this.docs.parameters, function (parameter) {
+      return parameter.name === 'undocumented body';
     });
+
+    if (_.isUndefined(param)) {
+      this.docs.parameters.push({
+        name: paramName,
+        paramType: "body",
+        description: description,
+        dataType: jsonSchema.id
+      });
+    } else {
+      param.name = paramName;
+      param.description = description;
+      param.dataType = jsonSchema.id;
+    }
   },
 
   addSummary: function (summary) {
