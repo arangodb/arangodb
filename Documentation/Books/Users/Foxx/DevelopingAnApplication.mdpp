@@ -42,9 +42,10 @@ provides a few mechanisms for this:
 !SUBSECTION Development Mode
 
 If you start ArangoDB with the option *--javascript.dev-app-path* followed by 
-the path to a directory containing a manifest file and the path to the 
-database, you are starting ArangoDB in development mode with the application 
-loaded. This means that on every request:
+the path to an app directory (see below) and then the path to the database,
+you are starting ArangoDB in development mode with the application loaded.
+
+This means that on every request:
 
 1. All routes are dropped
 2. All module caches are flushed
@@ -56,6 +57,21 @@ loaded. This means that on every request:
 This means that you do not have to restart ArangoDB if you change anything 
 in your app. It is of course not meant for production, because the reloading 
 makes the app relatively slow.
+
+The app directory has to be structured as follows:
+
+```
+└── databases
+    ├── _system
+    │   ├── foxx_app_1
+    │   ├── foxx_app_2
+    │   └── foxx_app_3
+    └── my_db
+        └── foxx_app_4
+```
+
+In this case you would have four foxx apps booted, three in the `_system` database
+and one in the `my_db` database.
 
 !SUBSECTION Production Mode
 
