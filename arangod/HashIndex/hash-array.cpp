@@ -51,17 +51,6 @@ static void DestroyElement (TRI_hash_array_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determines if two elements are equal
-///
-/// Two elements are 'equal' if the document pointer is the same.
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsEqualElementElement (TRI_hash_index_element_t* left,
-                                          TRI_hash_index_element_t* right) {
-  return (left->_document != nullptr && left->_document == right->_document);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -459,9 +448,9 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
 
   i = k = HashElement(array, element) % n;
 
-  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+  for (; i < n && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+    for (i = 0; i < k && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -572,9 +561,9 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
 
   i = k = HashElement(array, element) % n;
 
-  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+  for (; i < n && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+    for (i = 0; i < k && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -625,9 +614,9 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
 
   i = k = HashElement(array, element) % n;
 
-  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+  for (; i < n && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   if (i == n) {
-    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualElementElement(element, &array->_table[i]); ++i);
+    for (i = 0; i < k && array->_table[i]._document != nullptr && element->_document != array->_table[i]._document; ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);

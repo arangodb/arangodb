@@ -6730,11 +6730,30 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       }
 
       TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
-      TRI_LogChangePropertiesCollectionReplication(base->_vocbase, 
-                                                   base->_info._cid, 
-                                                   base->_info._name, 
-                                                   json, 
-                                                   TRI_GetIdServer()); 
+
+      // now log the property changes
+      res = TRI_ERROR_NO_ERROR;
+
+      try {
+        triagens::wal::ChangeCollectionMarker marker(base->_vocbase->_id, base->_info._cid, JsonHelper::toString(json));
+        triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+        }
+      }
+      catch (triagens::arango::Exception const& ex) {
+        res = ex.code();
+      }
+      catch (...) {
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // TODO: what to do here 
+        LOG_WARNING("could not save collection change marker in log: %s", TRI_errno_string(res));
+      }
+
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
   }

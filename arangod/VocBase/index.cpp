@@ -37,7 +37,7 @@
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 #include "BasicsC/fasthash.h"
-#include "BasicsC/xxhash.h"
+#include "Basics/JsonHelper.h"
 #include "CapConstraint/cap-constraint.h"
 #include "GeoIndex/geo-index.h"
 #include "FulltextIndex/fulltext-index.h"
@@ -46,11 +46,14 @@
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
+#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
+#include "Wal/LogfileManager.h"
+#include "Wal/Marker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             INDEX
@@ -117,8 +120,7 @@ bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
     case TRI_IDX_TYPE_BITARRAY_INDEX:
-      return false;
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: // removed
     case TRI_IDX_TYPE_UNKNOWN:
       return false;
   }
@@ -317,23 +319,18 @@ void TRI_FreeIndex (TRI_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* idx) {
-  char* filename;
-  char* name;
-  char* number;
-  int res;
-
   // construct filename
-  number = TRI_StringUInt64(idx->_iid);
+  char* number = TRI_StringUInt64(idx->_iid);
 
-  if (number == NULL) {
+  if (number == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     LOG_ERROR("out of memory when creating index number");
     return false;
   }
 
-  name = TRI_Concatenate3String("index-", number, ".json");
+  char* name = TRI_Concatenate3String("index-", number, ".json");
 
-  if (name == NULL) {
+  if (name == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -341,9 +338,9 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
     return false;
   }
 
-  filename = TRI_Concatenate2File(collection->_directory, name);
+  char* filename = TRI_Concatenate2File(collection->_directory, name);
 
-  if (filename == NULL) {
+  if (filename == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -355,7 +352,7 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  res = TRI_UnlinkFile(filename);
+  int res = TRI_UnlinkFile(filename);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -373,33 +370,26 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
 int TRI_SaveIndex (TRI_document_collection_t* document,
                    TRI_index_t* idx,
                    TRI_server_id_t generatingServer) {
-  TRI_json_t* json;
-  TRI_vocbase_t* vocbase;
-  char* filename;
-  char* name;
-  char* number;
-  bool ok;
-
   // convert into JSON
-  json = idx->json(idx);
+  TRI_json_t* json = idx->json(idx);
 
-  if (json == NULL) {
+  if (json == nullptr) {
     LOG_TRACE("cannot save index definition: index cannot be jsonified");
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
 
   // construct filename
-  number   = TRI_StringUInt64(idx->_iid);
-  name     = TRI_Concatenate3String("index-", number, ".json");
-  filename = TRI_Concatenate2File(document->_directory, name);
+  char* number   = TRI_StringUInt64(idx->_iid);
+  char* name     = TRI_Concatenate3String("index-", number, ".json");
+  char* filename = TRI_Concatenate2File(document->_directory, name);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
   TRI_FreeString(TRI_CORE_MEM_ZONE, number);
 
-  vocbase = document->_vocbase;
+  TRI_vocbase_t* vocbase = document->_vocbase;
 
   // and save
-  ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
+  bool ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
   
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -410,16 +400,29 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
     return TRI_errno();
   }
 
-  // it is safe to use _name as we hold a read-lock on the collection status
-  TRI_LogCreateIndexReplication(vocbase, 
-                                document->_info._cid, 
-                                document->_info._name, 
-                                idx->_iid, 
-                                json,
-                                generatingServer);
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info._cid, idx->_iid, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+ 
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    return TRI_ERROR_NO_ERROR;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
+  // TODO: what to do here?
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -429,7 +432,9 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupIndex (TRI_document_collection_t* document, 
                               TRI_idx_iid_t iid) {
-  for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
+  size_t const n = document->_allIndexes._length;
+
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_iid == iid) {
@@ -439,7 +444,7 @@ TRI_index_t* TRI_LookupIndex (TRI_document_collection_t* document,
 
   TRI_set_errno(TRI_ERROR_ARANGO_NO_INDEX);
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +459,7 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
 
   json = TRI_CreateArrayJson(zone);
 
-  if (json != NULL) {
+  if (json != nullptr) {
     char* number;
     
     number = TRI_StringUInt64(idx->_iid);
@@ -473,7 +478,7 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyIndexResult (TRI_index_result_t* result) {
-  if (result->_documents != NULL) {
+  if (result->_documents != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result->_documents);
   }
 }
@@ -483,11 +488,9 @@ void TRI_DestroyIndexResult (TRI_index_result_t* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
-  size_t j;
-
   TRI_InitVector(dst, TRI_CORE_MEM_ZONE, sizeof(TRI_shape_pid_t));
 
-  for (j = 0;  j < src->_length;  ++j) {
+  for (size_t j = 0;  j < src->_length;  ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(src,j)));
 
     TRI_PushBackVector(dst, &shape);
@@ -517,10 +520,10 @@ char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, j)));
     TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(const_cast<TRI_shaper_t*>(shaper), shape);
 
-    if (path == NULL) {
+    if (path == nullptr) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return NULL;
+      return nullptr;
     }
 
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
@@ -1056,9 +1059,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyEdgeIndex (TRI_index_t* idx) {
-  TRI_edge_index_t* edgesIndex;
-
-  edgesIndex = (TRI_edge_index_t*) idx;
+  TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
 
   LOG_TRACE("destroying edge index");
 
@@ -1121,7 +1122,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
       relationOperator->_numFields = relationOperator->_parameters->_value._objects._length;
       relationOperator->_fields = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false));
 
-      if (relationOperator->_fields != NULL) {
+      if (relationOperator->_fields != nullptr) {
         for (size_t j = 0; j < relationOperator->_numFields; ++j) {
           TRI_json_t* jsonObject = (TRI_json_t*) TRI_AtVector(&(relationOperator->_parameters->_value._objects), j);
 
@@ -1133,7 +1134,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 
           TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-          if (shapedObject != NULL) {
+          if (shapedObject != nullptr) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
           }
@@ -1212,7 +1213,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (shapedJson._sid == 0) {
+  if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
     LOG_WARNING("encountered invalid marker with shape id 0");
     
     return TRI_ERROR_INTERNAL;
@@ -1382,7 +1383,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
     if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
-      return NULL;
+      return nullptr;
     }
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
   }
@@ -1970,14 +1971,14 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t* idx,
   errorResult = FillLookupBitarrayOperator(indexOperator, baIndex->base._collection); 
 
   if (errorResult != TRI_ERROR_NO_ERROR) {
-    return NULL;
+    return nullptr;
   }  
   
   iteratorResult = BitarrayIndex_find(baIndex->_bitarrayIndex,
                                       indexOperator,
                                       &baIndex->_paths,
                                       baIndex,
-                                      NULL);
+                                      nullptr);
 
   TRI_FreeIndexOperator(indexOperator);
 
