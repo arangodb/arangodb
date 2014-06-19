@@ -124,6 +124,27 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wal create index marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct index_create_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+      TRI_idx_iid_t    _indexId;
+      // char* properties
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal drop index marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct index_drop_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t   _databaseId;
+      TRI_voc_cid_t    _collectionId;
+      TRI_idx_iid_t    _indexId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wal transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -498,6 +519,50 @@ namespace triagens {
         inline char* properties () const {
           return begin() + sizeof(collection_change_marker_t);
         }
+        
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 CreateIndexMarker
+// -----------------------------------------------------------------------------
+
+    class CreateIndexMarker : public Marker {
+
+      public:
+
+        CreateIndexMarker (TRI_voc_tick_t,
+                           TRI_voc_cid_t,
+                           TRI_idx_iid_t,
+                           std::string const&);
+
+        ~CreateIndexMarker ();
+        
+      public:
+        
+        inline char* properties () const {
+          return begin() + sizeof(index_create_marker_t);
+        }
+        
+        void dump () const;
+    };
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   DropIndexMarker
+// -----------------------------------------------------------------------------
+
+    class DropIndexMarker : public Marker {
+
+      public:
+
+        DropIndexMarker (TRI_voc_tick_t,
+                         TRI_voc_cid_t,
+                         TRI_idx_iid_t);
+
+        ~DropIndexMarker ();
+        
+      public:
         
         void dump () const;
     };

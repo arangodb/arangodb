@@ -36,6 +36,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
@@ -178,36 +179,50 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
   TRI_document_collection_t* document = s->_collection;
 
-  triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
   
-  // lock the index and check that the element is still missing
-  {
-    MUTEX_LOCKER(s->_attributeLock);
+    // lock the index and check that the element is still missing
+    {
+      MUTEX_LOCKER(s->_attributeLock);
 
-    void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+      void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
-    // if the element appeared, return the aid
-    if (p != nullptr) {
-      return GetAttributeId(p);
+      // if the element appeared, return the aid
+      if (p != nullptr) {
+        return GetAttributeId(p);
+      }
+
+      // write marker into wal
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+        // throw an exception which is caught at the end of this function
+        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+      }
+
+      void* f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
+  
+      // enter into the dictionaries
+      f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
     }
 
-    // write marker into wal
-    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not save attribute marker in log: %s", TRI_errno_string(slotInfo.errorCode));
-      return 0;
-    }
-
-    void* f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
-    TRI_ASSERT(f == nullptr);
-  
-    // enter into the dictionaries
-    f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
-    TRI_ASSERT(f == nullptr);
+    return aid;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
-  return aid;
+  LOG_WARNING("could not save attribute marker in log: %s", TRI_errno_string(res));
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,15 +336,15 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
   // get next shape id
   TRI_shape_sid_t const sid = s->_nextSid++;
   shape->_sid = sid;
-
-  TRI_document_collection_t* document = s->_collection;
-  triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
   
+  TRI_document_collection_t* document = s->_collection;
 
-  TRI_shape_t const* result;
+  int res = TRI_ERROR_NO_ERROR;
 
-  // lock the index and check the element is still missing
-  {
+  try {
+    triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
+
+    // lock the index and check the element is still missing
     MUTEX_LOCKER(s->_shapeLock);
 
     found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
@@ -341,26 +356,35 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     }
     
     // write marker into wal
-    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
     
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(slotInfo.errorCode));
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
 
     char const* m = static_cast<char const*>(slotInfo.mem) + sizeof(triagens::wal::shape_marker_t);
-    result = reinterpret_cast<TRI_shape_t const*>(m);
+    TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
     TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
     TRI_ASSERT(f == nullptr);
+  
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+    return result;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+  LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(res));
 
-  return result;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

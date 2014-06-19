@@ -584,6 +584,120 @@ void ChangeCollectionMarker::dump () const {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 CreateIndexMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+CreateIndexMarker::CreateIndexMarker (TRI_voc_tick_t databaseId,
+                                      TRI_voc_cid_t collectionId,
+                                      TRI_idx_iid_t indexId,
+                                      string const& properties) 
+  : Marker(TRI_WAL_MARKER_CREATE_INDEX, sizeof(index_create_marker_t) + alignedSize(properties.size() + 1)) {
+
+  index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
+
+  m->_databaseId   = databaseId;
+  m->_collectionId = collectionId;
+  m->_indexId      = indexId;
+  
+  storeSizedString(sizeof(index_create_marker_t), properties);
+  
+#ifdef DEBUG_WAL
+  dump();
+#endif  
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+CreateIndexMarker::~CreateIndexMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void CreateIndexMarker::dump () const {
+  index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
+
+  std::cout << "WAL CREATE INDEX MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId
+            << ", INDEX " << m->_indexId
+            << ", PROPERTIES " << properties()
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   DropIndexMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+      
+DropIndexMarker::DropIndexMarker (TRI_voc_tick_t databaseId,
+                                  TRI_voc_cid_t collectionId,
+                                  TRI_idx_iid_t indexId) 
+  : Marker(TRI_WAL_MARKER_DROP_INDEX, sizeof(index_drop_marker_t)) {
+
+  index_drop_marker_t* m = reinterpret_cast<index_drop_marker_t*>(begin());
+
+  m->_databaseId   = databaseId;
+  m->_collectionId = collectionId;
+  m->_indexId      = indexId;
+  
+#ifdef DEBUG_WAL
+  dump();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+DropIndexMarker::~DropIndexMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void DropIndexMarker::dump () const {
+  index_drop_marker_t* m = reinterpret_cast<index_drop_marker_t*>(begin());
+
+  std::cout << "WAL DROP INDEX MARKER FOR DB " << m->_databaseId 
+            << ", COLLECTION " << m->_collectionId
+            << ", INDEX " << m->_indexId
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                            BeginTransactionMarker
 // -----------------------------------------------------------------------------
 
@@ -807,7 +921,7 @@ void DocumentMarker::dump () const {
 
   std::cout << "WAL DOCUMENT MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
-            << ", REV: " << m->_rid 
+            << ", REV: " << m->_revisionId 
             << ", TRX: " << m->_transactionId
             << ", KEY: " << key()
             << ", OFFSETKEY: " << m->_offsetKey 
@@ -946,8 +1060,8 @@ void EdgeMarker::dump () const {
 
   std::cout << "WAL EDGE MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
-            << ", REV: " << rid()
-            << ", TRX: " << tid() 
+            << ", REV: " << m->_revisionId
+            << ", TRX: " << m->_transactionId
             << ", KEY: " << key() 
             << ", FROMCID " << m->_fromCid 
             << ", TOCID " << m->_toCid 
@@ -1076,7 +1190,7 @@ void RemoveMarker::dump () const {
 
   std::cout << "WAL REMOVE MARKER FOR DB " << m->_databaseId 
             << ", COLLECTION " << m->_collectionId 
-            << ", REV: " << m->_rid 
+            << ", REV: " << m->_revisionId 
             << ", TRX: " << m->_transactionId 
             << ", KEY: " << key()
             << "\n";

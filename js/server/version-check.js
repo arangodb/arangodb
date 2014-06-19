@@ -62,6 +62,9 @@
     error: function (msg) {
       console.error("In database '%s': %s", db._name(), msg);
     },
+    warn: function (msg) {
+      console.warn("In database '%s': %s", db._name(), msg);
+    },
     log: function (msg) {
       this.info(msg);
     }
