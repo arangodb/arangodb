@@ -1,3 +1,15 @@
 {
-	"theme": "./localtheme"
+	"theme": "./localtheme",
+  "plugins": ["piwik"],
+  "pluginsConfig": {
+      "piwik": {
+          "URL": "www.arangodb.org/piwik/",
+      "siteId": 12
+      }
+  },
+	"pdf": {
+		"fontSize": 10,
+		"toc": true
+		
+ 	}
 }
