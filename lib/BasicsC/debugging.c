@@ -259,6 +259,8 @@ void TRI_ClearFailurePointsDebugging () {
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
 }
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the debugging
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +283,6 @@ void TRI_ShutdownDebugging () {
 
   TRI_DestroyReadWriteLock(&FailurePointsLock);
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
