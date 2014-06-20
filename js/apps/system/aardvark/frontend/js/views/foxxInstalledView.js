@@ -286,12 +286,18 @@
       else {
         this.showSystemInfoMod(this.fillInfoValues());
       }
+      this.selectHighestVersion();
     },
 
     installDialog: function(event) {
+
+      var currentVersion = $('.modalSelect').val();
+
       window.modalView.hide();
       event.stopPropagation();
       this.showMod(this.fillValues());
+
+      this.selectSpecificVersion(currentVersion);
     },
 
     update: function() {
@@ -349,11 +355,33 @@
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
             alert("Mount-Path already in use.");
+          }
+          else if (info.responseText.indexOf("app is not defined") > -1) {
+            //temp ignore this message, fix needs to be server-side
+            window.modalView.hide();
+            self.appsView.reload();
           } else {
             alert(info.statusText);
           }
         }
       });
+    },
+
+    selectSpecificVersion: function(version) {
+      $('.modalSelect').val(version);
+    },
+
+    selectHighestVersion: function() {
+      var versions = this.model.get("versions"),
+      toRender = "0";
+
+      _.each(versions, function(version) {
+        if(version >= toRender) {
+          toRender = version;
+        }
+      });
+
+      $('.modalSelect').val(toRender);
     },
 
     render: function(){
