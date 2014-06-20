@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,11 +52,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,18 +76,9 @@ Endpoint::Endpoint (const Endpoint::EndpointType type,
 Endpoint::~Endpoint () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint specification in a unified form
@@ -100,7 +88,7 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
   if (specification.size() < 7) {
     return "";
   }
- 
+
   string copy = specification;
   StringUtils::trimInPlace(copy);
   copy = StringUtils::tolower(copy);
@@ -132,7 +120,7 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     // invalid type
     return "";
   }
-  
+
   size_t found;
   /*
   // turn "localhost" into "127.0.0.1"
@@ -188,7 +176,7 @@ Endpoint* Endpoint::clientFactory (const std::string& specification) {
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const std::string& specification, 
+Endpoint* Endpoint::serverFactory (const std::string& specification,
                                    int listenBacklog,
                                    bool reuseAddress) {
   return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog, reuseAddress);
@@ -272,12 +260,12 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
 
-      return new EndpointIpV6(type, 
-                              encryption, 
-                              specification, 
-                              listenBacklog, 
-                              reuseAddress, 
-                              copy.substr(1, found - 1), 
+      return new EndpointIpV6(type,
+                              encryption,
+                              specification,
+                              listenBacklog,
+                              reuseAddress,
+                              copy.substr(1, found - 1),
                               port);
     }
 
@@ -285,12 +273,12 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
 
-      return new EndpointIpV6(type, 
-                              encryption, 
-                              specification, 
-                              listenBacklog, 
-                              reuseAddress, 
-                              copy.substr(1, found - 1), 
+      return new EndpointIpV6(type,
+                              encryption,
+                              specification,
+                              listenBacklog,
+                              reuseAddress,
+                              copy.substr(1, found - 1),
                               EndpointIp::_defaultPort);
     }
 
@@ -305,22 +293,22 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
 
-    return new EndpointIpV4(type, 
-                            encryption, 
-                            specification, 
-                            listenBacklog, 
+    return new EndpointIpV4(type,
+                            encryption,
+                            specification,
+                            listenBacklog,
                             reuseAddress,
-                            copy.substr(0, found), 
+                            copy.substr(0, found),
                             port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, 
-                          encryption, 
-                          specification, 
-                          listenBacklog, 
-                          reuseAddress, 
-                          copy, 
+  return new EndpointIpV4(type,
+                          encryption,
+                          specification,
+                          listenBacklog,
+                          reuseAddress,
+                          copy,
                           EndpointIp::_defaultPort);
 }
 
@@ -395,11 +383,11 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -69,7 +69,7 @@ You can contact the author at :
 
 #ifdef _MSC_VER    // Visual Studio
 #  define FORCE_INLINE static __forceinline
-#else 
+#else
 #  ifdef __GNUC__
 #    define FORCE_INLINE static inline __attribute__((always_inline))
 #  else
@@ -190,11 +190,11 @@ typedef enum { XXH_bigEndian=0, XXH_littleEndian=1 } XXH_endianess;
 typedef enum { XXH_aligned, XXH_unaligned } XXH_alignment;
 
 FORCE_INLINE U32 XXH_readLE32_align(const U32* ptr, XXH_endianess endian, XXH_alignment align)
-{ 
+{
     if (align==XXH_unaligned)
-        return endian==XXH_littleEndian ? A32(ptr) : XXH_swap32(A32(ptr)); 
+        return endian==XXH_littleEndian ? A32(ptr) : XXH_swap32(A32(ptr));
     else
-        return endian==XXH_littleEndian ? *ptr : XXH_swap32(*ptr); 
+        return endian==XXH_littleEndian ? *ptr : XXH_swap32(*ptr);
 }
 
 FORCE_INLINE U32 XXH_readLE32(const U32* ptr, XXH_endianess endian) { return XXH_readLE32_align(ptr, endian, XXH_unaligned); }
@@ -307,15 +307,15 @@ struct XXH_state32_t
 };
 
 
-int XXH32_sizeofState() 
+int XXH32_sizeofState()
 {
     XXH_STATIC_ASSERT(XXH32_SIZEOFSTATE >= sizeof(struct XXH_state32_t));   // A compilation error here means XXH32_SIZEOFSTATE is not large enough
-    return sizeof(struct XXH_state32_t); 
+    return sizeof(struct XXH_state32_t);
 }
 
 
 XXH_errorcode XXH32_resetState(void* state_in, U32 seed)
-{ 
+{
     struct XXH_state32_t * state = (struct XXH_state32_t *) state_in;
     state->seed = seed;
     state->v1 = seed + PRIME32_1 + PRIME32_2;
@@ -361,7 +361,7 @@ FORCE_INLINE XXH_errorcode XXH32_update_endian (void* state_in, const void* inpu
         {
             const U32* p32 = (const U32*)state->memory;
             state->v1 += XXH_readLE32(p32, endian) * PRIME32_2; state->v1 = XXH_rotl32(state->v1, 13); state->v1 *= PRIME32_1; p32++;
-            state->v2 += XXH_readLE32(p32, endian) * PRIME32_2; state->v2 = XXH_rotl32(state->v2, 13); state->v2 *= PRIME32_1; p32++; 
+            state->v2 += XXH_readLE32(p32, endian) * PRIME32_2; state->v2 = XXH_rotl32(state->v2, 13); state->v2 *= PRIME32_1; p32++;
             state->v3 += XXH_readLE32(p32, endian) * PRIME32_2; state->v3 = XXH_rotl32(state->v3, 13); state->v3 *= PRIME32_1; p32++;
             state->v4 += XXH_readLE32(p32, endian) * PRIME32_2; state->v4 = XXH_rotl32(state->v4, 13); state->v4 *= PRIME32_1; p32++;
         }
@@ -403,7 +403,7 @@ FORCE_INLINE XXH_errorcode XXH32_update_endian (void* state_in, const void* inpu
 XXH_errorcode XXH32_update (void* state_in, const void* input, int len)
 {
     XXH_endianess endian_detected = (XXH_endianess)XXH_CPU_LITTLE_ENDIAN;
-    
+
     if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
         return XXH32_update_endian(state_in, input, len, XXH_littleEndian);
     else
@@ -457,7 +457,7 @@ FORCE_INLINE U32 XXH32_intermediateDigest_endian (void* state_in, XXH_endianess 
 U32 XXH32_intermediateDigest (void* state_in)
 {
     XXH_endianess endian_detected = (XXH_endianess)XXH_CPU_LITTLE_ENDIAN;
-    
+
     if ((endian_detected==XXH_littleEndian) || XXH_FORCE_NATIVE_FORMAT)
         return XXH32_intermediateDigest_endian(state_in, XXH_littleEndian);
     else
@@ -473,3 +473,11 @@ U32 XXH32_digest (void* state_in)
 
     return h32;
 }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

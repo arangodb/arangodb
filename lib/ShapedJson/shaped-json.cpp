@@ -6,7 +6,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,9 +21,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -205,7 +207,7 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
 
 #ifdef DEBUG_JSON_SHAPER
 
-static void PrintShapeValues (TRI_shape_value_t* values, 
+static void PrintShapeValues (TRI_shape_value_t* values,
                               size_t n) {
   TRI_shape_value_t* p;
   TRI_shape_value_t* e;
@@ -426,7 +428,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-    // must fill with 0's because the string might be shorter, and we might use the 
+    // must fill with 0's because the string might be shorter, and we might use the
     // full length for memcmp comparisons!!
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
 
@@ -465,8 +467,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 /// @brief converts a json list into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueList (TRI_shaper_t* shaper, 
-                                TRI_shape_value_t* dst, 
+static bool FillShapeValueList (TRI_shaper_t* shaper,
+                                TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
                                 bool create,
                                 bool isLocked) {
@@ -769,11 +771,11 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 /// @brief converts a json array into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueArray (TRI_shaper_t* shaper, 
-                                 TRI_shape_value_t* dst, 
+static bool FillShapeValueArray (TRI_shaper_t* shaper,
+                                 TRI_shape_value_t* dst,
                                  TRI_json_t const* json,
                                  bool create,
-                                 bool isLocked) { 
+                                 bool isLocked) {
   size_t i, n;
   uint64_t total;
 
@@ -1004,8 +1006,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 /// @brief converts a json object into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, 
-                                TRI_shape_value_t* dst, 
+static bool FillShapeValueJson (TRI_shaper_t* shaper,
+                                TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
                                 bool create,
                                 bool isLocked) {
@@ -1130,15 +1132,15 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   TRI_shape_aid_t const* aids;
   TRI_shape_size_t const* offsetsF;
   TRI_shape_size_t const* offsetsV;
-  
-  shape_cache_t shapeCache; 
+
+  shape_cache_t shapeCache;
 
   s = (TRI_array_shape_t const*) shape;
   f = s->_fixedEntries;
   v = s->_variableEntries;
   n = f + v;
- 
-  // create an array with the appropriate size 
+
+  // create an array with the appropriate size
   array = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) n);
 
   if (array == NULL) {
@@ -1156,8 +1158,8 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
 
   offsetsF = (TRI_shape_size_t const*) qtr;
 
-  shapeCache._sid = 0;  
-  shapeCache._shape = NULL; 
+  shapeCache._sid = 0;
+  shapeCache._shape = NULL;
 
   for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
     TRI_shape_sid_t sid = *sids;
@@ -1168,7 +1170,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_json_t* element;
 
     offset = *offsetsF;
-    
+
     // use last sid if in cache
     if (sid == shapeCache._sid && shapeCache._sid > 0) {
       subshape = shapeCache._shape;
@@ -1182,7 +1184,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
@@ -1212,7 +1214,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_json_t* element;
 
     offset = *offsetsV;
-    
+
     // use last sid if in cache
     if (sid == shapeCache._sid && shapeCache._sid > 0) {
       subshape = shapeCache._shape;
@@ -1226,7 +1228,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
@@ -1268,11 +1270,11 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsets;
   TRI_shape_length_list_t l;
   TRI_shape_length_list_t i;
-  shape_cache_t shapeCache; 
+  shape_cache_t shapeCache;
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
-  
+
   // create a list with the appropriate size
   list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
@@ -1285,7 +1287,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
 
   ptr += l * sizeof(TRI_shape_sid_t);
   offsets = (TRI_shape_size_t const*) ptr;
-  
+
   shapeCache._sid = 0;
   shapeCache._shape = NULL;
 
@@ -1350,7 +1352,7 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
-    
+
   subshape = shaper->lookupShapeId(shaper, sid);
 
   if (subshape == NULL) {
@@ -1361,8 +1363,8 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
- 
-  // create a list with the appropriate size 
+
+  // create a list with the appropriate size
   list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
   if (list == NULL) {
@@ -1418,7 +1420,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
 
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
   sid = s->_sidEntry;
-    
+
   subshape = shaper->lookupShapeId(shaper, sid);
 
   if (subshape == NULL) {
@@ -1429,14 +1431,14 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
-  
+
   // create a list with the appropriate size
   list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
   if (list == NULL) {
     return NULL;
   }
-  
+
   length = s->_sizeEntry;
   offset = sizeof(TRI_shape_length_list_t);
 
@@ -1608,7 +1610,7 @@ static bool StringifyJsonShapeDataShortString (TRI_shaper_t* shaper,
   }
 
   res = TRI_AppendJsonEncodedStringStringBuffer(buffer, data, true);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
@@ -1739,7 +1741,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
@@ -1797,8 +1799,8 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
     sid = *sids;
     aid = *aids;
     offset = *offsetsV;
-   
-    // use last sid if in cache 
+
+    // use last sid if in cache
     if (sid == shapeCache._sid && shapeCache._sid > 0) {
       subshape = shapeCache._shape;
     }
@@ -1811,7 +1813,7 @@ static bool StringifyJsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     name = shaper->lookupAttributeId(shaper, aid);
 
     if (name == NULL) {
@@ -1900,7 +1902,7 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  
+
   shapeCache._sid   = 0;
   shapeCache._shape = NULL;
 
@@ -1912,7 +1914,7 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
 
     sid = *sids;
     offset = *offsets;
-    
+
     // use last sid if in cache
     if (sid == shapeCache._sid && shapeCache._sid > 0) {
       subshape = shapeCache._shape;
@@ -1921,7 +1923,7 @@ static bool StringifyJsonShapeDataList (TRI_shaper_t* shaper,
       shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
       shapeCache._sid = sid;
     }
-    
+
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
@@ -1976,7 +1978,7 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
-      
+
   subshape = shaper->lookupShapeId(shaper, sid);
 
   if (subshape == NULL) {
@@ -1998,7 +2000,7 @@ static bool StringifyJsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  
+
   for (i = 0;  i < l;  ++i, ++offsets) {
     TRI_shape_size_t offset;
     bool ok;
@@ -2056,7 +2058,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
   sid = s->_sidEntry;
   subshape = shaper->lookupShapeId(shaper, sid);
-    
+
   if (subshape == NULL) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
 
@@ -2076,7 +2078,7 @@ static bool StringifyJsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
   }
-  
+
   for (i = 0;  i < l;  ++i, offset += length) {
     bool ok;
 
@@ -2187,7 +2189,7 @@ TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* 
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyShapedJson (TRI_memory_zone_t* zone, 
+void TRI_DestroyShapedJson (TRI_memory_zone_t* zone,
                             TRI_shaped_json_t* shaped) {
   TRI_DestroyBlob(zone, &shaped->_data);
 }
@@ -2196,7 +2198,7 @@ void TRI_DestroyShapedJson (TRI_memory_zone_t* zone,
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (TRI_memory_zone_t* zone, 
+void TRI_FreeShapedJson (TRI_memory_zone_t* zone,
                          TRI_shaped_json_t* shaped) {
   TRI_DestroyShapedJson(zone, shaped);
   TRI_Free(zone, shaped);
@@ -2210,7 +2212,7 @@ void TRI_FreeShapedJson (TRI_memory_zone_t* zone,
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values, 
+void TRI_SortShapeValues (TRI_shape_value_t* values,
                           size_t n) {
   qsort(values, n, sizeof(TRI_shape_value_t), SortShapeValuesFunc);
 }
@@ -2219,7 +2221,7 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper, 
+TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
                                        TRI_json_t const* json,
                                        bool create,
                                        bool isLocked) {
@@ -2258,7 +2260,7 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper, 
+TRI_json_t* TRI_JsonShapedJson (TRI_shaper_t* shaper,
                                 TRI_shaped_json_t const* shaped) {
   TRI_shape_t const* shape;
 
@@ -2632,8 +2634,8 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
     sid = *sids;
     aid = *aids;
     offset = *offsetsV;
-   
-    // use last sid if in cache 
+
+    // use last sid if in cache
     if (sid == cachedSid && cachedSid > 0) {
       subshape = cachedShape;
     }
@@ -2643,7 +2645,7 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
     }
 
     name = shaper->lookupAttributeId(shaper, aid);
-    
+
     if (subshape == NULL) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
@@ -2653,7 +2655,7 @@ void TRI_IterateShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
-    
+
     if (! filter(shaper, subshape, name, data + offset, offsetsV[1] - offset, ptr)) {
       return;
     }
@@ -2675,7 +2677,11 @@ void TRI_PrintShapeValues (TRI_shape_value_t* values,
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

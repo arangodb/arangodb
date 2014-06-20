@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_STRINGS_H
-#define TRIAGENS_BASICS_C_STRINGS_H 1
+#ifndef ARANGODB_BASICS_C_TRI__STRINGS_H
+#define ARANGODB_BASICS_C_TRI__STRINGS_H 1
 
 #include "BasicsC/common.h"
 
@@ -39,11 +41,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to lower case
@@ -186,11 +183,11 @@ char* TRI_ConcatenateSized2String (char const*, size_t, char const*, size_t);
 /// @brief concatenate two strings, with known lengths, using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t*, 
-                                    char const*, 
-                                    size_t, 
-                                    char const*, 
-                                    size_t); 
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t*,
+                                    char const*,
+                                    size_t,
+                                    char const*,
+                                    size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
@@ -245,10 +242,6 @@ void TRI_FreeStringZ (TRI_memory_zone_t*, char*, char const* file, int line);
 void TRI_FreeString (TRI_memory_zone_t*, char*);
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     STRING ESCAPE
 // -----------------------------------------------------------------------------
@@ -256,11 +249,6 @@ void TRI_FreeString (TRI_memory_zone_t*, char*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation
@@ -290,10 +278,10 @@ char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen);
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString (TRI_memory_zone_t*, 
-                                 char const* in, 
-                                 size_t inLength, 
-                                 size_t* outLength, 
+char* TRI_EscapeControlsCString (TRI_memory_zone_t*,
+                                 char const* in,
+                                 size_t inLength,
+                                 size_t* outLength,
                                  bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,9 +301,9 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 /// escape the character '/'.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in, 
-                            size_t inLength, 
-                            bool escapeSlash, 
+char* TRI_EscapeUtf8String (char const* in,
+                            size_t inLength,
+                            bool escapeSlash,
                             size_t* outLength,
                             bool);
 
@@ -323,11 +311,11 @@ char* TRI_EscapeUtf8String (char const* in,
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*, 
-                             char const* in, 
-                             size_t inLength, 
-                             bool escapeSlash, 
-                             size_t* outLength, 
+char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*,
+                             char const* in,
+                             size_t inLength,
+                             bool escapeSlash,
+                             size_t* outLength,
                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,17 +352,17 @@ char* TRI_PrefixUtf8String (const char*, const uint32_t);
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

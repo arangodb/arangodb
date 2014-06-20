@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_JSON_HELPER_H
-#define TRIAGENS_BASICS_JSON_HELPER_H 1
+#ifndef ARANGODB_BASICS_JSON_HELPER_H
+#define ARANGODB_BASICS_JSON_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/json.h"
@@ -48,7 +50,7 @@ namespace triagens {
 
         JsonHelper ();
         ~JsonHelper ();
-        
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
@@ -56,20 +58,20 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a uint64 into a JSON string
 ////////////////////////////////////////////////////////////////////////////////
 
         static TRI_json_t* uint64String (TRI_memory_zone_t*,
                                          uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a uint64 into a JSON string
 ////////////////////////////////////////////////////////////////////////////////
 
         static uint64_t stringUInt64 (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a uint64 into a JSON string
 ////////////////////////////////////////////////////////////////////////////////
 
         static uint64_t stringUInt64 (TRI_json_t const*,
@@ -104,26 +106,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static TRI_json_t* fromString (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
-        
-        static TRI_json_t* fromString (char const*, 
+
+        static TRI_json_t* fromString (char const*,
                                        size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify json
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static std::string toString (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static inline bool isArray (TRI_json_t const* json) {
           return json != 0 && json->_type == TRI_JSON_ARRAY;
         }
@@ -131,7 +133,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for lists
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static inline bool isList (TRI_json_t const* json) {
           return json != 0 && json->_type == TRI_JSON_LIST;
         }
@@ -139,7 +141,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for strings
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static inline bool isString (TRI_json_t const* json) {
           return TRI_IsStringJson(json);
         }
@@ -147,7 +149,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for numbers
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static inline bool isNumber (TRI_json_t const* json) {
           return json != 0 && json->_type == TRI_JSON_NUMBER;
         }
@@ -155,7 +157,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for booleans
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static inline bool isBoolean (TRI_json_t const* json) {
           return json != 0 && json->_type == TRI_JSON_BOOLEAN;
         }
@@ -163,23 +165,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element
 ////////////////////////////////////////////////////////////////////////////////
-        
-        static TRI_json_t* getArrayElement (TRI_json_t const*, 
+
+        static TRI_json_t* getArrayElement (TRI_json_t const*,
                                             const char* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-        static std::string getStringValue (TRI_json_t const*, 
+
+        static std::string getStringValue (TRI_json_t const*,
                                            const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-        static std::string getStringValue (TRI_json_t const*, 
-                                           const char*, 
+
+        static std::string getStringValue (TRI_json_t const*,
+                                           const char*,
                                            const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,9 +203,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-        static bool getBooleanValue (TRI_json_t const*, 
-                                     const char*, 
+
+        static bool getBooleanValue (TRI_json_t const*,
+                                     const char*,
                                      bool);
 
     };
@@ -212,7 +214,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

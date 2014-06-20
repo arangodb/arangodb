@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8LINE_EDITOR_H
-#define TRIAGENS_V8_V8LINE_EDITOR_H 1
+#ifndef ARANGODB_V8_V8LINE_EDITOR_H
+#define ARANGODB_V8_V8LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
 
@@ -89,7 +91,7 @@ class V8LineEditor : public LineEditor {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     ~V8LineEditor ();
 
 // -----------------------------------------------------------------------------
@@ -100,7 +102,7 @@ class V8LineEditor : public LineEditor {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief      creates a concrete Shell with the correct parameter (Completer!!)
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,5 +133,5 @@ protected:
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

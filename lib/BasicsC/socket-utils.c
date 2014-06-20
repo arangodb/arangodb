@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -74,13 +76,13 @@ int TRI_closesocket (TRI_socket_t s) {
       LOG_WARNING("socket close error: %d", WSAGetLastError());
     }
     // We patch libev on Windows lightly to not really distinguish between
-    // socket handles and file descriptors, therefore, we do not have to do the 
+    // socket handles and file descriptors, therefore, we do not have to do the
     // following any more:
     // if (s.fileDescriptor != -1) {
     //   res = _close(s.fileDescriptor);
          // "To close a file opened with _open_osfhandle, call _close."
          // The underlying handle is also closed by a call to _close,
-         // so it is not necessary to call the Win32 function CloseHandle 
+         // so it is not necessary to call the Win32 function CloseHandle
          // on the original handle.
     // However, we do want to do the special shutdown/recv magic above
     // because only then we can reuse the port quickly, which we want
@@ -208,5 +210,5 @@ void TRI_ShutdownSockets (void) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
