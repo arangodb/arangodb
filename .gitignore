@@ -102,3 +102,4 @@ js/apps/*
 .sass-cache/
 
 3rdParty/etcd/src/
+Documentation/Books/allComments.txt
