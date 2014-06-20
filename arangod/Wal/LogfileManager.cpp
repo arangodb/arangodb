@@ -513,7 +513,7 @@ void LogfileManager::stop () {
   LOG_TRACE("closing logfiles");
   closeLogfiles();
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerStop") {
+  TRI_IF_FAILURE("LogfileManagerStop") {
     // intentionally kill the server
     TRI_SegfaultDebugging("LogfileManagerStop");
   }
@@ -1023,7 +1023,7 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
   static const uint64_t MaxIterations = 1000;
   size_t iterations = 0;
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+  TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
     // intentionally don't return a logfile
     return nullptr;
   }
@@ -1430,7 +1430,7 @@ int LogfileManager::readShutdownInfo () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerWriteShutdown") {
+  TRI_IF_FAILURE("LogfileManagerWriteShutdown") {
     return TRI_ERROR_DEBUG;
   }
 

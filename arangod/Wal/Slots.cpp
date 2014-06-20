@@ -163,7 +163,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
           if (_logfile == nullptr) {
             usleep(10 * 1000);
   
-            TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+            TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
               return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
             }
 
@@ -409,7 +409,7 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
         Logfile::StatusType status = newLogfile(1);
 
         if (_logfile == nullptr) {
-          TRI_DEBUG_INTENTIONAL_FAIL_IF("LogfileManagerGetWriteableLogfile") {
+          TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
             return TRI_ERROR_ARANGO_NO_JOURNAL;
           }
 

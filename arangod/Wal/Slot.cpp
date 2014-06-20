@@ -99,7 +99,7 @@ void Slot::fill (void* src,
   crc = TRI_BlockCrc32(crc, (char const*) marker, static_cast<TRI_voc_size_t>(size));
   marker->_crc = TRI_FinalCrc32(crc);
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("WalSlotCrc") {
+  TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
     LOG_WARNING("intentionally writing corrupt marker into datafile");
     marker->_crc = 0xdeadbeef;

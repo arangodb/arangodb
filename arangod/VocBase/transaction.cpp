@@ -525,7 +525,7 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteBeginMarker") {
+  TRI_IF_FAILURE("TransactionWriteBeginMarker") {
     return TRI_ERROR_DEBUG;
   }
 
@@ -558,7 +558,7 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteAbortMarker") {
+  TRI_IF_FAILURE("TransactionWriteAbortMarker") {
     return TRI_ERROR_DEBUG;
   }
 
@@ -591,7 +591,7 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteCommitMarker") {
+  TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return TRI_ERROR_DEBUG;
   }
 
@@ -937,11 +937,11 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     trx->_waitForSync = true;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionOperationNoSlot") {
+  TRI_IF_FAILURE("TransactionOperationNoSlot") {
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionOperationNoSlotExcept") {
+  TRI_IF_FAILURE("TransactionOperationNoSlotExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   

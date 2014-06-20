@@ -195,7 +195,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
         return GetAttributeId(p);
       }
     
-      TRI_DEBUG_INTENTIONAL_FAIL_IF("ShaperWriteAttributeMarker") {
+      TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
@@ -359,7 +359,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
       return found;
     }
 
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("ShaperWriteShapeMarker") {
+    TRI_IF_FAILURE("ShaperWriteShapeMarker") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
