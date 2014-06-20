@@ -27,16 +27,6 @@ window.ApplicationsView = Backbone.View.extend({
     var buttons = [], tableContent = [];
     tableContent.push(
       window.modalView.createTextEntry(
-        'github-name',
-        'App name',
-        '',
-        'Your chosen application-name comes here',
-        undefined,
-        false,
-        /[<>&'"]/
-    ));
-    tableContent.push(
-      window.modalView.createTextEntry(
         'github-url',
         'Github Url',
         '',
@@ -71,7 +61,8 @@ window.ApplicationsView = Backbone.View.extend({
     var name, url, version, result;
 
     //fetch needed information, need client side verification
-    name = $('#github-name').val();
+    //remove name handling on server side because not needed
+    name = "";
     url = $('#github-url').val();
     version = $('#github-version').val();
 
@@ -274,10 +265,13 @@ window.ApplicationsView = Backbone.View.extend({
         //here comes special render for multiple versions view
 
         var highestVersion = "0.0.0";
-        var selectOptions = "";
+        var selectOptions = [];
 
         _.each(versions[name].versions, function(x) {
-          selectOptions += '<option>'+x+'</option>';
+          selectOptions.push({
+            value: x,
+            label: x
+          });
           if (x > highestVersion) {
             highestVersion = x;
           }

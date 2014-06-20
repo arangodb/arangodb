@@ -134,6 +134,36 @@ controller.del("/foxxes/purge/:key", function (req, res) {
 }).summary("Remove a Foxx.")
 .notes("This function is used to remove a foxx.");
 
+/** Remove all uninstalled Foxx versions
+ *
+ * Remove the Foxx with the given array of versions app ids.
+ */
+
+controller.del("/foxxes/purgeall/:key", function (req, res) {
+  var name = req.params("key");
+
+  var allFoxxes = foxxes.viewAll();
+  var toDelete = [];
+
+  underscore.each(allFoxxes, function(myFoxx) {
+    if (myFoxx.name === name) {
+      toDelete.push(myFoxx.app);
+    }
+  });
+
+  underscore.each(toDelete, function(myFoxx) {
+    FoxxManager.purge(myFoxx);
+  });
+
+  res.json({res: true});
+}).pathParam("key", {
+  description: "The _key attribute, where the information of this Foxx-Install is stored.",
+  type: "string",
+  required: true,
+  allowMultiple: false
+}).summary("Remove a all existing Foxx versions .")
+.notes("This function is used to remove all versions of a foxx.");
+
 /** Get info about mount points of an installed Foxx
  *
  * Returns mount points of Foxx

@@ -32,7 +32,9 @@
 
 var fs = require("fs");
 var arangodb = require("org/arangodb");
+var db = arangodb.db;
 var download = require("internal").download;
+var checkedFishBowl = false;
 
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwDownloadError = arangodb.throwDownloadError;
@@ -232,12 +234,123 @@ function processGithubRepository (source) {
   repackZipFile(source);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns the fishbowl collection
+///// this will create the collection if it does not exist. this is better than
+///// needlessly creating the collection for each database in case it is not
+///// used in context of the database.
+////////////////////////////////////////////////////////////////////////////////
+
+function getFishbowlStorage () {
+  'use strict';
+
+  var c = db._collection('_fishbowl');
+  if (c ===  null) {
+    c = db._create('_fishbowl', { isSystem : true });
+  }
+
+  if (c !== null && ! checkedFishBowl) {
+    // ensure indexes
+    c.ensureFulltextIndex("description");
+    c.ensureFulltextIndex("name");
+    checkedFishBowl = true;
+  }
+
+  return c;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all available FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+function availableJson() {
+  'use strict';
+
+  var fishbowl = getFishbowlStorage();
+  var cursor = fishbowl.all();
+  var result = [];
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+
+    var maxVersion = "-";
+    var versions = Object.keys(doc.versions);
+    versions.sort(module.compareVersions);
+    if (versions.length > 0) {
+      versions.reverse();
+      maxVersion = versions[0];
+    }
+
+    var res = {
+      name: doc.name,
+      description: doc.description || "",
+      author: doc.author || "",
+      latestVersion: maxVersion
+    };
+
+    result.push(res);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns the aal collection
+////////////////////////////////////////////////////////////////////////////////
+
+function getStorage () {
+  'use strict';
+
+  return db._collection('_aal');
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all installed FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
+function listJson (showPrefix) {
+  'use strict';
+
+  var aal = getStorage();
+  var cursor = aal.byExample({ type: "mount" });
+  var result = [];
+
+  while (cursor.hasNext()) {
+    var doc = cursor.next();
+
+    var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1");
+
+    var res = {
+      mountId: doc._key,
+      mount: doc.mount,
+      appId: doc.app,
+      name: doc.name,
+      description: doc.description,
+      author: doc.author,
+      system: doc.isSystem ? "yes" : "no",
+      active: doc.active ? "yes" : "no",
+      version: version
+    };
+
+    if (showPrefix) {
+      res.collectionPrefix = doc.options.collectionPrefix;
+    }
+
+    result.push(res);
+  }
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.listJson = listJson;
+exports.getFishbowlStorage = getFishbowlStorage;
+exports.availableJson = availableJson;
 exports.buildGithubUrl = buildGithubUrl;
-exports.repackZipFile = repackZipFile; 
+exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
