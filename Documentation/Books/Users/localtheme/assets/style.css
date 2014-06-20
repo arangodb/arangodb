@@ -7578,3 +7578,9 @@ text-rendering: optimizeLegibility;
 font-smoothing: antialiased;
 font-family: "Open Sans","Clear Sans","Helvetica Neue",Helvetica,Arial,sans-serif
 }
+div.example_show_button {
+  border: medium solid lightgray;
+  text-align: center;
+  position: relative;
+  top: -10px;
+}
