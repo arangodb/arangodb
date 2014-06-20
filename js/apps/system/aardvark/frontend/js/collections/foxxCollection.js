@@ -27,7 +27,6 @@
           result = true;
         },
         error: function(data) {
-          console.log(data);
           result = false;
         }
       });

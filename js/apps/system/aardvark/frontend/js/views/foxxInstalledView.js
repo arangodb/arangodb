@@ -349,6 +349,7 @@
     update: function() {
       var url = this.model.get("gitUrl"),
       version = 'master',
+      name = '',
       result;
 
       if (url === undefined || url === '') {
