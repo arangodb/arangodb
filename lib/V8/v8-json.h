@@ -25,6 +25,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error);

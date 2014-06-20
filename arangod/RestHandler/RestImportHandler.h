@@ -28,17 +28,10 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_IMPORT_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_IMPORT_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief import transaction shortcut
-////////////////////////////////////////////////////////////////////////////////
-
-#define ImportTransactionType SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, UINT64_MAX>
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 RestImportHandler
@@ -135,7 +128,7 @@ namespace triagens {
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-      int handleSingleDocument (ImportTransactionType&,
+      int handleSingleDocument (RestImportTransaction&,
                                 TRI_json_t const*,
                                 std::string&,
                                 bool,

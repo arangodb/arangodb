@@ -148,8 +148,8 @@ void RestJobHandler::putJob () {
     return;
   }
 
-  assert(status == AsyncJobResult::JOB_DONE);
-  assert(response != 0);
+  TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
+  TRI_ASSERT(response != 0);
 
   // delete our own response
   if (_response != 0) {

@@ -31,11 +31,6 @@
 #include "Basics/Common.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-
 namespace triagens {
   namespace arangob {
 
@@ -84,13 +79,13 @@ namespace triagens {
 /// @brief return the URL of the operation to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual string url (const int, const size_t, const size_t) = 0;
+      virtual std::string url (const int, const size_t, const size_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the HTTP method of the operation to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual HttpRequest::HttpRequestType type (const int, const size_t, const size_t) = 0;
+      virtual triagens::rest::HttpRequest::HttpRequestType type (const int, const size_t, const size_t) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the payload (body) of the HTTP request to execute

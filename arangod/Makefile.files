@@ -15,32 +15,42 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
-	arangod/Ahuacatl/ahuacatl-access-optimiser.c \
-	arangod/Ahuacatl/ahuacatl-ast-node.c \
-	arangod/Ahuacatl/ahuacatl-bind-parameter.c \
-	arangod/Ahuacatl/ahuacatl-codegen.c \
-	arangod/Ahuacatl/ahuacatl-collections.c \
-	arangod/Ahuacatl/ahuacatl-context.c \
-	arangod/Ahuacatl/ahuacatl-conversions.c \
-	arangod/Ahuacatl/ahuacatl-error.c \
-	arangod/Ahuacatl/ahuacatl-explain.c \
-	arangod/Ahuacatl/ahuacatl-functions.c \
-	arangod/Ahuacatl/ahuacatl-grammar.c \
-	arangod/Ahuacatl/ahuacatl-index.c \
-	arangod/Ahuacatl/ahuacatl-node.c \
-	arangod/Ahuacatl/ahuacatl-optimiser.c \
-	arangod/Ahuacatl/ahuacatl-parser-functions.c \
-	arangod/Ahuacatl/ahuacatl-parser.c \
-	arangod/Ahuacatl/ahuacatl-result.c \
-	arangod/Ahuacatl/ahuacatl-scope.c \
-	arangod/Ahuacatl/ahuacatl-statement-dump.c \
-	arangod/Ahuacatl/ahuacatl-statement-walker.c \
-	arangod/Ahuacatl/ahuacatl-statementlist.c \
-	arangod/Ahuacatl/ahuacatl-tokens.c \
-	arangod/Ahuacatl/ahuacatl-variable.c \
+	arangod/Ahuacatl/ahuacatl-access-optimiser.cpp \
+	arangod/Ahuacatl/ahuacatl-ast-node.cpp \
+	arangod/Ahuacatl/ahuacatl-bind-parameter.cpp \
+	arangod/Ahuacatl/ahuacatl-codegen.cpp \
+	arangod/Ahuacatl/ahuacatl-collections.cpp \
+	arangod/Ahuacatl/ahuacatl-context.cpp \
+	arangod/Ahuacatl/ahuacatl-conversions.cpp \
+	arangod/Ahuacatl/ahuacatl-error.cpp \
+	arangod/Ahuacatl/ahuacatl-explain.cpp \
+	arangod/Ahuacatl/ahuacatl-functions.cpp \
+	arangod/Ahuacatl/ahuacatl-grammar.cpp \
+	arangod/Ahuacatl/ahuacatl-index.cpp \
+	arangod/Ahuacatl/ahuacatl-node.cpp \
+	arangod/Ahuacatl/ahuacatl-optimiser.cpp \
+	arangod/Ahuacatl/ahuacatl-parser-functions.cpp \
+	arangod/Ahuacatl/ahuacatl-parser.cpp \
+	arangod/Ahuacatl/ahuacatl-result.cpp \
+	arangod/Ahuacatl/ahuacatl-scope.cpp \
+	arangod/Ahuacatl/ahuacatl-statement-dump.cpp \
+	arangod/Ahuacatl/ahuacatl-statement-walker.cpp \
+	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
+	arangod/Ahuacatl/ahuacatl-tokens.cpp \
+	arangod/Ahuacatl/ahuacatl-variable.cpp \
 	arangod/BitIndexes/bitarray.cpp \
 	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
+        arangod/Cluster/AgencyComm.cpp \
+	arangod/Cluster/ApplicationCluster.cpp \
+	arangod/Cluster/ClusterComm.cpp \
+	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/HeartbeatThread.cpp \
+	arangod/Cluster/RestShardHandler.cpp \
+	arangod/Cluster/ServerJob.cpp \
+	arangod/Cluster/ServerState.cpp \
+	arangod/Cluster/v8-cluster.cpp \
+	arangod/Cluster/ClusterMethods.cpp \
 	arangod/FulltextIndex/fulltext-handles.cpp \
 	arangod/FulltextIndex/fulltext-index.cpp \
 	arangod/FulltextIndex/fulltext-list.cpp \
@@ -70,11 +80,9 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arango.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
-	arangod/Transaction/IdGenerator.cpp \
-	arangod/Transaction/Manager.cpp \
-	arangod/Transaction/Operations.cpp \
-	arangod/Transaction/Transaction.cpp \
 	arangod/Utils/DocumentHelper.cpp \
+	arangod/Utils/Exception.cpp \
+	arangod/Utils/Transaction.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \
@@ -94,8 +102,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \
-	arangod/VocBase/marker.cpp \
-	arangod/VocBase/primary-collection.cpp \
 	arangod/VocBase/primary-index.cpp \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
@@ -103,9 +109,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/replication-logger.cpp \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
-	arangod/VocBase/synchroniser.cpp \
 	arangod/VocBase/transaction.cpp \
-	arangod/VocBase/update-policy.cpp \
 	arangod/VocBase/voc-shaper.cpp \
 	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \
@@ -113,34 +117,10 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Wal/CollectorThread.cpp \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
+	arangod/Wal/Marker.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
-	arangod/Wal/TestThread.cpp \
 	arangod/Wal/SynchroniserThread.cpp 
-
-if ENABLE_CLUSTER
-
-arangod_libarangod_a_SOURCES += \
-        arangod/Cluster/AgencyComm.cpp \
-	arangod/Cluster/ApplicationCluster.cpp \
-	arangod/Cluster/ClusterComm.cpp \
-	arangod/Cluster/ClusterInfo.cpp \
-	arangod/Cluster/HeartbeatThread.cpp \
-	arangod/Cluster/RestShardHandler.cpp \
-	arangod/Cluster/ServerJob.cpp \
-	arangod/Cluster/ServerState.cpp \
-	arangod/Cluster/v8-cluster.cpp \
-	arangod/Cluster/ClusterMethods.cpp
-endif
-
-
-if ENABLE_MRUBY
-
-arangod_libarangod_a_SOURCES += \
-	arangod/MRServer/ApplicationMR.cpp \
-	arangod/MRServer/mr-actions.cpp
-
-endif
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           PROGRAM
@@ -181,8 +161,8 @@ endif
 ### @brief flex
 ################################################################################
 
-FLEX_FILES += \
-        arangod/Ahuacatl/ahuacatl-tokens.c
+FLEXXX_FILES += \
+        arangod/Ahuacatl/ahuacatl-tokens.cpp
 
 ################################################################################
 ### @brief bison
@@ -195,8 +175,12 @@ if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
 	arangod/Ahuacatl/ahuacatl-grammar.h \
-	arangod/Ahuacatl/ahuacatl-grammar.c
+	arangod/Ahuacatl/ahuacatl-grammar.c \
+	arangod/Ahuacatl/ahuacatl-grammar.cpp
 endif
+
+arangod/Ahuacatl/ahuacatl-grammar.cpp: arangod/Ahuacatl/ahuacatl-grammar.c
+	cp arangod/Ahuacatl/ahuacatl-grammar.c arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE

@@ -25,10 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
-
-#include <stdio.h>
-#include <fstream>
+#include "Basics/Common.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
@@ -36,7 +33,7 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
-#include "BasicsC/init.h"
+#include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"

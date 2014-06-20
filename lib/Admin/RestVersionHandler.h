@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ADMIN_REST_VERSION_HANDLER_H
 #define TRIAGENS_ADMIN_REST_VERSION_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Admin/RestBaseHandler.h"
 
 #include "Rest/HttpResponse.h"

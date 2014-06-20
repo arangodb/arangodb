@@ -151,6 +151,9 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
     if (rc == EDEADLK) {
       LOG_ERROR("spinlock deadlock detected");
     }
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not lock the spin-lock: %s", strerror(rc));
   }
 }
@@ -165,6 +168,9 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
   rc = pthread_spin_unlock(spinLock);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not release the spin-lock: %s", strerror(rc));
   }
 }
@@ -245,6 +251,9 @@ again:
       LOG_ERROR("rw-lock deadlock detected");
     }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s", strerror(rc));
   }
 }
@@ -259,6 +268,9 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s", strerror(rc));
   }
 }
@@ -288,6 +300,9 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
     if (rc == EDEADLK) {
       LOG_ERROR("rw-lock deadlock detected");
     }
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s", strerror(rc));
   }
 }
@@ -302,7 +317,10 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
   rc  = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
-    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s", strerror(rc));
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
+    LOG_FATAL_AND_EXIT("could not write-unlock the read-write lock: %s", strerror(rc));
   }
 }
 
@@ -356,6 +374,9 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
   rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not signal the condition: %s", strerror(rc));
   }
 }
@@ -372,6 +393,9 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
   rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not croadcast the condition: %s", strerror(rc));
   }
 }
@@ -388,6 +412,9 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
   rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
   }
 }
@@ -423,6 +450,9 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
       return false;
     }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not wait for the condition: %s", strerror(rc));
   }
 
@@ -439,6 +469,9 @@ void TRI_LockCondition (TRI_condition_t* cond) {
   rc = pthread_mutex_lock(cond->_mutex);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not lock the condition: %s", strerror(rc));
   }
 }
@@ -453,137 +486,12 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
   rc = pthread_mutex_unlock(cond->_mutex);
 
   if (rc != 0) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     LOG_FATAL_AND_EXIT("could not unlock the condition: %s", strerror(rc));
   }
 }
-
-
-
-// -----------------------------------------------------------------------------
-// COMPARE & SWAP operations below for MAC and GNUC
-// Note that for the MAC OS we use the 'barrier' functions which ensure that
-// read/write operations on the scalars are executed in order. According to the
-// available documentation, the GCC variants of these COMPARE & SWAP operations
-// are implemented with a memory barrier. The MS Windows variants of these
-// operations (according to the documentation on MS site) also provide a full
-// memory barrier.
-// -----------------------------------------------------------------------------
-
-#if 0
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps 32bit integers with full memory barrier
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CompareAndSwapIntegerInt32 (volatile int32_t* theValue, int32_t oldValue, int32_t newValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap32Barrier(oldValue, newValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerInt32 implementation defined
-  #endif
-}
-
-bool TRI_CompareIntegerInt32 (volatile int32_t* theValue, int32_t oldValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap32Barrier(oldValue, oldValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerInt32 implementation defined
-  #endif
-}
-
-bool TRI_CompareAndSwapIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue, uint32_t newValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap32Barrier((int32_t)(oldValue), (int32_t)(newValue), (volatile int32_t*)(theValue));
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerUInt32 implementation defined
-  #endif
-}
-
-bool TRI_CompareIntegerUInt32 (volatile uint32_t* theValue, uint32_t oldValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap32Barrier((int32_t)(oldValue), (int32_t)(oldValue), (volatile int32_t*)(theValue));
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerUInt32 implementation defined
-  #endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps 64bit integers with full memory barrier
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CompareAndSwapIntegerInt64 (volatile int64_t* theValue, int64_t oldValue, int64_t newValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap64Barrier(oldValue, newValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerInt64 implementation defined
-  #endif
-}
-
-bool TRI_CompareIntegerInt64 (volatile int64_t* theValue, int64_t oldValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap64Barrier(oldValue, oldValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerInt64 implementation defined
-  #endif
-}
-
-bool TRI_CompareAndSwapIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue, uint64_t newValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap64Barrier((int64_t)(oldValue), (int64_t)(newValue), (volatile  int64_t*)(theValue));
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerUInt64 implementation defined
-  #endif
-}
-
-bool TRI_CompareIntegerUInt64 (volatile uint64_t* theValue, uint64_t oldValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwap64Barrier((int64_t)(oldValue), (int64_t)(oldValue), (volatile int64_t*)(theValue));
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
-  #else
-    #error No TRI_CompareAndSwapIntegerUInt64 implementation defined
-  #endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief atomically compares and swaps pointers with full memory barrier
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CompareAndSwapPointer(void* volatile* theValue, void* oldValue, void* newValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwapPtrBarrier(oldValue, newValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, newValue);
-  #else
-    #error No TRI_CompareAndSwapPointer implementation defined
-  #endif
-}
-
-bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
-  #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1050
-    return OSAtomicCompareAndSwapPtrBarrier(oldValue, oldValue, theValue);
-  #elif (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) > 40100
-    return __sync_bool_compare_and_swap(theValue, oldValue, oldValue);
-  #else
-    #error No TRI_CompareAndSwapPointer implementation defined
-  #endif
-}
-
-#endif
 
 #endif
 

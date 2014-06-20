@@ -28,9 +28,9 @@
 #ifndef TRIAGENS_UTILS_AHUACATL_TRANSACTION_H
 #define TRIAGENS_UTILS_AHUACATL_TRANSACTION_H 1
 
-#ifdef TRI_ENABLE_CLUSTER
+#include "Basics/Common.h"
+
 #include "Cluster/ServerState.h"
-#endif
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
@@ -53,11 +53,6 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,21 +60,21 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AhuacatlTransaction (struct TRI_vocbase_s* const vocbase,
-                             triagens::arango::CollectionNameResolver const& resolver,
-                             TRI_aql_context_t* const context) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, false) {
+        AhuacatlTransaction (struct TRI_vocbase_s* vocbase,
+                             TRI_aql_context_t* context) 
+          : Transaction<T>(vocbase, TRI_GetIdServer(), false),
+            _context(context) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
           TRI_vector_pointer_t* collections = &context->_collections;
 
-          const size_t n = collections->_length;
+          size_t const n = collections->_length;
 
           for (size_t i = 0; i < n; ++i) {
-            TRI_aql_collection_t* collection = (TRI_aql_collection_t*) TRI_AtVectorPointer(collections, i);
+            TRI_aql_collection_t* collection = static_cast<TRI_aql_collection_t*>(TRI_AtVectorPointer(collections, i));
 
-            processCollection(resolver, collection);
+            processCollection(collection);
           }
         }
 
@@ -94,54 +89,67 @@ namespace triagens {
 /// @brief add a collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        void processCollection (triagens::arango::CollectionNameResolver const& resolver,
-                                TRI_aql_collection_t* collection) {
-#ifdef TRI_ENABLE_CLUSTER
+        void processCollection (TRI_aql_collection_t* collection) {
           if (ServerState::instance()->isCoordinator()) {
-            processCollectionCoordinator(resolver, collection);
-            return;
+            processCollectionCoordinator(collection);
           }
-#endif
-
-          processCollectionNormal(resolver, collection);
+          else {
+            processCollectionNormal(collection);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a coordinator collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
-        void processCollectionCoordinator (triagens::arango::CollectionNameResolver const& resolver,
-                                           TRI_aql_collection_t* collection) {
-          TRI_voc_cid_t cid = resolver.getCollectionIdCluster(collection->_name);
+        void processCollectionCoordinator (TRI_aql_collection_t* collection) {
+          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->_name);
          
-          this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
+          this->addCollection(cid, collection->_name, getCollectionAccessType(collection));
         }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a regular collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionNormal (triagens::arango::CollectionNameResolver const& resolver,
-                                      TRI_aql_collection_t* collection) {
-          TRI_vocbase_col_t const* col = resolver.getCollectionStruct(collection->_name);
+        void processCollectionNormal (TRI_aql_collection_t* collection) {
+          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->_name);
           TRI_voc_cid_t cid = 0;
 
-          if (col != 0) {
+          if (col != nullptr) {
             cid = col->_cid;
           }
 
-          int res = this->addCollection(cid, collection->_name, TRI_TRANSACTION_READ);
+          int res = this->addCollection(cid, collection->_name, getCollectionAccessType(collection));
 
-          if (res == TRI_ERROR_NO_ERROR && col != 0) {
-            collection->_collection = (TRI_vocbase_col_t*) col;
+          if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
+            collection->_collection = const_cast<TRI_vocbase_col_t*>(col);
           }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief determine the access type (read | write) for a collection
 ////////////////////////////////////////////////////////////////////////////////
+
+        TRI_transaction_type_e getCollectionAccessType (TRI_aql_collection_t const* collection) const {
+          if (_context->_type == TRI_AQL_QUERY_READ ||
+              (_context->_writeCollection != nullptr && 
+               strcmp(collection->_name, _context->_writeCollection) != 0)) {
+            // read-only query or write-query with a different write-to collection
+            return TRI_TRANSACTION_READ;
+          }
+            
+          // data-modifying query
+          return TRI_TRANSACTION_WRITE;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+        TRI_aql_context_t* _context;
 
     };
 

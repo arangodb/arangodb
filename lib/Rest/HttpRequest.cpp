@@ -35,6 +35,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
@@ -1100,9 +1101,9 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setFullUrl (char const* begin, char const* end) {
-  assert(begin != 0);
-  assert(end != 0);
-  assert(begin <= end);
+  TRI_ASSERT(begin != 0);
+  TRI_ASSERT(end != 0);
+  TRI_ASSERT(begin <= end);
 
   _fullUrl = string(begin, end - begin);
 }
@@ -1283,10 +1284,10 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
                                      bool isRequestContextOwner) {
   if (_requestContext) {
     // if we have a shared context, we should not have got here
-    assert(isRequestContextOwner);
+    TRI_ASSERT(isRequestContextOwner);
 
     // delete any previous context
-    assert(false);
+    TRI_ASSERT(false);
     delete _requestContext;
   }
 

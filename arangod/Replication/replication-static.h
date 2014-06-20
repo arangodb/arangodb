@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_REPLICATION_REPLICATION_STATIC_H
 #define TRIAGENS_REPLICATION_REPLICATION_STATIC_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -76,10 +72,6 @@ int TRI_RunContinuousSyncerReplication (void*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -27,8 +27,6 @@
 
 #include "RestReplicationHandler.h"
 
-#include "BasicsC/common.h"
-
 #include "Basics/JsonHelper.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
@@ -36,9 +34,7 @@
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
-#include "Utils/EmbeddableTransaction.h"
-#include "Utils/RestTransactionContext.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
@@ -46,11 +42,8 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/index.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -149,47 +142,35 @@ Handler::status_t RestReplicationHandler::execute() {
     }
     else if (command == "batch") {
 
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandBatch();
       }
-#else
-      handleCommandBatch();
-#endif
     }
     else if (command == "inventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandInventory();
       }
-#else
-      handleCommandInventory();
-#endif
     }
     else if (command == "dump") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
       else {
         handleCommandDump();
       }
-#else
-      handleCommandDump();
-#endif
     }
     else if (command == "restore-collection") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -210,16 +191,12 @@ Handler::status_t RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       
-#ifdef TRI_ENABLE_CLUSTER
       if (ServerState::instance()->isCoordinator()) {
         handleCommandRestoreDataCoordinator();
       }
       else {
         handleCommandRestoreData();
       }
-#else
-      handleCommandRestoreData();
-#endif
     }
     else if (command == "sync") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
@@ -282,7 +259,6 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandApplierGetState();
       }
     }
-#ifdef TRI_ENABLE_CLUSTER
     else if (command == "clusterInventory") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -295,7 +271,6 @@ Handler::status_t RestReplicationHandler::execute() {
         handleCommandClusterInventory();
       }
     }
-#endif
     else {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -393,14 +368,12 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
   
 bool RestReplicationHandler::isCoordinatorError () {
-#ifdef TRI_ENABLE_CLUSTER
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(HttpResponse::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
     return true;
   }
-#endif
     
   return false;
 }
@@ -494,7 +467,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStart () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
 
@@ -559,7 +532,7 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStop () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
 
@@ -668,7 +641,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_json_t* json = TRI_JsonReplicationLogger(_vocbase->_replicationLogger);
 
@@ -729,7 +702,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_replication_logger_configuration_t config;
 
@@ -834,7 +807,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerSetConfig () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_replication_logger_configuration_t config;
 
@@ -1002,7 +975,7 @@ void RestReplicationHandler::handleCommandBatch () {
   vector<string> const& suffix = _request->suffix();
   const size_t len = suffix.size();
 
-  assert(len >= 1);
+  TRI_ASSERT(len >= 1);
 
   if (type == HttpRequest::HTTP_REQUEST_POST) {
     // create a new blocker
@@ -1090,7 +1063,6 @@ void RestReplicationHandler::handleCommandBatch () {
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleTrampolineCoordinator () {
 
   // First check the DBserver component of the body json:
@@ -1166,7 +1138,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
   delete res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns ranged data from the replication log
@@ -1586,7 +1557,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandInventory () {
-  assert(_vocbase->_replicationLogger != 0);
+  TRI_ASSERT(_vocbase->_replicationLogger != 0);
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
@@ -1607,7 +1578,7 @@ void RestReplicationHandler::handleCommandInventory () {
     return;
   }
 
-  assert(JsonHelper::isList(collections));
+  TRI_ASSERT(JsonHelper::isList(collections));
 
   // sort collections by type, then name
   const size_t n = collections->_value._objects._length;
@@ -1675,7 +1646,6 @@ void RestReplicationHandler::handleCommandInventory () {
 /// is returned if an error occurred while assembling the response.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleCommandClusterInventory () {
 
   string const& dbName = _request->databaseName();
@@ -1757,7 +1727,6 @@ void RestReplicationHandler::handleCommandClusterInventory () {
   }
 
 }
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1934,7 +1903,6 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-#ifdef TRI_ENABLE_CLUSTER
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(json, overwrite, recycleIds,
@@ -1944,10 +1912,6 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     res = processRestoreCollection(json, overwrite, recycleIds, force, 
                                    remoteServerId, errorMsg);
   }
-#else
-  int res = processRestoreCollection(json, overwrite, recycleIds, force,
-                                     remoteServerId, errorMsg);
-#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1988,7 +1952,6 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
 
   TRI_server_id_t remoteServerId = 0; // TODO
   string errorMsg;
-#ifdef TRI_ENABLE_CLUSTER
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreIndexesCoordinator(json, force, remoteServerId, errorMsg);
@@ -1996,9 +1959,6 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   else {
     res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
   }
-#else
-  int res = processRestoreIndexes(json, force, remoteServerId, errorMsg);
-#endif
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -2092,23 +2052,15 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
         // some collections must not be dropped
 
         // instead, truncate them
-        CollectionNameResolver resolver(_vocbase);
-        SingleCollectionWriteTransaction<EmbeddableTransaction<RestTransactionContext>, UINT64_MAX> trx(_vocbase, resolver, col->_cid);
+        SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, col->_cid);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
-        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&(trx.primaryCollection()->_barrierList));
-
-        if (barrier == 0) {
-          return TRI_ERROR_INTERNAL;
-        }
 
         res = trx.truncate(false);
         res = trx.finish(res);
-
-        TRI_FreeBarrier(barrier);
 
         return res;
       }
@@ -2144,7 +2096,6 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int RestReplicationHandler::processRestoreCollectionCoordinator (
                  TRI_json_t const* collection,
                  bool dropExisting,
@@ -2294,7 +2245,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   return TRI_ERROR_NO_ERROR;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
@@ -2332,7 +2282,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  const string name = JsonHelper::getStringValue(parameters, "name", "");
+  string const name = JsonHelper::getStringValue(parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2353,34 +2303,39 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  int res = TRI_UseCollectionVocBase(_vocbase, col);
+  TRI_vocbase_col_status_e status;
+  int res = TRI_UseCollectionVocBase(_vocbase, col, status);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  TRI_primary_collection_t* primary = col->_collection;
+  TRI_document_collection_t* document = col->_collection;
+
+  // create a fake transaction for creating the indexes
+  // this is necessary because otherwise we'll have an assertion fail
+  TransactionBase trx(true);
 
   TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-    TRI_index_t* idx = 0;
+    TRI_index_t* idx = nullptr;
 
     // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-    res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
+    res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
       break;
     }
     else {
-      assert(idx != 0);
+      TRI_ASSERT(idx != nullptr);
 
-      res = TRI_SaveIndex(primary, idx, remoteServerId);
+      res = TRI_SaveIndex(document, idx, remoteServerId);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "could not save index: " + string(TRI_errno_string(res));
@@ -2389,7 +2344,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     }
   }
 
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   TRI_ReadUnlockReadWriteLock(&_vocbase->_inventoryLock);
 
@@ -2402,7 +2357,6 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 int RestReplicationHandler::processRestoreIndexesCoordinator (
                  TRI_json_t const* collection,
                  bool force,
@@ -2475,7 +2429,6 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   return res;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
@@ -2492,23 +2445,23 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
   if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = primary->_shaper->_memoryZone;
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(primary->_shaper, json, true, true);
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true, true);  // PROTECTED by trx in trxCollection
 
     if (shaped != 0) {
-      TRI_doc_mptr_t mptr;
+      TRI_doc_mptr_copy_t mptr;
 
-      int res = primary->read(trxCollection, key, &mptr, false);
+      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
         if (type == MARKER_EDGE) {
           // edge
-          if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -2531,16 +2484,16 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_EDGE, shaped, &edge, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &edge, false, false, true);
           }
         }
         else {
           // document
-          if (primary->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = primary->insert(trxCollection, key, rid, &mptr, TRI_DOC_MARKER_KEY_DOCUMENT, shaped, 0, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, nullptr, false, false, true);
           }
         }
       }
@@ -2548,9 +2501,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         // update
 
         // init the update policy
-        TRI_doc_update_policy_t policy;
-        TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
-        res = primary->update(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+        TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2567,11 +2519,9 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
   else if (type == MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     // init the update policy
-    TRI_doc_update_policy_t policy;
-    TRI_InitUpdatePolicy(&policy, TRI_DOC_UPDATE_LAST_WRITE, 0, 0);
+    TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
 
-    TRI_primary_collection_t* primary = trxCollection->_collection->_collection;
-    int res = primary->remove(trxCollection, key, rid, &policy, false, false);
+    int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &policy, false, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
@@ -2753,6 +2703,9 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     // TODO: waitForSync disabled here. use for initial replication, too
     // sync at end of trx
     trxCollection->_waitForSync = false;
+
+    // create a fake transaction to avoid assertion failures. TODO: use proper transaction here
+    TransactionBase fake(true);
     res = processRestoreDataBatch(resolver, trxCollection, generatingServer, useRevision, force, errorMsg);
   }
 
@@ -2824,7 +2777,6 @@ void RestReplicationHandler::handleCommandRestoreData () {
 /// @brief restores the data of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   char const* name = _request->value("collection");
 
@@ -2853,7 +2805,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   vector<string> shardIds;
   map<ShardID, ServerID>::iterator it;
   map<string, size_t>::iterator it2;
-  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); it++) {
+  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
     shardTab.insert(make_pair(it->first,shardIds.size()));
     shardIds.push_back(it->first);
   }
@@ -3073,7 +3025,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   generateResult(&result);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dumps the data of a collection
@@ -3267,7 +3218,8 @@ void RestReplicationHandler::handleCommandDump () {
              (unsigned long long) tickStart,
              (unsigned long long) tickEnd);
 
-  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+  TRI_vocbase_col_status_e status;
+  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
 
   if (col == 0) {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -3610,7 +3562,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
@@ -3728,7 +3680,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
@@ -3876,7 +3828,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   bool found;
   const char* value = _request->value("from", found);
@@ -3949,7 +3901,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   int res = TRI_StopReplicationApplier(_vocbase->_replicationApplier, true);
 
@@ -4077,7 +4029,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
 
@@ -4095,7 +4047,7 @@ void RestReplicationHandler::handleCommandApplierGetState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierDeleteState () {
-  assert(_vocbase->_replicationApplier != 0);
+  TRI_ASSERT(_vocbase->_replicationApplier != 0);
 
   int res = TRI_ForgetReplicationApplier(_vocbase->_replicationApplier);
 

@@ -31,6 +31,8 @@
 #ifndef TRIAGENS_SCHEDULER_TASK_MANAGER_H
 #define TRIAGENS_SCHEDULER_TASK_MANAGER_H 1
 
+#include "Basics/Common.h"
+
 #include "Scheduler/events.h"
 
 namespace triagens {

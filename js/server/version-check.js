@@ -62,6 +62,9 @@
     error: function (msg) {
       console.error("In database '%s': %s", db._name(), msg);
     },
+    warn: function (msg) {
+      console.warn("In database '%s': %s", db._name(), msg);
+    },
     log: function (msg) {
       this.info(msg);
     }
@@ -329,8 +332,8 @@
             userManager.save(user.username, user.passwd, user.active, user.extra || {});
           }
           catch (err) {
-            logger.error("could not add database user '" + user.username + "': " + 
-                         String(err.stack || err));
+            logger.warn("could not add database user '" + user.username + "': " + 
+                        String(err.stack || err));
           }
         });
       }
@@ -497,47 +500,6 @@
     });
     
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief upgradeMarkers12
-////////////////////////////////////////////////////////////////////////////////
-
-    // update markers in all collection datafiles to key markers
-    addUpgradeTask("upgradeMarkers12", "update markers in all collection datafiles", function () {
-      var collections = db._collections();
-      var i;
-      
-      for (i in collections) {
-        if (collections.hasOwnProperty(i)) {
-          var collection = collections[i];
-
-          try {
-            if (collection.version() >= 3) {
-              // already upgraded
-              continue;
-            }
-
-            if (collection.upgrade()) {
-              // success
-              collection.setAttribute("version", 3);
-            }
-            else {
-              // fail
-              logger.error("could not upgrade collection datafiles for '"
-                            + collection.name() + "'");
-              return false;
-            }
-          }
-          catch (e) {
-            logger.error("could not upgrade collection datafiles for '" 
-                          + collection.name() + "'");
-            return false;
-          }
-        }
-      }
-
-      return true;
-    });
-  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief upgradeGraphs
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -572,7 +534,8 @@
             );
           }
         );
-      } catch (e) {
+      } 
+      catch (e) {
         logger.error("could not upgrade _graphs");
         return false;
       }
@@ -620,17 +583,6 @@
         journalSize: 4 * 1024 * 1024 
       });
     });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setupTrx
-////////////////////////////////////////////////////////////////////////////////
-
-    if (! cluster.isCoordinator()) {
-      // set up the collection _trx
-      addTask("setupTrx", "setup _trx collection", function () {
-        return createSystemCollection("_trx", { waitForSync : false });
-      });
-    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setupReplication

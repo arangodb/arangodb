@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_OPTIMISER_H
 #define TRIAGENS_AHUACATL_AHUACATL_OPTIMISER_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 struct TRI_aql_context_s;
 
@@ -54,10 +50,6 @@ bool TRI_OptimiseAql (struct TRI_aql_context_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -92,7 +92,7 @@ DispatcherQueue::~DispatcherQueue () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::addJob (Job* job) {
-  assert(job != 0);
+  TRI_ASSERT(job != 0);
 
   CONDITION_LOCKER(guard, _accessQueue);
 

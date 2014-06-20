@@ -29,20 +29,16 @@
 #ifndef TRIAGENS_HASH_INDEX_HASH_INDEX_H
 #define TRIAGENS_HASH_INDEX_HASH_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "HashIndex/hash-array.h"
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 struct TRI_shaped_sub_s;
 
 // -----------------------------------------------------------------------------
@@ -54,18 +50,13 @@ struct TRI_shaped_sub_s;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index element
 ///
 /// This structure is used for the elements of an hash index.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_hash_index_element_s {
-  struct TRI_doc_mptr_s*   _document;
+  struct TRI_doc_mptr_t*   _document;
   struct TRI_shaped_sub_s* _subObjects;
 }
 TRI_hash_index_element_t;
@@ -84,24 +75,15 @@ typedef struct TRI_hash_index_s {
 }
 TRI_hash_index_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateHashIndex (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateHashIndex (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t,
                                   TRI_vector_pointer_t*,
                                   TRI_vector_t*,
@@ -119,18 +101,9 @@ void TRI_DestroyHashIndex (TRI_index_t*);
 
 void TRI_FreeHashIndex (TRI_index_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
@@ -138,14 +111,6 @@ void TRI_FreeHashIndex (TRI_index_t*);
 
 TRI_index_result_t TRI_LookupHashIndex (TRI_index_t*,
                                         struct TRI_index_search_value_s*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

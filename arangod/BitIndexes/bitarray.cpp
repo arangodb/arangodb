@@ -25,11 +25,11 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "bitarray.h"
+
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 
-#include "bitarray.h"
 #include "VocBase/document-collection.h"
 
 #if BITARRAY_MASTER_TABLE_BLOCKSIZE==8
@@ -119,7 +119,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   // ...........................................................................
 
   if (masterTable != NULL) {
-    assert(false);
+    TRI_ASSERT(false);
     mt = (MasterTable_t*)(masterTable);
   }
 
@@ -289,7 +289,7 @@ int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t* ba,
   // ..........................................................................
 
   if (TRI_FindByKeyAssociativeArray(&(mt->_tablePosition),element) != NULL) {
-    assert(false);
+    TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL; // Todo: return correct error
   }
 
@@ -680,7 +680,7 @@ int extendColumns (TRI_bitarray_t* ba, size_t newBlocks) {
     oldColumn = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * j));
     newColumn = (BitColumn_t*)(newColumns + (sizeof(BitColumn_t) * j));
     if (oldColumn->_column == NULL) {
-      assert(false);
+      TRI_ASSERT(false);
       continue;
     }
     memcpy(newColumn->_column, oldColumn->_column, sizeof(bit_column_int_t) * ba->_numBlocksInColumn);

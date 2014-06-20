@@ -27,8 +27,6 @@
 
 #include "ProgramOptions.h"
 
-#include <fstream>
-
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/logging.h"

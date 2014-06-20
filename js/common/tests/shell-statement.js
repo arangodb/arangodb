@@ -133,7 +133,7 @@ function StatementSuite () {
         st.parse();
       }
       catch (e) {
-        assertEqual(1501, e.errorNum);
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
 
@@ -186,99 +186,6 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain method
-////////////////////////////////////////////////////////////////////////////////
-
-    testExplainError : function () {
-      var st = new ArangoStatement(db, { query : "for u in" });
-      try {
-        st.explain();
-      }
-      catch (e) {
-        assertEqual(1501, e.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain method
-////////////////////////////////////////////////////////////////////////////////
-
-    testExplainNoBindError : function () {
-      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f" });
-      try {
-        st.explain();
-      }
-      catch (e) {
-        assertEqual(1551, e.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain method
-////////////////////////////////////////////////////////////////////////////////
-
-    testExplainWithBind : function () {
-      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 1 } });
-      var result = st.explain();
-
-      assertEqual(2, result.length);
-
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("return", result[1]["type"]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain method
-////////////////////////////////////////////////////////////////////////////////
-
-    testExplainOk1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return 1" });
-      var result = st.explain();
-
-      assertEqual(2, result.length);
-
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("return", result[1]["type"]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain method
-////////////////////////////////////////////////////////////////////////////////
-
-    testExplainOk2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return 1" });
-      var result = st.explain();
-
-      assertEqual(4, result.length);
-
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("filter", result[1]["type"]);
-      
-      assertEqual(3, result[2]["id"]);
-      assertEqual(2, result[2]["loopLevel"]);
-      assertEqual("for", result[2]["type"]);
-      
-      assertEqual(4, result[3]["id"]);
-      assertEqual(2, result[3]["loopLevel"]);
-      assertEqual("return", result[3]["type"]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test execute method
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +195,7 @@ function StatementSuite () {
         result = st.execute();
       }
       catch (e) {
-        assertEqual(1501, e.errorNum);
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
 
@@ -400,7 +307,7 @@ function StatementSuite () {
         fail(); 
       }
       catch (e) {
-        assertEqual(1551, e.errorNum);
+        assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
       }
     },
 
@@ -582,6 +489,410 @@ function StatementSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     explain tests
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ExplainSuite () {
+  var cn = "UnitTestsExplain";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      db._create(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainError : function () {
+      var st = new ArangoStatement(db, { query : "for u in" });
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainNoBindError : function () {
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f" });
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainWithBind : function () {
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 1 } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      
+      assertEqual(2, result[1]["id"]);
+      assertEqual(1, result[1]["loopLevel"]);
+      assertEqual("return", result[1]["type"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainWithBindCollection : function () {
+      var st = new ArangoStatement(db, { query : "for i in @@cn return i", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      
+      assertEqual(2, result[1]["id"]);
+      assertEqual(1, result[1]["loopLevel"]);
+      assertEqual("return", result[1]["type"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainOk1 : function () {
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return 1" });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual(1, result[1]["loopLevel"]);
+      assertEqual("return", result[1]["type"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainOk2 : function () {
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return 1" });
+      var result = st.explain();
+
+      assertEqual(4, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual(1, result[1]["loopLevel"]);
+      assertEqual("filter", result[1]["type"]);
+      
+      assertEqual(3, result[2]["id"]);
+      assertEqual(2, result[2]["loopLevel"]);
+      assertEqual("for", result[2]["type"]);
+      
+      assertEqual(4, result[3]["id"]);
+      assertEqual(2, result[3]["loopLevel"]);
+      assertEqual("return", result[3]["type"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainRemove1 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " remove u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("remove", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainRemove2 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn remove u in @@cn", bindVars: { "@cn" : cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("remove", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainInsert1 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn insert u in @@cn", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("insert", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainInsert2 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " insert u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("insert", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainUpdate1 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn update u._key with u in @@cn", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("update", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainUpdate2 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u._key with u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("update", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainUpdate3 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("update", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainUpdate4 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("update", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainReplace1 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn replace u._key with u in @@cn", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("replace", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainReplace2 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u._key with u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+      assertEqual("collection", result[0]["expression"]["type"]);
+      assertEqual(cn, result[0]["expression"]["value"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("replace", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainReplace3 : function () {
+      var st = new ArangoStatement(db, { query : "for u in @@cn replace u in @@cn", bindVars: { "@cn": cn } });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("replace", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainReplace4 : function () {
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u in " + cn });
+      var result = st.explain();
+
+      assertEqual(2, result.length);
+
+      assertEqual(1, result[0]["id"]);
+      assertEqual(1, result[0]["loopLevel"]);
+      assertEqual("for", result[0]["type"]);
+
+      assertEqual(2, result[1]["id"]);
+      assertEqual("replace", result[1]["type"]);
+      assertEqual("reference", result[1]["expression"]["type"]);
+      assertEqual("u", result[1]["expression"]["value"]);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
 
@@ -590,6 +901,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(StatementSuite);
+jsunity.run(ExplainSuite);
 
 return jsunity.done();
 

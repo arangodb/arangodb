@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_ADMIN_APPLICATION_ADMIN_SERVER_H
 #define TRIAGENS_ADMIN_APPLICATION_ADMIN_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Admin/RestVersionHandler.h"
 

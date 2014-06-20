@@ -50,13 +50,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
-#ifdef TRI_ENABLE_CLUSTER
-
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -384,7 +379,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 
   // create database attribute
   string const& database = request->databaseName();
-  assert(! database.empty());
+  TRI_ASSERT(! database.empty());
 
   req->Set(v8g->DatabaseKey, v8::String::New(database.c_str(), (int) database.size()));
 
@@ -403,6 +398,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   serverArray->Set(v8g->AddressKey, v8::String::New(info.serverAddress.c_str(), (int) info.serverAddress.size()));
   serverArray->Set(v8g->PortKey, v8::Number::New(info.serverPort));
   req->Set(v8g->ServerKey, serverArray);
+  req->Set(v8g->PortTypeKey, v8::String::New(info.portType().c_str()), static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
 
   v8::Handle<v8::Object> clientArray = v8::Object::New();
   clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), (int) info.clientAddress.size()));
@@ -906,8 +902,6 @@ static v8::Handle<v8::Value> JS_GetCurrentResponse (v8::Arguments const& argv) {
 /// @FUN{internal.defineAction(@FA{name}, @FA{callback}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
-
 class CallbackTest : public ClusterCommCallback {
     string _msg;
 
@@ -1146,8 +1140,6 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   return scope.Close(r);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
@@ -1178,7 +1170,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   if (argv.Length() != 1 || ! argv[0]->IsObject()) {
     TRI_V8_EXCEPTION_USAGE(scope, "register(<task>)");
   }
-
+  
   v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
 
   // job id
@@ -1221,8 +1213,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
     }
   }
-  
-    
+
   // extract the command
   if (! obj->HasOwnProperty(TRI_V8_SYMBOL("command"))) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "command must be specified");
@@ -1400,10 +1391,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION", JS_ExecuteGlobalContextFunction);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
-
-#ifdef TRI_ENABLE_CLUSTER
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
-#endif
 
   // we need a scheduler and a dispatcher to define periodic tasks
   GlobalScheduler = scheduler->scheduler();

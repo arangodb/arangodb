@@ -28,15 +28,11 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_STATEMENT_WALKER_H
 #define TRIAGENS_AHUACATL_AHUACATL_STATEMENT_WALKER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_aql_scope_s;
 struct TRI_aql_variable_s;
@@ -174,10 +170,6 @@ void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -712,7 +712,7 @@ bool TRI_IsBooleanJson (TRI_json_t const* json) {
 void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t const* object) {
   TRI_json_t copy;
 
-  assert(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
 
   TRI_CopyToJson(zone, &copy, object);
 
@@ -724,8 +724,8 @@ void TRI_PushBackListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_PushBack2ListJson (TRI_json_t* list, TRI_json_t const* object) {
-  assert(list->_type == TRI_JSON_LIST);
-  assert(object);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(object);
 
   return TRI_PushBackVector(&list->_value._objects, object);
 }
@@ -754,7 +754,7 @@ int TRI_PushBack3ListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t
 TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos) {
   size_t n;
 
-  assert(object->_type == TRI_JSON_LIST);
+  TRI_ASSERT(object->_type == TRI_JSON_LIST);
 
   n = object->_value._objects._length;
 
@@ -778,7 +778,7 @@ void TRI_InsertArrayJson (TRI_memory_zone_t* zone,
   char* att;
   size_t length;
 
-  assert(object->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(object->_type == TRI_JSON_ARRAY);
 
   if (subobject == NULL) {
     return;
@@ -818,7 +818,7 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
   char* att;
   size_t length;
 
-  assert(object->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(object->_type == TRI_JSON_ARRAY);
 
   if (subobject == NULL) {
     return;
@@ -863,7 +863,7 @@ void TRI_Insert3ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
 void TRI_Insert4ArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool asReference) {
   TRI_json_t copy;
 
-  assert(name != NULL);
+  TRI_ASSERT(name != NULL);
 
   // attribute name
   if (asReference) {
@@ -895,8 +895,8 @@ TRI_json_t* TRI_LookupArrayJson (const TRI_json_t* const object, char const* nam
     return NULL;
   }
 
-  assert(object->_type == TRI_JSON_ARRAY);
-  assert(name != NULL);
+  TRI_ASSERT(object->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(name != NULL);
 
   n = object->_value._objects._length;
 
@@ -925,8 +925,8 @@ bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char cons
   size_t n;
   size_t i;
 
-  assert(object->_type == TRI_JSON_ARRAY);
-  assert(name);
+  TRI_ASSERT(object->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(name);
 
   n = object->_value._objects._length;
 
@@ -971,8 +971,8 @@ bool TRI_ReplaceArrayJson (TRI_memory_zone_t* zone, TRI_json_t* object, char con
   size_t n;
   size_t i;
 
-  assert(object->_type == TRI_JSON_ARRAY);
-  assert(name);
+  TRI_ASSERT(object->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(name);
 
   n = object->_value._objects._length;
 
@@ -1062,7 +1062,7 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
 
 bool TRI_SaveJson (char const* filename, 
                    TRI_json_t const* object, 
-                   const bool syncFile) {
+                   bool syncFile) {
   char* tmp;
   int fd;
   int res;
@@ -1074,7 +1074,7 @@ bool TRI_SaveJson (char const* filename,
     return false;
   }
 
-  fd = TRI_CREATE(tmp, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1316,7 +1316,7 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
     }
 
     default: {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
   return false; // stops the vc++ compiler from complaining

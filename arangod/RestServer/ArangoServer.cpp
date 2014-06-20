@@ -29,16 +29,6 @@
 
 #include <v8.h>
 
-#include "BasicsC/common.h"
-
-#ifdef TRI_ENABLE_MRUBY
-#include "mruby.h"
-#include "mruby/compile.h"
-#include "mruby/data.h"
-#include "mruby/proc.h"
-#include "mruby/variable.h"
-#endif
-
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
@@ -51,7 +41,7 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/files.h"
-#include "BasicsC/init.h"
+#include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/messages.h"
 #include "BasicsC/tri-strings.h"
@@ -81,19 +71,9 @@
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/ClusterComm.h"
-#endif
-
-#ifdef TRI_ENABLE_MRUBY
-#include "MRServer/ApplicationMR.h"
-#include "MRServer/mr-actions.h"
-#include "MRuby/MRLineEditor.h"
-#include "MRuby/MRLoader.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -147,12 +127,10 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                             RestHandlerCreator<RestUploadHandler>::createNoData);
 
-#ifdef TRI_ENABLE_CLUSTER
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
                             dispatcher->dispatcher());
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,11 +209,9 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return TRI_UseCoordinatorDatabaseServer(server, dbName.c_str());
   }
-#endif
 
   return TRI_UseDatabaseServer(server, dbName.c_str());
 }
@@ -251,7 +227,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
   // invalid database name specified, database not found etc.
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     return false;
   }
 
@@ -263,7 +239,7 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 
   VocbaseContext* ctx = new triagens::arango::VocbaseContext(request, server, vocbase);
 
-  if (ctx == 0) {
+  if (ctx == nullptr) {
     // out of memory
     return false;
   }
@@ -290,19 +266,13 @@ ArangoServer::ArangoServer (int argc, char** argv)
   : _argc(argc),
     _argv(argv),
     _tempPath(),
-    _logfileManager(0),
-    _applicationScheduler(0),
-    _applicationDispatcher(0),
-    _applicationEndpointServer(0),
-    _applicationAdminServer(0),
-#ifdef TRI_ENABLE_CLUSTER
-    _applicationCluster(0),
-#endif
-    _jobManager(0),
-#ifdef TRI_ENABLE_MRUBY
-    _applicationMR(0),
-#endif
-    _applicationV8(0),
+    _applicationScheduler(nullptr),
+    _applicationDispatcher(nullptr),
+    _applicationEndpointServer(nullptr),
+    _applicationAdminServer(nullptr),
+    _applicationCluster(nullptr),
+    _jobManager(nullptr),
+    _applicationV8(nullptr),
     _authenticateSystemOnly(false),
     _disableAuthentication(false),
     _disableAuthenticationUnixSockets(false),
@@ -316,7 +286,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnDrop(true),
-    _server(0) {
+    _server(nullptr) {
 
   char* p = TRI_GetTempPath();
   // copy the string
@@ -337,7 +307,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   _server = TRI_CreateServer();
 
-  if (_server == 0) {
+  if (_server == nullptr) {
     LOG_FATAL_AND_EXIT("could not create server instance");
   }
 }
@@ -347,11 +317,11 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoServer::~ArangoServer () {
-  if (_jobManager != 0) {
+  if (_jobManager != nullptr) {
     delete _jobManager;
   }
 
-  if (_server != 0) {
+  if (_server != nullptr) {
     TRI_FreeServer(_server);
   }
 
@@ -373,7 +343,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
 
-  if (_applicationServer == 0) {
+  if (_applicationServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -387,17 +357,19 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
-/*
-  _logfileManager = new wal::LogfileManager(&_databasePath); 
-  _applicationServer->addFeature(_logfileManager);
-*/
+
+  // initialise the server's write ahead log
+  wal::LogfileManager::initialise(&_databasePath, _server);
+  // and add the feature to the application server
+  _applicationServer->addFeature(wal::LogfileManager::instance());
+
   // .............................................................................
   // dispatcher
   // .............................................................................
   
   _applicationDispatcher = new ApplicationDispatcher();
 
-  if (_applicationDispatcher == 0) {
+  if (_applicationDispatcher == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -409,7 +381,7 @@ void ArangoServer::buildApplicationServer () {
 
   _applicationScheduler = new ApplicationScheduler(_applicationServer);
 
-  if (_applicationScheduler == 0) {
+  if (_applicationScheduler == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -426,27 +398,15 @@ void ArangoServer::buildApplicationServer () {
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
-  if (_applicationV8 == 0) {
+  if (_applicationV8 == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _applicationServer->addFeature(_applicationV8);
 
   // .............................................................................
-  // MRuby engine
+  // MRuby engine (this has been removed from arangod in version 2.2)
   // .............................................................................
-
-#ifdef TRI_ENABLE_MRUBY
-
-  _applicationMR = new ApplicationMR(_server);
-
-  if (_applicationMR == 0) {
-    LOG_FATAL_AND_EXIT("out of memory");
-  }
-
-  _applicationServer->addFeature(_applicationMR);
-
-#else
 
   string ignoreOpt;
 
@@ -457,14 +417,12 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
   ;
 
-#endif
-
   // .............................................................................
   // and start a simple admin server
   // .............................................................................
 
   _applicationAdminServer = new ApplicationAdminServer();
-  if (_applicationAdminServer == 0) {
+  if (_applicationAdminServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -557,15 +515,13 @@ void ArangoServer::buildApplicationServer () {
   // cluster options
   // .............................................................................
 
-#ifdef TRI_ENABLE_CLUSTER
   _applicationCluster = new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
 
-  if (_applicationCluster == 0) {
+  if (_applicationCluster == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
   _applicationServer->addFeature(_applicationCluster);
-#endif
 
   // .............................................................................
   // server options
@@ -606,12 +562,8 @@ void ArangoServer::buildApplicationServer () {
   // endpoint server
   // .............................................................................
 
-#ifdef TRI_ENABLE_CLUSTER
   _jobManager = new AsyncJobManager(&TRI_NewTickServer,
                                     ClusterCommRestCallback);
-#else
-  _jobManager = new AsyncJobManager(&TRI_NewTickServer, 0);
-#endif
 
   _applicationEndpointServer = new ApplicationEndpointServer(_applicationServer,
                                                              _applicationScheduler,
@@ -620,7 +572,7 @@ void ArangoServer::buildApplicationServer () {
                                                              "arangodb",
                                                              &SetRequestContext,
                                                              (void*) _server);
-  if (_applicationEndpointServer == 0) {
+  if (_applicationEndpointServer == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -721,7 +673,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
-
+  
   // dump version details
   LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
 
@@ -775,7 +727,7 @@ int ArangoServer::startupServer () {
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
   }
-
+  
   // check version
   bool checkVersion = false;
 
@@ -797,6 +749,16 @@ int ArangoServer::startupServer () {
     skipUpgrade = true;
   }
 
+  // special treatment for the write-ahead log
+  // the log must exist before all other server operations can start
+  LOG_TRACE("starting WAL logfile manager");
+
+  if (! wal::LogfileManager::instance()->prepare() ||
+      ! wal::LogfileManager::instance()->start()) {
+    // unable to initialise & start WAL logfile manager
+    LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
+  }
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
@@ -806,16 +768,22 @@ int ArangoServer::startupServer () {
   }
 
   // open all databases
-  openDatabases(checkVersion, performUpgrade);
+  bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
+
+  openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
+      
+  if (! wal::LogfileManager::instance()->open()) {
+    LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+  }
 
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     LOG_FATAL_AND_EXIT("No _system database found in database directory. Cannot start!");
   }
 
-  assert(vocbase != 0);
+  TRI_ASSERT(vocbase != nullptr);
 
   // initialise V8
   size_t concurrency = _dispatcherThreads;
@@ -836,10 +804,6 @@ int ArangoServer::startupServer () {
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
 
-#ifdef TRI_ENABLE_MRUBY
-  _applicationMR->setVocbase(vocbase);
-  _applicationMR->setConcurrency(_dispatcherThreads);
-#endif
 
   // .............................................................................
   // prepare everything
@@ -870,6 +834,11 @@ int ArangoServer::startupServer () {
   }
 
   _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
+  
+  // finally flush the write-ahead log so all data in the WAL goes into the collections
+  wal::LogfileManager::instance()->flush(true, true, true);
+
+  // WAL recovery done after here
 
   // setup the V8 actions
   if (startServer) {
@@ -912,9 +881,6 @@ int ArangoServer::startupServer () {
   // .............................................................................
 
   _applicationServer->start();
-
-  // load authentication
-  TRI_LoadAuthInfoVocBase(vocbase);
 
   // if the authentication info could not be loaded, but authentication is turned on,
   // then we refuse to start
@@ -1121,10 +1087,12 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the database
+/// @brief opens all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabases (bool checkVersion, bool performUpgrade) {
+void ArangoServer::openDatabases (bool checkVersion, 
+                                  bool performUpgrade,
+                                  bool iterateMarkersOnOpen) {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
@@ -1136,7 +1104,7 @@ void ArangoServer::openDatabases (bool checkVersion, bool performUpgrade) {
   defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
   defaults.authenticateSystemOnly           = _authenticateSystemOnly;
 
-  assert(_server != 0);
+  TRI_ASSERT(_server != nullptr);
 
   int res = TRI_InitServer(_server,
                            _applicationEndpointServer,
@@ -1145,7 +1113,8 @@ void ArangoServer::openDatabases (bool checkVersion, bool performUpgrade) {
                            _applicationV8->devAppPath().c_str(),
                            &defaults,
                            _disableReplicationLogger,
-                           _disableReplicationApplier);
+                           _disableReplicationApplier,
+                           iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_FATAL_AND_EXIT("cannot create server instance: out of memory");
@@ -1169,12 +1138,15 @@ void ArangoServer::openDatabases (bool checkVersion, bool performUpgrade) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabases () {
-  assert(_server != 0);
+  TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
 
-  TRI_StopServer(_server);
+  // enfore logfile manager shutdown so we are sure no one else will 
+  // write to the logs
+  wal::LogfileManager::instance()->stop();
 
+  TRI_StopServer(_server);
 
   LOG_INFO("ArangoDB has been shut down");
 }

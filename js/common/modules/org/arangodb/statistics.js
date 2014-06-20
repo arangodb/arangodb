@@ -63,10 +63,16 @@ function createStatisticsCollection (name) {
   var collection = db._collection(name);
 
   if (collection === null) {
-    var r = db._create(name, { isSystem: true, waitForSync: false });
-    
+    var r = null;
+
+    try {
+      r = db._create(name, { isSystem: true, waitForSync: false });
+    }
+    catch (err) {
+    }
+
     if (! r) {
-      return;
+      return false;
     }
 
     collection = db._collection(name);
@@ -75,6 +81,8 @@ function createStatisticsCollection (name) {
   if (collection !== null) {
     collection.ensureSkiplist("time");
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +99,7 @@ function createStatisticsCollections () {
   'use strict';
 
   if (initialized) {
-    return;
+    return true;
   }
 
   initialized = true;
@@ -100,8 +108,12 @@ function createStatisticsCollections () {
   var i;
 
   for (i = 0;  i < names.length;  ++i) {
-    createStatisticsCollection(names[i]);
+    if (! createStatisticsCollection(names[i])) {
+      return false;
+    }
   }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,7 +218,7 @@ function computePerSeconds (current, prev) {
   'use strict';
   
   // sanity check if we have restarted the server
-  if (prev.time + exports.STATISTICS_INTERVALL * 1.5 < current.time) {
+  if (prev.time + exports.STATISTICS_INTERVAL * 1.5 < current.time) {
     return null;
   }
 
@@ -456,16 +468,16 @@ function compute15Minute (start, clusterId) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics intervall
+/// @brief statistics interval
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.STATISTICS_INTERVALL = 10;
+exports.STATISTICS_INTERVAL = 10;
   
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics intervall for history
+/// @brief statistics interval for history
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.STATISTICS_HISTORY_INTERVALL = 15 * 60;
+exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -478,7 +490,9 @@ exports.STATISTICS_HISTORY_INTERVALL = 15 * 60;
 exports.historian = function () {
   "use strict";
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var statsRaw = db._statisticsRaw;
   var statsCol = db._statistics;
@@ -493,7 +507,7 @@ exports.historian = function () {
     var now = internal.time();
     var prevRaw = lastEntry(
       '_statisticsRaw',
-      now - 2 * exports.STATISTICS_INTERVALL,
+      now - 2 * exports.STATISTICS_INTERVAL,
       clusterId);
 
     // create new raw statistics
@@ -525,7 +539,8 @@ exports.historian = function () {
     }
   }
   catch (err) {
-    require("console").warn("catch error in historian: %s", err);
+    // we don't want this error to appear every x seconds
+    // require("console").warn("catch error in historian: %s", err);
   }
 };
 
@@ -536,7 +551,9 @@ exports.historian = function () {
 exports.historianAverage = function () {
   "use strict";
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var stats15m = db._statistics15;
 
@@ -549,17 +566,17 @@ exports.historianAverage = function () {
   try {
     var now = internal.time();
 
-    // check if need to create a new 15 min intervall
+    // check if need to create a new 15 min interval
     var prev15 = lastEntry(
       '_statistics15',
-      now - 2 * exports.STATISTICS_HISTORY_INTERVALL,
+      now - 2 * exports.STATISTICS_HISTORY_INTERVAL,
       clusterId);
 
     var stat15;
     var start;
 
     if (prev15 === null) {
-      start = now - exports.STATISTICS_HISTORY_INTERVALL;
+      start = now - exports.STATISTICS_HISTORY_INTERVAL;
     }
     else {
       start = prev15.time;
@@ -576,7 +593,8 @@ exports.historianAverage = function () {
     }
   }
   catch (err) {
-    require("console").warn("catch error in historianAverage: %s", err);
+    // we don't want this error to appear every x seconds
+    // require("console").warn("catch error in historianAverage: %s", err);
   }
 };
 
@@ -587,7 +605,9 @@ exports.historianAverage = function () {
 exports.garbageCollector = function () {
   'use strict';
 
-  createStatisticsCollections();
+  if (! createStatisticsCollections()) {
+    return;
+  }
 
   var time = internal.time();
 

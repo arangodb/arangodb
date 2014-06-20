@@ -35,14 +35,10 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
-#include "Utils/Barrier.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
-#endif
 
 using namespace std;
 using namespace triagens::basics;
@@ -296,11 +292,11 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
+  bool const waitForSync = extractWaitForSync();
 
   TRI_json_t* json = parseJsonBody();
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -310,12 +306,10 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json);
   }
-#endif
 
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -323,7 +317,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -337,20 +331,17 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (trx.primaryCollection()->base._info._type != TRI_COL_TYPE_DOCUMENT) {
+  if (trx.documentCollection()->_info._type != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
-  Barrier barrier(trx.primaryCollection());
-
-  TRI_doc_mptr_t document;
-  res = trx.createDocument(&document, json, waitForSync);
-  const bool wasSynchronous = trx.synchronous();
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.createDocument(&mptr, json, waitForSync);
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -364,15 +355,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  assert(document._data != nullptr);
-
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }
@@ -381,7 +364,6 @@ bool RestDocumentHandler::createDocument () {
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
                                                      TRI_json_t* json) {
@@ -408,7 +390,6 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single or all documents
@@ -559,14 +540,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return getDocumentCoordinator(collection, key, generateBody);
   }
-#endif
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
 
   // .............................................................................
   // inside read transaction
@@ -579,16 +558,13 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   const TRI_voc_cid_t cid = trx.cid();
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t mptr;
 
-  res = trx.read(&document, key);
+  res = trx.read(&mptr, key);
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  assert(primary != 0);
-  TRI_shaper_t* shaper = primary->_shaper;
-
-  // register a barrier. will be destroyed automatically
-  Barrier barrier(primary);
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_ASSERT(document != nullptr);
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
   res = trx.finish(res);
 
@@ -596,25 +572,27 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // outside read transaction
   // .............................................................................
 
+  TRI_ASSERT(trx.hasBarrier());
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
-  if (document._data == nullptr) {
-    generateDocumentNotFound(cid, (TRI_voc_key_t) key.c_str());
+  if (mptr.getDataPtr() == nullptr) {   // PROTECTED by trx here
+    generateDocumentNotFound(trx, cid, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
   // generate result
-  const TRI_voc_rid_t rid = document._rid;
+  const TRI_voc_rid_t rid = mptr._rid;
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, &document, shaper, generateBody);
+      generateDocument(trx, cid, mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
   else if (ifNoneRid == rid) {
@@ -622,15 +600,15 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
       generateNotModified(rid);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
   else {
     if (ifRid == 0 || ifRid == rid) {
-      generateDocument(cid, &document, shaper, generateBody);
+      generateDocument(trx, cid, mptr, shaper, generateBody);
     }
     else {
-      generatePreconditionFailed(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), rid);
+      generatePreconditionFailed(trx, cid, mptr, rid);
     }
   }
 
@@ -641,7 +619,6 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::getDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -681,7 +658,6 @@ bool RestDocumentHandler::getDocumentCoordinator (
   }
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all documents from collection
@@ -746,14 +722,12 @@ bool RestDocumentHandler::readAllDocuments () {
   bool found;
   string collection = _request->value("collection", found);
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return getAllDocumentsCoordinator(collection);
   }
-#endif
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<StandaloneTransaction<RestTransactionContext> > trx(_vocbase, _resolver, collection);
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
 
   vector<string> ids;
 
@@ -771,7 +745,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
-  TRI_col_type_e typ = trx.primaryCollection()->base._info._type;
+  TRI_col_type_e typ = trx.documentCollection()->_info._type;
 
   res = trx.finish(res);
 
@@ -790,10 +764,10 @@ bool RestDocumentHandler::readAllDocuments () {
   bool first = true;
   string prefix;
   if (typ == TRI_COL_TYPE_EDGE) {
-    prefix = '"' + EDGE_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+    prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
   }
   else {
-    prefix = '"' + DOCUMENT_PATH + '/' + _resolver.getCollectionName(cid) + '/';
+    prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
   }
 
   for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
@@ -822,7 +796,6 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::getAllDocumentsCoordinator (
                               string const& collname ) {
   string const& dbname = _request->databaseName();
@@ -844,7 +817,6 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document head
@@ -1326,18 +1298,16 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   const TRI_doc_update_policy_e policy = extractUpdatePolicy();
   const bool waitForSync = extractWaitForSync();
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside
     return modifyDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync, isPatch, json);
   }
-#endif
 
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1353,15 +1323,17 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   const TRI_voc_cid_t cid = trx.cid();
   TRI_voc_rid_t rid = 0;
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  assert(primary != 0);
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_ASSERT(document != nullptr);
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
-#ifdef TRI_ENABLE_CLUSTER
-  const string cidString = StringUtils::itoa(primary->base._info._planId);
-#endif
+  string const cidString = StringUtils::itoa(document->_info._planId);
 
-  Barrier barrier(primary);
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    return false;
+  }
 
   if (isPatch) {
     // patching an existing document
@@ -1378,7 +1350,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     // read the existing document
-    TRI_doc_mptr_t oldDocument;
+    TRI_doc_mptr_copy_t oldDocument;
 
     // create a write lock that spans the initial read and the update
     // otherwise the update is not atomic
@@ -1394,7 +1366,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    if (oldDocument._data == nullptr) {
+    if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1403,7 +1375,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     }
 
     TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
     TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
     if (old == nullptr) {
@@ -1414,7 +1386,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isDBserver()) {
       // compare attributes in shardKeys
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
@@ -1427,7 +1398,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
     }
-#endif
 
     TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove);
     TRI_FreeJson(shaper->_memoryZone, old);
@@ -1442,17 +1412,16 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
 
     // do not acquire an extra lock
-    res = trx.updateDocument(key, &document, patchedJson, policy, waitForSync, revision, &rid);
+    res = trx.updateDocument(key, &mptr, patchedJson, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
   }
   else {
     // replacing an existing document, using a lock
 
-#ifdef TRI_ENABLE_CLUSTER
     if (ServerState::instance()->isDBserver()) {
       // compare attributes in shardKeys
       // read the existing document
-      TRI_doc_mptr_t oldDocument;
+      TRI_doc_mptr_copy_t oldDocument;
 
       // do not lock again
       trx.lockWrite();
@@ -1466,7 +1435,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
 
-      if (oldDocument._data == nullptr) {
+      if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
         trx.abort();
         generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1475,7 +1444,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
 
       TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument._data);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
       if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {
@@ -1492,13 +1461,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(shaper->_memoryZone, old);
       }
     }
-#endif
 
-    res = trx.updateDocument(key, &document, json, policy, waitForSync, revision, &rid);
+    res = trx.updateDocument(key, &mptr, json, policy, waitForSync, revision, &rid);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
-
-  const bool wasSynchronous = trx.synchronous();
 
   res = trx.finish(res);
 
@@ -1512,13 +1478,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) key.c_str(), document._rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), document._rid);
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }
@@ -1527,7 +1487,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 /// @brief modifies a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::modifyDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -1563,7 +1522,6 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -1719,14 +1677,12 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     return deleteDocumentCoordinator(collection, key, revision, policy,
                                      waitForSync);
   }
-#endif
 
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1743,7 +1699,6 @@ bool RestDocumentHandler::deleteDocument () {
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
 
-  const bool wasSynchronous = trx.synchronous();
   if (res == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   }
@@ -1760,12 +1715,8 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  if (wasSynchronous) {
-    generateDeleted(cid, (TRI_voc_key_t) key.c_str(), rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) key.c_str(), rid);
-  }
+  generateDeleted(trx, cid, (TRI_voc_key_t) key.c_str(), rid);
+
   return true;
 }
 
@@ -1773,7 +1724,6 @@ bool RestDocumentHandler::deleteDocument () {
 /// @brief deletes a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestDocumentHandler::deleteDocumentCoordinator (
                               string const& collname,
                               string const& key,
@@ -1801,7 +1751,6 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 // Local Variables:
 // mode: outline-minor
