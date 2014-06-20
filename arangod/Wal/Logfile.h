@@ -115,6 +115,7 @@ namespace triagens {
 
       static Logfile* openExisting (std::string const&,
                                     Logfile::IdType,
+                                    bool,
                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////

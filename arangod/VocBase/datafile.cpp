@@ -558,7 +558,7 @@ static bool FixDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckDatafile (TRI_datafile_t* datafile,
-                           bool isRecovery) {
+                           bool ignoreFailures) {
   TRI_voc_size_t currentSize;
   char* end;
   char* ptr;
@@ -624,7 +624,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
                     (unsigned long) marker->_size);
       }
       else {
-        if (isRecovery) {
+        if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }
         else {
@@ -646,7 +646,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
       bool ok = CheckCrcMarker(marker);
 
       if (! ok) {
-        if (isRecovery) {
+        if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }
         else {
@@ -1503,7 +1503,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_datafile_t* TRI_OpenDatafile (char const* filename,
-                                  bool isRecovery) {
+                                  bool ignoreFailures) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(filename != nullptr);
 
@@ -1514,7 +1514,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
   }
 
   // check the datafile by scanning markers
-  bool ok = CheckDatafile(datafile, isRecovery);
+  bool ok = CheckDatafile(datafile, ignoreFailures);
 
   if (! ok) {
     TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
