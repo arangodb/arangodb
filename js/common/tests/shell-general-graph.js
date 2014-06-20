@@ -2669,15 +2669,11 @@ function MeasurementsSuite() {
   return {
 
     setUp : function() {
-      try {
-        arangodb.db._collection("_graphs").remove(unitTestGraphName);
-      } catch (ignore) {
-      }
       g = graph._create(
         unitTestGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(ec1, vc1),
-          graph._directedRelationDefinition(ec2,
+          graph._undirectedRelation(ec1, vc1),
+          graph._directedRelation(ec2,
             [vc1, vc2], [vc3, vc4]
           )
         )
@@ -2686,14 +2682,11 @@ function MeasurementsSuite() {
     },
 
     tearDown : function() {
-      graph._drop(unitTestGraphName);
-      try {db[vc1].drop()} catch (e) {}
-      try {db[vc2].drop()} catch (e) {}
-      try {db[vc3].drop()} catch (e) {}
-      try {db[vc4].drop()} catch (e) {}
-      try {db[ec1].drop()} catch (e) {}
-      try {db[ec2].drop()} catch (e) {}
+      try  {
+        graph._drop(unitTestGraphName, true);
+      } catch (e) {
 
+      }
     },
 
     test_absoluteEccentricity : function () {
