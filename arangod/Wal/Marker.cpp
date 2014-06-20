@@ -882,8 +882,8 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
   m->_shape         = shapedJson->_sid;
 
   m->_offsetKey     = sizeof(document_marker_t); // start position of key
-  m->_offsetLegend  = m->_offsetKey + alignedSize(key.size() + 1);
-  m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
+  m->_offsetLegend  = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
+  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legend.getSize()));
           
   storeSizedString(m->_offsetKey, key);
 
@@ -1016,10 +1016,10 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_offsetKey     = sizeof(edge_marker_t); // start position of key
   m->_toCid         = edge->_toCid;
   m->_fromCid       = edge->_fromCid;
-  m->_offsetToKey   = m->_offsetKey + alignedSize(key.size() + 1);
-  m->_offsetFromKey = m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1);
-  m->_offsetLegend  = m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1);
-  m->_offsetJson    = m->_offsetLegend + alignedSize(legend.getSize());
+  m->_offsetToKey   = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
+  m->_offsetFromKey = static_cast<uint16_t>(m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1));
+  m->_offsetLegend  = static_cast<uint16_t>(m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1));
+  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legend.getSize()));
           
   // store keys
   storeSizedString(m->_offsetKey, key.c_str());
