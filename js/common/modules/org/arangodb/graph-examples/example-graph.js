@@ -65,9 +65,13 @@
 
   var createRoutePlannerGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._directedRelationDefinition("germanHighway", ["germanCity"], ["germanCity"]));
-    edgeDefinition.push(Graph._directedRelationDefinition("frenchHighway", ["frenchCity"], ["frenchCity"]));
-    edgeDefinition.push(Graph._directedRelationDefinition(
+    edgeDefinition.push(Graph._directedRelation(
+      "germanHighway", ["germanCity"], ["germanCity"])
+    );
+    edgeDefinition.push(
+      Graph._directedRelation("frenchHighway", ["frenchCity"], ["frenchCity"])
+    );
+    edgeDefinition.push(Graph._directedRelation(
       "internationalHighway", ["frenchCity", "germanCity"], ["frenchCity", "germanCity"])
     );
     var g = Graph._create("routeplanner", edgeDefinition);
