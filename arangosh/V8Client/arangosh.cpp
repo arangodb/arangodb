@@ -1589,7 +1589,7 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
   // run tests
-  char const* input = "require(\"test_runner\").runCommandLineTests();";
+  char const* input = "require(\"org/arangodb/testrunner\").runCommandLineTests();";
   v8::Local<v8::String> name(v8::String::New("(arangosh)"));
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
