@@ -93,6 +93,7 @@ function getStorage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest (filename, mf) {
+
   // add some default attributes
   if (! mf.hasOwnProperty("author")) {
     // add a default (empty) author
@@ -104,19 +105,7 @@ function checkManifest (filename, mf) {
     mf.description = "";
   }
 
-  if (mf.hasOwnProperty("apps")) {
-    console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
-                 "Please change the attribute name to 'controllers'.", filename);
-
-    if (! mf.hasOwnProperty("controllers")) {
-      // controllers = apps
-      mf.controllers = mf.apps;
-      delete mf.apps;
-    }
-  }
-
-  // validate all attributes specified in the manifest
-
+  // Validate all attributes specified in the manifest
   // the following attributes are allowed with these types...
   var expected = {
     "assets":             [ false, "object" ],
@@ -143,6 +132,7 @@ function checkManifest (filename, mf) {
   };
 
   var att, failed = false;
+
   for (att in expected) {
     if (expected.hasOwnProperty(att)) {
       if (mf.hasOwnProperty(att)) {
@@ -646,6 +636,7 @@ function mountAalApp (app, mount, options) {
     author: app._manifest.author,
     mount: mount,
     active: true,
+    error: false,
     isSystem: app._manifest.isSystem || false,
     options: options
   };
@@ -897,8 +888,8 @@ function scanDirectory (path) {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.errorLines(
-              "Cannot read thumbnail referenced by manifest '%s': %s", m, String(err2.stack || err2));
+            console.warnLines(
+              "Cannot read thumbnail %s referenced by manifest '%s': %s", p, m, err2);
           }
         }
 
@@ -992,6 +983,7 @@ exports.scanAppDirectory = function () {
 
   // now re-scan, starting with system apps
   scanDirectory(module.systemAppPath());
+
   // now scan database-specific apps
   scanDirectory(module.appPath());
 };
@@ -1033,6 +1025,22 @@ exports.mount = function (appId, mount, options) {
     [ appId, mount ] );
 
   // .............................................................................
+  // mark than app has an error and cannot be mounted
+  // .............................................................................
+
+  function markAsIllegal (doc, err) {
+    if (doc !== undefined) {
+      var aal = getStorage();
+      var desc = aal.document(doc._key)._shallowCopy;
+
+      desc.error = String(err.stack || err);
+      desc.active = false;
+
+      aal.replace(doc, desc);
+    }
+  }
+
+  // .............................................................................
   // locate the application
   // .............................................................................
 
@@ -1058,16 +1066,7 @@ exports.mount = function (appId, mount, options) {
     doc = mountAalApp(app, mount, options);
   }
   catch (err) {
-    if (doc !== undefined) {
-      var aal = getStorage();
-      var desc = aal.document(doc._key)._shallowCopy;
-
-      desc.error = String(err);
-      desc.active = false;
-
-      aal.replace(doc, desc);
-    }
-
+    markAsIllegal(doc, err);
     throw err;
   }
 
@@ -1076,7 +1075,13 @@ exports.mount = function (appId, mount, options) {
   // .............................................................................
 
   if (typeof options.setup !== "undefined" && options.setup === true) {
-    exports.setup(mount);
+    try {
+      exports.setup(mount);
+    }
+    catch (err2) {
+      markAsIllegal(doc, err2);
+      throw err;
+    }
   }
 
   if (typeof options.reload === "undefined" || options.reload === true) {
@@ -1178,6 +1183,47 @@ exports.unmount = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returnes git information of a Foxx application
+///
+/// Input:
+/// * name: application name
+///
+/// Output:
+/// * name: application name
+/// * git: git information
+////////////////////////////////////////////////////////////////////////////////
+
+exports.gitinfo = function (key) {
+  'use strict';
+
+  var _ = require("underscore"), gitinfo,
+  aal = getStorage(),
+  result = aal.toArray().concat(exports.developmentMounts()),
+  path = module.appPath(),
+  foxxPath, completePath, gitfile, gitcontent;
+
+  _.each(result, function(k) {
+
+    if (k.name === key) {
+      foxxPath = k.path;
+    }
+  });
+
+  completePath = path+"/"+foxxPath;
+  gitfile = completePath + "/gitinfo.json";
+
+  if (fs.isFile(gitfile)) {
+    gitcontent = fs.read(gitfile);
+    gitinfo = {git: true, url: JSON.parse(gitcontent), name: key};
+  }
+  else {
+    gitinfo = {};
+  }
+
+  return gitinfo;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returnes mount points of a Foxx application
 ///
 /// Input:
@@ -1191,7 +1237,7 @@ exports.unmount = function (mount) {
 exports.mountinfo = function (key) {
   'use strict';
 
-  var _ = require("underscore"), mountinfo = [], tmp;
+  var _ = require("underscore"), mountinfo = [];
 
   if (key === undefined) {
     _.each(exports.appRoutes(), function(m) {
@@ -1571,17 +1617,32 @@ exports.fetchFromGithub = function (url, name, version) {
   fs.makeDirectoryRecursive(path);
   fs.unzipFile(realFile, path, false, true);
 
+  var gitFilename = "/gitinfo.json";
+  fs.write(path+gitFilename, JSON.stringify(url));
+
   this.scanAppDirectory();
   return "app:" + source.name + ":" + source.version;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all available FOXX applications
+////////////////////////////////////////////////////////////////////////////////
 
 exports.availableJson = function () {
   return utils.availableJson();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all installed FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
 exports.listJson = function () {
   return utils.listJson();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the fishbowl collection
+////////////////////////////////////////////////////////////////////////////////
 
 exports.getFishbowlStorage = function () {
   return utils.getFishbowlStorage();

@@ -2,7 +2,7 @@
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB Application Launcher
+/// @brief ArangoDB Application Launcher Utilities
 ///
 /// @file
 ///
@@ -235,10 +235,11 @@ function processGithubRepository (source) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns the fishbowl collection
-///// this will create the collection if it does not exist. this is better than
-///// needlessly creating the collection for each database in case it is not
-///// used in context of the database.
+/// @brief returns the fishbowl collection
+///
+/// this will create the collection if it does not exist. this is better than
+/// needlessly creating the collection for each database in case it is not
+/// used in context of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
 function getFishbowlStorage () {
@@ -260,7 +261,7 @@ function getFishbowlStorage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns all available FOXX applications
+/// @brief returns all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
 function availableJson() {
@@ -295,7 +296,7 @@ function availableJson() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns the aal collection
+/// @brief returns the aal collection
 ////////////////////////////////////////////////////////////////////////////////
 
 function getStorage () {
@@ -306,7 +307,7 @@ function getStorage () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns all installed FOXX applications
+/// @brief returns all installed FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
 function listJson (showPrefix) {
@@ -354,3 +355,12 @@ exports.buildGithubUrl = buildGithubUrl;
 exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+/// Local Variables:
+/// mode: outline-minor
+/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+/// End:

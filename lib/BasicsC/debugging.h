@@ -133,24 +133,13 @@ static inline bool TRI_CanUseFailurePointsDebugging (void) {
 /// @brief initialise the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
 void TRI_InitialiseDebugging (void);
-#else
-static inline void TRI_InitialiseDebugging (void) {
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
 void TRI_ShutdownDebugging (void);
-#else
-static inline void TRI_ShutdownDebugging (void) {
-}
-#endif
-
 
 #ifdef __cplusplus
 }
