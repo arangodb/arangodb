@@ -2579,15 +2579,13 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// g._neighbors({isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound neighbors of munich.
+/// A route planner example, all outbound neighbors of Hamburg.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
 /// ~ var db = require("internal").db;
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | g._neighbors(
-/// |   'city/Munich',
-/// |   {direction : 'outbound', maxDepth : 2});
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2606,7 +2604,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_common.ors
+/// @startDocuBlock JSF_general_graph_common_neighbors
 ///
 /// `general_graph._commonNeighbors(vertex1Example, vertex2Examples,
 /// optionsVertex1, optionsVertex2)`
@@ -2616,28 +2614,9 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertex1Example and vertex2Example.
 ///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *optionsVertex1*     : Optional options, see below:
-/// * Object               *optionsVertex2*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
+/// This function returns the intersection of *general_graph._neighbors(vertex1Example, optionsVertex1)*
+/// and *general_graph._neighbors(vertex2Example, optionsVertex2)*.
+/// For parameter documentation read the documentation *general_graph._neighbors*.
 ///
 /// Examples for vertexExample:
 /// * {}                : Returns all possible vertices for this graph.
@@ -2657,7 +2636,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// g._commonNeighbors({isCapital : true}, {isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all common outbound neighbors of munich with any other location
+/// A route planner example, all common outbound neighbors of Hamburg with any other location
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
@@ -2665,7 +2644,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._commonNeighbors(
-/// |   'city/Munich', 
+/// |   'germanCity/Hamburg',
 /// |   {},
 /// |   {direction : 'outbound', maxDepth : 2},
 ///     {direction : 'outbound', maxDepth : 2});
@@ -2750,14 +2729,14 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// g._countCommonNeighbors({isCapital : true}, {isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all common outbound neighbors of munich with any other location
+/// A route planner example, all common outbound neighbors of Hamburg with any other location
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |g._countCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
+/// |g._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
 /// {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2852,8 +2831,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |g._commonProperties({}, {}, {vertex1CollectionRestriction : 'city',
-///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// g._commonProperties({}, {}, {ignoreProperties: 'population'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2924,14 +2902,14 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// g._countCommonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all cities which share same properties except for population.
+/// A route planner example, all german cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |g._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
-///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// |g._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
+///  vertex2CollectionRestriction : 'germanCity' ,ignoreProperties: 'population'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2968,9 +2946,9 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// @startDocuBlock JSF_general_graph_absolute_eccentricity
 ///
 /// `general_graph._absoluteEccentricity(vertexExample, options)`
-/// *The _absoluteEccentricity function returns the
+/// *The _absoluteEccentricity function returns the*
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
+/// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
@@ -3066,9 +3044,9 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 /// @startDocuBlock JSF_general_graph_eccentricity
 ///
 /// `general_graph._eccentricity(vertexExample, options)`
-/// *The _eccentricity function returns the normalized
+/// *The _eccentricity function returns the normalized*
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.*
+/// *of the vertices defined by the examples.*
 ///
 /// * Object               *options*     : Optional options, see below:
 ///
@@ -3128,9 +3106,9 @@ Graph.prototype._eccentricity = function(options) {
 /// @startDocuBlock JSF_general_graph_absolute_closeness
 ///
 /// `general_graph._absoluteCloseness(vertexExample, options)`
-/// *The _absoluteCloseness function returns the
+/// *The _absoluteCloseness function returns the*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of the vertices defined by the examples.*
+/// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
@@ -3188,14 +3166,14 @@ Graph.prototype._eccentricity = function(options) {
 /// g._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all cities regarding only
+/// A route planner example, the absolute closeness of all germanCities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |g._absoluteCloseness({}, {startVertexCollectionRestriction : 'city',
+/// |g._absoluteCloseness({}, {startVertexCollectionRestriction : 'germanCity',
 /// direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3217,15 +3195,15 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
   };
   var result = db._query(query, bindVars).toArray(), returnHash = [];
   return result;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_closeness
 ///
 /// `general_graph._closeness(options)`
-/// *The _closeness function returns the normalized
+/// *The _closeness function returns the normalized*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of graphs vertices.*
+/// *of graphs vertices.*
 ///
 /// * Object               *options*     : Optional options, see below:
 ///
@@ -3296,9 +3274,9 @@ Graph.prototype._closeness = function(options) {
 /// @startDocuBlock JSF_general_graph_absolute_betweenness
 ///
 /// `general_graph._absoluteBetweenness(options)`
-/// *The _absoluteBetweenness function returns the
+/// *The _absoluteBetweenness function returns the*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.
+/// *of all vertices in the graph.*
 ///
 ///
 /// * Object               *options*     : Optional options, see below:
@@ -3367,9 +3345,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 /// @startDocuBlock JSF_general_graph_betweenness
 ///
 /// `general_graph._betweenness(options)`
-/// *The _betweenness function returns the
+/// *The _betweenness function returns the*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.
+/// *of graphs vertices.*
 ///
 /// * Object               *options*     : Optional options, see below:
 ///
@@ -3439,9 +3417,9 @@ Graph.prototype._betweenness = function(options) {
 /// @startDocuBlock JSF_general_graph_radius
 ///
 /// `general_graph._radius(options)`
-/// *The _radius function returns the
+/// *The _radius function returns the*
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// *of a graph.*
 ///
 /// * Object               *options*     : Optional options, see below:
 ///
@@ -3479,7 +3457,7 @@ Graph.prototype._betweenness = function(options) {
 /// g._radius({weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the cradius of the graph regarding only
+/// A route planner example, the radius of the graph regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius3}
@@ -3513,9 +3491,9 @@ Graph.prototype._radius = function(options) {
 /// @startDocuBlock JSF_general_graph_diameter
 ///
 /// `general_graph._diameter(graphName, options)`
-/// *The _diameter function returns the
+/// *The _diameter function returns the*
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// *of a graph.*
 ///
 /// * Object               *options*     : Optional options, see below:
 ///
