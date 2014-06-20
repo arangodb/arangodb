@@ -33,7 +33,7 @@
 
   var createTraversalExample = function() {
     var g = Graph._create("knows_graph",
-      [Graph._undirectedRelationDefinition("knows", "persons")]
+      [Graph._undirectedRelation("knows", "persons")]
     );
     var a = g.persons.save({name: "Alice", _key: "alice"})._id;
     var b = g.persons.save({name: "Bob", _key: "bob"})._id;
@@ -50,7 +50,7 @@
 
   var createSocialGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._undirectedRelationDefinition("relation", ["female", "male"]));
+    edgeDefinition.push(Graph._undirectedRelation("relation", ["female", "male"]));
     var g = Graph._create("social", edgeDefinition);
     var a = g.female.save({name: "Alice", _key: "alice"});
     var b = g.male.save({name: "Bob", _key: "bob"});
@@ -65,8 +65,8 @@
 
   var createRoutePlannerGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._directedRelationDefinition("highway", ["city"], ["city"]));
-    edgeDefinition.push(Graph._directedRelationDefinition(
+    edgeDefinition.push(Graph._directedRelation("highway", ["city"], ["city"]));
+    edgeDefinition.push(Graph._directedRelation(
       "road", ["village", "city"], ["village", "city"])
     );
     var g = Graph._create("routeplanner", edgeDefinition);

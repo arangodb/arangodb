@@ -67,10 +67,10 @@ To add further edge definitions to the array one must call:
 
 #### Undirected Relation
 
-@copydetails JSF_general_graph_undirectedRelationDefinition
+@copydetails JSF_general_graph_undirectedRelation
 
 ```js
-graph._undirectedRelationDefinition(relationName, vertexCollections);
+graph._undirectedRelation(relationName, vertexCollections);
 ```
 
 Define an undirected relation.
@@ -80,7 +80,7 @@ Relations are allowed in both directions among all collections in *vertexCollect
 
 Example Call:
 ```js
-> graph._undirectedRelationDefinition("eats", ["Human", "Animal"]);
+> graph._undirectedRelation("eats", ["Human", "Animal"]);
 {
   collection: "eats",
   from: ["Human", "Animal"],
@@ -91,7 +91,7 @@ Example Call:
 #### Directed Relation
 
 ```js
-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections);
+graph._directedRelation(relationName, fromVertexCollections, toVertexCollections);
 ```
 
 Define a directed relation.
@@ -102,7 +102,7 @@ Relations are only allowed in the direction from any collection in *fromVertexCo
 
 Example Call:
 ```js
-> graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+> graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 {
   collection: "has_bought",
   from: ["Customer", "Company"],
@@ -118,8 +118,8 @@ Example Call:
 ```js
 > var graph = require("org/arangodb/graph");
 > var edgeDefinitions = graph._edgeDefinitions();
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelationDefinition("friend_of", ["Customer"]));
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelation("friend_of", ["Customer"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 > graph._create("myStore", edgeDefinitions);
 {
   _id: "_graphs/123",
@@ -132,7 +132,7 @@ alternative call:
 
 ```js
 > var graph = require("org/arangodb/graph");
-> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelationDefinition("friend_of", ["Customer"]), graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelation("friend_of", ["Customer"]), graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 > graph._create("myStore", edgeDefinitions);
 {
   _id: "_graphs/123",

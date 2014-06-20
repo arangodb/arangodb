@@ -1,6 +1,6 @@
-!CHAPTER General Graphs
+!CHAPTER Graphs
 
-This chapter describes the multi-collection graph module.
+This chapter describes the general-graph module.
 It allows you to define a graph that is spread across several edge and document collections.
 This allows you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 There is no need to include the referenced collections within the query, this module will handle it for you.
@@ -8,7 +8,6 @@ There is no need to include the referenced collections within the query, this mo
 !SECTION First Steps with Graphs
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
-collections*. A vertex can be a document of a *document collection* or of an edge
-collection (so edges can be used as vertices). Which collections are used within
+collections*. In general a vertex is stored in a document collection. Which collections are used within
 a graph is defined via *edge definitions*. A graph can have an arbitrary number of edge
 definitions.
