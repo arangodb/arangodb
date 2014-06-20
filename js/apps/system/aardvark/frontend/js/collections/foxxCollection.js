@@ -70,6 +70,25 @@
         }
       });
       return msg;
+    },
+
+    purgeAllFoxxes: function (key) {
+      var msg, url = "/_admin/aardvark/foxxes/purgeall/"+key;
+      $.ajax({
+        async: false,
+        type: "DELETE",
+        url: url,
+        contentType: "application/json",
+        dataType: "json",
+        processData: false,
+        success: function(data) {
+          msg = true;
+        },
+        error: function(data) {
+          msg = false;
+        }
+      });
+      return msg;
     }
 
   });
