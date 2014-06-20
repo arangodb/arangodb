@@ -172,7 +172,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     res = TRI_ERROR_NO_ERROR;  // just in case the length is 0
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, ptr, shape_spec->_sizeEntry);
+      res = addShape(shape_spec->_sidEntry, ptr, static_cast<uint32_t>(shape_spec->_sizeEntry));
       ptr += shape_spec->_sizeEntry;
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -188,8 +188,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     auto offsets = reinterpret_cast<TRI_shape_size_t const*>(len + 1);
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, data + offsets[i],
-                                            offsets[i + 1] - offsets[i]);
+      res = addShape(shape_spec->_sidEntry, data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -206,7 +205,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     TRI_shape_length_list_t i;
 
     for (i = 0; i < *len; i++) {
-      res = addShape(sids[i], data + offsets[i], offsets[i + 1] - offsets[i]);
+      res = addShape(sids[i], data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -231,12 +230,11 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_fixedEntries; 
          i++) {
       // Fixed size subdocs cannot have inhomogeneous lists as subdocs:
-      res = addShape(sids[i], data + offsetsF[i], offsetsF[i + 1] - offsetsF[i]);
+      res = addShape(sids[i], data + offsetsF[i], static_cast<uint32_t>(offsetsF[i + 1] - offsetsF[i]));
     }
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_variableEntries;
          i++) {
-      addShape(sids[i + shape_spec->_fixedEntries],
-               data + offsetsV[i], offsetsV[i + 1] - offsetsV[i]);
+      addShape(sids[i + shape_spec->_fixedEntries], data + offsetsV[i], static_cast<uint32_t>(offsetsV[i + 1] - offsetsV[i]));
     }
   }
 
