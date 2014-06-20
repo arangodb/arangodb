@@ -1299,9 +1299,9 @@ AQLGenerator.prototype.next = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_undirectedRelationDefinition
+/// @startDocuBlock JSF_general_graph_undirectedRelation
 ///
-/// `general-graph._undirectedRelationDefinition(relationName, vertexCollections)`
+/// `general-graph._undirectedRelation(relationName, vertexCollections)`
 /// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
@@ -1315,24 +1315,24 @@ AQLGenerator.prototype.next = function() {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
 ///   var graph = require("org/arangodb/general-graph");
-///   graph._undirectedRelationDefinition("friend", "user");
+///   graph._undirectedRelation("friend", "user");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To define a relation between several vertex collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
 ///   var graph = require("org/arangodb/general-graph");
-///   graph._undirectedRelationDefinition("marriage", ["female", "male"]);
+///   graph._undirectedRelation("marriage", ["female", "male"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _undirectedRelationDefinition = function (relationName, vertexCollections) {
+var _undirectedRelation = function (relationName, vertexCollections) {
 
   if (arguments.length < 2) {
-    throw "method _undirectedRelationDefinition expects 2 arguments";
+    throw "method _undirectedRelation expects 2 arguments";
   }
 
   if (typeof relationName !== "string" || relationName === "") {
@@ -1533,7 +1533,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph = require("org/arangodb/general-graph");
-///   g = graph._create("mygraph", [graph._undirectedRelationDefinition("relation", ["male", "female"])], ["sessions"]);
+///   g = graph._create("mygraph", [graph._undirectedRelation("relation", ["male", "female"])], ["sessions"]);
 /// ~ graph._drop("mygraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3339,7 +3339,7 @@ Graph.prototype._PRINT = function(context) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports._undirectedRelationDefinition = _undirectedRelationDefinition;
+exports._undirectedRelation = _undirectedRelation;
 exports._directedRelationDefinition = _directedRelationDefinition;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
