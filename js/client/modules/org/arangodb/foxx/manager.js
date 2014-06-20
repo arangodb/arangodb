@@ -71,19 +71,7 @@ function getStorage () {
 function getFishbowlStorage () {
   'use strict';
 
-  var c = db._collection('_fishbowl');
-  if (c ===  null) {
-    c = db._create('_fishbowl', { isSystem : true });
-  }
-
-  if (c !== null && ! checkedFishBowl) {
-    // ensure indexes
-    c.ensureFulltextIndex("description");
-    c.ensureFulltextIndex("name");
-    checkedFishBowl = true;
-  }
-  
-  return c;
+  return utils.getFishbowlStorage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -966,35 +954,7 @@ exports.configJson = function () {
 exports.listJson = function (showPrefix) {
   'use strict';
 
-  var aal = getStorage();
-  var cursor = aal.byExample({ type: "mount" });
-  var result = [];
-
-  while (cursor.hasNext()) {
-    var doc = cursor.next();
-
-    var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1"); 
-
-    var res = {
-      mountId: doc._key,
-      mount: doc.mount,
-      appId: doc.app,
-      name: doc.name,
-      description: doc.description,
-      author: doc.author,
-      system: doc.isSystem ? "yes" : "no",
-      active: doc.active ? "yes" : "no",
-      version: version
-    };
-
-    if (showPrefix) {
-      res.collectionPrefix = doc.options.collectionPrefix;
-    }
-
-    result.push(res);
-  }
-
-  return result;
+  return utils.listJson(showPrefix);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1099,33 +1059,8 @@ exports.fetched = function () {
 exports.availableJson = function () {
   'use strict';
 
-  var fishbowl = getFishbowlStorage();
-  var cursor = fishbowl.all();
-  var result = [];
-
-  while (cursor.hasNext()) {
-    var doc = cursor.next();
-
-    var maxVersion = "-";
-    var versions = Object.keys(doc.versions);
-    versions.sort(module.compareVersions);
-    if (versions.length > 0) {
-      versions.reverse();
-      maxVersion = versions[0];
-    }
-
-    var res = {
-      name: doc.name,
-      description: doc.description || "",
-      author: doc.author || "",
-      latestVersion: maxVersion
-    };
-
-    result.push(res);
-  }
-
-  return result;
-};
+  return utils.availableJson();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints all available FOXX applications
@@ -1342,7 +1277,7 @@ exports.help = function () {
     var pad  = "                  ";
     var name = keys[i] + pad;
     var extra = commands[keys[i]];
-      
+
     if (typeof extra !== 'string') {
       // list of strings
       extra = extra.join("\n  " + pad) + "\n";
