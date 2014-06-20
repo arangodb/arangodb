@@ -2021,9 +2021,7 @@ function EdgesAndVerticesSuite() {
         g[ec1].save(vertexId1, vertexId2, {});
         fail();
       } catch (e) {
-        require("internal").print("*************++");
-        require("internal").print(e);
-        assertEqual(e.errorNum, 1937);
+        assertEqual(e.errorNum, 1906);
       }
       g[vc1].remove(vertexId1);
       g[vc2].remove(vertexId2);
