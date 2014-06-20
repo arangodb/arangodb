@@ -27,6 +27,7 @@
 
 #include "BasicsC/common.h"
 #include "BasicsC/locks.h"
+#include "BasicsC/logging.h"
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
@@ -140,6 +141,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
     char* copy;
     size_t n;
 
+    LOG_WARNING("activating intentional failure point '%s'", value);
     n = strlen(checkValue);
 
     if (FailurePoints == NULL) {

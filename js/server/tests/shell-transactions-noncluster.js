@@ -4376,6 +4376,86 @@ function transactionServerFailuresSuite () {
 
       assertEqual(100, c.count());
       internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write begin marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoBeginMarker : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+      internal.debugSetFailAt("TransactionWriteBeginMarker");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            c.save({ _key: "test100" });
+            fail();
+          }
+        });
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write commit marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoCommitMarker : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+      internal.debugSetFailAt("TransactionWriteCommitMarker");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 1000; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+
+            assertEqual(1000, c.count());
+          }
+        });
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
     }
 
   };
