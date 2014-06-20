@@ -29,8 +29,6 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -47,6 +45,8 @@ static char* FailurePoints;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_read_write_lock_t FailurePointsLock;
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -259,6 +259,8 @@ void TRI_ClearFailurePointsDebugging () {
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
 }
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the debugging
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +283,6 @@ void TRI_ShutdownDebugging () {
 
   TRI_DestroyReadWriteLock(&FailurePointsLock);
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
