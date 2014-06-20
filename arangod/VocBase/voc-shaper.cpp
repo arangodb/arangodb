@@ -194,6 +194,10 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
       if (p != nullptr) {
         return GetAttributeId(p);
       }
+    
+      TRI_DEBUG_INTENTIONAL_FAIL_IF("ShaperWriteAttributeMarker") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
       // write marker into wal
       triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
@@ -354,6 +358,10 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
       return found;
     }
+
+    TRI_DEBUG_INTENTIONAL_FAIL_IF("ShaperWriteShapeMarker") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     
     // write marker into wal
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
@@ -381,8 +389,9 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     res = TRI_ERROR_INTERNAL;
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
   LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(res));
+
+  // must not free the shape here, as the caller is going to free it...
 
   return nullptr;
 }

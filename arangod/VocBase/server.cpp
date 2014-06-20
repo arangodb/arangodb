@@ -42,11 +42,15 @@
 #include "BasicsC/memory-map.h"
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"
+#include "Basics/JsonHelper.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
+#include "Utils/Exception.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-logger.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
+#include "Wal/Marker.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables 
@@ -212,7 +216,6 @@ static int GenerateServerId (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ReadServerId (char const* filename) {
-  TRI_json_t* json;
   TRI_json_t* idString;
   TRI_server_id_t foundId;
 
@@ -222,7 +225,7 @@ static int ReadServerId (char const* filename) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
+  TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
 
   if (! TRI_IsArrayJson(json)) {
     if (json != nullptr) {
@@ -258,18 +261,16 @@ static int ReadServerId (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteServerId (char const* filename) {
-  TRI_json_t* json;
   char* idString;
   char buffer[32];
   size_t len;
   time_t tt;
   struct tm tb;
-  bool ok;
 
   TRI_ASSERT(filename != nullptr);
 
   // create a json object
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     // out of memory
@@ -290,7 +291,7 @@ static int WriteServerId (char const* filename) {
 
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
-  ok = TRI_SaveJson(filename, json, true);
+  bool ok = TRI_SaveJson(filename, json, true);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
@@ -307,9 +308,7 @@ static int WriteServerId (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DetermineServerId (TRI_server_t* server, bool checkVersion) {
-  int res;
-
-  res = ReadServerId(server->_serverIdFilename);
+  int res = ReadServerId(server->_serverIdFilename);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     if (checkVersion) {
@@ -397,9 +396,7 @@ static void SortDatabaseNames (TRI_vector_string_t* names) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char const* pos;
-
-  pos = strrchr(filename, '-');
+  char const* pos = strrchr(filename, '-');
 
   if (pos == nullptr) {
     return 0;
@@ -433,15 +430,12 @@ static int DatabaseIdComparator (const void* lhs, const void* rhs) {
 
 static int CreateBaseApplicationDirectory (char const* basePath,
                                            char const* type) {
-  char* path;
-  int res;
-
   if (basePath == nullptr || strlen(basePath) == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  res = TRI_ERROR_NO_ERROR;
-  path = TRI_Concatenate2File(basePath, type);
+  int res = TRI_ERROR_NO_ERROR;
+  char* path = TRI_Concatenate2File(basePath, type);
 
   if (path != nullptr) {
     if (! TRI_IsDirectory(path)) {
@@ -470,15 +464,12 @@ static int CreateBaseApplicationDirectory (char const* basePath,
 
 static int CreateApplicationDirectory (char const* name,
                                        char const* basePath) {
-  char* path;
-  int res;
-
   if (basePath == nullptr || strlen(basePath) == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  res = TRI_ERROR_NO_ERROR;
-  path = TRI_Concatenate3File(basePath, "databases", name);
+  int res = TRI_ERROR_NO_ERROR;
+  char* path = TRI_Concatenate3File(basePath, "databases", name);
 
   if (path != nullptr) {
     if (! TRI_IsDirectory(path)) {
@@ -509,24 +500,22 @@ static int CreateApplicationDirectory (char const* name,
 
 static int OpenDatabases (TRI_server_t* server,
                           bool isUpgrade) {
-  TRI_vector_string_t files;
-  size_t i, n;
-  int res;
-
   if (server->_iterateMarkersOnOpen && ! server->_hasCreatedSystemDatabase) {
     LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  TRI_vector_string_t files;
   files = TRI_FilesDirectory(server->_databasePath);
-  n = files._length;
+  
+  int res = TRI_ERROR_NO_ERROR;
+  size_t n = files._length;
 
   // open databases in defined order
   if (n > 1) {
     qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
   }
   
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
     TRI_json_t* json;
     TRI_json_t const* deletedJson;
@@ -811,15 +800,12 @@ static int CloseDatabases (TRI_server_t* server) {
 
 static int GetDatabases (TRI_server_t* server,
                          TRI_vector_string_t* databases) {
-  regex_t re;
   regmatch_t matches[2];
-  TRI_vector_string_t files;
-  int res;
-  size_t i, n;
 
   TRI_ASSERT(server != nullptr);
 
-  res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
+  regex_t re;
+  int res = regcomp(&re, "^database-([0-9][0-9]*)$", REG_EXTENDED);
 
   if (res != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -827,15 +813,14 @@ static int GetDatabases (TRI_server_t* server,
     return TRI_ERROR_INTERNAL;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  TRI_vector_string_t files;
   files = TRI_FilesDirectory(server->_databasePath);
-  n = files._length;
+  
+  res = TRI_ERROR_NO_ERROR;
+  size_t const n = files._length;
 
-  for (i = 0;  i < n;  ++i) {
-    char const* name;
-    char* dname;
-
-    name = files._buffer[i];
+  for (size_t i = 0;  i < n;  ++i) {
+    char const* name = files._buffer[i];
     TRI_ASSERT(name != nullptr);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
@@ -844,8 +829,7 @@ static int GetDatabases (TRI_server_t* server,
     }
 
     // found a database name
-
-    dname = TRI_Concatenate2File(server->_databasePath, name);
+    char* dname = TRI_Concatenate2File(server->_databasePath, name);
 
     if (dname == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
@@ -875,24 +859,20 @@ static int GetDatabases (TRI_server_t* server,
 
 static int MoveVersionFile (TRI_server_t* server,
                             char const* systemName) {
-  char* oldName;
-  char* targetName;
-  int res;
-
-  oldName = TRI_Concatenate2File(server->_basePath, "VERSION");
+  char* oldName = TRI_Concatenate2File(server->_basePath, "VERSION");
 
   if (oldName == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  targetName = TRI_Concatenate3File(server->_databasePath, systemName, "VERSION");
+  char* targetName = TRI_Concatenate3File(server->_databasePath, systemName, "VERSION");
 
   if (targetName == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
   if (TRI_ExistsFile(oldName)) {
     res = TRI_RenameFile(oldName, targetName);
   }
@@ -1042,22 +1022,19 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
                                    bool deleted,
                                    TRI_vocbase_defaults_t const* defaults,
                                    char const* directory) {
-  char* file;
-  char* tickString;
-  TRI_json_t* json;
   // TRI_json_t* properties;
 
   TRI_ASSERT(id > 0);
   TRI_ASSERT(name != nullptr);
   TRI_ASSERT(directory != nullptr);
 
-  file = TRI_Concatenate2File(directory, TRI_VOC_PARAMETER_FILE);
+  char* file = TRI_Concatenate2File(directory, TRI_VOC_PARAMETER_FILE);
 
   if (file == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  tickString = TRI_StringUInt64((uint64_t) id);
+  char* tickString = TRI_StringUInt64((uint64_t) id);
 
   if (tickString == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
@@ -1065,7 +1042,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
@@ -1078,7 +1055,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   /*
   properties = TRI_JsonVocBaseDefaults(TRI_CORE_MEM_ZONE, defaults);
 
-  if (properties == NULL) {
+  if (properties == nullptr) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
@@ -1472,6 +1449,67 @@ static int InitAll (TRI_server_t* server) {
   }
   
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a create-database marker into the log
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteCreateMarker (TRI_voc_tick_t id, 
+                              TRI_json_t const* json) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::CreateDatabaseMarker marker(id, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save create database marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes a drop-database marker into the log
+////////////////////////////////////////////////////////////////////////////////
+  
+static int WriteDropMarker (TRI_voc_tick_t id) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::DropDatabaseMarker marker(id);
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // throw an exception which is caught at the end of this function
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save drop database marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2125,13 +2163,13 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
                               char const* name,
                               TRI_vocbase_defaults_t const* defaults,
                               TRI_vocbase_t** database) {
-  char* file;
-  char* path;
 
   if (! TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
 
+  // the create lock makes sure no one else is creating a database while we're inside
+  // this function
   TRI_LockMutex(&server->_createLock);
 
   {
@@ -2147,19 +2185,28 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     }
   }
 
-  // name not yet in use, release the read lock
+  // name not yet in use
+  TRI_json_t* json = TRI_JsonVocBaseDefaults(TRI_UNKNOWN_MEM_ZONE, defaults);
+
+  if (json == nullptr) {
+    TRI_UnlockMutex(&server->_createLock);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
 
   // create the database directory
+  char* file;
   TRI_voc_tick_t tick = TRI_NewTickServer();
   int res = CreateDatabaseDirectory(server, tick, name, defaults, &file);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_UnlockMutex(&server->_createLock);
 
     return res;
   }
 
-  path = TRI_Concatenate2File(server->_databasePath, file);
+  char* path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   LOG_INFO("creating database '%s', directory '%s'",
@@ -2170,6 +2217,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
   if (vocbase == nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_UnlockMutex(&server->_createLock);
 
     // grab last error
@@ -2206,9 +2254,14 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   TRI_UnlockMutex(&server->_createLock);
 
+  // write marker into log
+  res = WriteCreateMarker(vocbase->_id, json);
+    
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
   *database = vocbase;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2332,6 +2385,7 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
   return res;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
 ////////////////////////////////////////////////////////////////////////////////
@@ -2373,6 +2427,9 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
                                    vocbase->_path);
 
       TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
+
+      // TODO: what to do in case of error?
+      WriteDropMarker(vocbase->_id);
     }
     else {
       // already deleted

@@ -1463,13 +1463,13 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
     else {
       TRI_set_errno(TRI_ERROR_ARANGO_SHAPER_FAILED);
     }
-    return 0;
+    return nullptr;
   }
 
   TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false);
 
-  if (shaped == NULL) {
-    return NULL;
+  if (shaped == nullptr) {
+    return nullptr;
   }
 
   shaped->_sid = dst._sid;
