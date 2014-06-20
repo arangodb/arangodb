@@ -368,7 +368,7 @@ bool LogfileManager::prepare () {
     LOG_FATAL_AND_EXIT("invalid value for --wal.slots. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
   }
 
-  if (_maxOpenLogfiles < 2) {
+  if (_maxOpenLogfiles < MinOpenLogfiles()) {
     LOG_FATAL_AND_EXIT("invalid value for --wal.open-logfiles. Please use a value of at least %lu", (unsigned long) MinOpenLogfiles());
   }
   
