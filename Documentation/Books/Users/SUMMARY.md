@@ -74,13 +74,13 @@
   * [Graph Functions](General-Graphs/Functions.md)
   * [Fluent Query Interface](General-Graphs/FluentAQLInterface.md)   
 <!-- 14 -->
-* [Blueprint Graphs](Blueprint-Graphs/README.md)
+* [(Deprecated) Blueprint Graphs](Blueprint-Graphs/README.md)
 	* [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
 	* [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
 	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)  
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
-	* [Starting from Scratch](Traversals/StartingFromScratch.md)	
+	* [Starting from Scratch](Traversals/StartingFromScratch.md)
 	* [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
 	* [Example Data](Traversals/ExampleData.md)
 <!-- 17 -->
@@ -171,7 +171,7 @@
     * [Management](HttpGharial/Management.md)
     * [Vertices](HttpGharial/Vertices.md)
     * [Edges](HttpGharial/Edges.md)
-  * [Graphs](HttpGraphs/README.md)
+  * [(Deprecated) Graphs](HttpGraphs/README.md)
     * [Vertex](HttpGraphs/Vertex.md)
     * [Edges](HttpGraphs/Edge.md)
   * [Traversals](HttpTraversal/README.md)
