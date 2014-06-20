@@ -53,6 +53,26 @@
       return result;
     },
 
+    gitInfo: function (key) {
+      var result;
+      $.ajax({
+        cache: false,
+        type: "GET",
+        async: false, // sequential calls!
+        url: "/_admin/aardvark/foxxes/gitinfo/"+key,
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          result = data;
+        },
+        error: function(data) {
+          result = data;
+        }
+      });
+
+      return result;
+    },
+
     purgeFoxx: function (key) {
       var msg, url = "/_admin/aardvark/foxxes/purge/"+key;
       $.ajax({

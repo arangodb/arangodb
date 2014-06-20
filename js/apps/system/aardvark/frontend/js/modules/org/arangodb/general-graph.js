@@ -183,6 +183,22 @@ var wrapCollection = function(col) {
   return wrapper;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_example_description
+/// 
+/// For many of the following functions *examples* can be passed in as a parameter.
+/// *Examples* are used to filter the result set for objects that match the conditions.
+/// These *examples* can have the following values:
+///
+///   * Empty, there is no matching executed all found results are valid.
+///   * A string, only the result having this value as it's *_id* is returned.
+///   * An example object, defining a set of attributes.
+///       Only results having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All results matching at least one of the elements in the list are returned.
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 var transformExample = function(example) {
   if (example === undefined) {
@@ -404,16 +420,16 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// Select all edges for the vertices selected before.
+/// `graph_query.edges(examples)`
+/// *Select all edges for the vertices selected before.*
 ///
-/// `graph-query.edges(examples)`
 /// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
+/// * *examples*: See #definition_of_examples
 /// 
 ///   * Empty, there is no matching executed all edges are valid.
 ///   * A string, only the edge having this value as it's id is returned.
@@ -461,9 +477,9 @@ AQLGenerator.prototype.edges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// Select all outbound edges for the vertices selected before.
+/// `graph_query.outEdges(examples)`
+/// *Select all outbound edges for the vertices selected before.*
 /// 
-/// `graph-query.outEdges(examples)`
 ///
 /// Creates an AQL statement to select all *outbound* edges for each of the vertices selected
 /// in the step before.

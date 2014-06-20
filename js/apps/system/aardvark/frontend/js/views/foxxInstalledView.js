@@ -44,6 +44,14 @@
           "Remove", this.confirmRemovalSingle.bind(this)
         ),
         window.modalView.createSuccessButton(
+          "Install", this.installDialog.bind(this)
+        )
+      ];
+      var buttonInfoConfigUpdate = [
+        window.modalView.createDeleteButton(
+          "Remove", this.confirmRemovalSingle.bind(this)
+        ),
+        window.modalView.createSuccessButton(
           "Update", this.update.bind(this)
         ),
         window.modalView.createSuccessButton(
@@ -51,6 +59,17 @@
         )
       ];
       var buttonInfoMultipleVersionsConfig = [
+        window.modalView.createDeleteButton(
+          "Remove All", this.confirmRemovalAll.bind(this)
+        ),
+        window.modalView.createDeleteButton(
+          "Remove", this.confirmRemovalSingle.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Install", this.installDialog.bind(this)
+        )
+      ];
+      var buttonInfoMultipleVersionsConfigUpdate = [
         window.modalView.createDeleteButton(
           "Remove All", this.confirmRemovalAll.bind(this)
         ),
@@ -78,11 +97,23 @@
         "Application Settings",
         buttonInfoConfig
       );
+      this.showInfoModUpdate = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Application Settings",
+        buttonInfoConfigUpdate
+      );
       this.showInfoMultipleVersionsMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
         "Application Settings",
         buttonInfoMultipleVersionsConfig
+      );
+      this.showInfoMultipleVersionsModUpdate = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Application Settings",
+        buttonInfoMultipleVersionsConfigUpdate
       );
       this.showSystemInfoMod = window.modalView.show.bind(
         window.modalView,
@@ -267,7 +298,15 @@
     },
 
     infoDialog: function(event) {
-      var versions, isSystem = false;
+      var name = this.model.get("name"),
+      mountinfo = this.model.collection.gitInfo(name),
+      versions, isSystem = false, isGit;
+
+      if (mountinfo.git === true) {
+        this.model.set("isGit", mountinfo.git);
+        this.model.set("gitUrl", mountinfo.url);
+      }
+
       if (this.model.get("isSystem")) {
         isSystem = true;
       } else {
@@ -275,13 +314,20 @@
       }
 
       versions = this.model.get("versions");
+      isGit = this.model.get("isGit");
 
       event.stopPropagation();
-      if (isSystem === false && !versions) {
+      if (isSystem === false && !versions && !isGit) {
         this.showInfoMod(this.fillInfoValues());
       }
-      else if (isSystem === false && versions) {
+      else if (isSystem === false && !versions && isGit) {
+        this.showInfoModUpdate(this.fillInfoValues());
+      }
+      else if (isSystem === false && versions && !isGit) {
         this.showInfoMultipleVersionsMod(this.fillInfoValues());
+      }
+      else if (isSystem === false && versions && isGit) {
+        this.showInfoMultipleVersionsModUpdate(this.fillInfoValues());
       }
       else {
         this.showSystemInfoMod(this.fillInfoValues());
@@ -301,9 +347,9 @@
     },
 
     update: function() {
-      var url = this.model.get("git"),
-      name = '',
+      var url = this.model.get("gitUrl"),
       version = 'master',
+      name = '',
       result;
 
       if (url === undefined || url === '') {
@@ -311,7 +357,7 @@
         return;
       }
 
-      result = this.collection.installFoxxFromGithub(url, name, version);
+      result = this.model.collection.installFoxxFromGithub(url, name, version);
       if (result === true) {
         window.modalView.hide();
         window.App.applicationsView.reload();
