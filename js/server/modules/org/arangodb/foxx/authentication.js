@@ -94,15 +94,8 @@ createAuthObject = function (applicationContext, opts) {
 
   checkAuthenticationOptions(options);
 
-  sessions = new Sessions(applicationContext, {
-    lifetime: options.sessionLifetime
-  });
-
-  cookieAuth = new CookieAuthentication(applicationContext, {
-    lifetime: options.cookieLifetime,
-    name: options.cookieName
-  });
-
+  sessions = new Sessions(applicationContext, options);
+  cookieAuth = new CookieAuthentication(applicationContext, options);
   auth = new Authentication(applicationContext, sessions, cookieAuth);
 
   return auth;
