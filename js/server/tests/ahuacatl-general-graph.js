@@ -89,8 +89,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+          graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
+          graph._directedRelation("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
@@ -303,7 +303,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge1",
+          graph._directedRelation("UnitTestsAhuacatlEdge1",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"]
           )
@@ -490,8 +490,8 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       var g = graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+          graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
+          graph._directedRelation("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
@@ -658,8 +658,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var g = graph._create(
         "werKenntWen",
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelationDefinition(KenntAnderen,
+          graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
+          graph._directedRelation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )
@@ -1619,8 +1619,8 @@ function ahuacatlQueryGeneralCyclesSuite() {
       var g = graph._create(
         "werKenntWen",
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelationDefinition(KenntAnderen,
+          graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
+          graph._directedRelation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )
