@@ -296,12 +296,13 @@ namespace triagens {
 
         int result = TRI_MKDIR(name.c_str(), mask);
 
-        if (result != 0 && errno == EEXIST && isDirectory(name)) {
+        int res = errno;
+        if (result != 0 && res == EEXIST && isDirectory(name)) {
           result = 0;
         }
 
         if (errorNumber) {
-          *errorNumber = errno;
+          *errorNumber = res;
         }
 
         return (result != 0) ? false : true;
@@ -328,7 +329,8 @@ namespace triagens {
           if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
             result.push_back(fd.name);
           }
-        } while(_findnext(handle, &fd) != -1);
+        } 
+        while(_findnext(handle, &fd) != -1);
 
         _findclose(handle);
 
@@ -362,7 +364,6 @@ namespace triagens {
       bool isDirectory (string const& path) {
         struct stat stbuf;
         int res = stat(path.c_str(), &stbuf);
-
         return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
       }
 
