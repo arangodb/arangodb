@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +73,7 @@ std::string Slot::statusText () const {
   // which are all covered in the above switch statement
   // stop stelling me that the control flow will reach the end of a non-void
   // function. this cannot happen!!!!!
-  TRI_ASSERT(false); 
+  TRI_ASSERT(false);
   return "unknown";
 }
 
@@ -83,29 +85,29 @@ std::string Slot::statusText () const {
 void Slot::fill (void* src,
                  size_t size) {
   TRI_ASSERT(size == _size);
-  TRI_ASSERT(src != nullptr);   
+  TRI_ASSERT(src != nullptr);
 
   TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
-  
+
   // set tick
   marker->_tick = _tick;
-  
+
   // set size
   marker->_size = static_cast<TRI_voc_size_t>(size);
-  
+
   // calculate the crc
   marker->_crc = 0;
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, (char const*) marker, static_cast<TRI_voc_size_t>(size));
   marker->_crc = TRI_FinalCrc32(crc);
-    
+
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
     LOG_WARNING("intentionally writing corrupt marker into datafile");
     marker->_crc = 0xdeadbeef;
   }
- 
-  // copy data into marker 
+
+  // copy data into marker
   memcpy(_mem, src, size);
 }
 
@@ -156,7 +158,11 @@ void Slot::setReturned (bool waitForSync) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

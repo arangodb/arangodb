@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_AGENCY_COMM_H
-#define TRIAGENS_CLUSTER_AGENCY_COMM_H 1
+#ifndef ARANGODB_CLUSTER_AGENCY_COMM_H
+#define ARANGODB_CLUSTER_AGENCY_COMM_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -38,7 +40,7 @@ namespace triagens {
   namespace httpclient {
     class GeneralClientConnection;
   }
-  
+
   namespace rest {
     class Endpoint;
   }
@@ -66,15 +68,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an agency endpoint
 ////////////////////////////////////////////////////////////////////////////////
-      
-      ~AgencyEndpoint (); 
+
+      ~AgencyEndpoint ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the endpoint 
+/// @brief the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
       triagens::rest::Endpoint* _endpoint;
@@ -190,7 +192,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the location header (might be empty)
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       const std::string location () const {
         return _location;
       }
@@ -198,7 +200,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the body (might be empty)
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       const std::string body () const {
         return _body;
       }
@@ -230,7 +232,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
-  
+
     public:
 
       std::string _location;
@@ -246,7 +248,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  AgencyCommLocker
 // -----------------------------------------------------------------------------
-    
+
     class AgencyCommLocker {
 
 // -----------------------------------------------------------------------------
@@ -358,7 +360,7 @@ namespace triagens {
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void cleanup (); 
+        static void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to establish a communication channel
@@ -369,7 +371,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnects all communication channels
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void disconnect ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,13 +408,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static bool setPrefix (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the global prefix for all operations
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static std::string prefix ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,41 +452,41 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a version number in the agency
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool increaseVersion (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         AgencyCommResult createDirectory (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a value in the back end
 ////////////////////////////////////////////////////////////////////////////////
 
-        AgencyCommResult setValue (std::string const&, 
+        AgencyCommResult setValue (std::string const&,
                                    TRI_json_t const*,
                                    double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a key exists
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool exists (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult getValues (std::string const&, 
+
+        AgencyCommResult getValues (std::string const&,
                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes one or multiple values from the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult removeValues (std::string const&,  
+
+        AgencyCommResult removeValues (std::string const&,
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,8 +505,8 @@ namespace triagens {
 /// the CAS condition is whether or not the previous value for the key was
 /// identical to `oldValue`
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult casValue (std::string const&, 
+
+        AgencyCommResult casValue (std::string const&,
                                    TRI_json_t const*,
                                    TRI_json_t const*,
                                    double,
@@ -515,14 +517,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AgencyCommResult uniqid (std::string const&,
-                                 uint64_t, 
+                                 uint64_t,
                                  double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief blocks on a change of a single value in the back end
 ////////////////////////////////////////////////////////////////////////////////
-        
-        AgencyCommResult watchValue (std::string const&, 
+
+        AgencyCommResult watchValue (std::string const&,
                                      uint64_t,
                                      double,
                                      bool);
@@ -588,7 +590,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-      
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -618,13 +620,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pop an endpoint from the queue
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         AgencyEndpoint* popEndpoint (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reinsert an endpoint into the queue
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         void requeueEndpoint (AgencyEndpoint*,
                               bool);
 
@@ -641,25 +643,25 @@ namespace triagens {
         std::string buildUrl () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends an HTTP request to the agency, handling failover 
+/// @brief sends an HTTP request to the agency, handling failover
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         bool sendWithFailover (triagens::rest::HttpRequest::HttpRequestType,
                                double,
                                AgencyCommResult&,
-                               std::string const&, 
+                               std::string const&,
                                std::string const&,
                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL 
+/// @brief sends data to the URL
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         bool send (triagens::httpclient::GeneralClientConnection*,
                    triagens::rest::HttpRequest::HttpRequestType,
                    double,
                    AgencyCommResult&,
-                   std::string const&, 
+                   std::string const&,
                    std::string const&);
 
 // -----------------------------------------------------------------------------
@@ -701,7 +703,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all endpoints
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         static std::list<AgencyEndpoint*> _globalEndpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -719,13 +721,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial sleep time
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         static unsigned long const InitialSleepTime = 5000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum sleep time
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         static unsigned long const MaxSleepTime = 50000;
     };
   }
@@ -734,8 +736,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-

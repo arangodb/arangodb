@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,7 +59,7 @@ namespace triagens {
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* client, 
+    ImportHelper::ImportHelper (httpclient::SimpleHttpClient* client,
                                 uint64_t maxUploadSize)
     : _client(client),
       _maxUploadSize(maxUploadSize),
@@ -217,7 +219,7 @@ namespace triagens {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
         fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
-      
+
         if (fd < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;
           return false;
@@ -258,7 +260,7 @@ namespace triagens {
           // we're done
           break;
         }
-    
+
         // adjust size of the buffer by the size of the chunk we just read
         _outputBuffer.increaseLength(n);
 
@@ -267,8 +269,8 @@ namespace triagens {
           // or a JSON array with all documents)
           char const* p = _outputBuffer.begin();
           char const* e = _outputBuffer.end();
-          
-          while (p < e && 
+
+          while (p < e &&
                  (*p == ' ' || *p == '\r' || *p == '\n' || *p == '\t' || *p == '\f' || *p == '\b')) {
             ++p;
           }
@@ -553,7 +555,7 @@ namespace triagens {
         // get the "error" flag. This returns a pointer, not a copy
         TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
 
-        if (TRI_IsBooleanJson(error) && 
+        if (TRI_IsBooleanJson(error) &&
             error->_value._boolean) {
           _hasError = true;
 
@@ -591,3 +593,11 @@ namespace triagens {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

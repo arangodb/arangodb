@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -54,7 +56,7 @@ struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
-    
+
     class VocbaseContext;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +126,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestVocbaseBaseHandler (rest::HttpRequest*); 
+        RestVocbaseBaseHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -180,7 +182,7 @@ namespace triagens {
 /// @brief generates message for a saved document
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateSaved (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+        void generateSaved (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
                             TRI_voc_cid_t cid,
                             TRI_doc_mptr_copy_t const& mptr) {
           TRI_ASSERT(mptr.getDataPtr() != nullptr); // PROTECTED by trx here
@@ -200,7 +202,7 @@ namespace triagens {
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+        void generateDeleted (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
                               TRI_voc_cid_t cid,
                               TRI_voc_key_t key,
                               TRI_voc_rid_t rid) {
@@ -220,7 +222,7 @@ namespace triagens {
 /// @brief generates document not found error message, read transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (triagens::arango::SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx, 
+        void generateDocumentNotFound (triagens::arango::SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
                                        TRI_voc_cid_t cid,
                                        TRI_voc_key_t key) {
           generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
@@ -230,7 +232,7 @@ namespace triagens {
 /// @brief generates document not found error message, write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+        void generateDocumentNotFound (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
                                        TRI_voc_cid_t cid,
                                        TRI_voc_key_t key) {
           generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
@@ -321,7 +323,7 @@ namespace triagens {
 /// @note @FA{header} must be lowercase.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_rid_t extractRevision (char const*, 
+        TRI_voc_rid_t extractRevision (char const*,
                                        char const*,
                                        bool&);
 
@@ -359,8 +361,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int parseDocumentId (triagens::arango::CollectionNameResolver const*,
-                             std::string const&, 
-                             TRI_voc_cid_t&, 
+                             std::string const&,
+                             TRI_voc_cid_t&,
                              TRI_voc_key_t&);
 
 // -----------------------------------------------------------------------------
@@ -407,7 +409,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

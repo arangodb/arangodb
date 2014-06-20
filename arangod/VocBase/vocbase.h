@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_VOCBASE_H
-#define TRIAGENS_VOC_BASE_VOCBASE_H 1
+#ifndef ARANGODB_VOC_BASE_VOCBASE_H
+#define ARANGODB_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
 
@@ -133,7 +135,7 @@ struct TRI_vocbase_defaults_s;
 #define TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(a) \
   while (! TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a)) { \
     usleep(1000); \
-  } 
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -285,7 +287,7 @@ typedef struct TRI_vocbase_s {
 
   struct {
     TRI_spin_t               _lock;               // a lock protecting the usage information
-    uint32_t                 _refCount;           // reference counter 
+    uint32_t                 _refCount;           // reference counter
     bool                     _isDeleted;          // flag if database is marked as deleted
   }                          _usage;
 
@@ -322,7 +324,7 @@ typedef struct TRI_vocbase_s {
 
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
-  
+
   struct TRI_general_cursor_store_s* _cursors;
   TRI_associative_pointer_t* _functions;
 
@@ -339,7 +341,7 @@ TRI_vocbase_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of a collection
-/// 
+///
 /// note: the NEW_BORN status is not used in ArangoDB 1.3 anymore, but is left
 /// in this enum for compatibility with earlier versions
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,7 +416,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e,
 /// @brief destroys an initial, not fully constructed vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyInitialVocBase (TRI_vocbase_t*); 
+void TRI_DestroyInitialVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
@@ -432,7 +434,7 @@ TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
 /// @brief closes a database and all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyVocBase (TRI_vocbase_t*); 
+void TRI_DestroyVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the compactor thread
@@ -482,21 +484,21 @@ const char* TRI_GetStatusStringCollectionVocBase (TRI_vocbase_col_status_e);
 /// it is the caller's responsibility to free the name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*, 
+char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t*,
                                         const TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t*,
                                                       char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t*,
                                                     TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -521,7 +523,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
 /// @brief unloads a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnloadCollectionVocBase (TRI_vocbase_t*, 
+int TRI_UnloadCollectionVocBase (TRI_vocbase_t*,
                                  TRI_vocbase_col_t*,
                                  bool);
 
@@ -529,7 +531,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t*,
 /// @brief drops a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropCollectionVocBase (TRI_vocbase_t*, 
+int TRI_DropCollectionVocBase (TRI_vocbase_t*,
                                TRI_vocbase_col_t*,
                                TRI_server_id_t);
 
@@ -537,8 +539,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t*,
 /// @brief renames a (document) collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollectionVocBase (TRI_vocbase_t*, 
-                                 TRI_vocbase_col_t*, 
+int TRI_RenameCollectionVocBase (TRI_vocbase_t*,
+                                 TRI_vocbase_col_t*,
                                  char const*,
                                  bool,
                                  TRI_server_id_t);
@@ -550,7 +552,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t*,
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UseCollectionVocBase (TRI_vocbase_t*, 
+int TRI_UseCollectionVocBase (TRI_vocbase_t*,
                               TRI_vocbase_col_t*,
                               TRI_vocbase_col_status_e&);
 
@@ -562,7 +564,7 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t*,
 /// when you are done with the collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*,
                                                  TRI_voc_cid_t,
                                                  TRI_vocbase_col_status_e&);
 
@@ -574,7 +576,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*,
 /// when you are done with the collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*, 
+TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*,
                                                    char const*,
                                                    TRI_vocbase_col_status_e&);
 
@@ -582,7 +584,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*,
 /// @brief releases a (document) collection from usage
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*, 
+void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*,
                                    TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,16 +627,16 @@ bool TRI_IsSystemVocBase (TRI_vocbase_t*);
 /// @brief checks if a database name is allowed
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedNameVocBase (bool, 
+bool TRI_IsAllowedNameVocBase (bool,
                                char const*);
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
-#endif
-
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

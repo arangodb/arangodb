@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_SERVER_H
-#define TRIAGENS_VOC_BASE_SERVER_H 1
+#ifndef ARANGODB_VOC_BASE_SERVER_H
+#define ARANGODB_VOC_BASE_SERVER_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/associative.h"
@@ -191,7 +193,7 @@ TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
-                                           TRI_voc_tick_t, 
+                                           TRI_voc_tick_t,
                                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,16 +323,16 @@ int TRI_ChangeOperationModeServer (TRI_vocbase_operationmode_e);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current operation mode of the server
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 TRI_vocbase_operationmode_e TRI_GetOperationModeServer ();
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
-#endif
-
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

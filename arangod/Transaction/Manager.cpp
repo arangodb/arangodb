@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -111,7 +113,7 @@ Transaction* Manager::createTransaction (bool singleOperation) {
   TRI_voc_tid_t id = _generator.next();
 
   Transaction* transaction = new Transaction(this, id, singleOperation);
-  
+
   WRITE_LOCKER(_lock);
   auto it = _transactions.insert(make_pair(id, transaction));
 
@@ -131,7 +133,7 @@ Transaction* Manager::createTransaction (bool singleOperation) {
 
 Transaction::StateType Manager::statusTransaction (TRI_voc_tid_t id) {
   READ_LOCKER(_lock);
-  
+
   auto it = _transactions.find(id);
   if (it != _transactions.end()) {
     return (*it).second->state();
@@ -150,7 +152,7 @@ TransactionInfo Manager::getOldestRunning () {
 
   for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
     Transaction* transaction = (*it).second;
-  
+
     if (transaction->state() == State::StateType::BEGUN) {
       return TransactionInfo(transaction->id(), transaction->elapsedTime());
     }
@@ -201,7 +203,7 @@ int Manager::removeFailed (vector<TRI_voc_tid_t> const& ids) {
 
 int Manager::beginTransaction (Transaction* transaction) {
   WRITE_LOCKER(_lock);
-  
+
   // check the transaction state first
   if (transaction->state() != State::StateType::UNINITIALISED) {
     transaction->setState(State::StateType::ABORTED);
@@ -221,9 +223,9 @@ int Manager::beginTransaction (Transaction* transaction) {
 int Manager::commitTransaction (Transaction* transaction,
                                 bool waitForSync) {
   TRI_voc_tid_t id = transaction->id();
-  
+
   WRITE_LOCKER(_lock);
-  
+
   if (transaction->state() != State::StateType::BEGUN) {
     // set it to aborted
     transaction->setState(State::StateType::ABORTED);
@@ -258,11 +260,19 @@ int Manager::rollbackTransaction (Transaction* transaction) {
   }
 
   transaction->setState(State::StateType::ABORTED);
-  
+
   // leave it in the list of transactions
   return TRI_ERROR_NO_ERROR;
 }
 
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

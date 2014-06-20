@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AHUACATL_AHUACATL_ERROR_H
-#define TRIAGENS_AHUACATL_AHUACATL_ERROR_H 1
+#ifndef ARANGODB_AHUACATL_AHUACATL__ERROR_H
+#define ARANGODB_AHUACATL_AHUACATL__ERROR_H 1
 
 #include "Basics/Common.h"
 
@@ -88,9 +90,9 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const);
 /// @brief get a format query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetContextErrorAql (const char* const, 
-                              const size_t, 
-                              const size_t, 
+char* TRI_GetContextErrorAql (const char* const,
+                              const size_t,
+                              const size_t,
                               const size_t);
 
 #endif
@@ -101,5 +103,5 @@ char* TRI_GetContextErrorAql (const char* const,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
