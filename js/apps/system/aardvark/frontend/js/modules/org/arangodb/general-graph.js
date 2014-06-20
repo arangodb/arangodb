@@ -1238,6 +1238,7 @@ AQLGenerator.prototype.count = function() {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
+///   while (query.hasNext()) {query.next();}
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 /// 
@@ -1428,8 +1429,28 @@ var _list = function() {
   return _.pluck(gdb.toArray(), "_key");
 };
 
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a list of edge definitions
+/// @startDocuBlock JSF_general_graph_edge_definitions
+///
+/// The edge definitions for a graph is an array containing arbitrary many directed
+/// and/or undirected relations as defined below.
+/// The list of edge definitions of a graph can be managed by the graph module itself.
+/// This function is the entry point for the management and will return the correct list.
+///
+/// @EXAMPLES
+///
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
+///   var graph = require("org/arangodb/general-graph");
+///   directed_relation = graph._directedRelationDefinition("lives_in", "user", "city");
+///   undirected_relation = graph._directedRelationDefinition("knows", "user");
+///   edgedefinitions = graph._edgeDefinitions(directed_relation, undirected_relation);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1446,25 +1467,80 @@ var _edgeDefinitions = function () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extend a list of edge definitions
+/// @startDocuBlock JSF_general_graph_extend_edge_definitions
+///
+/// In order to add more edge definitions to the graph before creating
+/// this function can be used to add more definitions to the initial list.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
+///   var graph = require("org/arangodb/general-graph");
+///   directed_relation = graph._directedRelationDefinition("lives_in", "user", "city");
+///   undirected_relation = graph._directedRelationDefinition("knows", "user");
+///   edgedefinitions = graph._edgeDefinitions(directed_relation);
+///   edgedefinitions = graph._extendEdgeDefinitions(undirected_relation);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-
 var _extendEdgeDefinitions = function (edgeDefinition) {
-
   var args = arguments, i = 0;
 
-  Object.keys(args).forEach(function (x) {
-    i++;
-    if (i === 1) {return;}
-    edgeDefinition.push(args[x]);
-  });
+  Object.keys(args).forEach(
+    function (x) {
+      i++;
+      if (i === 1) {
+        return;
+      }
+      edgeDefinition.push(args[x]);
+    }
+  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_create
+/// `general-graph._create(graph-name, edge-definitions, orphan-collections)`
+/// *Create a graph*
+///
+///
+/// The creation of a graph requires the name of the graph and a definition of its edges.
+///
+/// For every type of edge definition a convenience method exists that can be used to create a graph.
+/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are refered to as orphan collections within this chapter.
+/// All collections used within the creation process are created if they do not exist.
+///
+/// * *graph-name*: string - unique identifier of the graph
+/// * *edge-definitions*: array - list of edge definition objects
+/// * *orphan-collections*: array - list of additonal vertex collection names
+///
+/// @EXAMPLES
+///
+/// Create an empty graph, edge definitions can be added at runtime:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._create("mygraph");
+/// ~ graph._drop("mygraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Create a graph with edge definitions and orphan collections:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._create("mygraph", [graph._undirectedRelationDefinition("relation", ["male", "female"])], ["sessions"]);
+/// ~ graph._drop("mygraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
@@ -1563,6 +1639,211 @@ var createHiddenProperty = function(obj, name, value) {
   });
   obj[name] = value;
 };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper for updating binded collections
+////////////////////////////////////////////////////////////////////////////////
+var removeEdge = function (edgeId, options, self) {
+  options = options || {};
+  var edgeCollection = edgeId.split("/")[0];
+  var graphs = getGraphCollection().toArray();
+  self.__idsToRemove.push(edgeId);
+  self.__collectionsToLock.push(edgeCollection);
+  graphs.forEach(
+    function(graph) {
+      var edgeDefinitions = graph.edgeDefinitions;
+      if (graph.edgeDefinitions) {
+        edgeDefinitions.forEach(
+          function(edgeDefinition) {
+            var from = edgeDefinition.from;
+            var to = edgeDefinition.to;
+            var collection = edgeDefinition.collection;
+            // if collection of edge to be deleted is in from or to
+            if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
+              //search all edges of the graph
+              var edges = db[collection].toArray();
+              edges.forEach(
+                function (edge) {
+                  // if from is
+                  if(self.__idsToRemove.indexOf(edge._id) === -1) {
+                    if (edge._from === edgeId || edge._to === edgeId) {
+                      removeEdge(edge._id, options, self);
+                    }
+                  }
+                }
+              );
+            }
+          }
+        );
+      }
+    }
+  );
+  return;
+};
+
+var bindEdgeCollections = function(self, edgeCollections) {
+  _.each(edgeCollections, function(key) {
+    var obj = db._collection(key);
+    var wrap = wrapCollection(obj);
+    // save
+    var old_save = wrap.save;
+    wrap.save = function(from, to, data) {
+      //check, if edge is allowed
+      self.__edgeDefinitions.forEach(
+        function(edgeDefinition) {
+          if (edgeDefinition.collection === key) {
+            var fromCollection = from.split("/")[0];
+            var toCollection = to.split("/")[0];
+            if (! _.contains(edgeDefinition.from, fromCollection)
+              || ! _.contains(edgeDefinition.to, toCollection)) {
+              throw "Edge is not allowed between " + from + " and " + to + ".";
+            }
+          }
+        }
+      );
+      return old_save(from, to, data);
+    };
+
+    // remove
+    wrap.remove = function(edgeId, options) {
+      var result;
+      //if _key make _id (only on 1st call)
+      if (edgeId.indexOf("/") === -1) {
+        edgeId = key + "/" + edgeId;
+      }
+      removeEdge(edgeId, options, self);
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+      return result;
+    };
+
+    self[key] = wrap;
+  });
+};
+
+var bindVertexCollections = function(self, vertexCollections) {
+  _.each(vertexCollections, function(key) {
+    var obj = db._collection(key);
+    var result;
+    var wrap = wrapCollection(obj);
+    var old_remove = wrap.remove;
+    wrap.remove = function(vertexId, options) {
+      //delete all edges using the vertex in all graphs
+      var graphs = getGraphCollection().toArray();
+      var vertexCollectionName = vertexId.split("/")[0];
+      self.__collectionsToLock.push(vertexCollectionName);
+      graphs.forEach(
+        function(graph) {
+          var edgeDefinitions = graph.edgeDefinitions;
+          if (graph.edgeDefinitions) {
+            edgeDefinitions.forEach(
+              function(edgeDefinition) {
+                var from = edgeDefinition.from;
+                var to = edgeDefinition.to;
+                var collection = edgeDefinition.collection;
+                if (from.indexOf(vertexCollectionName) !== -1
+                  || to.indexOf(vertexCollectionName) !== -1
+                  ) {
+                  var edges = db._collection(collection).toArray();
+                  edges.forEach(
+                    function(edge) {
+                      if (edge._from === vertexId || edge._to === vertexId) {
+                        removeEdge(edge._id, options, self);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          }
+        }
+      );
+
+      try {
+        db._executeTransaction({
+          collections: {
+            write: self.__collectionsToLock
+          },
+          action: function (params) {
+            var db = require("internal").db;
+            params.ids.forEach(
+              function(edgeId) {
+                if (params.options) {
+                  db._remove(edgeId, params.options);
+                } else {
+                  db._remove(edgeId);
+                }
+              }
+            );
+            if (params.options) {
+              db._remove(params.vertexId, params.options);
+            } else {
+              db._remove(params.vertexId);
+            }
+          },
+          params: {
+            ids: self.__idsToRemove,
+            options: options,
+            vertexId: vertexId
+          }
+        });
+        result = true;
+      } catch (e) {
+        result = false;
+      }
+      self.__idsToRemove = [];
+      self.__collectionsToLock = [];
+
+      return result;
+    };
+    self[key] = wrap;
+  });
+
+};
+var updateBindCollections = function(graph) {
+  //remove all binded collections
+  Object.keys(graph).forEach(
+    function(key) {
+      if(key.substring(0,1) !== "_") {
+        delete graph[key];
+      }
+    }
+  );
+  graph.__edgeDefinitions.forEach(
+    function(edgeDef) {
+      bindEdgeCollections(graph, [edgeDef.collection]);
+      bindVertexCollections(graph, edgeDef.from);
+      bindVertexCollections(graph, edgeDef.to);
+    }
+  );
+  bindVertexCollections(graph, graph.__orphanCollections);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor.
@@ -1624,7 +1905,7 @@ var createHiddenProperty = function(obj, name, value) {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g.female.save({name: "Lynda", _key: "linda"});
-///   g.female.update({name: "Linda", _key: "linda"});
+///   g.female.update("female/linda", {name: "Linda", _key: "linda"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -1763,193 +2044,34 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
+  updateBindCollections(self);
 
-  // fills this.__idsToRemove and this.__collectionsToLock
-  var removeEdge = function (edgeId, options) {
-    options = options || {};
-    var edgeCollection = edgeId.split("/")[0];
-    var graphs = getGraphCollection().toArray();
-    self.__idsToRemove.push(edgeId);
-    self.__collectionsToLock.push(edgeCollection);
-    graphs.forEach(
-      function(graph) {
-        var edgeDefinitions = graph.edgeDefinitions;
-        if (graph.edgeDefinitions) {
-          edgeDefinitions.forEach(
-            function(edgeDefinition) {
-              var from = edgeDefinition.from;
-              var to = edgeDefinition.to;
-              var collection = edgeDefinition.collection;
-              // if collection of edge to be deleted is in from or to
-              if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
-                //search all edges of the graph
-                var edges = db[collection].toArray();
-                edges.forEach(
-                  function (edge) {
-                    // if from is
-                    if(self.__idsToRemove.indexOf(edge._id) === -1) {
-                      if (edge._from === edgeId || edge._to === edgeId) {
-                        removeEdge(edge._id, options);
-                      }
-                    }
-                  }
-                );
-              }
-            }
-          );
-        }
-      }
-    );
-    return;
-  };
-
-
-  _.each(vertexCollections, function(obj, key) {
-    var result;
-    var wrap = wrapCollection(obj);
-    var old_remove = wrap.remove;
-    wrap.remove = function(vertexId, options) {
-      //delete all edges using the vertex in all graphs
-      var graphs = getGraphCollection().toArray();
-      var vertexCollectionName = vertexId.split("/")[0];
-      self.__collectionsToLock.push(vertexCollectionName);
-      graphs.forEach(
-        function(graph) {
-          var edgeDefinitions = graph.edgeDefinitions;
-          if (graph.edgeDefinitions) {
-            edgeDefinitions.forEach(
-              function(edgeDefinition) {
-                var from = edgeDefinition.from;
-                var to = edgeDefinition.to;
-                var collection = edgeDefinition.collection;
-                if (from.indexOf(vertexCollectionName) !== -1
-                  || to.indexOf(vertexCollectionName) !== -1
-                  ) {
-                  var edges = db._collection(collection).toArray();
-                  edges.forEach(
-                    function(edge) {
-                      if (edge._from === vertexId || edge._to === vertexId) {
-                        removeEdge(edge._id, options);
-                      }
-                    }
-                  );
-                }
-              }
-            );
-          }
-        }
-      );
-
-      try {
-        db._executeTransaction({
-          collections: {
-            write: self.__collectionsToLock
-          },
-          action: function (params) {
-            var db = require("internal").db;
-            params.ids.forEach(
-              function(edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-            if (params.options) {
-              db._remove(params.vertexId, params.options);
-            } else {
-              db._remove(params.vertexId);
-            }
-          },
-          params: {
-            ids: self.__idsToRemove,
-            options: options,
-            vertexId: vertexId
-          }
-        });
-        result = true;
-      } catch (e) {
-        result = false;
-      }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
-
-      return result;
-    };
-
-    self[key] = wrap;
-  });
-
-  _.each(edgeCollections, function(obj, key) {
-    var wrap = wrapCollection(obj);
-    // save
-    var old_save = wrap.save;
-    wrap.save = function(from, to, data) {
-      //check, if edge is allowed
-      edgeDefinitions.forEach(
-        function(edgeDefinition) {
-          if (edgeDefinition.collection === key) {
-            var fromCollection = from.split("/")[0];
-            var toCollection = to.split("/")[0];
-            if (! _.contains(edgeDefinition.from, fromCollection)
-              || ! _.contains(edgeDefinition.to, toCollection)) {
-              throw "Edge is not allowed between " + from + " and " + to + ".";
-            }
-          }
-        }
-      );
-      return old_save(from, to, data);
-    };
-
-    // remove
-    wrap.remove = function(edgeId, options) {
-      var result;
-      //if _key make _id (only on 1st call)
-      if (edgeId.indexOf("/") === -1) {
-        edgeId = key + "/" + edgeId;
-      }
-      removeEdge(edgeId, options);
-
-      try {
-        db._executeTransaction({
-          collections: {
-            write: self.__collectionsToLock
-          },
-          action: function (params) {
-            var db = require("internal").db;
-            params.ids.forEach(
-              function(edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-          },
-          params: {
-            ids: self.__idsToRemove,
-            options: options
-          }
-        });
-        result = true;
-      } catch (e) {
-        result = false;
-      }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
-      return result;
-    };
-
-    self[key] = wrap;
-  });
 };
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load a graph.
+/// @startDocuBlock JSF_general_graph_graph
+/// `general-graph._graph(graph-name)`
+/// *Load a graph*
+///
+/// A graph can be loaded by its name.
+///
+/// * *graph-name*: string - unique identifier of the graph
+///
+/// @EXAMPLES
+///
+/// Load a graph:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphLoadGraph}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   g = graph._graph("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
@@ -2028,7 +2150,31 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop a graph.
+/// @startDocuBlock JSF_general_graph_drop
+/// `general-graph._drop(graphName, dropCollections)`
+/// *Remove a graph*
+///
+/// A graph can be dropped by its name.
+/// This will automatically drop al collections contained in the graph as
+/// long as they are not used within other graphs.
+/// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
+///
+/// * *graphName*: string - unique identifier of the graph
+/// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
+///
+/// @EXAMPLES
+///
+/// Drop a graph:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraph}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
@@ -2043,7 +2189,7 @@ var _drop = function(graphId, dropCollections) {
     throw err;
   }
 
-  if (dropCollections !== false) {
+  if (dropCollections === true) {
     var graph = gdb.document(graphId);
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
@@ -2090,6 +2236,7 @@ var _drop = function(graphId, dropCollections) {
   gdb.remove(graphId);
   return true;
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all edge collections of the graph.
@@ -2373,7 +2520,70 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get common neighbors of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_common_neighbors
+///
+/// `general_graph._listCommonNeighbors(vertex1Example, vertex2Examples,
+/// optionsVertex1, optionsVertex2)`
+/// *The general_graph._listCommonNeighbors function returns all common neighbors
+/// of the vertices defined by the examples.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *optionsVertex1*     : Optional options, see below:
+/// * Object               *optionsVertex2*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all common neighbors of capitals.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._listCommonNeighbors({isCapital : true}, {isCapital : true});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
+/// {direction : 'outbound', maxDepth : 2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2400,7 +2610,70 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get amount of common neighbors of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_amount_common_neighbors
+///
+/// `general_graph._amountCommonNeighbors(vertex1Example, vertex2Examples,
+/// optionsVertex1, optionsVertex2)`
+/// *The general_graph._amountCommonNeighbors function returns the amount of
+/// common neighbors of the vertices defined by the examples.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *optionsVertex1*     : Optional options, see below:
+/// * Object               *optionsVertex2*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+/// * String               *direction*                        : The direction of the
+/// edges. Possible values are *outbound*, *inbound* and *any* (default).
+/// * String|Object|Array  *edgeExamples*                     : A filter example
+///  for the edges to the neighbors (see below).
+/// * String|Object|Array  *neighborExamples*                 : An example for
+///  the desired neighbors (see below).
+/// * String|Array         *edgeCollectionRestriction*        : One or multiple
+///  edge collections that should be considered.
+// * String|Array         *vertexCollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+// / * Number               *minDepth*                         : Defines the minimal
+/// depth a path to a neighbor must have to be returned (default is 1).
+/// * Number               *maxDepth*                         : Defines the maximal
+/// depth a path to a neighbor must have to be returned (default is 1).
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all common neighbors of capitals.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._amountCommonNeighbors({isCapital : true}, {isCapital : true});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all common outbound neighbors of munich with any other location
+/// which have a maximal depth of 2 :
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._amountCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
+/// {direction : 'outbound', maxDepth : 2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2442,7 +2715,60 @@ Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get common properties of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_common_properties
+///
+/// `general_graph._listCommonProperties(vertex1Example, vertex2Examples,
+/// options)`
+/// *The general_graph._listCommonProperties function returns the vertices of
+/// the graph that share common properties.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *vertex2CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *ignoreProperties* : One or multiple
+///  attributes of a document that should be ignored.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all locations with the same properties:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._listCommonProperties({}, {});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all cities which share same properties except for population.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._listCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
+///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example, options) {
@@ -2467,7 +2793,60 @@ Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get amount of common properties of two vertices in the graph.
+/// @startDocuBlock JSF_general_graph_amount_common_properties
+///
+/// `general_graph._amountCommonProperties(vertex1Example, vertex2Examples,
+/// options)`
+/// *The general_graph._amountCommonProperties function returns the amount of vertices of
+/// the graph that share common properties.*
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertex1Example and vertex2Example.
+///
+/// * String|Object|Array  *vertex1Example*     : An example for the desired
+/// vertices (see below).
+/// * String|Object|Array  *vertex2Example*     : An example for the desired
+/// vertices (see below).
+/// * Object               *options*     : Optional options, see below:
+///
+/// Possible options and there defaults:
+// * String|Array         *vertex1CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *vertex2CollectionRestriction* : One or multiple
+///  vertex collections that should be considered.
+/// * String|Array         *ignoreProperties* : One or multiple
+///  attributes of a document that should be ignored.
+///
+/// Examples for vertexExample:
+/// * {}                : Returns all possible vertices for this graph.
+/// * *idString*        : Returns the vertex with the id *idString*.
+/// * {*key* : *value*} : Returns the vertices that match this example.
+/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
+/// match one of the examples.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all locations with the same properties:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// g._amountCommonProperties({}, {});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all cities which share same properties except for population.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
+/// ~ var db = require("internal").db;
+/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var g = examples.loadGraph("routeplanner");
+/// |g._amountCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
+///  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Example, options) {
@@ -2495,6 +2874,8 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
   return returnHash;
 };
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
 /// Extends the edge definitions of a graph. If an orphan collection is used in this
@@ -2509,11 +2890,13 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._extendEdgeDefinitions(ed2);
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2556,9 +2939,11 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
 
   this.__edgeDefinitions.push(edgeDefinition);
+  db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
   this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
   edgeDefinition.from.forEach(
     function(vc) {
+      self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
       if (orphanIndex !== -1) {
@@ -2572,6 +2957,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   );
   edgeDefinition.to.forEach(
     function(vc) {
+      self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
       if (orphanIndex !== -1) {
@@ -2583,6 +2969,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
       }
     }
   );
+  updateBindCollections(this);
 
 };
 
@@ -2662,11 +3049,13 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._editEdgeDefinition(ed2, true);
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2713,6 +3102,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
       changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
     }
   );
+  updateBindCollections(this);
 
 };
 
@@ -2725,17 +3115,19 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///
 /// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
 ///
-/// *edgeCollectionName* - string : name of edge collection defined in *collection* of the edge
+/// * *edgeCollectionName*: string - name of edge collection defined in *collection* of the edge
 /// definition.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = examples._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._deleteEdgeDefinition("myEC1");
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2778,6 +3170,8 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
       }
     }
   );
+  updateBindCollections(this);
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2787,16 +3181,18 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 ///
 /// `general-graph._addVertexCollection(vertexCollectionName, createCollection)`
 ///
-/// *vertexCollectionName* - string : name of vertex collection.
-/// *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+/// * *vertexCollectionName* - string : name of vertex collection.
+/// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1, ed2]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2830,6 +3226,8 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
   }
 
   this.__orphanCollections.push(vertexCollectionName);
+  this[vertexCollectionName] = db[vertexCollectionName];
+  updateBindCollections(this);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
 };
@@ -2843,11 +3241,13 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
 ///   g._orphanCollections();
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2860,26 +3260,28 @@ Graph.prototype._orphanCollections = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__removeVertexCollection
-/// Removes an orphan collection from the graph and deletes the collection, if it is not
-/// used in any graph.
+/// Removes an orphan collection from the graph. Optionally it deletes the collection,
+/// if it is not used in any graph.
 ///
 /// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
 ///
-/// *vertexCollectionName* - string : name of vertex collection.
-/// *dropCollection* - bool : if true the collection will be dropped if it is not used in any graph.
-/// Default: true.
+/// *vertexCollectionName*: string - name of vertex collection.
+/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is
+/// not used in any graph. Default: false.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var ed1 = examples._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var g = examples._create("myGraph", [ed1]);
+///   var graph = require("org/arangodb/general-graph")
+/// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
+///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
 ///   g._addVertexCollection("myVC4", true);
 ///   g._orphanCollections();
 ///   g._removeVertexCollection("myVC3");
 ///   g._orphanCollections();
+/// ~ var blub = graph._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2902,14 +3304,16 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
     throw err;
   }
   this.__orphanCollections.splice(index, 1);
+  delete this[vertexCollectionName];
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
-  if (dropCollection !== false) {
+  if (dropCollection === true) {
     var graphs = getGraphCollection().toArray();
     if (checkIfMayBeDropped(vertexCollectionName, null, graphs)) {
       db._drop(vertexCollectionName);
     }
   }
+  updateBindCollections(this);
 };
 
 
