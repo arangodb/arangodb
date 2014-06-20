@@ -1080,7 +1080,7 @@ exports.mount = function (appId, mount, options) {
     }
     catch (err2) {
       markAsIllegal(doc, err2);
-      throw err;
+      throw err2;
     }
   }
 
