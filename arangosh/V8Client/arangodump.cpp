@@ -529,7 +529,7 @@ static int DumpCollection (int fd,
 
   const string baseUrl = "/_api/replication/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false&translateIds=true";
+                         "&ticks=false&translateIds=true&flush=false";
 
   map<string, string> headers;
 

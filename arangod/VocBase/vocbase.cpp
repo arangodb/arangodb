@@ -54,7 +54,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
@@ -1355,7 +1354,6 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
   vocbase->_authInfoLoaded     = false;
   vocbase->_hasCompactor       = false;
-  vocbase->_replicationLogger  = nullptr;
   vocbase->_replicationApplier = nullptr;
 
   vocbase->_oldTransactions    = nullptr;
@@ -1430,11 +1428,6 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   if (vocbase->_replicationApplier != nullptr) {
     TRI_FreeReplicationApplier(vocbase->_replicationApplier);
     vocbase->_replicationApplier = nullptr;
-  }
-
-  if (vocbase->_replicationLogger != nullptr) {
-    TRI_FreeReplicationLogger(vocbase->_replicationLogger);
-    vocbase->_replicationLogger = nullptr;
   }
 
   if (vocbase->_oldTransactions == nullptr) {
@@ -1526,27 +1519,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
-  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
-
-  if (vocbase->_replicationLogger == NULL) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
-  }
-
-  if (vocbase->_replicationLogger->_configuration._autoStart) {
-    if (server->_disableReplicationLoggers) {
-      LOG_INFO("replication logger explicitly deactivated for database '%s'", name);
-    }
-    else {
-      res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // TODO
-        LOG_FATAL_AND_EXIT("unable to start replication logger for database '%s'", name);
-      }
-    }
-  }
-
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
   if (vocbase->_replicationApplier == NULL) {
@@ -1584,7 +1556,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // stop replication
   TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
-  TRI_StopReplicationLogger(vocbase->_replicationLogger);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 

@@ -49,7 +49,6 @@
 #include "Utils/Exception.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -1651,7 +1650,6 @@ int TRI_InitServer (TRI_server_t* server,
                     char const* appPath,
                     char const* devAppPath,
                     TRI_vocbase_defaults_t const* defaults,
-                    bool disableLoggers,
                     bool disableAppliers,
                     bool iterateMarkersOnOpen) {
 
@@ -1755,7 +1753,6 @@ int TRI_InitServer (TRI_server_t* server,
 
   TRI_InitMutex(&server->_createLock);
 
-  server->_disableReplicationLoggers  = disableLoggers;
   server->_disableReplicationAppliers = disableAppliers;
 
   server->_initialised = true;
@@ -2125,11 +2122,9 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   TRI_ASSERT(vocbase != nullptr);
 
-  vocbase->_replicationLogger  = TRI_CreateReplicationLogger(vocbase);
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
-  if (vocbase->_replicationLogger == nullptr ||
-      vocbase->_replicationApplier == nullptr) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_DestroyInitialVocBase(vocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 

@@ -36,7 +36,6 @@
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "Wal/DocumentOperation.h"

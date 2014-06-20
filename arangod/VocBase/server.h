@@ -69,7 +69,6 @@ typedef struct TRI_server_s {
   char*                       _appPath;
   char*                       _devAppPath;
 
-  bool                        _disableReplicationLoggers;
   bool                        _disableReplicationAppliers;
   bool                        _iterateMarkersOnOpen;
   bool                        _hasCreatedSystemDatabase;
@@ -104,7 +103,6 @@ int TRI_InitServer (TRI_server_t* server,
                     char const* appPath,
                     char const* devappPath,
                     TRI_vocbase_defaults_t const*,
-                    bool disableReplicationLogger,
                     bool disableReplicationApplier,
                     bool iterateMarkersOnOpen);
 

@@ -285,7 +285,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
     _unusedForceSyncShapes(false),
-    _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnDrop(true),
     _server(nullptr) {
@@ -417,6 +416,7 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
+    ("server.disable-replication-logger", &ignoreOpt, "start with replication logger turned off")
   ;
 
   // .............................................................................
@@ -539,7 +539,6 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_HAVE_LINUX_SOCKETS
     ("server.disable-authentication-unix-sockets", &_disableAuthenticationUnixSockets, "disable authentication for requests via UNIX domain sockets")
 #endif
-    ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
   ;
@@ -1114,7 +1113,6 @@ void ArangoServer::openDatabases (bool checkVersion,
                            _applicationV8->appPath().c_str(),
                            _applicationV8->devAppPath().c_str(),
                            &defaults,
-                           _disableReplicationLogger,
                            _disableReplicationApplier,
                            iterateMarkersOnOpen);
 

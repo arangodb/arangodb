@@ -59,13 +59,23 @@ namespace triagens {
 /// @brief state that is built up when scanning a WAL logfile during recovery
 ////////////////////////////////////////////////////////////////////////////////
 
-struct RecoverState {
-  std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
-  std::unordered_set<TRI_voc_tid_t>                 failedTransactions;
-  std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
-  std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
-  TRI_voc_tick_t                                    lastTick;
-};
+    struct RecoverState {
+      std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
+      std::unordered_set<TRI_voc_tid_t>                 failedTransactions;
+      std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
+      std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
+      TRI_voc_tick_t                                    lastTick;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               LogfileManagerState
+// -----------------------------------------------------------------------------
+
+    struct LogfileManagerState {
+      TRI_voc_tick_t  lastTick;
+      uint64_t        numEvents;
+      std::string     timeString;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class LogfileManager
@@ -215,6 +225,22 @@ struct RecoverState {
 
         Slots* slots () {
           return _slots;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow or disallow writes to the WAL
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void allowWrites (bool value) {
+          _allowWrites = value;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are in the recovery mode
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isInRecovery () const {
+          return _inRecovery;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,20 +452,10 @@ struct RecoverState {
         void setCollectionDone (Logfile*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allow or disallow writes to the WAL
+/// @brief return the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void allowWrites (bool value) {
-          _allowWrites = value;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are in the recovery mode
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isInRecovery () const {
-          return _inRecovery;
-        }
+        LogfileManagerState state ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

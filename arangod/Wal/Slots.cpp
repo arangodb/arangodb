@@ -59,7 +59,9 @@ Slots::Slots (LogfileManager* logfileManager,
     _handoutIndex(0),
     _recycleIndex(0),
     _logfile(nullptr),
-    _lastCommittedTick(0)  {
+    _lastAssignedTick(0),
+    _lastCommittedTick(0),
+    _numEvents(0)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +77,17 @@ Slots::~Slots () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the statistics of the slots
+////////////////////////////////////////////////////////////////////////////////
+
+void Slots::statistics (Slot::TickType& lastTick,
+                        uint64_t& numEvents) {
+  MUTEX_LOCKER(_lock);
+  lastTick  = _lastCommittedTick;
+  numEvents = _numEvents;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a flush operation
@@ -236,6 +249,7 @@ void Slots::returnUsed (SlotInfo& slotInfo,
   {
     MUTEX_LOCKER(_lock);
     slotInfo.slot->setReturned(waitForSync);
+    ++_numEvents;
   }
 
   _logfileManager->signalSync();
@@ -510,8 +524,9 @@ Slot::TickType Slots::handout () {
     // wrap around
     _handoutIndex = 0;
   }
-
-  return static_cast<Slot::TickType>(TRI_NewTickServer());
+ 
+  _lastAssignedTick = static_cast<Slot::TickType>(TRI_NewTickServer());
+  return _lastAssignedTick;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
