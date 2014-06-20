@@ -296,12 +296,12 @@
 
     update: function() {
       var url = this.model.get("git"),
-      name = '';
+      name = '',
       version = 'master',
       result;
 
       if (url === undefined || url === '') {
-        console.log("no git defined");
+        // if no git is defined
         return;
       }
 
