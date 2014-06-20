@@ -1925,7 +1925,7 @@ function GeneralGraphTraversalSuite () {
 
       var edgeDef = [];
       edgeDef.push(generalGraph._directedRelationDefinition(enDir, vnA, vnBDH));
-      edgeDef.push(generalGraph._undirectedRelationDefinition(enUndir, [vnBDH, vnCEFGI]));
+      edgeDef.push(generalGraph._undirectedRelation(enUndir, [vnBDH, vnCEFGI]));
       g = generalGraph._create(gn, edgeDef);
 
       saveVertex(vnA, "A");

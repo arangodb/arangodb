@@ -20,7 +20,7 @@ The edge definitions for a graph is an Array containing arbitrary many directed 
 
 !SUBSUBSECTION Undirected Relation
 
-@startDocuBlock JSF_general_graph_undirectedRelationDefinition@startDocuBlock
+@startDocuBlock JSF_general_graph_undirectedRelationDefinition
 
 !SUBSUBSECTION Directed Relation
 
