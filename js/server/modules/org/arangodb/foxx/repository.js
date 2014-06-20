@@ -34,11 +34,7 @@ var Repository,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
-/// Create a new instance of Repository
-///
-/// `new FoxxRepository(collection, opts)`
-///
-/// Create a new instance of Repository
+/// Create a new instance of Repository with `new FoxxRepository(collection, opts)`
 ///
 /// A Foxx Repository is always initialized with a collection object. You can get
 /// your collection object by asking your Foxx.Controller for it: the
@@ -108,9 +104,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_save
-/// `save(model)`
-///
-/// Save a model into the database
+/// Save a model into the database with `save(model)`
 ///
 /// Expects a model. Will set the ID and Rev on the model.
 /// Returns the model.
@@ -135,9 +129,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byId
-/// `byId(id)`
-///
-/// Find a model by its ID
+/// Find a model by its ID with `byId(id)`
 ///
 /// Returns the model for the given ID.
 ///
@@ -157,9 +149,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byExample
-/// `byExample(example)`
-///
-/// Find all models by an example
+/// Find all models by an example with `byExample(example)`
 ///
 /// Returns an array of models for the given ID.
 ///
@@ -181,9 +171,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_firstExample
-/// `firstExample(example)`
-///
-/// Find the first model that matches the example.
+/// Find the first model that matches the example with `firstExample(example)`
 ///
 /// Returns a model that matches the given example.
 ///
@@ -203,23 +191,24 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_all
-/// `all()`
+/// Find all entries in the collection with `all()`
 ///
-/// Returns an array of models that matches the given example.
+/// Returns an array of models that matches the given example. You need to provide
+/// both a skip and a limit value.
 /// **Warning:** ArangoDB doesn't guarantee a specific order in this case, to make
 /// this really useful we have to explicitly provide something to order by.
 ///
 /// *Examples*
 ///
 /// ```javascript
-/// var myModel = repository.all();
+/// var myModel = repository.all({ skip: 4, limit: 2 });
 /// myModel[0].get('name');
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  all: function () {
+  all: function (options) {
     'use strict';
-    var rawDocuments = this.collection.all().skip(4).limit(2).toArray();
+    var rawDocuments = this.collection.all().skip(options.skip).limit(options.limit).toArray();
     return _.map(rawDocuments, function (rawDocument) {
       return (new this.modelPrototype(rawDocument));
     }, this);
@@ -231,9 +220,8 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_remove
-/// `remove(model)`
+/// Remove the model from the repository with `remove(model)`
 ///
-/// Remove the model from the repository
 ///
 /// Expects a model
 ///
@@ -244,12 +232,15 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  remove: function (model) {
+    'use strict';
+    var id = model.get('_id');
+    this.collection.remove(id);
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeById
-/// `removeById(id)`
-///
-/// Remove the document with the given ID
+/// Remove the document with the given ID with `removeById(id)`
 ///
 /// Expects an ID of an existing document.
 ///
@@ -267,9 +258,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeByExample
-/// `removeByExample(example)`
-///
-/// Remove all documents that match the example
+/// Remove all documents that match the example with `removeByExample(example)`
 ///
 /// Find all documents that fit this example and remove them.
 ///
@@ -291,7 +280,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replace
-/// `replace(model)`
+/// Replace an entry in the collection with its new version via `replace(model)`
 ///
 /// Find the model in the database by its `_id` and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
@@ -316,9 +305,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceById
-/// `replaceById(id, model)`
-///
-/// Find an item by ID and replace it with the given model
+/// Find an item by ID and replace it with the given model with `replaceById(id, model)`
 ///
 /// Find the model in the database by the given ID and replace it with the given.
 /// model.
@@ -337,13 +324,11 @@ _.extend(Repository.prototype, {
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
     return model;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
-/// `replaceByExample(example, model)`
-///
-/// Find an item by example and replace it with the given model
+/// Find an item by example and replace it with the given model with `replaceByExample(example, model)`
 ///
 /// Find the model in the database by the given example and replace it with the given.
 /// model.
@@ -356,6 +341,13 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  replaceByExample: function (example, model) {
+    'use strict';
+    var data = model.forDB(),
+      idAndRev = this.collection.replaceByExample(example, data);
+    model.set(idAndRev);
+    return model;
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Updating Entries
@@ -363,9 +355,8 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateById
-/// `updateById(id, object)`
+/// Find an item by ID and update it with the attributes in the provided object with `updateById(id, object)`
 ///
-/// Find an item by ID and update it with the attributes in the provided object.
 /// Returns the updated model.
 ///
 /// *Examples*
@@ -375,12 +366,16 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  updateById: function (id, updates) {
+    'use strict';
+    this.collection.update(id, updates);
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateByExample
-/// `updateByExample(example, object)`
+/// Find an item by example and update it with the attributes in the provided object
+/// with `updateByExample(example, object)`
 ///
-/// Find an item by example and update it with the attributes in the provided object.
 /// Returns the updated model.
 ///
 /// *Examples*
@@ -390,6 +385,10 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  updateByExample: function (example, updates) {
+    'use strict';
+    this.collection.updateByExample(example, updates);
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Counting Entries
@@ -397,9 +396,8 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_count
-/// `count()`
+/// Return the number of entries in this collection with `count()`
 ///
-/// Return the number of entries in this collection
 ///
 /// *Examples*
 ///
@@ -408,6 +406,10 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+  count: function () {
+    'use strict';
+    return this.collection.count();
+  }
 });
 
 Repository.extend = backbone_helpers.extend;
