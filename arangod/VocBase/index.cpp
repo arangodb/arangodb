@@ -51,7 +51,6 @@
 #include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 #include "Wal/LogfileManager.h"

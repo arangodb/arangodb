@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 
 #include "VocBase/replication-common.h"
-#include "VocBase/replication-logger.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           REPLICATION MASTER INFO
@@ -52,7 +51,8 @@ typedef struct TRI_replication_master_info_s {
   TRI_server_id_t                  _serverId;
   int                              _majorVersion;
   int                              _minorVersion;
-  TRI_replication_logger_state_t   _state;
+  TRI_voc_tick_t                   _lastLogTick;
+  bool                             _active;
 }
 TRI_replication_master_info_t;
 

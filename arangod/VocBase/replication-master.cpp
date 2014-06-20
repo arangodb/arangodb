@@ -52,8 +52,8 @@ void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
   info->_serverId            = 0;
   info->_majorVersion        = 0;
   info->_minorVersion        = 0;
-  info->_state._lastLogTick  = 0;
-  info->_state._active       = false;
+  info->_lastLogTick         = 0;
+  info->_active              = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
            (unsigned long long) info->_serverId,
            info->_majorVersion,
            info->_minorVersion,
-           (unsigned long long) info->_state._lastLogTick);
+           (unsigned long long) info->_lastLogTick);
 }
 
 // -----------------------------------------------------------------------------

@@ -42,6 +42,7 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "Replication/ContinuousSyncer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               REPLICATION APPLIER
@@ -422,8 +423,9 @@ static int SetError (TRI_replication_applier_t* applier,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplyThread (void* data) {
-  TRI_RunContinuousSyncerReplication(data);
-  TRI_DeleteContinuousSyncerReplication(data);
+  triagens::arango::ContinuousSyncer* s = static_cast<triagens::arango::ContinuousSyncer*>(data);
+  s->run();
+  delete s;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,10 +453,10 @@ static int StartApplier (TRI_replication_applier_t* applier,
     return SetError(applier, TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
 
-  fetcher = (void*) TRI_CreateContinuousSyncerReplication(applier->_vocbase,
-                                                          &applier->_configuration,
-                                                          initialTick,
-                                                          useTick);
+  fetcher = (void*) new triagens::arango::ContinuousSyncer(applier->_vocbase,
+                                         &applier->_configuration,
+                                         initialTick,
+                                         useTick);
 
   if (fetcher == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -478,7 +480,8 @@ static int StartApplier (TRI_replication_applier_t* applier,
   TRI_InitThread(&applier->_thread);
 
   if (! TRI_StartThread(&applier->_thread, NULL, "[applier]", ApplyThread, fetcher)) {
-    TRI_DeleteContinuousSyncerReplication(fetcher);
+    triagens::arango::ContinuousSyncer* s = static_cast<triagens::arango::ContinuousSyncer*>(fetcher);
+    delete s;
 
     return TRI_ERROR_INTERNAL;
   }

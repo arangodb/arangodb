@@ -63,7 +63,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/HashIndex/hash-index.cpp \
 	arangod/IndexIterators/index-iterator.cpp \
 	arangod/IndexOperators/index-operator.cpp \
-	arangod/Replication/replication-static.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
 	arangod/Replication/Syncer.cpp \
@@ -106,7 +105,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/replication-applier.cpp \
 	arangod/VocBase/replication-common.cpp \
 	arangod/VocBase/replication-dump.cpp \
-	arangod/VocBase/replication-logger.cpp \
 	arangod/VocBase/replication-master.cpp \
 	arangod/VocBase/server.cpp \
 	arangod/VocBase/transaction.cpp \

@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/threads.h"
-#include "Replication/replication-static.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 

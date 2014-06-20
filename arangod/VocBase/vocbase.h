@@ -310,7 +310,6 @@ typedef struct TRI_vocbase_s {
 
   std::set<TRI_voc_tid_t>*   _oldTransactions;
 
-  struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
 
   // state of the database

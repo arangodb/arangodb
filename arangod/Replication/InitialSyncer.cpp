@@ -738,7 +738,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
     }
     else {
-      res = handleCollectionDump(trxCollection, masterName, _masterInfo._state._lastLogTick, errorMsg);
+      res = handleCollectionDump(trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
     }
 
     if (res == TRI_ERROR_NO_ERROR) {

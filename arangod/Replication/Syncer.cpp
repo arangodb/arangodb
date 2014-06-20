@@ -709,8 +709,8 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   _masterInfo._majorVersion        = major;
   _masterInfo._minorVersion        = minor;
   _masterInfo._serverId            = masterId;
-  _masterInfo._state._lastLogTick  = lastLogTick;
-  _masterInfo._state._active       = running;
+  _masterInfo._lastLogTick         = lastLogTick;
+  _masterInfo._active              = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
 

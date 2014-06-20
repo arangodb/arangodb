@@ -64,7 +64,6 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 #include "VocBase/index.h"
@@ -4565,190 +4564,50 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the replication logger manually
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_StartLoggerReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_START()");
-  }
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
-  }
-
-  int res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication logger");
-  }
-
-  return scope.Close(v8::True());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication logger manually
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_StopLoggerReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_STOP()");
-  }
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
-  }
-
-  int res = TRI_StopReplicationLogger(vocbase->_replicationLogger);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication logger");
-  }
-
-  return scope.Close(v8::True());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_STATE()");
-  }
+  triagens::wal::LogfileManagerState s = triagens::wal::LogfileManager::instance()->state();
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  v8::Handle<v8::Object> result = v8::Object::New();
 
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  v8::Handle<v8::Object> state = v8::Object::New();
+  state->Set(TRI_V8_STRING("running"), v8::True());
+  state->Set(TRI_V8_STRING("lastLogTick"), V8TickId(s.lastTick));
+  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New(s.numEvents));
+  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), s.timeString.size()));
+  result->Set(TRI_V8_STRING("state"), state);
 
-  if (vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
-  }
-
-  TRI_json_t* json = TRI_JsonReplicationLogger(vocbase->_replicationLogger);
-
-  if (json == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  v8::Handle<v8::Object> server = v8::Object::New();
+  server->Set(TRI_V8_STRING("version"), v8::String::New(TRI_VERSION));
+  server->Set(TRI_V8_STRING("serverId"), v8::String::New(StringUtils::itoa(TRI_GetIdServer()).c_str()));
+  result->Set(TRI_V8_STRING("server"), server);
+  
+  v8::Handle<v8::Object> clients = v8::Object::New();
+  result->Set(TRI_V8_STRING("clients"), clients);
 
   return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief configure the replication logger manually
+/// @brief return the configuration of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  // the replication logger is actually non-existing in ArangoDB 2.2 and higher
+  // as there is the WAL. To be downwards-compatible, we'll return dummy values
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_STRING("autostart"), v8::True());
+  result->Set(TRI_V8_STRING("logRemoteChanges"), v8::True());
+  result->Set(TRI_V8_STRING("maxEvents"), v8::Number::New(0));
+  result->Set(TRI_V8_STRING("maxEventsSize"), v8::Number::New(0));
 
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->_replicationLogger == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
-  }
-
-  if (argv.Length() == 0) {
-    // no argument: return the current configuration
-
-    TRI_replication_logger_configuration_t config;
-
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
-    TRI_CopyConfigurationReplicationLogger(&vocbase->_replicationLogger->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
-
-    TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
-
-    if (json == 0) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-    return scope.Close(result);
-  }
-
-  else {
-    // set the configuration
-
-    if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-      TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_CONFIGURE(<configuration>)");
-    }
-
-    TRI_replication_logger_configuration_t config;
-
-    // fill with previous configuration
-    TRI_ReadLockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
-    TRI_CopyConfigurationReplicationLogger(&vocbase->_replicationLogger->_configuration, &config);
-    TRI_ReadUnlockReadWriteLock(&vocbase->_replicationLogger->_statusLock);
-
-    // treat the argument as an object from now on
-    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
-
-    if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
-      if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
-        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
-      }
-    }
-
-    if (object->Has(TRI_V8_SYMBOL("logRemoteChanges"))) {
-      if (object->Get(TRI_V8_SYMBOL("logRemoteChanges"))->IsBoolean()) {
-        config._logRemoteChanges = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("logRemoteChanges")));
-      }
-    }
-
-    if (object->Has(TRI_V8_SYMBOL("maxEvents"))) {
-      config._maxEvents = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxEvents")), true);
-    }
-
-    if (object->Has(TRI_V8_SYMBOL("maxEventsSize"))) {
-      config._maxEventsSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxEventsSize")), true);
-    }
-
-    int res = TRI_ConfigureReplicationLogger(vocbase->_replicationLogger, &config);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
-    }
-
-    TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
-
-    if (json == 0) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-    return scope.Close(result);
-  }
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5159,7 +5018,7 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationLogger == 0) {
+  if (vocbase->_replicationApplier == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -10158,8 +10017,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "DELETE_CURSOR", JS_DeleteCursor, true);
 
   // replication functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_START", JS_StartLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STOP", JS_StopLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication, true);

@@ -36,14 +36,15 @@
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-dump.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/index.h"
+#include "Wal/LogfileManager.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
 
@@ -394,7 +395,8 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
+      // TODO: FIXME!!
+//      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
     }
   }
 }
@@ -469,15 +471,8 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStart () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
-
-  int res = TRI_StartReplicationLogger(_vocbase->_replicationLogger);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
-    return;
-  }
-
+  // the logger in ArangoDB 2.2 is now the WAL...
+  // so the logger cannot be started but is always running
   TRI_json_t result;
 
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
@@ -534,19 +529,12 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStop () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
-
-  int res = TRI_StopReplicationLogger(_vocbase->_replicationLogger);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
-    return;
-  }
-
+  // the logger in ArangoDB 2.2 is now the WAL...
+  // so the logger cannot be stopped
   TRI_json_t result;
 
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -643,17 +631,46 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_json_t* json = TRI_JsonReplicationLogger(_vocbase->_replicationLogger);
-
-  if (json == 0) {
+  if (json == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
+  // "state" part 
+  TRI_json_t* state = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (state == nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, StringUtils::itoa(s.lastTick).c_str()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, s.numEvents));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
+
+  // "server" part
+  TRI_json_t* server = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (server == nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION));
+  char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
+
   generateResult(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,23 +721,20 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  TRI_replication_logger_configuration_t config;
-
-  TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-  TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-
-  TRI_json_t* json = TRI_JsonConfigurationReplicationLogger(&config);
-
-  if (json == 0) {
+  if (json == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "autoStart", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "logRemoteChanges", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEventsSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+
   generateResult(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -809,58 +823,6 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerSetConfig () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
-
-  TRI_replication_logger_configuration_t config;
-
-  // copy previous config
-  TRI_ReadLockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-  TRI_CopyConfigurationReplicationLogger(&_vocbase->_replicationLogger->_configuration, &config);
-  TRI_ReadUnlockReadWriteLock(&_vocbase->_replicationLogger->_statusLock);
-
-  TRI_json_t* json = parseJsonBody();
-
-  if (json == 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  TRI_json_t const* value;
-
-  value = JsonHelper::getArrayElement(json, "autoStart");
-  if (JsonHelper::isBoolean(value)) {
-    config._autoStart = value->_value._boolean;
-  }
-
-  value = JsonHelper::getArrayElement(json, "logRemoteChanges");
-  if (JsonHelper::isBoolean(value)) {
-    config._logRemoteChanges = value->_value._boolean;
-  }
-
-  value = JsonHelper::getArrayElement(json, "maxEvents");
-  if (JsonHelper::isNumber(value)) {
-    config._maxEvents = (uint64_t) value->_value._number;
-  }
-
-  value = JsonHelper::getArrayElement(json, "maxEventsSize");
-  if (JsonHelper::isNumber(value)) {
-    config._maxEventsSize = (uint64_t) value->_value._number;
-  }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  int res = TRI_ConfigureReplicationLogger(_vocbase->_replicationLogger, &config);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION) {
-      generateError(HttpResponse::BAD, res);
-    }
-    else {
-      generateError(HttpResponse::SERVER_ERROR, res);
-    }
-    return;
-  }
-
   handleCommandLoggerGetConfig();
 }
 
@@ -1378,14 +1340,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
   int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
 
-  TRI_replication_logger_state_t state;
+  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
-  }
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state._lastLogTick);
+    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastTick);
 
     // generate the result
     const size_t length = TRI_LengthStringBuffer(dump._buffer);
@@ -1410,11 +1368,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
     _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK,
                          strlen(TRI_REPLICATION_HEADER_LASTTICK),
-                         StringUtils::itoa(state._lastLogTick));
+                         StringUtils::itoa(state.lastTick));
 
     _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
-                         strlen(TRI_REPLICATION_HEADER_ACTIVE),
-                         state._active ? "true" : "false");
+                         strlen(TRI_REPLICATION_HEADER_ACTIVE), 
+                         "true");
 
     if (length > 0) {
       // transfer ownership of the buffer contents
@@ -1559,8 +1517,6 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandInventory () {
-  TRI_ASSERT(_vocbase->_replicationLogger != 0);
-
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
   // include system collections?
@@ -1583,7 +1539,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_ASSERT(JsonHelper::isList(collections));
 
   // sort collections by type, then name
-  const size_t n = collections->_value._objects._length;
+  size_t const n = collections->_value._objects._length;
 
   if (n > 1) {
     // sort by collection type (vertices before edges), then name
@@ -1591,26 +1547,32 @@ void RestReplicationHandler::handleCommandInventory () {
   }
 
 
-  TRI_replication_logger_state_t state;
-
-  int res = TRI_StateReplicationLogger(_vocbase->_replicationLogger, &state);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_CORE_MEM_ZONE, collections);
-
-    generateError(HttpResponse::SERVER_ERROR, res);
-    return;
-  }
-
   TRI_json_t json;
-
   TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
 
   char* tickString = TRI_StringUInt64(tick);
 
   // add collections data
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", TRI_JsonStateReplicationLogger(&state));
+
+  // "state"
+  TRI_json_t* state = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
+  if (state == nullptr) {
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  char* logTickString = TRI_StringUInt64(s.lastTick);
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, s.numEvents));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", state);
+
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
 
   generateResult(&json);
@@ -3158,7 +3120,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 void RestReplicationHandler::handleCommandDump () {
   char const* collection = _request->value("collection");
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
@@ -3167,13 +3129,22 @@ void RestReplicationHandler::handleCommandDump () {
 
   // determine start tick for dump
   TRI_voc_tick_t tickStart    = 0;
-  TRI_voc_tick_t tickEnd      = (TRI_voc_tick_t) UINT64_MAX;
+  TRI_voc_tick_t tickEnd      = static_cast<TRI_voc_tick_t>(UINT64_MAX);
+  bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
 
   bool found;
   char const* value;
+ 
+  // determine flush WAL value 
+  value = _request->value("flush", found);
 
+  if (found) {
+    flush = StringUtils::boolean(value);
+  }
+
+  // determine start tick for dump
   value = _request->value("from", found);
 
   if (found) {
@@ -3195,54 +3166,60 @@ void RestReplicationHandler::handleCommandDump () {
   }
 
   value = _request->value("ticks", found);
+
   if (found) {
     withTicks = StringUtils::boolean(value);
   }
 
   value = _request->value("translateIds", found);
+
   if (found) {
     translateCollectionIds = StringUtils::boolean(value);
   }
 
-  const uint64_t chunkSize = determineChunkSize();
+  uint64_t const chunkSize = determineChunkSize();
 
   TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
-  if (c == 0) {
+  if (c == nullptr) {
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
 
-  const TRI_voc_cid_t cid = c->_cid;
+  LOG_TRACE("requested collection dump for collection '%s', tickStart: %llu, tickEnd: %llu",
+            collection,
+            (unsigned long long) tickStart,
+            (unsigned long long) tickEnd);
 
-  LOG_DEBUG("requested collection dump for collection '%s', tickStart: %llu, tickEnd: %llu",
-             collection,
-             (unsigned long long) tickStart,
-             (unsigned long long) tickEnd);
+  int res = TRI_ERROR_NO_ERROR;
 
-  TRI_vocbase_col_status_e status;
-  TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
+  try {
+    if (flush) {
+      triagens::wal::LogfileManager::instance()->flush(true, true, false);
+    }
 
-  if (col == 0) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return;
-  }
+    triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
 
-  // initialise the dump container
-  TRI_replication_dump_t dump;
-  if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
-    TRI_ReleaseCollectionVocBase(_vocbase, col);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
+    TRI_vocbase_col_t* col = guard.collection();
+    TRI_ASSERT(col != nullptr);
+  
+    // initialise the dump container
+    TRI_replication_dump_t dump;
+    res = TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize);
 
-  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks, translateCollectionIds);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks, translateCollectionIds);
 
-  TRI_ReleaseCollectionVocBase(_vocbase, col);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_DestroyDumpReplication(&dump);
+      THROW_ARANGO_EXCEPTION(res);
+    }
 
-  if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
-    const size_t length = TRI_LengthStringBuffer(dump._buffer);
+    size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
       _response = createResponse(HttpResponse::NO_CONTENT);
@@ -3267,12 +3244,19 @@ void RestReplicationHandler::handleCommandDump () {
 
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
+   
+    TRI_DestroyDumpReplication(&dump);
   }
-  else {
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+    
+  if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
-
-  TRI_DestroyDumpReplication(&dump);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

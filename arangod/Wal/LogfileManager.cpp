@@ -1210,6 +1210,20 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current state
+////////////////////////////////////////////////////////////////////////////////
+
+LogfileManagerState LogfileManager::state () {
+  LogfileManagerState state;
+
+  // now fill the state
+  _slots->statistics(state.lastTick, state.numEvents);
+  state.timeString = getTimeString();
+
+  return state;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
