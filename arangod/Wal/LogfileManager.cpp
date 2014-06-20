@@ -58,7 +58,7 @@ static LogfileManager* Instance = nullptr;
 /// @brief minimum value for --wal.open-logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MinOpenLogfiles () {
+static inline uint32_t MinOpenLogfiles () {
   return 1;
 }
 
@@ -66,7 +66,7 @@ constexpr uint32_t MinOpenLogfiles () {
 /// @brief minimum value for --wal.logfile-size
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MinFileSize () {
+static inline uint32_t MinFileSize () {
   return 8 * 1024 * 1024;
 }
 
@@ -74,7 +74,7 @@ constexpr uint32_t MinFileSize () {
 /// @brief get the maximum size of a logfile entry
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MaxEntrySize () {
+static inline uint32_t MaxEntrySize () {
   return 2 << 30; // 2 GB
 }
 
@@ -82,7 +82,7 @@ constexpr uint32_t MaxEntrySize () {
 /// @brief minimum number of slots
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MinSlots () {
+static inline uint32_t MinSlots () {
   return 1024 * 8;
 }
 
@@ -90,7 +90,7 @@ constexpr uint32_t MinSlots () {
 /// @brief maximum number of slots
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint32_t MaxSlots () {
+static inline uint32_t MaxSlots () {
   return 1024 * 1024 * 16;
 }
 

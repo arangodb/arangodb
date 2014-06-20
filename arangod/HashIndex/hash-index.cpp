@@ -42,7 +42,7 @@
 /// @brief return the number of paths of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr size_t NumPaths (TRI_hash_index_t const* idx) {
+static size_t NumPaths (TRI_hash_index_t const* idx) {
   return idx->_paths._length;
 }
 
@@ -50,7 +50,7 @@ constexpr size_t NumPaths (TRI_hash_index_t const* idx) {
 /// @brief returns the memory needed for an index key entry
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr size_t KeyEntrySize (TRI_hash_index_t const* idx) {
+static size_t KeyEntrySize (TRI_hash_index_t const* idx) {
   return NumPaths(idx) * sizeof(TRI_shaped_json_t);
 }
 

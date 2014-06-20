@@ -38,12 +38,21 @@ dnl ----------------------------------------------------------------------------
 dnl check for bison
 dnl ----------------------------------------------------------------------------
 
+AC_ARG_WITH(bison,
+  AS_HELP_STRING([--with-bison=EXECUTABLE], [path of the bison executable]),
+  [BISON_PATH="$withval"]
+)
+
 if test "x$USE_MAINTAINER_MODE" = xyes;  then
   AC_MSG_NOTICE([................................................................................])
   AC_MSG_NOTICE([CHECKING BISON])
   AC_MSG_NOTICE([................................................................................])
 
-  AC_CHECK_PROG(BISON, bison, bison)
+  if test "x$BISON_PATH" = "x"; then
+    AC_CHECK_PROG(BISON, bison, bison)
+  else
+    BISON=$BISON_PATH
+  fi
 
   tr_bison_usable=no
 

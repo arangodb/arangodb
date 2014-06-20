@@ -136,7 +136,7 @@ static uint64_t HashElement (TRI_hash_array_t* array,
 /// reallocations/repositionings necessary when the table grows
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint64_t InitialSize () {
+static inline uint64_t InitialSize () {
   return 251;
 }
 
@@ -148,7 +148,7 @@ constexpr uint64_t InitialSize () {
 /// @brief return the size of a single entry
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr size_t TableEntrySize () {
+static inline size_t TableEntrySize () {
   return sizeof(TRI_hash_index_element_t);
 }
 

@@ -441,7 +441,7 @@ namespace triagens {
       // MERSENNE
       struct UniformIntegerMersenne : public UniformIntegerImpl {
         UniformIntegerMersenne ()
-          : engine(std::chrono::system_clock::now().time_since_epoch().count()) {
+          : engine(static_cast<unsigned int>(std::chrono::system_clock::now().time_since_epoch().count())) {
         }
 
         int32_t random (int32_t left, int32_t right) {

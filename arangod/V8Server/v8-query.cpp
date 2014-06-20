@@ -1887,7 +1887,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   try {
     filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
   }
-  catch (std::exception& ex) {
+  catch (std::exception&) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
