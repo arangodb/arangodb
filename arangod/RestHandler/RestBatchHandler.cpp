@@ -471,7 +471,7 @@ bool RestBatchHandler::getBoundaryHeader (string* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundary (string* result) {
-  assert(_request);
+  TRI_ASSERT(_request);
 
   // try peeking at header first
   if (getBoundaryHeader(result)) {
@@ -487,7 +487,7 @@ bool RestBatchHandler::getBoundary (string* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::extractPart (SearchHelper* helper) {
-  assert(helper->searchStart != NULL);
+  TRI_ASSERT(helper->searchStart != NULL);
 
   // init the response
   helper->foundStart = NULL;

@@ -29,9 +29,8 @@
 #define TRIAGENS_TRANSACTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Transaction/Operations.h"
-#include "VocBase/vocbase.h"
-#include <unordered_map>
+#include "Transaction/State.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace transaction {
@@ -42,30 +41,15 @@ namespace triagens {
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
-    class Transaction {
+    class Transaction : public State {
+
+      friend class Manager;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          typedefs
 // -----------------------------------------------------------------------------
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction id type
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef uint64_t IdType;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction state
-////////////////////////////////////////////////////////////////////////////////
-
-        enum class StateType {
-          STATE_UNINITIALISED = 0,
-          STATE_BEGUN         = 1,
-          STATE_ABORTED       = 2,
-          STATE_COMMITTED     = 3
-        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
@@ -86,8 +70,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Transaction (Manager*,
-                     IdType,
-                     struct TRI_vocbase_s*);
+                     TRI_voc_tid_t,
+                     bool,
+                     bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a transaction
@@ -105,24 +90,54 @@ namespace triagens {
 /// @brief get the transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline IdType id () const {
+        inline TRI_voc_tid_t id () const {
           return _id;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the transaction state
+/// @brief get the transaction id for writing it into a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline StateType state () const {
-          return _state;
+        inline TRI_voc_tid_t idForMarker () const {
+          if (_singleOperation) {
+            return 0;
+          }
+          return id();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the transaction start time stamp
+/// @brief is single operation?
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void setStartTime (double s) {
-          _startTime = s;
+        inline bool singleOperation () const {
+          return _singleOperation;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief is synchronous?
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool waitForSync () const {
+          return _waitForSync;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction start time stamp
+////////////////////////////////////////////////////////////////////////////////
+
+        inline double startTime () const {
+          return _startTime;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the time since transaction start
+////////////////////////////////////////////////////////////////////////////////
+
+        inline double elapsedTime () const {
+          if (state() == State::StateType::BEGUN) {
+            return TRI_microtime() - _startTime;
+          }
+          return 0.0;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,19 +150,13 @@ namespace triagens {
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        int commit ();
+        int commit (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-        int abort ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
+        int rollback ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -165,25 +174,21 @@ namespace triagens {
 /// @brief transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-        IdType const _id;
+        TRI_voc_tid_t const _id;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction state
+/// @brief whether or not the transaction consists of a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        StateType _state;
+// TODO: do we need this?
+        bool const _singleOperation;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase for the transaction
+/// @brief whether or not the transaction is synchronous
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_vocbase_s* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations, per collection
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<TRI_voc_cid_t, Operations*> _operations;
+// TODO: do we need this?
+        bool _waitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timestamp of transaction start
@@ -191,6 +196,27 @@ namespace triagens {
 
         double _startTime;
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   TransactionInfo
+// -----------------------------------------------------------------------------
+    
+    // TODO: move to separate file
+    struct TransactionInfo {
+      TransactionInfo (TRI_voc_tid_t id, 
+                       double elapsedTime) 
+        : _id(id),
+          _elapsedTime(elapsedTime) {
+      }
+
+      TransactionInfo () 
+        : _id(0),
+          _elapsedTime(0.0) {
+      }
+
+      TRI_voc_tid_t const  _id;
+      double const         _elapsedTime;
     };
 
   }

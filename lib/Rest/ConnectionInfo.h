@@ -78,6 +78,17 @@ namespace triagens {
         }
 
       public:
+          
+        std::string portType () const {
+          if (endpointType == Endpoint::DOMAIN_UNIX) {
+            return "unix";
+          }
+          else if (endpointType == Endpoint::DOMAIN_IPV4 ||
+                   endpointType == Endpoint::DOMAIN_IPV6) {
+            return "tcp/ip";
+          }
+          return "unknown";
+        }
 
         int serverPort;
         int clientPort;

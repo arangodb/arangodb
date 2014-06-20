@@ -39,6 +39,11 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/voc-shaper.h"
+#include "Utils/transactions.h"
+#include "Wal/Marker.h"
+
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION
@@ -47,11 +52,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut function
@@ -92,18 +92,9 @@
 
 #define APPEND_JSON(buffer, json)   FAIL_IFNOT(TRI_StringifyJson, buffer, json)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a datafile descriptor
@@ -128,19 +119,10 @@ typedef struct resolved_name_s {
 }
 resolved_name_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
     
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a collection id
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +166,7 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
                                   TRI_voc_cid_t cid,
                                   char** result) {
 
-  assert(cid > 0);
+  TRI_ASSERT(cid > 0);
   
   resolved_name_t* found = static_cast<resolved_name_t*>(TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid));
 
@@ -276,8 +258,8 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       continue;
     }
 
-    assert(df->_tickMin <= df->_tickMax);
-    assert(df->_dataMin <= df->_dataMax);
+    TRI_ASSERT(df->_tickMin <= df->_tickMax);
+    TRI_ASSERT(df->_dataMin <= df->_dataMax);
 
     if (dataMax < df->_dataMin) {
       // datafile is newer than requested range
@@ -303,7 +285,7 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
+static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
                                        TRI_voc_tick_t dataMin,
                                        TRI_voc_tick_t dataMax) {
   TRI_vector_t datafiles;
@@ -315,12 +297,12 @@ static TRI_vector_t GetRangeDatafiles (TRI_primary_collection_t* primary,
   // determine the datafiles of the collection
   TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
 
-  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(primary);
+  TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  IterateDatafiles(&primary->base._datafiles, &datafiles, dataMin, dataMax, false);
-  IterateDatafiles(&primary->base._journals, &datafiles, dataMin, dataMax, true);
+  IterateDatafiles(&document->_datafiles, &datafiles, dataMin, dataMax, false);
+  IterateDatafiles(&document->_journals, &datafiles, dataMin, dataMax, true);
   
-  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(primary);
+  TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   return datafiles;
 }
@@ -334,10 +316,17 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
                                  TRI_df_marker_t const* marker,
                                  bool withTicks,
                                  bool translateCollectionIds) {
+  // This covers two cases:
+  //   1. document is not nullptr and marker points into a data file
+  //   2. document is a nullptr and marker points into a WAL file
+  // no other combinations are allowed.
+
   TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
   TRI_voc_key_t key;
   TRI_voc_rid_t rid;
+  bool haveData = true;
+  bool isWal = false;
 
   buffer = dump->_buffer; 
 
@@ -345,26 +334,63 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     return false;
   }
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
-    TRI_doc_deletion_key_marker_t const* m = (TRI_doc_deletion_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_REMOVE;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_DOCUMENT;
-    rid = m->_rid;
-  }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    key = ((char*) m) + m->_offsetKey;
-    type = MARKER_EDGE;
-    rid = m->_rid;
-  }
-  else {
-    return false;
+  switch (marker->_type) {
+    case TRI_DOC_MARKER_KEY_DELETION: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_REMOVE;
+      rid = m->_rid;
+      haveData = false;
+      break;
+    }
+    case TRI_DOC_MARKER_KEY_DOCUMENT: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_DOCUMENT;
+      rid = m->_rid;
+      break;
+    }
+    case TRI_DOC_MARKER_KEY_EDGE: {
+      TRI_ASSERT(nullptr != document);
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_EDGE;
+      rid = m->_rid;
+      break;
+    }
+    case TRI_WAL_MARKER_REMOVE: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::remove_marker_t const*>(marker);
+      key = ((char*) m) + sizeof(wal::remove_marker_t);
+      type = MARKER_REMOVE;
+      rid = m->_revisionId;
+      haveData = false;
+      isWal = true;
+      break;
+    }
+    case TRI_WAL_MARKER_DOCUMENT: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::document_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_DOCUMENT;
+      rid = m->_revisionId;
+      isWal = true;
+      break;
+    }
+    case TRI_WAL_MARKER_EDGE: {
+      TRI_ASSERT(nullptr == document);
+      auto m = static_cast<wal::edge_marker_t const*>(marker);
+      key = ((char*) m) + m->_offsetKey;
+      type = MARKER_EDGE;
+      rid = m->_revisionId;
+      isWal = true;
+      break;
+    }
+    default: {
+      return false;
+    }
   }
   
   if (withTicks) {
@@ -384,11 +410,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
   APPEND_UINT64(buffer, (uint64_t) rid); 
 
   // document
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
-    TRI_shaped_json_t shaped;
-    
+  if (haveData) {
     APPEND_STRING(buffer, "\",\"data\":{");
     
     // common document meta-data
@@ -398,19 +420,37 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     APPEND_UINT64(buffer, (uint64_t) rid);
     APPEND_CHAR(buffer, '"');
 
-    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
-      TRI_voc_key_t fromKey = ((char*) e) + e->_offsetFromKey;
-      TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
+    // Is it an edge marker?
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+        marker->_type == TRI_WAL_MARKER_EDGE) {
+      TRI_voc_key_t fromKey;
+      TRI_voc_key_t toKey;
+      TRI_voc_cid_t fromCid;
+      TRI_voc_cid_t toCid;
+
+      if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+        auto e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
+        fromKey = ((char*) e) + e->_offsetFromKey;
+        toKey = ((char*) e) + e->_offsetToKey;
+        fromCid = e->_fromCid;
+        toCid = e->_toCid;
+      }
+      else {  // TRI_WAL_MARKER_EDGE
+        auto e = reinterpret_cast<wal::edge_marker_t const*>(marker);
+        fromKey = ((char*) e) + e->_offsetFromKey;
+        toKey = ((char*) e) + e->_offsetToKey;
+        fromCid = e->_fromCid;
+        toCid = e->_toCid;
+      }
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, fromCid, translateCollectionIds)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(dump, e->_toCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, toCid, translateCollectionIds)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
@@ -419,15 +459,25 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
     }
 
     // the actual document data
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-    TRI_StringifyArrayShapedJson(document->base._shaper, buffer, &shaped, true);
+    TRI_shaped_json_t shaped;
+    if (! isWal) {
+      auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
+      TRI_StringifyArrayShapedJson(document->getShaper(), buffer, &shaped, true); // ONLY IN DUMP, PROTECTED by fake trx above
+    }
+    else {   // isWal == true
+      auto m = static_cast<wal::document_marker_t const*>(marker);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
+      basics::LegendReader legendReader
+                 (reinterpret_cast<char const*>(m) + m->_offsetLegend);
+      TRI_StringifyArrayShapedJson(&legendReader, buffer, &shaped, true);
+    }
 
     APPEND_STRING(buffer, "}}\n");
   }
-  else {
+  else {  // deletion marker, so no data
     APPEND_STRING(buffer, "\"}\n");
   }
-  
   return true;
 }
 
@@ -554,8 +604,8 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
   TRI_shaper_t* shaper;
   TRI_shaped_json_t shaped;
   
-  assert(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
-  shaper = document->base._shaper;
+  TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
+  shaper = document->getShaper();  // ONLY IN DUMP, PROTECTED by a fake trx from above
 
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
 
@@ -585,89 +635,17 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a transaction id is contained in the list of failed
-/// transactions
-////////////////////////////////////////////////////////////////////////////////
-
-static bool InFailedList (TRI_vector_t const* list, TRI_voc_tid_t search) {
-  size_t n;
-
-  assert(list != NULL);
-
-  n = list->_length;
- 
-  // decide how to search based on size of list
-  if (n == 0) {
-    // simple case: list is empty
-    return false;
-  }
-
-  else if (n < 16) {
-    // list is small: use a linear search
-    for (size_t i = 0; i < n; ++i) {
-      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, i));
-
-      if (*tid == search) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  else {
-    // list is somewhat bigger, use a binary search
-    size_t l = 0;
-    size_t r = (size_t) (n - 1);
-
-    while (true) {
-      // determine midpoint
-      size_t m;
-
-      m = l + ((r - l) / 2);
-      TRI_voc_tid_t* tid = static_cast<TRI_voc_tid_t*>(TRI_AtVector(list, m));
-
-      if (*tid == search) {
-        return true;
-      }
-
-      if (*tid > search) {
-        if (m == 0) {
-          // we must abort because the following subtraction would
-          // make the size_t underflow
-          return false;
-        }
-        
-        r = m - 1;
-      }
-      else {
-        l = m + 1;
-      }
-
-      if (r < l) {
-        return false;
-      }
-    }
-  }
-
-  // we should never get here
-  assert(false);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpCollection (TRI_replication_dump_t* dump, 
-                           TRI_primary_collection_t* primary,
+                           TRI_document_collection_t* document,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
                            uint64_t chunkSize,
                            bool withTicks,
                            bool translateCollectionIds) {
   TRI_vector_t datafiles;
-  TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
@@ -677,15 +655,22 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool bufferFull;
   bool ignoreMarkers;
     
+  // The following fake transaction allows us to access data pointers
+  // and shapers, essentially disabling the runtime checks. This is OK,
+  // since the dump only considers data files (and not WAL files), so 
+  // the collector has no trouble. Also, the data files of the collection
+  // are protected from the compactor by a barrier and the dump only goes
+  // until a certain tick.
+  triagens::arango::TransactionBase trx(true);
+
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
-  document       = (TRI_document_collection_t*) primary;
+  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
  
   // setup some iteration state
   lastFoundTick  = 0;
@@ -700,37 +685,16 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   for (i = 0; i < n; ++i) {
     df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
     TRI_datafile_t* datafile = e->_data;
-    TRI_vector_t* failedList;
     char const* ptr;
     char const* end;
-
-    failedList    = NULL;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-
-      if (document->_failedTransactions._length > 0) {
-        // there are failed transactions. just reference them
-        failedList = &document->_failedTransactions;
-      }
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
-      assert(datafile->_isSealed);
-
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-      
-      if (document->_failedTransactions._length > 0) {
-        // there are failed transactions. copy the list of ids
-        failedList = TRI_CopyVector(TRI_UNKNOWN_MEM_ZONE, &document->_failedTransactions);
-
-        if (failedList == NULL) {
-          res = TRI_ERROR_OUT_OF_MEMORY;
-        }
-      }
-
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_ASSERT(datafile->_isSealed);
     }
     
     ptr = datafile->_data;
@@ -800,7 +764,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
       // handle aborted/unfinished transactions
 
-      if (failedList == NULL) {
+      if (document->_failedTransactions == nullptr) {
         // there are no failed transactions
         ignoreMarkers = false;
       }
@@ -816,7 +780,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         // check if marker is from an aborted transaction
         if (tid > 0) {
           if (tid != lastTid) {
-            ignoreMarkers = InFailedList(failedList, tid);
+            ignoreMarkers = (document->_failedTransactions->find(tid) != document->_failedTransactions->end());
           }
 
           lastTid = tid;
@@ -852,13 +816,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 NEXT_DF:
     if (e->_isJournal) {
       // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
-    }
-    else {
-      // free our copy of the failed list
-      if (failedList != NULL) {
-        TRI_FreeVector(TRI_UNKNOWN_MEM_ZONE, failedList);
-      }
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
 
     if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
@@ -891,12 +849,11 @@ NEXT_DF:
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpLog (TRI_replication_dump_t* dump, 
-                    TRI_primary_collection_t* primary,
+                    TRI_document_collection_t* document,
                     TRI_voc_tick_t dataMin,
                     TRI_voc_tick_t dataMax,
                     uint64_t chunkSize) {
   TRI_vector_t datafiles;
-  TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   size_t i, n; 
@@ -905,14 +862,13 @@ static int DumpLog (TRI_replication_dump_t* dump,
   bool bufferFull;
     
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
-            (unsigned long long) primary->base._info._cid,
+            (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
             (unsigned long long) chunkSize);
 
   buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(primary, dataMin, dataMax);
-  document       = (TRI_document_collection_t*) primary;
+  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
  
   // setup some iteration state
   lastFoundTick  = 0;
@@ -931,10 +887,10 @@ static int DumpLog (TRI_replication_dump_t* dump,
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
     if (e->_isJournal) {
-      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
-      assert(datafile->_isSealed);
+      TRI_ASSERT(datafile->_isSealed);
     }
     
     ptr = datafile->_data;
@@ -1009,7 +965,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
 NEXT_DF:
     if (e->_isJournal) {
       // read-unlock the journal
-      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+      TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
 
     if (res != TRI_ERROR_NO_ERROR || ! hasMore || bufferFull) {
@@ -1037,18 +993,9 @@ NEXT_DF:
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a collection
@@ -1061,28 +1008,27 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    uint64_t chunkSize,
                                    bool withTicks,
                                    bool translateCollectionIds) {
-  TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
 
-  assert(col != NULL);
-  assert(col->_collection != NULL);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(col->_collection != nullptr);
 
-  primary = (TRI_primary_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+  b = TRI_CreateBarrierReplication(&document->_barrierList);
 
-  if (b == NULL) {
+  if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   
   // block compaction
-  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
+  res = DumpCollection(dump, document, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
   
-  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
 
@@ -1099,20 +1045,20 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
                             TRI_voc_tick_t dataMax,
                             uint64_t chunkSize) {
   TRI_vocbase_col_t* col;
-  TRI_primary_collection_t* primary;
   TRI_barrier_t* b;
   int res;
-
-  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION);
+ 
+  TRI_vocbase_col_status_e status;
+  col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION, status);
 
   if (col == NULL || col->_collection == NULL) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  primary = (TRI_primary_collection_t*) col->_collection;
+  TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
-  b = TRI_CreateBarrierReplication(&primary->_barrierList);
+  b = TRI_CreateBarrierReplication(&document->_barrierList);
 
   if (b == NULL) {
     TRI_ReleaseCollectionVocBase(vocbase, col);
@@ -1121,11 +1067,11 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   }
   
   // block compaction
-  TRI_ReadLockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  res = DumpLog(dump, primary, dataMin, dataMax, chunkSize);
+  res = DumpLog(dump, document, dataMin, dataMax, chunkSize);
   
-  TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
+  TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
   
@@ -1143,7 +1089,7 @@ int TRI_InitDumpReplication (TRI_replication_dump_t* dump,
                              size_t bufferSize) {
   int res;
 
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   dump->_vocbase       = vocbase;
   dump->_lastFoundTick = 0;
@@ -1193,10 +1139,6 @@ void TRI_DestroyDumpReplication (TRI_replication_dump_t* dump) {
   TRI_DestroyAssociativePointer(&dump->_collectionNames);
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump->_buffer);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

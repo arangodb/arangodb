@@ -97,8 +97,8 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 
   LOG_DEBUG("connecting to unix endpoint '%s'", _specification.c_str());
 
-  assert(!TRI_isvalidsocket(_socket));
-  assert(!_connected);
+  TRI_ASSERT(!TRI_isvalidsocket(_socket));
+  TRI_ASSERT(!_connected);
 
   if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
     // socket file already exists
@@ -185,7 +185,7 @@ TRI_socket_t EndpointUnixDomain::connect (double connectTimeout, double requestT
 
 void EndpointUnixDomain::disconnect () {
   if (_connected) {
-    assert(TRI_isvalidsocket(_socket));
+    TRI_ASSERT(TRI_isvalidsocket(_socket));
 
     _connected = false;
     TRI_CLOSE_SOCKET(_socket);

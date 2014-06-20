@@ -28,16 +28,13 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_REPLICATION_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "HttpServer/HttpServer.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
-
-using namespace triagens::arango;
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
 
 struct TRI_json_s;
 struct TRI_replication_log_state_s;
@@ -178,9 +175,7 @@ namespace triagens {
 /// @brief forward a command in the coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         void handleTrampolineCoordinator();
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the inventory (current replication and collection state)
@@ -192,9 +187,7 @@ namespace triagens {
 /// @brief returns the cluster inventory, only on coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         void handleCommandClusterInventory ();
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON TODO: move
@@ -238,14 +231,12 @@ namespace triagens {
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         int processRestoreCollectionCoordinator (struct TRI_json_s const*,
                                                  bool,
                                                  bool,
                                                  bool,
                                                  TRI_server_id_t,
                                                  std::string&);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the indexes of a collection TODO MOVE
@@ -260,12 +251,10 @@ namespace triagens {
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         int processRestoreIndexesCoordinator (struct TRI_json_s const*,
                                               bool,
                                               TRI_server_id_t,
                                               std::string&);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the collection dump
@@ -311,9 +300,7 @@ namespace triagens {
 /// @brief handle a restore command for a specific collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         void handleCommandRestoreDataCoordinator ();
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a dump command for a specific collection

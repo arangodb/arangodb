@@ -28,15 +28,12 @@
 #ifndef TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H
 #define TRIAGENS_INDEX_OPERATORS_INDEX_OPERATOR_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/json.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -190,10 +187,6 @@ typedef int (*TRI_index_query_free_method_call_t) (void*, void*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

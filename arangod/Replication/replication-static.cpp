@@ -33,10 +33,6 @@
 using namespace std;
 using namespace triagens::arango;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -86,10 +82,6 @@ int TRI_RunContinuousSyncerReplication (void* ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 // Local Variables:
 // mode: outline-minor

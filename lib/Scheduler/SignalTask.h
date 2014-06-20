@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_SIGNAL_TASK_H
 #define TRIAGENS_SCHEDULER_SIGNAL_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "Scheduler/Task.h"
 
 #include "Basics/Mutex.h"

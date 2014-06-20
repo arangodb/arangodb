@@ -1204,7 +1204,7 @@ void TRI_ShutdownProcess () {
   if (MustFreeEnvironment) {
     size_t i = 0;
 
-    assert(environ);
+    TRI_ASSERT(environ);
     // free all arguments copied for environ
 
     while (environ[i]) {

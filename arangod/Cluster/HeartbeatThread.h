@@ -34,9 +34,7 @@
 #include "BasicsC/logging.h"
 #include "Cluster/AgencyComm.h"
 
-extern "C" {
-  struct TRI_server_s;
-}
+struct TRI_server_s;
 
 namespace triagens {
   namespace rest {

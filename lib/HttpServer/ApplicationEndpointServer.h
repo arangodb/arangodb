@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H
 #define TRIAGENS_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include <openssl/ssl.h>

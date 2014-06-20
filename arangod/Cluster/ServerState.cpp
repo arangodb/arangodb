@@ -33,6 +33,7 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
+using namespace std;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -65,18 +66,12 @@ ServerState::~ServerState () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual singleton instance
-////////////////////////////////////////////////////////////////////////////////
-
-ServerState* ServerState::_theinstance = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState* ServerState::instance () {
-  assert(_theinstance != 0);
-  return _theinstance;
+  static ServerState* Instance = new ServerState();
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,8 +79,18 @@ ServerState* ServerState::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::initialise () {
-  assert(_theinstance == 0);
-  _theinstance = new ServerState();  // this now happens exactly once
+  instance();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+void ServerState::cleanup () {
+  auto i = instance();
+  TRI_ASSERT(i != nullptr);
+
+  delete i;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +109,7 @@ std::string ServerState::roleToString (RoleEnum role) {
       return "COORDINATOR";
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "";
 }
 
@@ -169,7 +174,7 @@ std::string ServerState::stateToString (StateEnum state) {
       return "SHUTDOWN"; 
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return "";
 }
 

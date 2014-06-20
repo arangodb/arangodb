@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 
+using namespace std;
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
 
@@ -235,18 +236,13 @@ void CollectionInfoCurrent::copyAllJsons () {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-ClusterInfo* ClusterInfo::_theinstance = 0;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an instance of the cluster info class
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo* ClusterInfo::instance () {
-  // This does not have to be thread-safe, because we guarantee that
-  // this is called very early in the startup phase when there is still
-  // a single thread.
-  assert(_theinstance != 0);
-  return _theinstance;
+  static ClusterInfo* Instance = new ClusterInfo();
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,8 +250,18 @@ ClusterInfo* ClusterInfo::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::initialise () {
-  assert(_theinstance == 0);
-  _theinstance = new ClusterInfo();  // this now happens exactly once
+  instance();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup function to call once when shutting down
+////////////////////////////////////////////////////////////////////////////////
+        
+void ClusterInfo::cleanup () {
+  auto i = instance();
+  TRI_ASSERT(i != nullptr);
+
+  delete i;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1503,7 +1509,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
       // no existing index found. 
       if (! create) {
-        assert(resultJson == 0);
+        TRI_ASSERT(resultJson == 0);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
 
@@ -1554,7 +1560,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   // wipe cache
   flush();
 
-  assert(numberOfShards > 0);
+  TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to appear
   AgencyCommResult res = ac.getValues("Current/Version", false);
@@ -1686,7 +1692,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
-    assert(TRI_IsListJson(indexes));
+    TRI_ASSERT(TRI_IsListJson(indexes));
 
     // delete previous indexes entry
     TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
@@ -1751,7 +1757,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
   // wipe cache
   flush();
 
-  assert(numberOfShards > 0);
+  TRI_ASSERT(numberOfShards > 0);
 
   // now wait for the index to disappear
   AgencyCommResult res = ac.getValues("Current/Version", false);

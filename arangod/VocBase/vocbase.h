@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_VOCBASE_H
 #define TRIAGENS_VOC_BASE_VOCBASE_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
@@ -37,15 +37,11 @@
 #include "BasicsC/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_primary_collection_s;
+struct TRI_document_collection_t;
 struct TRI_col_info_s;
 struct TRI_general_cursor_store_s;
 struct TRI_json_s;
@@ -138,46 +134,6 @@ struct TRI_vocbase_defaults_s;
   while (! TRI_TRY_WRITE_LOCK_STATUS_VOCBASE_COL(a)) { \
     usleep(1000); \
   } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks the synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_LOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
-  TRI_LockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_UNLOCK_SYNCHRONISER_WAITER_VOCBASE(a) \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for synchroniser waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_WAIT_SYNCHRONISER_WAITER_VOCBASE(a, b) \
-  TRI_TimedWaitCondition(&(a)->_syncWaitersCondition, (b))
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reduces the number of sync waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_DEC_SYNCHRONISER_WAITER_VOCBASE(a)          \
-  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
-  --((a)->_syncWaiters);                                \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reduces the number of sync waiters
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_INC_SYNCHRONISER_WAITER_VOCBASE(a)          \
-  TRI_LockCondition(&(a)->_syncWaitersCondition);       \
-  ++((a)->_syncWaiters);                                \
-  TRI_BroadcastCondition(&(a)->_syncWaitersCondition);  \
-  TRI_UnlockCondition(&(a)->_syncWaitersCondition)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -348,6 +304,9 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t  _authCache;
   TRI_read_write_lock_t      _authInfoLock;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
+  bool                       _hasCompactor;
+
+  std::set<TRI_voc_tid_t>*   _oldTransactions;
 
   struct TRI_replication_logger_s*  _replicationLogger;
   struct TRI_replication_applier_s* _replicationApplier;
@@ -361,7 +320,6 @@ typedef struct TRI_vocbase_s {
 
   sig_atomic_t               _state;
 
-  TRI_thread_t               _synchroniser;
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
   
@@ -376,8 +334,6 @@ typedef struct TRI_vocbase_s {
 
   TRI_condition_t            _compactorCondition;
   TRI_condition_t            _cleanupCondition;
-  TRI_condition_t            _syncWaitersCondition;
-  int64_t                    _syncWaiters;
 }
 TRI_vocbase_t;
 
@@ -415,7 +371,7 @@ typedef struct TRI_vocbase_col_s {
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
   TRI_vocbase_col_status_e          _status;     // status of the collection
-  struct TRI_primary_collection_s*  _collection; // NULL or pointer to loaded collection
+  struct TRI_document_collection_t*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
   char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
   char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
@@ -479,10 +435,16 @@ TRI_vocbase_t* TRI_OpenVocBase (struct TRI_server_s*,
 void TRI_DestroyVocBase (TRI_vocbase_t*); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief load authentication information
+/// @brief starts the compactor thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LoadAuthInfoVocBase (TRI_vocbase_t*);
+void TRI_StartCompactorVocBase (TRI_vocbase_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the compactor thread
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_StopCompactorVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known collections
@@ -589,7 +551,8 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UseCollectionVocBase (TRI_vocbase_t*, 
-                              TRI_vocbase_col_t*);
+                              TRI_vocbase_col_t*,
+                              TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by id
@@ -600,7 +563,8 @@ int TRI_UseCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*, 
-                                                 const TRI_voc_cid_t);
+                                                 TRI_voc_cid_t,
+                                                 TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks a (document) collection for usage by name
@@ -611,7 +575,8 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*, 
-                                                   char const*);
+                                                   char const*,
+                                                   TRI_vocbase_col_status_e&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a (document) collection from usage
@@ -662,10 +627,6 @@ bool TRI_IsSystemVocBase (TRI_vocbase_t*);
 
 bool TRI_IsAllowedNameVocBase (bool, 
                                char const*);
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

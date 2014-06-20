@@ -27,8 +27,6 @@
 
 #include "ApplicationAdminServer.h"
 
-#include "BasicsC/common.h"
-
 #include "Admin/RestAdminLogHandler.h"
 #include "Admin/RestJobHandler.h"
 #include "Admin/RestHandlerCreator.h"

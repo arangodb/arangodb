@@ -48,8 +48,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        AllocatorThread (AllocatorThread const&);
-        AllocatorThread& operator= (AllocatorThread const&);
+        AllocatorThread (AllocatorThread const&) = delete;
+        AllocatorThread& operator= (AllocatorThread const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -92,6 +92,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool createReserveLogfile (uint32_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tell the thread that the recovery phase is over
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void recoveryDone () {
+          _inRecovery = false;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
@@ -140,6 +148,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         volatile sig_atomic_t _stop;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are in the recovery mode
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _inRecovery;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the allocator thread when idle

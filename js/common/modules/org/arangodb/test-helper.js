@@ -40,15 +40,6 @@ var processCsvFile = internal.processCsvFile;
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief array query
-////////////////////////////////////////////////////////////////////////////////
-
 exports.Helper = {
   process: function (file, processor) {
     processCsvFile(file, function (raw_row, index) {
@@ -56,12 +47,55 @@ exports.Helper = {
         processor(raw_row.toString().split(","));
       }
     });
+  },
+
+  waitUnload: function (collection) {
+    var arangodb = require("org/arangodb");
+    var internal = require("internal");
+
+    collection.unload();
+    internal.flushWal();
+
+    var iterations = 0;
+   
+    while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
+      collection.unload();
+      internal.wait(0.25);
+
+      ++iterations;
+
+      if (iterations === 20) {
+        require("console").log("waiting for collection " + collection.name() + " to unload");
+      }
+      else if (iterations === 400) {
+        throw "waited too long for unload of collection " + collection.name();
+      }
+    }
+  },
+
+  rotate: function (collection) {
+    var internal = require("internal");
+
+    internal.flushWal(true, true);
+
+    var fig = collection.figures();
+    var files = fig.datafiles.count + fig.journals.count;
+
+    // wait for at most 10 seconds
+    var end = internal.time() + 10;
+    collection.rotate();
+
+    while (internal.time() < end) {
+      // wait until the figures change 
+      fig = collection.figures();
+      if (fig.datafiles.count + fig.journals.count !== files) {
+        break;
+      }
+
+      internal.wait(1);
+    }
   }
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

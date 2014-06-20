@@ -28,11 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_EDGE_COLLECTION_H
 #define TRIAGENS_VOC_BASE_EDGE_COLLECTION_H 1
 
+#include "Basics/Common.h"
+#include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -41,28 +39,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for edge flags
-/// the type is an integer which indicates the edge direction (IN/OUT)
-/// plus two extra bits that indicate whether the edge is self-reflexive and
-/// whether the edge is directed
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint32_t TRI_edge_flags_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edge from and to
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_document_edge_s {
-  TRI_voc_cid_t _fromCid;
-  TRI_voc_key_t _fromKey;
-
-  TRI_voc_cid_t _toCid;
-  TRI_voc_key_t _toKey;
-}
-TRI_document_edge_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction
@@ -97,15 +73,11 @@ TRI_edge_header_t;
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupEdgesDocumentCollection (
-                                                  TRI_document_collection_t*,
+std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
+                                                  struct TRI_document_collection_t*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

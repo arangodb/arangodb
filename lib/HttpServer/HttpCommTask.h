@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H
 #define TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralCommTask.h"
 
 #include "Basics/StringUtils.h"

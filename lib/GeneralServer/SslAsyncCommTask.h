@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H
 #define TRIAGENS_GENERAL_SERVER_SSL_ASYNC_COMM_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralAsyncCommTask.h"
 
 #include <openssl/ssl.h>
@@ -285,7 +287,7 @@ again:
             MUTEX_LOCKER(this->writeBufferLock);
 
             // size_t is unsigned, should never get < 0
-            assert(this->_writeBuffer->length() >= this->writeLength);
+            TRI_ASSERT(this->_writeBuffer->length() >= this->writeLength);
 
             // write buffer to SSL connection
             size_t len = this->_writeBuffer->length() - this->writeLength;

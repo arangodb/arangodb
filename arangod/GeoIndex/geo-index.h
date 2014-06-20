@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_GEO_INDEX_GEO_INDEX_H
 #define TRIAGENS_GEO_INDEX_GEO_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
@@ -53,7 +49,7 @@ extern "C" {
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateGeo1Index (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t,
                                   char const*,
                                   TRI_shape_pid_t,
@@ -65,7 +61,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s*,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateGeo2Index (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t,
                                   char const*,
                                   TRI_shape_pid_t ,
@@ -120,10 +116,6 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

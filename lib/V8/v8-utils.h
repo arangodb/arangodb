@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_V8_UTILS_H
 #define TRIAGENS_V8_V8_UTILS_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 #include "V8/JSLoader.h"
@@ -53,8 +55,8 @@ class TRI_Utf8ValueNFC {
     ~TRI_Utf8ValueNFC ();
     
     // Disallow copying and assigning.
-    TRI_Utf8ValueNFC(const TRI_Utf8ValueNFC&) = delete;
-    void operator=(const TRI_Utf8ValueNFC&) = delete;
+    TRI_Utf8ValueNFC (TRI_Utf8ValueNFC const&) = delete;
+    TRI_Utf8ValueNFC& operator= (TRI_Utf8ValueNFC const&) = delete;
 
     inline char* operator* () { 
       return _str; 

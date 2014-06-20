@@ -28,6 +28,7 @@
 #include "AllocatorThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Utils/Exception.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -40,7 +41,7 @@ using namespace triagens::wal;
 /// @brief wait interval for the allocator thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint64_t AllocatorThread::Interval = 500000;
+const uint64_t AllocatorThread::Interval = 500 * 1000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -55,7 +56,8 @@ AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
     _logfileManager(logfileManager),
     _condition(),
     _requestedSize(0),
-    _stop(0) {
+    _stop(0),
+    _inRecovery(true) {
   
   allowAsynchronousCancelation();
 }
@@ -84,7 +86,7 @@ void AllocatorThread::stop () {
   _condition.signal();
 
   while (_stop != 2) {
-    usleep(1000);
+    usleep(10000);
   }
 }
 
@@ -92,13 +94,13 @@ void AllocatorThread::stop () {
 /// @brief signal the creation of a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-void AllocatorThread::signal (uint32_t size) {
-  assert(size > 0);
-  
+void AllocatorThread::signal (uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
-  if (_requestedSize == 0 || size > _requestedSize) {
-    _requestedSize = size;
+  if (_requestedSize == 0 || 
+      markerSize > _requestedSize) {
+    // logfile must be as big as the requested marker
+    _requestedSize = markerSize;
   }
 
   guard.signal();
@@ -132,19 +134,32 @@ void AllocatorThread::run () {
       _requestedSize = 0;
     }
 
-    if (requestedSize == 0 && ! _logfileManager->hasReserveLogfiles()) {
-      if (createReserveLogfile(0)) {
-        continue;
-      }
+    try {
+      if (requestedSize == 0 && 
+          ! _inRecovery &&
+          ! _logfileManager->hasReserveLogfiles()) {
+        // only create reserve files if we are not in the recovery mode
+        if (createReserveLogfile(0)) {
+          continue;
+        }
 
-      LOG_ERROR("unable to create new wal reserve logfile");
-    }
-    else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
-      if (createReserveLogfile(requestedSize)) {
-        continue;
+        LOG_ERROR("unable to create new WAL reserve logfile");
       }
+      else if (requestedSize > 0 && 
+               _logfileManager->logfileCreationAllowed(requestedSize)) {
+        if (createReserveLogfile(requestedSize)) {
+          continue;
+        }
       
-      LOG_ERROR("unable to create new wal reserve logfile");
+        LOG_ERROR("unable to create new WAL reserve logfile");
+      }
+    }
+    catch (triagens::arango::Exception const& ex) {
+      int res = ex.code();
+      LOG_ERROR("got unexpected error in allocatorThread: %s", TRI_errno_string(res));
+    }
+    catch (...) {
+      LOG_ERROR("got unspecific error in allocatorThread");
     }
     
     {  

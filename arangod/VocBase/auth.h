@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_AUTH_H
 #define TRIAGENS_VOC_BASE_AUTH_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -133,10 +129,6 @@ bool TRI_CheckAuthenticationAuthInfo (struct TRI_vocbase_s*,
                                       char const* username,
                                       char const* password,
                                       bool* mustChange);
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
