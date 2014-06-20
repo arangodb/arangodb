@@ -93,8 +93,9 @@ Logfile* Logfile::createNew (std::string const& filename,
 
 Logfile* Logfile::openExisting (std::string const& filename,
                                 Logfile::IdType id,
-                                bool wasCollected) {
-  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), true);
+                                bool wasCollected,
+                                bool ignoreErrors) {
+  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
 
   if (df == nullptr) {
     int res = TRI_errno();

@@ -218,6 +218,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _numberOfSlots(1048576),
     _syncInterval(100),
     _allowOversizeEntries(true),
+    _ignoreLogfileErrors(false),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
     _inRecovery(true),
@@ -299,10 +300,11 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
   options["Write-ahead log options:help-wal"]
     ("wal.allow-oversize-entries", &_allowOversizeEntries, "allow entries that are bigger than --wal.logfile-size")
     ("wal.directory", &_directory, "logfile directory")
-    ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
-    ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
+    ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors on startup")
+    ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
+    ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
   ;
@@ -1661,9 +1663,22 @@ int LogfileManager::openLogfiles () {
       continue;
     }
 
-    Logfile* logfile = Logfile::openExisting(filename, id, id <= _lastCollectedId);
+     
+    bool const wasCollected = (id <= _lastCollectedId);
+    Logfile* logfile = Logfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors);
 
     if (logfile == nullptr) {
+      // an error happened when opening a logfile
+      if (! _ignoreLogfileErrors) {
+        // we don't ignore errors, so we abort here
+        int res = TRI_errno();
+        if (res == TRI_ERROR_NO_ERROR) {
+          // must have an error!
+          res = TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
+        }
+        return res;
+      }
+
       _logfiles.erase(it++);
       continue;
     }

@@ -1676,7 +1676,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 
   shapes = TRI_Concatenate2File(path, "SHAPES");
 
-  if (shapes == NULL) {
+  if (shapes == nullptr) {
     regfree(&re);
     
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1716,11 +1716,9 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       TRI_datafile_t* df;
-      char* fqn;
+      char* fqn = TRI_Concatenate2File(shapes, file);
       
-      fqn = TRI_Concatenate2File(shapes, file);
-      
-      if (fqn == NULL) {
+      if (fqn == nullptr) {
         res = TRI_ERROR_OUT_OF_MEMORY;
         break;
       }
@@ -1769,7 +1767,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
       // open the datafile, and push it into a vector of datafiles
       df = TRI_OpenDatafile(fqn, true);
 
-      if (df == NULL) {
+      if (df == nullptr) {
         res = TRI_errno();
         TRI_Free(TRI_CORE_MEM_ZONE, fqn);
         break;

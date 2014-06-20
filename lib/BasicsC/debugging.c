@@ -86,7 +86,11 @@ static char* MakeValue (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging (char const* message) {
-  fprintf(stderr, "causing intentional segfault: %s\n", message);
+  LOG_WARNING("causing intentional segfault: %s", message);
+  // make sure the log message is flushed
+  TRI_ShutdownLogging(true);
+
+  // and now crash
   *((char*) -1) = '!';
 }
 
