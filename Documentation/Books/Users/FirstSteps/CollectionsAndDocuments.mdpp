@@ -3,17 +3,17 @@
 
 ArangoDB is a database that serves documents to clients.
 
-- A *document* contains zero or more attributes, each one of these
+* A *document* contains zero or more attributes, each one of these
   attributes has a value. A value can either be an atomic type, i. e.
   integer, strings, boolean, a list or an embedded document. Documents
   are normally represented as JSON objects
-- Documents are grouped into *collections*. A collection contains zero
+* Documents are grouped into *collections*. A collection contains zero
   or more documents
-- *Queries* are used to filter documents based on certain criteria.
+* *Queries* are used to filter documents based on certain criteria.
   Queries can be as simple as a ["query by example"](../SimpleQueries/Queries.md) or as complex as
   ["joins"](../AqlExamples/Join.md) using many collections or graph structures
-- *Cursors* are used to iterate over the result of a query
-- *Indexes* are used to speed up of searches. There are various different
+* *Cursors* are used to iterate over the result of a query
+* *Indexes* are used to speed up of searches. There are various different
   types of indexes like [Index Hash](../IndexHandling/Hash.md), [Index Geo](../IndexHandling/Geo.md) and [Index BitArray](../IndexHandling/BitArray.md)
 
 If you are familiar with RDBMS then it is safe to compare collections

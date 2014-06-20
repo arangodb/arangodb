@@ -15,9 +15,9 @@ charts to make the chart be display at the top "in big".
 
 The *Dashboard* tab also shows an overview of the current databases replication 
 status, including:
-- Whether or not replication is running
-- The progress of the replication
-- If there has been a replication error
+* Whether or not replication is running
+* The progress of the replication
+* If there has been a replication error
 
 !SECTION Collections Tab 
 
@@ -82,9 +82,10 @@ Any valid JavaScript code can be executed inside the shell. The code will be
 executed inside your browser. To contact the ArangoDB server you can use the
 *db* object, for example as follows:
 
+```js
     JSH> db._create("mycollection");
     JSH> db.mycollection.save({ _key: "test", value: "something" });
-
+```
 
 !SECTION Logs Tab
 
