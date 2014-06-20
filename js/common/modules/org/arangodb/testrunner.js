@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, todo: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
 /*global module, require, exports, print */
 
 var runTest = require('jsunity').runTest,
@@ -19,8 +19,7 @@ runJSUnityTests = function (tests) {
   _.each(tests, function (file) {
     if (result) {
       print("\nRunning JSUnity test from file '" + file + "'");
-    }
-    else {
+    } else {
       print("\nSkipping JSUnity test from file '" + file + "' due to previous errors");
     }
 
