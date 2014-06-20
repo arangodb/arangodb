@@ -1763,19 +1763,29 @@ Logfile::IdType LogfileManager::nextId () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::ensureDirectory () {
-  if (! basics::FileUtils::isDirectory(_directory)) {
+  // strip directory separator from path
+  // this is required for Windows
+  std::string directory(_directory);
+
+  TRI_ASSERT(! directory.empty());
+
+  if (directory[directory.size() - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    directory = directory.substr(0, directory.size() - 1);
+  }
+
+  if (! basics::FileUtils::isDirectory(directory)) {
     int res;
     
-    LOG_INFO("WAL directory '%s' does not exist. creating it...", _directory.c_str());
+    LOG_INFO("WAL directory '%s' does not exist. creating it...", directory.c_str());
 
-    if (! basics::FileUtils::createDirectory(_directory, &res)) {
-      LOG_ERROR("could not create WAL directory: '%s': %s", _directory.c_str(), TRI_errno_string(res));
+    if (! basics::FileUtils::createDirectory(directory, &res)) {
+      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(), TRI_errno_string(res));
       return res;
     }
   }
 
-  if (! basics::FileUtils::isDirectory(_directory)) {
-    LOG_ERROR("WAL directory '%s' does not exist", _directory.c_str());
+  if (! basics::FileUtils::isDirectory(directory)) {
+    LOG_ERROR("WAL directory '%s' does not exist", directory.c_str());
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
