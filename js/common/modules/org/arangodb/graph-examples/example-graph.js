@@ -65,25 +65,27 @@
 
   var createRoutePlannerGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._directedRelationDefinition("highway", ["city"], ["city"]));
+    edgeDefinition.push(Graph._directedRelationDefinition("germanHighway", ["germanCity"], ["germanCity"]));
+    edgeDefinition.push(Graph._directedRelationDefinition("frenchHighway", ["frenchCity"], ["frenchCity"]));
     edgeDefinition.push(Graph._directedRelationDefinition(
-      "road", ["village", "city"], ["village", "city"])
+      "internationalHighway", ["frenchCity", "germanCity"], ["frenchCity", "germanCity"])
     );
     var g = Graph._create("routeplanner", edgeDefinition);
-    var berlin = g.city.save({_key: "Berlin", population : 3000000, isCapital : true});
-    var cologne = g.city.save({_key: "Cologne", population : 1000000, isCapital : false});
-    var munich = g.city.save({_key: "Munich", population : 1000000, isCapital : true});
-    var olpe = g.village.save({_key: "Olpe", population : 80000, isCapital : false});
-    var rosenheim = g.village.save({_key: "Rosenheim", population : 80000, isCapital : false});
-    g.highway.save(berlin._id, cologne._id, {distance: 850});
-    g.highway.save(berlin._id, munich._id, {distance: 600});
-    g.highway.save(munich._id, cologne._id, {distance: 650});
-    g.road.save(berlin._id, olpe._id, {distance: 700});
-    g.road.save(berlin._id, rosenheim._id, {distance: 800});
-    g.road.save(munich._id, rosenheim._id, {distance: 80});
-    g.road.save(munich._id, olpe._id, {distance: 600});
-    g.road.save(cologne._id, olpe._id, {distance: 100});
-    g.road.save(cologne._id, rosenheim._id, {distance: 750});
+    var berlin = g.germanCity.save({_key: "Berlin", population : 3000000, isCapital : true});
+    var cologne = g.germanCity.save({_key: "Cologne", population : 1000000, isCapital : false});
+    var hamburg = g.germanCity.save({_key: "Hamburg", population : 1000000, isCapital : false});
+    var lyon = g.frenchCity.save({_key: "Lyon", population : 80000, isCapital : false});
+    var paris = g.frenchCity.save({_key: "Paris", population : 4000000, isCapital : true});
+    g.germanHighway.save(berlin._id, cologne._id, {distance: 850});
+    g.germanHighway.save(berlin._id, hamburg._id, {distance: 400});
+    g.germanHighway.save(hamburg._id, cologne._id, {distance: 500});
+    g.frenchHighway.save(paris._id, lyon._id, {distance: 550});
+    g.internationalHighway.save(berlin._id, lyon._id, {distance: 1100});
+    g.internationalHighway.save(berlin._id, paris._id, {distance: 1200});
+    g.internationalHighway.save(hamburg._id, paris._id, {distance: 900});
+    g.internationalHighway.save(hamburg._id, lyon._id, {distance: 1300});
+    g.internationalHighway.save(cologne._id, lyon._id, {distance: 700});
+    g.internationalHighway.save(cologne._id, paris._id, {distance: 550});
     return g;
   };
 

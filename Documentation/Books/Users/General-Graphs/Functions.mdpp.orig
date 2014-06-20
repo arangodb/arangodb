@@ -32,3 +32,15 @@ This chapter describes various functions on a graph.
 
 <!-- @startDocuBlock JSF_general_graph_amount_common_properties -->
 
+
+
+
+
+
+
+
+
+
+!SECTION _absoluteEccentricity
+
+<!-- @startDocuBlock JSF_general_graph_absolute_eccentricity -->
