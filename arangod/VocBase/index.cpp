@@ -664,15 +664,19 @@ static uint64_t HashElementEdgeFrom (TRI_multi_pointer_t* array,
     TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetFromKey;
+
+      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long) edge->_fromCid, key);
 
       hash = edge->_fromCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetFromKey;
+
+      // LOG_TRACE("HASH FROM: COLLECTION: %llu, KEY: %s", (unsigned long long) edge->_fromCid, key);
 
       hash = edge->_fromCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
@@ -699,15 +703,19 @@ static uint64_t HashElementEdgeTo (TRI_multi_pointer_t* array,
     TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetToKey;
+
+      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long) edge->_toCid, key);
 
       hash = edge->_toCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       char const* key = (char const*) edge + edge->_offsetToKey;
+      
+      // LOG_TRACE("HASH TO: COLLECTION: %llu, KEY: %s", (unsigned long long) edge->_toCid, key);
 
       hash = edge->_toCid;
       hash ^= (uint64_t) fasthash64(key, strlen(key), 0x87654321);
@@ -733,13 +741,18 @@ static bool IsEqualKeyEdgeFrom (TRI_multi_pointer_t* array,
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+
+    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long) rEdge->_fromCid, rKey);
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    triagens::wal::edge_marker_t const* rEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetFromKey;
+    
+    // LOG_TRACE("ISEQUAL FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long) rEdge->_fromCid, rKey);
+
     return (l->_cid == rEdge->_fromCid) && (strcmp(lKey, rKey) == 0);
   }
 
@@ -762,13 +775,19 @@ static bool IsEqualKeyEdgeTo (TRI_multi_pointer_t* array,
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+
+    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long) rEdge->_toCid, rKey);
+
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    triagens::wal::edge_marker_t const* rEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
     char const* rKey = (char const*) rEdge + rEdge->_offsetToKey;
+    
+    // LOG_TRACE("ISEQUAL TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) l->_cid, lKey, (unsigned long long) rEdge->_toCid, rKey);
+
     return (l->_cid == rEdge->_toCid) && (strcmp(lKey, rKey) == 0);
   }
 
@@ -793,16 +812,17 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
     char const* rKey;
     TRI_voc_cid_t rCid;
 
+    // left element
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
     marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
   
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetFromKey;
       lCid = lEdge->_fromCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* lEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetFromKey;
       lCid = lEdge->_fromCid;
     }
@@ -810,16 +830,17 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
       return false;
     }
 
+    // right element
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
     marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-      lKey = (char const*) rEdge + rEdge->_offsetFromKey;
+      TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
+      rKey = (char const*) rEdge + rEdge->_offsetFromKey;
       rCid = rEdge->_fromCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* rEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       rKey = (char const*) rEdge + rEdge->_offsetFromKey;
       rCid = rEdge->_fromCid;
     }
@@ -827,7 +848,9 @@ static bool IsEqualElementEdgeFrom (TRI_multi_pointer_t* array,
       return false;
     }
 
-    return lCid == rCid && strcmp(lKey, rKey) == 0;
+    // LOG_TRACE("ISEQUALELEMENT FROM: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long) rCid, rKey);
+
+    return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
   }
 }
 
@@ -849,16 +872,17 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
     char const* rKey;
     TRI_voc_cid_t rCid;
 
+    // left element
     TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
     marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
   
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* lEdge = static_cast<TRI_doc_edge_key_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetToKey;
       lCid = lEdge->_toCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* lEdge = static_cast<triagens::wal::edge_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* lEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       lKey = (char const*) lEdge + lEdge->_offsetToKey;
       lCid = lEdge->_toCid;
     }
@@ -866,16 +890,17 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
       return false;
     }
 
+    // right element
     TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
     marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* rEdge = static_cast<TRI_doc_edge_key_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-      lKey = (char const*) rEdge + rEdge->_offsetToKey;
+      TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
+      rKey = (char const*) rEdge + rEdge->_offsetToKey;
       rCid = rEdge->_toCid;
     }
     else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-      triagens::wal::edge_marker_t const* rEdge = static_cast<triagens::wal::edge_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+      triagens::wal::edge_marker_t const* rEdge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
       rKey = (char const*) rEdge + rEdge->_offsetToKey;
       rCid = rEdge->_toCid;
     }
@@ -883,7 +908,9 @@ static bool IsEqualElementEdgeTo (TRI_multi_pointer_t* array,
       return false;
     }
 
-    return lCid == rCid && strcmp(lKey, rKey) == 0;
+    // LOG_TRACE("ISEQUALELEMENT TO: LCOLLECTION: %llu, LKEY: %s, RCOLLECTION: %llu, RKEY: %s", (unsigned long long) lCid, lKey, (unsigned long long) rCid, rKey);
+
+    return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
   }
 }
 
