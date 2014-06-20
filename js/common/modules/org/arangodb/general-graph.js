@@ -1993,7 +1993,7 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_replace
 /// `graph.edgeCollectionName.replace(edgeId, data, options)`
-/// Replaces the data of an edge in collection *edgeCollectionName*
+/// *Replaces the data of an edge in collection edgeCollectionName*
 ///
 /// *Parameter*
 ///
@@ -2192,8 +2192,10 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// long as they are not used within other graphs.
 /// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
-/// * *graphName*: string - unique identifier of the graph
-/// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
+/// * *dropCollections* (optional): Define if collections should be dropped (default: false)
 ///
 /// *Examples*
 ///
@@ -2260,7 +2262,7 @@ var _drop = function(graphId, dropCollections) {
         if (checkIfMayBeDropped(oC, graph._key, graphs)) {
           try {
             db._drop(oC);
-          } catch (e) {}
+          } catch (ignore) {}
         }
       }
     );
@@ -2389,9 +2391,8 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edges
-/// Select some edges from the graph.
-///
-/// `graph.edges(examples)`
+/// `graph._edges(examples)`
+/// *Select some edges from the graph.*
 ///
 /// Creates an AQL statement to select a subset of the edges stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
@@ -2399,14 +2400,9 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 /// functions described below.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -2441,9 +2437,8 @@ Graph.prototype._edges = function(edgeExample) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertices
-/// Select some vertices from the graph.
-///
-/// `graph.vertices(examples)`
+/// `graph._vertices(examples)`
+/// *Select some vertices from the graph.*
 ///
 /// Creates an AQL statement to select a subset of the vertices stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
@@ -2451,14 +2446,9 @@ Graph.prototype._edges = function(edgeExample) {
 /// functions described below.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -2491,11 +2481,14 @@ Graph.prototype._vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_getFromVertex
-/// Get the vertex of an edge defined as *_from*
-///
-/// `general-graph._getFromVertex(edgeId)`
+/// `graph._getFromVertex(edgeId)`
+/// *Get the source vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
+///
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
 ///
 /// *Examples*
 ///
@@ -2521,11 +2514,14 @@ Graph.prototype._getFromVertex = function(edgeId) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_getToVertex
-/// Get the vertex of an edge defined as *_to*
-///
-/// `general-graph._getToVertex(edgeId)`
+/// `graph._getToVertex(edgeId)`
+/// *Get the target vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
+///
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
 ///
 /// *Examples*
 ///
@@ -2581,40 +2577,25 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_neighbors
-///
-/// `general_graph._neighbors(vertexExample, options)`
-/// *The general_graph._neighbors function returns all neighbors
-/// of the vertices defined by the example.*
+/// `graph._neighbors(vertexExample, options)`
+/// *Get all neighbors of the vertices defined by the example*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: See [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
+///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
+///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 ///
 /// *Examples*
 ///
