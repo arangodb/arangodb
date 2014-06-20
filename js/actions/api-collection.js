@@ -1332,15 +1332,17 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
 ///     var cn = "products";
+///     db._drop(cn);
 ///     var coll = db._create(cn);
 ///     coll.save({ "test" : true });
-///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///     require("internal").flushWal(true, true);
 ///
+///     var url = "/_api/collection/"+ coll._id + "/rotate";
 ///     var response = logCurlRequest('PUT', url, { });
 ///
 ///     assert(response.code === 200);
 ///     db._flushCache();
-///     db._drop("products");
+///     db._drop(cn);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1349,6 +1351,7 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
 ///     var cn = "products";
+///     db._drop(cn);
 ///     var coll = db._create(cn);
 ///     var url = "/_api/collection/"+ coll._id + "/rotate";
 ///
@@ -1356,7 +1359,7 @@ function put_api_collection_rename (req, res, collection) {
 ///
 ///     assert(response.code === 400);
 ///     db._flushCache();
-///     db._drop("products");
+///     db._drop(cn);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
