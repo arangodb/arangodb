@@ -525,6 +525,10 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_NO_ERROR;
   }
   
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteBeginMarker") {
+    return TRI_ERROR_DEBUG;
+  }
+  
   triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
   return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
@@ -537,6 +541,10 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
 static int WriteAbortMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteAbortMarker") {
+    return TRI_ERROR_DEBUG;
   }
 
   triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
@@ -551,6 +559,10 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 static int WriteCommitMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
+  }
+  
+  TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteCommitMarker") {
+    return TRI_ERROR_DEBUG;
   }
 
   triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
