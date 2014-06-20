@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -138,13 +140,13 @@ static void FreeNodes (TRI_aql_context_t* const context) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process options from the context
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static void ProcessOptions (TRI_aql_context_t* context) {
   TRI_json_t* value;
 
   // default values
   context->_fullCount = false;
-  
+
   value = TRI_GetOptionContextAql(context, "fullCount");
 
   if (value != NULL && value->_type == TRI_JSON_BOOLEAN) {
@@ -225,7 +227,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
                                    &TRI_HashStringKeyAssociativePointer,
                                    &TRI_EqualStringKeyAssociativePointer,
                                    0);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyAssociativePointer(&context->_parameters._names);
     TRI_DestroyAssociativePointer(&context->_parameters._values);
@@ -243,9 +245,9 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
   context->_parser     = NULL;
   context->_statements = NULL;
   context->_query      = query;
-  
+
   TRI_InitScopesAql(context);
- 
+
   context->_parser = TRI_CreateParserAql(context->_query, queryLength);
 
   if (context->_parser == NULL) {
@@ -269,7 +271,7 @@ TRI_aql_context_t* TRI_CreateContextAql (TRI_vocbase_t* vocbase,
 
     return NULL;
   }
-  
+
   ProcessOptions(context);
 
   context->_isCoordinator = isCoordinator;
@@ -470,9 +472,9 @@ char* TRI_RegisterString2Aql (TRI_aql_context_t* const context,
                               const char* const s1,
                               const char* const s2) {
   char* copy;
-  
+
   copy = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2);
-  
+
   if (copy == NULL) {
     ABORT_OOM
   }
@@ -494,9 +496,9 @@ char* TRI_RegisterString3Aql (TRI_aql_context_t* const context,
                               const char* const s2,
                               const char* const s3) {
   char* copy;
-  
+
   copy = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE, s1, s2, s3);
-  
+
   if (copy == NULL) {
     ABORT_OOM
   }
@@ -543,7 +545,7 @@ void TRI_SetErrorContextAql (const char* file,
 TRI_json_t* TRI_GetOptionContextAql (TRI_aql_context_t* const context,
                               const char* name) {
   if (context->_userOptions == NULL || context->_userOptions->_type != TRI_JSON_ARRAY) {
-    return NULL; 
+    return NULL;
   }
 
   return TRI_LookupArrayJson(context->_userOptions, name);
@@ -555,5 +557,5 @@ TRI_json_t* TRI_GetOptionContextAql (TRI_aql_context_t* const context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

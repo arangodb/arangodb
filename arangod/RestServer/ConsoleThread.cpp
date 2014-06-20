@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -55,7 +57,7 @@ using namespace triagens::arango;
 
 ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
                               ApplicationV8* applicationV8,
-                              TRI_vocbase_t* vocbase) 
+                              TRI_vocbase_t* vocbase)
   : Thread("console"),
     _applicationServer(applicationServer),
     _applicationV8(applicationV8),
@@ -64,7 +66,7 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
     _done(0),
     _userAborted(false) {
   allowAsynchronousCancelation();
-  
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +160,7 @@ void ConsoleThread::inner () {
     if (input == 0) {
       _userAborted = true;
 
-      // this will be caught by "run" 
+      // this will be caught by "run"
       throw "user aborted";
     }
 
@@ -190,5 +192,5 @@ void ConsoleThread::inner () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

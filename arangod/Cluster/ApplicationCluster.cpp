@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +60,7 @@ using namespace triagens::arango;
 
 ApplicationCluster::ApplicationCluster (TRI_server_t* server,
                                         triagens::rest::ApplicationDispatcher* dispatcher,
-                                        ApplicationV8* applicationV8) 
+                                        ApplicationV8* applicationV8)
   : ApplicationFeature("Sharding"),
     _server(server),
     _dispatcher(dispatcher),
@@ -94,7 +96,7 @@ ApplicationCluster::~ApplicationCluster () {
     // flat line.....
     delete _heartbeat;
   }
-  
+
   ServerState::cleanup();
 }
 
@@ -131,8 +133,8 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
 
 bool ApplicationCluster::prepare () {
   // initialise ServerState library
-  ServerState::initialise(); 
- 
+  ServerState::initialise();
+
   _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
   if (! enabled()) {
@@ -148,7 +150,7 @@ bool ApplicationCluster::prepare () {
 
   // register the prefix with the communicator
   AgencyComm::setPrefix(_agencyPrefix);
-  
+
   // validate --cluster.agency-endpoint
   if (_agencyEndpoints.empty()) {
     LOG_FATAL_AND_EXIT("must at least specify one endpoint in --cluster.agency-endpoint");
@@ -158,7 +160,7 @@ bool ApplicationCluster::prepare () {
     const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
-      LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint", 
+      LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint",
                          _agencyEndpoints[i].c_str());
     }
 
@@ -171,14 +173,14 @@ bool ApplicationCluster::prepare () {
   }
   else {
     size_t found = _myId.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-    
+
     if (found != std::string::npos) {
       LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
     }
   }
-  
+
   // initialise ClusterInfo library
-  ClusterInfo::initialise(); 
+  ClusterInfo::initialise();
 
   // initialise ClusterComm library
   ClusterComm::initialise();
@@ -213,14 +215,14 @@ bool ApplicationCluster::start () {
   if (! enabled()) {
     return true;
   }
-  
+
   ServerState::instance()->setId(_myId);
-  
+
   // perfom an initial connect to the agency
   const std::string endpoints = AgencyComm::getEndpointsString();
 
   if (! AgencyComm::tryConnect()) {
-    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)", 
+    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)",
                        endpoints.c_str());
   }
 
@@ -229,7 +231,7 @@ bool ApplicationCluster::start () {
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
-    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured in agency (%s)", 
+    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured in agency (%s)",
                        _myId.c_str(),
                        endpoints.c_str());
   }
@@ -243,18 +245,18 @@ bool ApplicationCluster::start () {
     // register our own address
     ServerState::instance()->setAddress(_myAddress);
   }
- 
+
   if (_myAddress.empty()) {
     LOG_FATAL_AND_EXIT("unable to determine internal address for server '%s'. "
-                       "Please specify --cluster.my-address or configure the address for this server in the agency.", 
+                       "Please specify --cluster.my-address or configure the address for this server in the agency.",
                        _myId.c_str());
   }
-  
+
   // now we can validate --cluster.my-address
   const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
-    LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.my-address", 
+    LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.my-address",
                        _myAddress.c_str());
   }
 
@@ -263,7 +265,7 @@ bool ApplicationCluster::start () {
   // initialise ConnectionManager library
   httpclient::ConnectionManager::instance()->initialise();
 
-  // the agency about our state 
+  // the agency about our state
   AgencyComm comm;
   comm.sendServerState(0.0);
 
@@ -279,7 +281,7 @@ bool ApplicationCluster::start () {
            _myId.c_str(),
            _myAddress.c_str(),
            ServerState::roleToString(role).c_str());
-  
+
   if (! _disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs", false);
 
@@ -291,19 +293,19 @@ bool ApplicationCluster::start () {
       if (it != result._values.end()) {
         _heartbeatInterval = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
-        LOG_INFO("using heartbeat interval value '%llu ms' from agency", 
+        LOG_INFO("using heartbeat interval value '%llu ms' from agency",
                  (unsigned long long) _heartbeatInterval);
       }
     }
-      
+
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
       _heartbeatInterval = 1000; // 1/s
 
-      LOG_WARNING("unable to read heartbeat interval from agency. Using default value '%llu ms'", 
+      LOG_WARNING("unable to read heartbeat interval from agency. Using default value '%llu ms'",
                   (unsigned long long) _heartbeatInterval);
     }
-   
+
 
     // start heartbeat thread
     _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8, _heartbeatInterval * 1000, 5);
@@ -313,7 +315,7 @@ bool ApplicationCluster::start () {
     }
 
     if (! _heartbeat->init() || ! _heartbeat->start()) {
-      LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)", 
+      LOG_FATAL_AND_EXIT("heartbeat could not connect to agency endpoints (%s)",
                          endpoints.c_str());
     }
 
@@ -322,10 +324,10 @@ bool ApplicationCluster::start () {
       usleep(10000);
     }
   }
-  
+
   return true;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,8 +344,8 @@ bool ApplicationCluster::open () {
     AgencyComm comm;
     AgencyCommResult result;
 
-    AgencyCommLocker locker("Current", "WRITE"); 
-    
+    AgencyCommLocker locker("Current", "WRITE");
+
     if (locker.successful()) {
       TRI_json_t* ep = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
       if (ep == 0) {
@@ -365,20 +367,20 @@ bool ApplicationCluster::open () {
     if (! result.successful()) {
       locker.unlock();
       LOG_FATAL_AND_EXIT("unable to register server in agency: http code: %d, body: %s",
-                         (int) result.httpCode(), 
+                         (int) result.httpCode(),
                          result.body().c_str());
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
       TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
-      
+
       if (json == 0) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
 
       ServerState::instance()->setState(ServerState::STATE_SERVING);
-  
+
       // register coordinator
       AgencyCommResult result = comm.setValue("Current/Coordinators/" + _myId, json, 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -390,7 +392,7 @@ bool ApplicationCluster::open () {
     }
     else if (role == ServerState::ROLE_PRIMARY) {
       TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
-      
+
       if (json == 0) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
@@ -424,11 +426,11 @@ void ApplicationCluster::close () {
   if (! enabled()) {
     return;
   }
- 
-  if (_heartbeat != 0) { 
+
+  if (_heartbeat != 0) {
     _heartbeat->stop();
   }
-  
+
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
@@ -444,7 +446,7 @@ void ApplicationCluster::stop () {
   if (! enabled()) {
     return;
   }
-  
+
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
@@ -456,10 +458,10 @@ void ApplicationCluster::stop () {
   }
 
   {
-    AgencyCommLocker locker("Current", "WRITE"); 
-    
+    AgencyCommLocker locker("Current", "WRITE");
+
     if (locker.successful()) {
-      // unregister ourselves 
+      // unregister ourselves
       ServerState::RoleEnum role = ServerState::instance()->getRole();
 
       if (role == ServerState::ROLE_PRIMARY) {
@@ -469,17 +471,21 @@ void ApplicationCluster::stop () {
         comm.removeValues("Current/Coordinators/" + _myId, false);
       }
 
-      // unregister ourselves 
+      // unregister ourselves
       comm.removeValues("Current/ServersRegistered/" + _myId, false);
     }
   }
-  
+
   ClusterComm::cleanup();
   ClusterInfo::cleanup();
   AgencyComm::cleanup();
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

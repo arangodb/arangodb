@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +46,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 static char const* EMPTY_STR = "";
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
@@ -59,8 +61,8 @@ const int32_t HttpRequest::MinCompatibility = 10300L;
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest (ConnectionInfo const& info, 
-                          char const* header, 
+HttpRequest::HttpRequest (ConnectionInfo const& info,
+                          char const* header,
                           size_t length,
                           int32_t defaultApiCompatibility,
                           bool allowMethodOverride)
@@ -118,7 +120,7 @@ HttpRequest::~HttpRequest () {
   for (vector<char*>::iterator i = _freeables.begin();  i != _freeables.end();  ++i) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
-  
+
   if (_requestContext != 0 && _isRequestContextOwner) {
     // only delete if we are the owner of the context
     delete _requestContext;
@@ -487,7 +489,7 @@ size_t HttpRequest::bodySize () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpRequest::setBody (char const* newBody, 
+int HttpRequest::setBody (char const* newBody,
                           size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
@@ -507,8 +509,8 @@ int HttpRequest::setBody (char const* newBody,
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setHeader (char const* key, 
-                             size_t keyLength, 
+void HttpRequest::setHeader (char const* key,
+                             size_t keyLength,
                              char const* value) {
   if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
     _contentLength = TRI_Int64String(value);
@@ -517,8 +519,8 @@ void HttpRequest::setHeader (char const* key,
     parseCookies(value);
   }
   else {
-    if (_allowMethodOverride && 
-        keyLength >= 13 && 
+    if (_allowMethodOverride &&
+        keyLength >= 13 &&
         *key == 'x' && *(key + 1) == '-') {
       // handle x-... headers
 
@@ -585,20 +587,20 @@ int32_t HttpRequest::compatibility () {
         else {
           // set patch-level to 0
           result /= 100L;
-          result *= 100L; 
+          result *= 100L;
         }
 
         return result;
       }
     }
-    
+
     apiVersion = ++p;
 
     // read minor version
     while (*p >= '0' && *p <= '9') {
       ++p;
     }
-      
+
     if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
       int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
 
@@ -702,7 +704,7 @@ void HttpRequest::setRequestPath (char const* path) {
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr, 
+HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
                                                           const size_t length) {
   switch (length) {
     case 3:
@@ -921,7 +923,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                 }
                 ++q;
               }
-              
+
               _databaseName = string(pathBegin, q - pathBegin);
 
               pathBegin = q;
@@ -1295,10 +1297,6 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
@@ -1312,8 +1310,8 @@ string HttpRequest::translateVersion (HttpVersion version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
     }
-    case HTTP_1_0:      
-    case HTTP_UNKNOWN:   
+    case HTTP_1_0:
+    case HTTP_UNKNOWN:
     default: {
       return "HTTP/1.0";
     }
@@ -1556,5 +1554,5 @@ void HttpRequest::parseCookies (const char* buffer) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

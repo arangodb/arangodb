@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,11 +20,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Dr. Oreste Costa-Panaia
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2004-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,7 +160,7 @@ static inline size_t TableEntrySize () {
 /// the hash table memory will be aligned on a cache line boundary
 ////////////////////////////////////////////////////////////////////////////////
 
-static int AllocateTable (TRI_hash_array_t* array, 
+static int AllocateTable (TRI_hash_array_t* array,
                           uint64_t numElements) {
   size_t const size = (size_t) (TableEntrySize() * numElements + 64);
 
@@ -180,7 +182,7 @@ static int AllocateTable (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ResizeHashArray (TRI_hash_array_t* array,
-                            uint64_t targetSize, 
+                            uint64_t targetSize,
                             bool allowShrink) {
   if (array->_nrAlloc >= targetSize && ! allowShrink) {
     return TRI_ERROR_NO_ERROR;
@@ -233,7 +235,7 @@ static int ResizeHashArray (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief triggers a resize if necessary
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static bool CheckResize (TRI_hash_array_t* array) {
   if (array->_nrAlloc < 2 * array->_nrUsed) {
     int res = ResizeHashArray(array, 2 * array->_nrAlloc + 1, false);
@@ -332,7 +334,7 @@ size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const* array) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int TRI_ResizeHashArray (TRI_hash_array_t* array,
                          size_t size) {
   return ResizeHashArray(array, (uint64_t) (2 * size + 1), false);
@@ -393,21 +395,21 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   // ...........................................................................
   // we are adding and the table is more than half full, extend it
   // ...........................................................................
-  
+
   if (! CheckResize(array)) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   const uint64_t n = array->_nrAlloc;
   uint64_t i, k;
- 
+
   i = k = HashKey(array, key) % n;
-  
+
   for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   if (i == n) {
     for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   }
-  
+
   TRI_ASSERT_EXPENSIVE(i < n);
 
   TRI_hash_index_element_t* arrayElement = &array->_table[i];
@@ -433,7 +435,7 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
 
   *arrayElement = *element;
   array->_nrUsed++;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -525,7 +527,7 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t* array,
 
   uint64_t const n = array->_nrAlloc;
   uint64_t i = HashKey(array, key) % n;
-  
+
   while (array->_table[i]._document != nullptr) {
     if (IsEqualKeyElement(array, key, &array->_table[i])) {
       TRI_PushBackVectorPointer(&result, &array->_table[i]);
@@ -567,7 +569,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
-  
+
   TRI_hash_index_element_t* arrayElement = &array->_table[i];
 
   // ...........................................................................
@@ -599,7 +601,7 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_t* array,
 
   *arrayElement = *element;
   array->_nrUsed++;
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -657,7 +659,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
 
     k = TRI_IncModU64(k, n);
   }
-  
+
   if (array->_nrUsed == 0) {
     ResizeHashArray(array, InitialSize(), true);
   }
@@ -671,5 +673,5 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t* array,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

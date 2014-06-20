@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -56,11 +58,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -128,18 +125,9 @@ static bool Overwrite = false;
 
 static bool Progress = true;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -181,19 +169,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -307,9 +285,9 @@ int main (int argc, char* argv[]) {
                                             BaseClient.sslProtocol(),
                                             false);
 
-  if (! ClientConnection->isConnected() || 
+  if (! ClientConnection->isConnected() ||
       ClientConnection->getLastHttpReturnCode() != HttpResponse::OK) {
-    cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification() 
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification()
          << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
@@ -317,7 +295,7 @@ int main (int argc, char* argv[]) {
 
   // successfully connected
   cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-       << "', version " << ClientConnection->getVersion() << ", database: '" 
+       << "', version " << ClientConnection->getVersion() << ", database: '"
        << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
 
   cout << "----------------------------------------" << endl;
@@ -440,15 +418,11 @@ int main (int argc, char* argv[]) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

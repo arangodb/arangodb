@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,7 +148,7 @@ static inline uint32_t GetNumAllocated (TRI_fulltext_list_t const* list) {
 /// @brief initialise a new list
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitList (TRI_fulltext_list_t* list, 
+static void InitList (TRI_fulltext_list_t* list,
                       uint32_t size) {
   uint32_t* head = (uint32_t*) list;
 
@@ -566,7 +568,7 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
     uint32_t newSize;
 
     newSize = (uint32_t) (numEntries * GROWTH_FACTOR);
-    
+
     if (newSize == numEntries) {
       // 0 * something might not be enough...
       newSize = numEntries + 1;
@@ -689,7 +691,11 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (TRI_fulltext_list_t const
   return GetStart(list);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

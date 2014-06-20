@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +55,7 @@
 #include "Wal/Marker.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables 
+// --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +69,7 @@ class DatabaseReadLocker {
     DatabaseReadLocker (DatabaseReadLocker const&) = delete;
     DatabaseReadLocker& operator= (DatabaseReadLocker const&) = delete;
 
-    DatabaseReadLocker (TRI_read_write_lock_t* lock) 
+    DatabaseReadLocker (TRI_read_write_lock_t* lock)
       : _lock(lock) {
       TRI_ReadLockReadWriteLock(_lock);
     }
@@ -86,10 +88,10 @@ class DatabaseWriteLocker {
     DatabaseWriteLocker (DatabaseWriteLocker const&) = delete;
     DatabaseWriteLocker& operator= (DatabaseWriteLocker const&) = delete;
 
-    DatabaseWriteLocker (TRI_read_write_lock_t* lock) 
+    DatabaseWriteLocker (TRI_read_write_lock_t* lock)
       : _lock(lock) {
-       while (! TRI_TryWriteLockReadWriteLock(lock)) { 
-         usleep(1000); 
+       while (! TRI_TryWriteLockReadWriteLock(lock)) {
+         usleep(1000);
       }
     }
 
@@ -506,7 +508,7 @@ static int OpenDatabases (TRI_server_t* server,
 
   TRI_vector_string_t files;
   files = TRI_FilesDirectory(server->_databasePath);
-  
+
   int res = TRI_ERROR_NO_ERROR;
   size_t n = files._length;
 
@@ -514,7 +516,7 @@ static int OpenDatabases (TRI_server_t* server,
   if (n > 1) {
     qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
   }
-  
+
   for (size_t i = 0;  i < n;  ++i) {
     TRI_vocbase_t* vocbase;
     TRI_json_t* json;
@@ -650,8 +652,8 @@ static int OpenDatabases (TRI_server_t* server,
       continue;
     }
 
-    databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
-                                         nameJson->_value._string.data, 
+    databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
+                                         nameJson->_value._string.data,
                                          nameJson->_value._string.length);
 
     // .............................................................................
@@ -696,10 +698,10 @@ static int OpenDatabases (TRI_server_t* server,
     // .............................................................................
 
     // try to open this database
-    vocbase = TRI_OpenVocBase(server, 
-                              databaseDirectory, 
-                              id, 
-                              databaseName, 
+    vocbase = TRI_OpenVocBase(server,
+                              databaseDirectory,
+                              id,
+                              databaseName,
                               &defaults,
                               isUpgrade,
                               server->_iterateMarkersOnOpen);
@@ -727,9 +729,9 @@ static int OpenDatabases (TRI_server_t* server,
     // we found a valid database
     TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
 
-    res = TRI_InsertKeyAssociativePointer2(&server->_databases, 
-                                           vocbase->_name, 
-                                           vocbase, 
+    res = TRI_InsertKeyAssociativePointer2(&server->_databases,
+                                           vocbase->_name,
+                                           vocbase,
                                            &found);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -766,7 +768,7 @@ static int CloseDatabases (TRI_server_t* server) {
 
     if (vocbase != nullptr) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-      
+
       TRI_DestroyVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 
@@ -774,7 +776,7 @@ static int CloseDatabases (TRI_server_t* server) {
       server->_databases._table[i] = nullptr;
     }
   }
-  
+
   n = server->_coordinatorDatabases._nrAlloc;
 
   for (size_t i = 0; i < n; ++i) {
@@ -782,7 +784,7 @@ static int CloseDatabases (TRI_server_t* server) {
 
     if (vocbase != nullptr) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR);
-      
+
       TRI_DestroyInitialVocBase(vocbase);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
 
@@ -815,7 +817,7 @@ static int GetDatabases (TRI_server_t* server,
 
   TRI_vector_string_t files;
   files = TRI_FilesDirectory(server->_databasePath);
-  
+
   res = TRI_ERROR_NO_ERROR;
   size_t const n = files._length;
 
@@ -1341,20 +1343,20 @@ static int SignalUnloadAll (TRI_server_t* server) {
 
     if (vocbase != nullptr) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-      
+
       // iterate over all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  
+
       // starts unloading of collections
       for (size_t j = 0;  j < vocbase->_collections._length;  ++j) {
         TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[j]);
         TRI_UnloadCollectionVocBase(vocbase, collection, true);
       }
-  
+
       TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
     }
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1378,10 +1380,10 @@ static int WaitForUnloadAll (TRI_server_t* server) {
 
         if (vocbase != nullptr) {
           TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-      
+
           // iterate over all collections
           TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  
+
           // starts unloading of collections
           for (size_t j = 0;  j < vocbase->_collections._length;  ++j) {
             TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[j]);
@@ -1400,7 +1402,7 @@ static int WaitForUnloadAll (TRI_server_t* server) {
               break;
             }
           }
-      
+
           TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
           if (mustWait) {
@@ -1415,11 +1417,11 @@ static int WaitForUnloadAll (TRI_server_t* server) {
       usleep(10 * 1000);
       continue;
     }
-    
+
     // all collections have unloaded
     break;
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1439,7 +1441,7 @@ static int InitAll (TRI_server_t* server) {
 
     if (vocbase != nullptr) {
       TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-  
+
       // initialise the authentication data for the database
       TRI_ReloadAuthInfo(vocbase);
 
@@ -1447,7 +1449,7 @@ static int InitAll (TRI_server_t* server) {
       TRI_StartCompactorVocBase(vocbase);
     }
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1455,7 +1457,7 @@ static int InitAll (TRI_server_t* server) {
 /// @brief writes a create-database marker into the log
 ////////////////////////////////////////////////////////////////////////////////
 
-static int WriteCreateMarker (TRI_voc_tick_t id, 
+static int WriteCreateMarker (TRI_voc_tick_t id,
                               TRI_json_t const* json) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -1474,7 +1476,7 @@ static int WriteCreateMarker (TRI_voc_tick_t id,
   catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_WARNING("could not save create database marker in log: %s", TRI_errno_string(res));
   }
@@ -1485,7 +1487,7 @@ static int WriteCreateMarker (TRI_voc_tick_t id,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a drop-database marker into the log
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static int WriteDropMarker (TRI_voc_tick_t id) {
   int res = TRI_ERROR_NO_ERROR;
 
@@ -1545,13 +1547,13 @@ static void DatabaseManager (void* data) {
         database = (TRI_vocbase_t*) TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
         break;
       }
-    }   
+    }
 
     if (database != nullptr) {
       if (database->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
         // coordinator database
         // ---------------------------
-        
+
         TRI_DestroyInitialVocBase(database);
       }
       else {
@@ -1608,7 +1610,7 @@ static void DatabaseManager (void* data) {
           TRI_RemoveDirectory(path);
           TRI_FreeString(TRI_CORE_MEM_ZONE, path);
         }
-        
+
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, database);
       }
 
@@ -1739,7 +1741,7 @@ int TRI_InitServer (TRI_server_t* server,
                              HashElementDatabaseName,
                              EqualKeyDatabaseName,
                              nullptr);
-  
+
   TRI_InitAssociativePointer(&server->_coordinatorDatabases,
                              TRI_UNKNOWN_MEM_ZONE,
                              &TRI_HashStringKeyAssociativePointer,
@@ -2120,7 +2122,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
     return res;
   }
-  
+
   TRI_ASSERT(vocbase != nullptr);
 
   vocbase->_replicationLogger  = TRI_CreateReplicationLogger(vocbase);
@@ -2140,14 +2142,14 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
-  
+
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
     TRI_InsertKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name, vocbase, false);
   }
 
   TRI_UnlockMutex(&server->_createLock);
-  
+
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
@@ -2246,7 +2248,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
-  
+
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
     TRI_InsertKeyAssociativePointer(&server->_databases, vocbase->_name, vocbase, false);
@@ -2256,7 +2258,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   // write marker into log
   res = WriteCreateMarker(vocbase->_id, json);
-    
+
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   *database = vocbase;
@@ -2269,7 +2271,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) { 
+TRI_voc_tick_t* TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* server) {
   TRI_vector_t v;
 
   TRI_InitVector(&v, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_voc_tick_t));
@@ -2321,11 +2323,11 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
   for (size_t i = 0; i < n; ++i) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
-    if (vocbase != nullptr && 
+    if (vocbase != nullptr &&
         vocbase->_id == id &&
         (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
       TRI_RemoveKeyAssociativePointer(&server->_coordinatorDatabases, vocbase->_name);
-    
+
       if (TRI_DropVocBase(vocbase)) {
         LOG_INFO("dropping coordinator database '%s'",
                  vocbase->_name);
@@ -2447,10 +2449,10 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
 
 TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
                                                      TRI_voc_tick_t id) {
-  
+
   DatabaseReadLocker locker(&server->_databasesLock);
   size_t const n = server->_coordinatorDatabases._nrAlloc;
- 
+
   for (size_t i = 0; i < n; ++i) {
     TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
 
@@ -2462,7 +2464,7 @@ TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t* server,
       return vocbase;
     }
   }
-  
+
   return nullptr;
 }
 
@@ -2483,7 +2485,7 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t* server,
     // if we got here, no one else can have deleted the database
     TRI_ASSERT(result == true);
   }
-  
+
   return vocbase;
 }
 
@@ -2504,7 +2506,7 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
     // if we got here, no one else can have deleted the database
     TRI_ASSERT(result == true);
   }
-  
+
   return vocbase;
 }
 
@@ -2529,7 +2531,7 @@ TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t* server,
       return vocbase;
     }
   }
-  
+
   return nullptr;
 }
 
@@ -2578,7 +2580,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
           res = TRI_ERROR_OUT_OF_MEMORY;
           break;
         }
-  
+
         if (TRI_PushBackVectorString(names, copy) != TRI_ERROR_NO_ERROR) {
           // insertion failed.
           TRI_Free(names->_memoryZone, copy);
@@ -2588,7 +2590,7 @@ int TRI_GetUserDatabasesServer (TRI_server_t* server,
       }
     }
   }
-  
+
   SortDatabaseNames(names);
 
   return res;
@@ -2729,7 +2731,7 @@ bool TRI_MSync (int fd,
 
   return true;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the current operation mode of the server
 ////////////////////////////////////////////////////////////////////////////////
@@ -2743,7 +2745,7 @@ int TRI_ChangeOperationModeServer (TRI_vocbase_operationmode_e mode) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current operation server of the server
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 TRI_vocbase_operationmode_e TRI_GetOperationModeServer () {
   return Mode;
 }
@@ -2754,5 +2756,5 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

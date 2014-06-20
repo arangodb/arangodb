@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +52,7 @@ using namespace triagens::wal;
 /// @brief create a transaction work unit
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkUnit::WorkUnit (Context* context, 
+WorkUnit::WorkUnit (Context* context,
                     bool singleOperation)
   : State(),
     _context(context),
@@ -60,7 +62,7 @@ WorkUnit::WorkUnit (Context* context,
     _done(false) {
 
   _context->increaseRefCount();
-  
+
   _context->startWorkUnit(this);
   WORKUNIT_LOG("starting");
 }
@@ -72,7 +74,7 @@ WorkUnit::WorkUnit (Context* context,
 WorkUnit::~WorkUnit () {
   WORKUNIT_LOG("destroyed");
   done();
-  
+
   _context->decreaseRefCount();
 }
 
@@ -90,7 +92,7 @@ Collection* WorkUnit::addCollection (string const& name,
                                      bool lockResponsibility,
                                      bool locked) {
   TRI_vocbase_col_t* collection = _context->resolveCollection(name);
- 
+
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
   }
@@ -98,7 +100,7 @@ Collection* WorkUnit::addCollection (string const& name,
   if (collection->_type != static_cast<TRI_col_type_t>(collectionType)) {
     THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, name);
   }
-   
+
   return addCollection(collection->_cid, collection, accessType, lockResponsibility, locked);
 }
 
@@ -111,18 +113,18 @@ Collection* WorkUnit::addCollection (string const& name,
                                      bool lockResponsibility,
                                      bool locked) {
   TRI_vocbase_col_t* collection = _context->resolveCollection(name);
-  
+
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
   }
-   
+
   return addCollection(collection->_cid, collection, accessType, lockResponsibility, locked);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to the unit
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 Collection* WorkUnit::addCollection (TRI_voc_cid_t id,
                                      TRI_vocbase_col_t* collection,
                                      Collection::AccessType accessType,
@@ -175,22 +177,22 @@ int WorkUnit::begin () {
   if (state() != State::StateType::UNINITIALISED) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
- 
-  WORKUNIT_LOG("begin"); 
-  
-  int res = TRI_ERROR_NO_ERROR;  
+
+  WORKUNIT_LOG("begin");
+
+  int res = TRI_ERROR_NO_ERROR;
   for (auto& it : _collections) {
     res = it.second->use();
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-    
+
     res = it.second->lock();
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
- 
+
   if (! isTopLevel()) {
     res = TRI_ERROR_NO_ERROR;
   }
@@ -198,7 +200,7 @@ int WorkUnit::begin () {
     Transaction* transaction = _context->transaction();
     res = transaction->begin();
   }
-  
+
   setState(State::StateType::BEGUN);
 
   return res;
@@ -212,9 +214,9 @@ int WorkUnit::commit (bool waitForSync) {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-  
-  WORKUNIT_LOG("commit"); 
-   
+
+  WORKUNIT_LOG("commit");
+
   int res;
   if (! isTopLevel()) {
     res = TRI_ERROR_NO_ERROR;
@@ -223,7 +225,7 @@ int WorkUnit::commit (bool waitForSync) {
     Transaction* transaction = _context->transaction();
     res = transaction->commit(waitForSync);
   }
-  
+
   done();
   setState(State::StateType::COMMITTED);
 
@@ -238,8 +240,8 @@ int WorkUnit::rollback () {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-  
-  WORKUNIT_LOG("rollback"); 
+
+  WORKUNIT_LOG("rollback");
 
   int res;
   if (! isTopLevel()) {
@@ -249,7 +251,7 @@ int WorkUnit::rollback () {
     Transaction* transaction = _context->transaction();
     res = transaction->rollback();
   }
-  
+
   done();
   setState(State::StateType::ABORTED);
 
@@ -271,7 +273,7 @@ int WorkUnit::saveDocument (Collection* collection,
   if (key.empty()) {
     // no key specified. now create one
     key = collection->generateKey(revision);
-    Helper::appendKey(document, key); 
+    Helper::appendKey(document, key);
   }
   else {
     // a key was specified, now validate it
@@ -285,9 +287,9 @@ int WorkUnit::saveDocument (Collection* collection,
   DocumentMarker marker(collection->databaseId(), collection->id(), transaction->idForMarker(), key, revision, document);
 
   LogfileManager* logfileManager = _context->logfileManager();
-       
-  int res = logfileManager->allocateAndWrite(marker.buffer, 
-                                             marker.size, 
+
+  int res = logfileManager->allocateAndWrite(marker.buffer,
+                                             marker.size,
                                              waitForSync);
 
   // TODO: insert into indexes
@@ -302,16 +304,16 @@ int WorkUnit::saveDocument (Collection* collection,
 
 int WorkUnit::deleteDocument (Collection* collection,
                               string const& key,
-//                              WriteOperationContext& operationContext, 
+//                              WriteOperationContext& operationContext,
                               bool waitForSync) {
-  
+
   Transaction* transaction = _context->transaction();
   RemoveMarker marker(collection->databaseId(), collection->id(), transaction->idForMarker(), key);
-  
+
   LogfileManager* logfileManager = _context->logfileManager();
-  
-  int res = logfileManager->allocateAndWrite(marker.buffer, 
-                                             marker.size, 
+
+  int res = logfileManager->allocateAndWrite(marker.buffer,
+                                             marker.size,
                                              waitForSync);
 
   // TODO: remove from indexes
@@ -322,7 +324,7 @@ int WorkUnit::deleteDocument (Collection* collection,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the unit of work to done
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,11 +351,15 @@ void WorkUnit::cleanup () {
     Collection* collection = (*it).second;
     delete collection;
   }
-  
+
   _collections.clear();
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

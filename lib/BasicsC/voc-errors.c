@@ -2,13 +2,8 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "./lib/BasicsC/voc-errors.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocError
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NO_ERROR, "no error");
@@ -241,9 +236,14 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
+  REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,7 +43,7 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string 
+/// @brief convert a uint64 into a JSON string
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* JsonHelper::uint64String (TRI_memory_zone_t* zone,
@@ -180,7 +182,7 @@ std::vector<std::string> JsonHelper::stringList (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 TRI_json_t* JsonHelper::fromString (std::string const& data) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
 
@@ -190,18 +192,18 @@ TRI_json_t* JsonHelper::fromString (std::string const& data) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 TRI_json_t* JsonHelper::fromString (char const* data,
                                     size_t length) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
 
   return json;
 }
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify json
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 std::string JsonHelper::toString (TRI_json_t const* json) {
   TRI_string_buffer_t buffer;
 
@@ -221,8 +223,8 @@ std::string JsonHelper::toString (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element
 ////////////////////////////////////////////////////////////////////////////////
-        
-TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json, 
+
+TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
                                          const char* name) {
   if (! isArray(json)) {
     return 0;
@@ -234,8 +236,8 @@ TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-std::string JsonHelper::getStringValue (TRI_json_t const* json, 
+
+std::string JsonHelper::getStringValue (TRI_json_t const* json,
                                         const std::string& defaultValue) {
   if (isString(json)) {
     return string(json->_value._string.data, json->_value._string.length - 1);
@@ -246,9 +248,9 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-std::string JsonHelper::getStringValue (TRI_json_t const* json, 
-                                        const char* name, 
+
+std::string JsonHelper::getStringValue (TRI_json_t const* json,
+                                        const char* name,
                                         const std::string& defaultValue) {
   TRI_json_t const* sub = getArrayElement(json, name);
 
@@ -261,9 +263,9 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
-        
-bool JsonHelper::getBooleanValue (TRI_json_t const* json, 
-                                  const char* name, 
+
+bool JsonHelper::getBooleanValue (TRI_json_t const* json,
+                                  const char* name,
                                   bool defaultValue) {
   TRI_json_t const* sub = getArrayElement(json, name);
 
@@ -274,7 +276,11 @@ bool JsonHelper::getBooleanValue (TRI_json_t const* json,
   return defaultValue;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

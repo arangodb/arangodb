@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,11 +42,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a statement
@@ -158,18 +155,9 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark the scope so it ignores following offset/limit statement
@@ -288,13 +276,13 @@ void TRI_EmptyScopeStatementWalkerAql (TRI_aql_statement_walker_t* const walker)
     TRI_aql_scope_t* scope = (TRI_aql_scope_t*) TRI_AtVectorPointer(&walker->_currentScopes, n - 1);
 
     if (scope->_type == TRI_AQL_SCOPE_SUBQUERY) {
-      break; 
+      break;
     }
-    
+
     scope->_empty = true;
 
-    if (scope->_type != TRI_AQL_SCOPE_FOR && 
-        scope->_type != TRI_AQL_SCOPE_FOR_NESTED && 
+    if (scope->_type != TRI_AQL_SCOPE_FOR &&
+        scope->_type != TRI_AQL_SCOPE_FOR_NESTED &&
         scope->_type != TRI_AQL_SCOPE_MAIN) {
       break;
     }
@@ -419,11 +407,11 @@ void TRI_WalkStatementsAql (TRI_aql_statement_walker_t* const walker,
   RunWalk(walker);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

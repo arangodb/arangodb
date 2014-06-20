@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -97,24 +99,24 @@ HeartbeatThread::~HeartbeatThread () {
 /// "Sync/ServerStates/" + my-id.
 /// after transferring the current state to the agency, the heartbeat thread
 /// will wait for changes on the "Sync/Commands/" + my-id key. If no changes occur,
-/// then the request it aborted and the heartbeat thread will go on with 
-/// reporting its state to the agency again. If it notices a change when 
+/// then the request it aborted and the heartbeat thread will go on with
+/// reporting its state to the agency again. If it notices a change when
 /// watching the command key, it will wake up and apply the change locally.
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run () {
   LOG_TRACE("starting heartbeat thread");
-  
+
   uint64_t oldUserVersion = 0;
 
-  // convert timeout to seconds  
+  // convert timeout to seconds
   const double interval = (double) _interval / 1000.0 / 1000.0;
-  
+
   // last value of plan that we fetched
   uint64_t lastPlanVersion = 0;
 
-  // value of Sync/Commands/my-id at startup 
-  uint64_t lastCommandIndex = getLastCommandIndex(); 
+  // value of Sync/Commands/my-id at startup
+  uint64_t lastCommandIndex = getLastCommandIndex();
   const bool isCoordinator = ServerState::instance()->isCoordinator();
 
   if (isCoordinator) {
@@ -127,7 +129,7 @@ void HeartbeatThread::run () {
 
     const double start = TRI_microtime();
 
-    // send our state to the agency. 
+    // send our state to the agency.
     // we don't care if this fails
     sendState();
 
@@ -138,7 +140,7 @@ void HeartbeatThread::run () {
     {
       // send an initial GET request to Sync/Commands/my-id
       AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
-  
+
       if (result.successful()) {
         handleStateChange(result, lastCommandIndex);
       }
@@ -149,11 +151,11 @@ void HeartbeatThread::run () {
     }
 
     bool shouldSleep = true;
-    
+
     if (isCoordinator) {
       // isCoordinator
       // --------------------
-      
+
       // get the current version of the Plan
       AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
@@ -165,7 +167,7 @@ void HeartbeatThread::run () {
         if (it != result._values.end()) {
           // there is a plan version
           uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
- 
+
           if (planVersion > lastPlanVersion) {
             handlePlanChangeCoordinator(planVersion, lastPlanVersion);
           }
@@ -177,14 +179,14 @@ void HeartbeatThread::run () {
       result = _agency.getValues("Sync/UserVersion", false);
       if (result.successful()) {
         result.parse("", false);
-        std::map<std::string, AgencyCommResultEntry>::iterator it 
+        std::map<std::string, AgencyCommResultEntry>::iterator it
             = result._values.begin();
         if (it != result._values.end()) {
           // there is a UserVersion
           uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
           if (userVersion != oldUserVersion) {
             // reload user cache for all databases
-            vector<DatabaseID> dbs 
+            vector<DatabaseID> dbs
                 = ClusterInfo::instance()->listDatabases(true);
             vector<DatabaseID>::iterator i;
             bool allOK = true;
@@ -196,7 +198,7 @@ void HeartbeatThread::run () {
                 LOG_INFO("Reloading users for database %s.",vocbase->_name);
                 TRI_json_t* json = 0;
 
-                int res = usersOnCoordinator(string(vocbase->_name), 
+                int res = usersOnCoordinator(string(vocbase->_name),
                                              json);
 
                 if (res == TRI_ERROR_NO_ERROR) {
@@ -225,7 +227,7 @@ void HeartbeatThread::run () {
                   // we will not set oldUserVersion such that we will try this
                   // very same exercise again in the next heartbeat
                 }
-                  
+
                 if (json != 0) {
                   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
                 }
@@ -275,9 +277,9 @@ void HeartbeatThread::run () {
             result.clear();
 
             result = _agency.watchValue("Plan/Version",
-                                        agencyIndex + 1,   
+                                        agencyIndex + 1,
                                         remain,
-                                        false); 
+                                        false);
 
             if (result.successful()) {
               result.parse("", false);
@@ -310,7 +312,7 @@ void HeartbeatThread::run () {
 
   // another thread is waiting for this value to appear in order to shut down properly
   _stop = 2;
-  
+
   LOG_TRACE("stopped heartbeat thread");
 }
 
@@ -337,18 +339,18 @@ bool HeartbeatThread::init () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the index id of the value of Sync/Commands/my-id from the 
-/// agency this index value is determined initially and it is passed to the 
+/// @brief fetch the index id of the value of Sync/Commands/my-id from the
+/// agency this index value is determined initially and it is passed to the
 /// watch command (we're waiting for an entry with a higher id)
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t HeartbeatThread::getLastCommandIndex () {
-  // get the initial command state  
+  // get the initial command state
   AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
 
   if (result.successful()) {
     result.parse("Sync/Commands/", false);
-   
+
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.find(_myId);
 
     if (it != result._values.end()) {
@@ -357,7 +359,7 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
       return (*it).second._index;
     }
   }
-  
+
   if (result._index > 0) {
     // use the value returned in header X-Etcd-Index
     return result._index;
@@ -392,9 +394,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   // invalidate our local cache
   ClusterInfo::instance()->flush();
 
-  AgencyCommResult result; 
+  AgencyCommResult result;
 
-  {   
+  {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
@@ -424,7 +426,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       it = result._values.find(*it1);
       string const& name = *it1;
       TRI_json_t const* options = (*it).second._json;
-        
+
       TRI_voc_tick_t id = 0;
       TRI_json_t const* v = TRI_LookupArrayJson(options, "id");
       if (TRI_IsStringJson(v)) {
@@ -434,7 +436,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       if (id > 0) {
         ids.push_back(id);
       }
-      
+
       TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
 
       if (vocbase == 0) {
@@ -450,7 +452,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
-  
+
         if (vocbase != 0) {
           // insert initial user(s) for system database
 
@@ -476,14 +478,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
             TRI_InsertInitialAuthInfo(vocbase);
           }
           else if (res == TRI_ERROR_INTERNAL) {
-            // something is wrong... probably the database server with the 
+            // something is wrong... probably the database server with the
             // _users collection is not yet available
             // delete the database again (and try again next time)
             TRI_ReleaseVocBase(vocbase);
             TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
             if (json != 0) {
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-            } 
+            }
             return false;  // We give up, we will try again in the
                            // next heartbeat, because we did not
                            // touch remotePlanVersion
@@ -501,7 +503,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       ++it;
     }
 
-    TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server); 
+    TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server);
 
     if (localIds != 0) {
       TRI_voc_tick_t* p = localIds;
@@ -521,8 +523,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   }
   else {
     return false;
-  }  
- 
+  }
+
   remotePlanVersion = currentPlanVersion;
 
   // turn on error logging now
@@ -541,7 +543,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
                                                 uint64_t& remotePlanVersion) {
   LOG_TRACE("found a plan update");
-  
+
   // invalidate our local cache
   ClusterInfo::instance()->flush();
 
@@ -569,7 +571,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
 /// (we'll pass the updated index value to the next watches so we don't get
 /// notified about this particular change again).
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
                                          uint64_t& lastCommandIndex) {
   result.parse("Sync/Commands/", false);
@@ -581,7 +583,7 @@ bool HeartbeatThread::handleStateChange (AgencyCommResult& result,
 
     const std::string command = triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
     ServerState::StateEnum newState = ServerState::stringToState(command);
-      
+
     if (newState != ServerState::STATE_UNDEFINED) {
       // state change.
       ServerState::instance()->setState(newState);
@@ -605,11 +607,11 @@ bool HeartbeatThread::sendState () {
     return true;
 
   }
-    
+
   if (++_numFails % _maxFailsBeforeWarning == 0) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
-    LOG_WARNING("heartbeat could not be sent to agency endpoints (%s): http code: %d, body: %s", 
+    LOG_WARNING("heartbeat could not be sent to agency endpoints (%s): http code: %d, body: %s",
                 endpoints.c_str(),
                 result.httpCode(),
                 result.body().c_str());
@@ -619,8 +621,11 @@ bool HeartbeatThread::sendState () {
   return false;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
