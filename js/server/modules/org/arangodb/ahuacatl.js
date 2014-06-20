@@ -4557,11 +4557,6 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
 function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
   // check graph exists and load edgeDefintions
 
-  /*if (ResolvedGraphCache[graphname + JSON.stringify(options)]) {
-    require("internal").print("resolved from cache");
-    return ResolvedGraphCache[graphname + JSON.stringify(options)];
-  }*/
-
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
   if (! graph) {
     THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
@@ -5083,27 +5078,29 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// *Examples*
 ///
-/// A route planner example, shortest distance from all villages to other cities:
+/// A route planner example, shortest distance from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_SHORTEST_PATH("
-/// |+"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
-/// |"startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+/// | + "'routeplanner', {}, {}, {" +
+/// | "weight : 'distance', endVertexCollectionRestriction : 'frenchCity', " +
+/// | "startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, " +
 /// | "e.distance, LENGTH(e.paths)]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, shortest distance from Munich and Cologne to Olpe:
+/// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_SHORTEST_PATH("
-/// |+"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+/// |+"'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], " +
+/// | "'frenchCity/Lyon', " +
 /// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -5184,25 +5181,25 @@ function GRAPH_TRAVERSAL (vertexCollection,
 ///
 /// *Examples*
 ///
-/// A route planner example, start a traversal from Munich :
+/// A route planner example, start a traversal from Hamburg :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
 /// | " 'outbound') RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, start a traversal from Munich with a max depth of 1
-/// so only the direct neighbors of munich are returned:
+/// A route planner example, start a traversal from Hamburg with a max depth of 1
+/// so only the direct neighbors of Hamburg are returned:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'city/Munich'," +
+/// |db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
 /// |" 'outbound', {maxDepth : 1}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -5289,27 +5286,29 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ///
 /// *Examples*
 ///
-/// A route planner example, distance from all villages to other cities:
+/// A route planner example, distance from all french to all german cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_DISTANCE_TO("
-/// |+"'routeplanner', {}, {}, {weight : 'distance', endVertexCollectionRestriction : 'city', " +
-/// |"startVertexCollectionRestriction : 'village'}) RETURN [e.startVertex, e.vertex._id, " +
+/// |+"'routeplanner', {}, {}, { " +
+/// | " weight : 'distance', endVertexCollectionRestriction : 'germanCity', " +
+/// |"startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex._id, " +
 /// | "e.distance]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, distance from Munich and Cologne to Olpe:
+/// A route planner example, distance from Hambug and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_DISTANCE_TO("
-/// |+"'routeplanner', [{_id: 'city/Cologne'},{_id: 'city/Munich'}], 'village/Olpe', " +
+/// | + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
+/// | "'frenchCity/Lyon', " +
 /// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -5362,25 +5361,25 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// *Examples*
 ///
-/// A route planner example, start a traversal from Munich :
+/// A route planner example, start a traversal from Hamburg :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree1}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich'," +
+/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg'," +
 /// | " 'outbound', 'connnection') RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, start a traversal from Munich with a max depth of 1 so
-///  only the direct neighbors of munich are returned:
+/// A route planner example, start a traversal from Hamburg with a max depth of 1 so
+///  only the direct neighbors of Hamburg are returned:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
-/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'city/Munich',"+
+/// |db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
 /// | " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -5549,14 +5548,14 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound neighbors of munich with a maximal depth of 2 :
+/// A route planner example, all outbound neighbors of Hamburg with a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_NEIGHBORS("
-/// |+"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+/// |+"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5671,14 +5670,14 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound edges of munich with a maximal depth of 2 :
+/// A route planner example, all outbound edges of Hamburg with a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges2}
 /// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_EDGES("
-/// |+"'routeplanner', 'city/Munich', {direction : 'outbound', maxDepth : 2}) RETURN e"
+/// |+"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5746,7 +5745,7 @@ function GENERAL_GRAPH_EDGES (
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all vertices from collection *city*.
+/// A route planner example, all vertices from collection *germanCity*.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
 /// ~ var db = require("internal").db;
@@ -5754,7 +5753,7 @@ function GENERAL_GRAPH_EDGES (
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_VERTICES("
 /// |+"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
-/// |" : 'city'}) RETURN e"
+/// |" : 'germanCity'}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5817,36 +5816,9 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertex1Example and vertex2Example.
 ///
-/// * String               *graphName*          : The name of the graph.
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *optionsVertex1*     : Optional options, see below:
-/// * Object               *optionsVertex2*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// This function returns the intersection of *GRAPH_NEIGHBORS(vertex1Example, optionsVertex1)*
+/// and *GRAPH_NEIGHBORS(vertex2Example, optionsVertex2)*.
+/// For parameter documentation read the documentation of *GRAPH_NEIGHORS*.
 ///
 /// *Examples*
 ///
@@ -5861,7 +5833,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all common outbound neighbors of munich with any other location
+/// A route planner example, all common outbound neighbors of Hamburg with any other location
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
@@ -5869,7 +5841,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// |+"'routeplanner', 'city/Munich', {}, {direction : 'outbound', maxDepth : 2}, "+
+/// |+"'routeplanner', 'germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2}, "+
 /// | "{direction : 'outbound', maxDepth : 2}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -5985,9 +5957,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
-/// |+"'routeplanner', {}, {}, {vertex1CollectionRestriction : 'city', " +
-/// | "vertex2CollectionRestriction : 'city'" +
-/// |" ,ignoreProperties: 'population'}) RETURN e"
+/// |+"'routeplanner', {}, {}, {ignoreProperties: 'population'}) RETURN e"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6143,7 +6113,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute eccentricity of all cities regarding only
+/// A route planner example, the absolute eccentricity of all german cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
@@ -6151,7 +6121,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
 /// | "direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -6162,7 +6132,6 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
   "use strict";
-
   if (! options) {
     options = {  };
   }
@@ -6332,7 +6301,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all cities regarding only
+/// A route planner example, the absolute closeness of all german cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
@@ -6340,7 +6309,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var g = examples.loadGraph("routeplanner");
 /// |db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
-/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'city', " +
+/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
 /// | "direction : 'outbound', weight : 'distance'})"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -6489,7 +6458,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
 /// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// hence the betweenness can not be calculated.
 ///
 /// *Examples*
 ///
@@ -6516,7 +6485,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all cities regarding only
+/// A route planner example, the absolute closeness regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
@@ -6612,7 +6581,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the closeness of all locations.
+/// A route planner example, the betweenness of all locations.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness2}
@@ -6624,7 +6593,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the closeness of all cities regarding only
+/// A route planner example, the betweenness regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
@@ -6711,7 +6680,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the cradius of the graph regarding only
+/// A route planner example, the radius of the graph regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
