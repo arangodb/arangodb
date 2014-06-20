@@ -4557,11 +4557,6 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
 function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
   // check graph exists and load edgeDefintions
 
-  /*if (ResolvedGraphCache[graphname + JSON.stringify(options)]) {
-    require("internal").print("resolved from cache");
-    return ResolvedGraphCache[graphname + JSON.stringify(options)];
-  }*/
-
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
   if (! graph) {
     THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
@@ -6162,7 +6157,6 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
   "use strict";
-
   if (! options) {
     options = {  };
   }
@@ -6489,7 +6483,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
 /// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// hence the betweenness can not be calculated.
 ///
 /// *Examples*
 ///
