@@ -862,11 +862,12 @@ AQLGenerator.prototype.pathEdges = function() {
 /// in the step before.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
+/// *Parameter*
+///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 /// * *options* (optional): An object defining further options. Can have the following values: 
-/// Possible options and their defaults:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: See [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
@@ -2603,18 +2604,18 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._neighbors({isCapital : true});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._neighbors({isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all outbound neighbors of Hamburg.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2634,25 +2635,12 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_common_neighbors
-///
-/// `general_graph._commonNeighbors(vertex1Example, vertex2Examples,
-/// optionsVertex1, optionsVertex2)`
-/// *The general_graph._commonNeighbors function returns all common neighbors
-/// of the vertices defined by the examples.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
+/// `graph._commonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// *Get all common neighbors of the vertices defined by the examples.*
 ///
 /// This function returns the intersection of *general_graph._neighbors(vertex1Example, optionsVertex1)*
 /// and *general_graph._neighbors(vertex2Example, optionsVertex2)*.
-/// For parameter documentation read the documentation *general_graph._neighbors*.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// For parameter documentation see [_neighbors](#_neighbors).
 ///
 /// *Examples*
 ///
@@ -2680,7 +2668,6 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2708,44 +2695,10 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_count_common_neighbors
+/// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// *Get the amount of common neighbors of the vertices defined by the examples.*
 ///
-/// `general_graph._countCommonNeighbors(vertex1Example, vertex2Examples,
-/// optionsVertex1, optionsVertex2)`
-/// *The general_graph._countCommonNeighbors function returns the amount of
-/// common neighbors of the vertices defined by the examples.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *optionsVertex1*     : Optional options, see below:
-/// * Object               *optionsVertex2*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// Similar to (_commonNeighbors)[#_commonNeighbors] but returns count instead of the elements.
 ///
 /// *Examples*
 ///
@@ -2753,9 +2706,9 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._countCommonNeighbors({isCapital : true}, {isCapital : true});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._countCommonNeighbors({isCapital : true}, {isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
@@ -2763,14 +2716,13 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
-/// {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
+///   {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2813,35 +2765,22 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_common_properties
-///
-/// `general_graph._commonProperties(vertex1Example, vertex2Examples,
-/// options)`
-/// *The general_graph._commonProperties function returns the vertices of
-/// the graph that share common properties.*
+/// `graph._commonProperties(vertex1Example, vertex2Examples, options)`
+/// *Get the vertices of the graph that share common properties.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertex1Example and vertex2Example.
 ///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *vertex2CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *ignoreProperties* : One or multiple
-///  attributes of a document that should be ignored.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertex1Examples*: Filter the set of source vertices, see [Definition of examples](#definition_of_examples)
+/// * *vertex2Examples*: Filter the set of vertices compared to, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
+///       searched for source vertices.
+///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
+///       searched for compare vertices.
+///   * *ignoreProperties* : One or a list of attribute names of a document that should be ignored.
 ///
 /// *Examples*
 ///
@@ -2849,18 +2788,18 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._commonProperties({}, {});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._commonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._commonProperties({}, {}, {ignoreProperties: 'population'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._commonProperties({}, {}, {ignoreProperties: 'population'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2890,35 +2829,11 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_count_common_properties
+/// `graph._countCommonProperties(vertex1Example, vertex2Examples, options)`
+/// *Get the amount of vertices of the graph that share common properties.*
 ///
-/// `general_graph._countCommonProperties(vertex1Example, vertex2Examples,
-/// options)`
-/// *The general_graph._countCommonProperties function returns the amount of vertices of
-/// the graph that share common properties.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *vertex2CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *ignoreProperties* : One or multiple
-///  attributes of a document that should be ignored.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// Similar to [_commonProperties](#_commonProperties) but returns count instead of
+/// the objects.
 ///
 /// *Examples*
 ///
@@ -2973,46 +2888,33 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_eccentricity
-///
-/// `general_graph._absoluteEccentricity(vertexExample, options)`
-/// *The _absoluteEccentricity function returns the*
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+/// `graph._absoluteEccentricity(vertexExample, options)`
+/// *Get the* [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
-/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
-/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
-/// * String|Object|Array  *edgeExamples*                     : A filter example for the
-/// edges in the shortest paths (see below).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for source vertices.
+///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for target vertices.
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the eccentricity can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3020,11 +2922,11 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-/// |+"'routeplanner', {})"
-/// ).toArray();
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+/// | + "'routeplanner', {})"
+///   ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all locations.
@@ -3032,9 +2934,9 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._absoluteEccentricity({}, {weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._absoluteEccentricity({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all cities regarding only
@@ -3042,14 +2944,13 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._absoluteEccentricity({}, {startVertexCollectionRestriction : 'city',
-/// direction : 'outbound', weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._absoluteEccentricity({}, {startVertexCollectionRestriction : 'city',
+///   direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
   var ex1 = transformExample(vertexExample);
@@ -3064,33 +2965,19 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
     "options": options,
     "ex1": ex1
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_eccentricity
-///
-/// `general_graph._eccentricity(vertexExample, options)`
-/// *The _eccentricity function returns the normalized*
+/// `graph._eccentricity(vertexExample, options)`
+/// *Get the normalized*
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// *of the vertices defined by the examples.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteEccentricity](#_absoluteEccentricity) but returns a normalized result.
 ///
 /// @EXAMPLES
 ///
@@ -3125,7 +3012,7 @@ Graph.prototype._eccentricity = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3133,46 +3020,34 @@ Graph.prototype._eccentricity = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_closeness
-///
-/// `general_graph._absoluteCloseness(vertexExample, options)`
-/// *The _absoluteCloseness function returns the*
+/// `graph._absoluteCloseness(vertexExample, options)`
+/// *Get the*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
-/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
-/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
-/// * String|Object|Array  *edgeExamples*                     : A filter example for the
-/// edges in the shortest paths (see below).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for source vertices.
+///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for target vertices.
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the closeness can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3228,26 +3103,12 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_closeness
-///
-/// `general_graph._closeness(options)`
-/// *The _closeness function returns the normalized*
+/// `graph._closeness(options)`
+/// *Get the normalized*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// *of graphs vertices.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteCloseness](#_absoluteCloseness) but returns a normalized value.
 ///
 /// @EXAMPLES
 ///
