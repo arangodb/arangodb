@@ -1113,6 +1113,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   SetRevision(document, d->_rid, false);
   
 #ifdef TRI_ENABLE_LOGGER
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
               (unsigned long long) operation->_fid,
@@ -1123,7 +1124,6 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   }
   else {
     TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-
     LOG_TRACE("edge: fid %llu, key %s, fromKey %s, toKey %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
               (unsigned long long) operation->_fid,
               ((char*) d + d->_offsetKey),
@@ -1132,7 +1132,9 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
               (unsigned long long) d->_rid,
               (unsigned long) d->_offsetJson,
               (unsigned long) d->_offsetKey);
+    
   }
+#endif
 #endif
   
   key = ((char*) d) + d->_offsetKey;
@@ -1264,11 +1266,13 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 
   key = ((char*) d) + d->_offsetKey;
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   LOG_TRACE("deletion: fid %llu, key %s, rid %llu, deletion %llu",
             (unsigned long long) operation->_fid,
             (char*) key,
             (unsigned long long) d->_rid,
             (unsigned long long) marker->_tick);
+#endif
 
   document->_keyGenerator->track(key);
 
@@ -2358,26 +2362,19 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_co
 TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* document,
                                                      TRI_voc_fid_t fid,
                                                      TRI_voc_size_t journalSize) {
-  TRI_col_header_marker_t cm;
-  TRI_datafile_t* journal;
-  TRI_df_marker_t* position;
-  int res;
-
   TRI_ASSERT(fid > 0);
+  
+  TRI_datafile_t* journal;
 
   if (document->_info._isVolatile) {
     // in-memory collection
     journal = TRI_CreateDatafile(nullptr, fid, journalSize, true);
   }
   else {
-    char* jname;
-    char* number;
-    char* filename;
-
     // construct a suitable filename (which is temporary at the beginning)
-    number   = TRI_StringUInt64(fid);
-    jname    = TRI_Concatenate3String("temp-", number, ".db");
-    filename = TRI_Concatenate2File(document->_directory, jname);
+    char* number   = TRI_StringUInt64(fid);
+    char* jname    = TRI_Concatenate3String("temp-", number, ".db");
+    char* filename = TRI_Concatenate2File(document->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
@@ -2403,14 +2400,15 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
       document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     }
 
-    return NULL;
+    return nullptr;
   }
 
   LOG_TRACE("created new journal '%s'", journal->getName(journal));
 
 
   // create a collection header, still in the temporary file
-  res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, journalSize);
+  TRI_df_marker_t* position;
+  int res = TRI_ReserveElementDatafile(journal, sizeof(TRI_col_header_marker_t), &position, journalSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
@@ -2418,10 +2416,10 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
 
     TRI_FreeDatafile(journal);
 
-    return NULL;
+    return nullptr;
   }
 
-
+  TRI_col_header_marker_t cm;
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = (TRI_voc_tick_t) fid;
   cm._type = (TRI_col_type_t) document->_info._type;
@@ -2435,7 +2433,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
 
     TRI_FreeDatafile(journal);
 
-    return NULL;
+    return nullptr;
   }
 
   TRI_ASSERT(fid == journal->_fid);
@@ -2443,28 +2441,22 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
 
   // if a physical file, we can rename it from the temporary name to the correct name
   if (journal->isPhysical(journal)) {
-    char* jname;
-    char* number;
-    char* filename;
-    bool ok;
-
     // and use the correct name
-    number = TRI_StringUInt64(journal->_fid);
-    jname = TRI_Concatenate3String("journal-", number, ".db");
-
-    filename = TRI_Concatenate2File(document->_directory, jname);
+    char* number = TRI_StringUInt64(journal->_fid);
+    char* jname = TRI_Concatenate3String("journal-", number, ".db");
+    char* filename = TRI_Concatenate2File(document->_directory, jname);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-    ok = TRI_RenameDatafile(journal, filename);
+    bool ok = TRI_RenameDatafile(journal, filename);
 
     if (! ok) {
       LOG_ERROR("failed to rename the journal to '%s': %s", filename, TRI_last_error());
       TRI_FreeDatafile(journal);
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-      return NULL;
+      return nullptr;
     }
     else {
       LOG_TRACE("renamed journal from %s to '%s'", journal->getName(journal), filename);
@@ -2971,10 +2963,11 @@ static int FillIndex (TRI_document_collection_t* document,
     idx->sizeHint(idx, (size_t) document->_primaryIndex._nrUsed);
   }
 
-
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   static const int LoopSize = 10000;
   int counter = 0;
   int loops = 0;
+#endif
 
   for (;  ptr < end;  ++ptr) {
     TRI_doc_mptr_t const* p = static_cast<TRI_doc_mptr_t const*>(*ptr);
@@ -2988,14 +2981,17 @@ static int FillIndex (TRI_document_collection_t* document,
         return res;
       }
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
       if (++counter == LoopSize) {
         counter = 0;
         ++loops;
 
         LOG_TRACE("indexed %llu documents of collection %llu", 
-                 (unsigned long long) (LoopSize * loops),
-                 (unsigned long long) document->_info._cid);
+                  (unsigned long long) (LoopSize * loops),
+                  (unsigned long long) document->_info._cid);
       }
+#endif
+
     }
   }
   
