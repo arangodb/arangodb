@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_READ_UNLOCKER_H
-#define TRIAGENS_BASICS_READ_UNLOCKER_H 1
+#ifndef ARANGODB_BASICS_READ_UNLOCKER_H
+#define ARANGODB_BASICS_READ_UNLOCKER_H 1
 
 #include "Basics/Common.h"
 
@@ -36,11 +38,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct unlocker with file and line information
@@ -55,18 +52,9 @@
 #define READ_UNLOCKER(b) \
   triagens::basics::ReadUnlocker READ_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReadLocker
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace basics {
@@ -82,18 +70,9 @@ namespace triagens {
         ReadUnlocker (ReadUnlocker const&);
         ReadUnlocker& operator= (ReadUnlocker const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -121,18 +100,9 @@ namespace triagens {
 
         ~ReadUnlocker ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Threading
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -157,13 +127,13 @@ namespace triagens {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

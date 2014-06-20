@@ -1626,7 +1626,7 @@ extern int ZEXPORT zipCloseFileInZipRaw64 (zipFile file, ZPOS64_T uncompressed_s
     else
       zip64local_putValue_inmemory(zi->ci.central_header+20, compressed_size,4); /*compr size*/
 
-    /// set internal file attributes field
+/// set internal file attributes field
     if (zi->ci.stream.data_type == Z_ASCII)
         zip64local_putValue_inmemory(zi->ci.central_header+36,(uLong)Z_ASCII,2);
 
@@ -2005,3 +2005,11 @@ extern int ZEXPORT zipRemoveExtraInfoBlock (char* pData, int* dataLen, short sHe
 
   return retVal;
 }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

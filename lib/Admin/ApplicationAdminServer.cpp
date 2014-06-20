@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,11 +49,6 @@ using namespace triagens::admin;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief variables to hold legacy options (unused, but kept here so that
 /// starting the server with deprecated options doesn't fail
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,18 +57,9 @@ static string UnusedAdminDirectory;
 
 static bool UnusedDisableAdminInterface;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -97,18 +85,9 @@ ApplicationAdminServer::~ApplicationAdminServer () {
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a log viewer
@@ -124,13 +103,13 @@ void ApplicationAdminServer::allowLogViewer () {
 /// Note that the server does not claim ownership of the factory.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory, 
+void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory,
                                                string const& prefix,
                                                Dispatcher* dispatcher,
                                                AsyncJobManager* jobManager) {
   factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
-   
-  if (_jobPayload == 0) { 
+
+  if (_jobPayload == 0) {
     _jobPayload = new pair<Dispatcher*, AsyncJobManager*>(dispatcher, jobManager);
   }
 
@@ -156,18 +135,9 @@ void ApplicationAdminServer::addHandlers (HttpHandlerFactory* factory, string co
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ApplicationServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -201,15 +171,15 @@ bool ApplicationAdminServer::parsePhase2 (ProgramOptions& options) {
   if (options.has("server.disable-admin-interface")) {
     LOG_WARNING("usage of obsolete option --server.disable-admin-interface");
   }
-  
+
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
