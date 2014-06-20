@@ -148,7 +148,7 @@ namespace triagens {
           create(SizeNonces);
         }
 
-        assert(TimestampNonces != 0);
+        TRI_ASSERT(TimestampNonces != 0);
 
         int proofs = 0;
 

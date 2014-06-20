@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H
 #define TRIAGENS_BIT_INDEXES_BITARRAY_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               forward declaration
@@ -64,7 +60,7 @@ typedef struct {
 typedef struct {
   size_t numFields;             // the number of fields
   TRI_shaped_json_t* fields;    // list of shaped json objects which the collection should know about
-  struct TRI_doc_mptr_s* data;  // master document pointer
+  struct TRI_doc_mptr_t* data;  // master document pointer
   void* collection;             // pointer to the collection;
 }
 TRI_bitarray_index_key_t;
@@ -118,10 +114,6 @@ int BitarrayIndex_update (BitarrayIndex*, TRI_bitarray_index_key_t*, TRI_bitarra
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

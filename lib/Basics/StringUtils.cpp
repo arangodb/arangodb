@@ -606,6 +606,8 @@ namespace triagens {
         if (len >= (SIZE_MAX - 1) / 6) {
           THROW_OUT_OF_MEMORY_ERROR();
         }
+        
+        bool corrupted = false;
 
         char * buffer = new char [6 * len + 1];
         char * qtr = buffer;
@@ -717,12 +719,14 @@ namespace triagens {
                     // corrupted unicode
                     else {
                       *qtr = *ptr;
+                      corrupted = true;
                     }
                   }
 
                   // corrupted unicode
                   else {
                     *qtr = *ptr;
+                    corrupted = true;
                   }
                 }
 
@@ -744,21 +748,25 @@ namespace triagens {
                         // corrupted unicode
                         else {
                           *qtr = *ptr;
+                          corrupted = true;
                         }
                       }
                       // corrupted unicode
                       else {
                         *qtr = *ptr;
+                        corrupted = true;
                       }
                     }
                     // corrupted unicode
                     else {
                       *qtr = *ptr;
+                      corrupted = true;
                     }
                   }
                   // corrupted unicode
                   else {
                     *qtr = *ptr;
+                    corrupted = true;
                   }
 
                 }
@@ -778,6 +786,10 @@ namespace triagens {
         string result(buffer, qtr - buffer);
 
         delete[] buffer;
+
+        if (corrupted) {
+          LOG_WARNING("escaped corrupted unicode string");
+        }
 
         return result;
       }
@@ -2984,7 +2996,6 @@ namespace triagens {
         string ret;
 
         int i = 0;
-        int j = 0;
 
         unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in.c_str());
         size_t in_len = in.size();
@@ -3007,7 +3018,7 @@ namespace triagens {
         }
 
         if (i != 0) {
-          for(j = i; j < 3; j++) {
+          for(int j = i; j < 3; j++) {
             charArray3[j] = '\0';
           }
 
@@ -3016,7 +3027,7 @@ namespace triagens {
           charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
           charArray4[3] =   charArray3[2] & 0x3f;
 
-          for (j = 0; (j < i + 1); j++) {
+          for (int j = 0; (j < i + 1); j++) {
             ret += BASE64_CHARS[charArray4[j]];
           }
 
@@ -3037,7 +3048,6 @@ namespace triagens {
         string ret;
 
         int i = 0;
-        int j = 0;
         int inp = 0;
 
         int in_len = (int) source.size();
@@ -3065,11 +3075,11 @@ namespace triagens {
         }
 
         if (i) {
-          for (j = i;  j < 4;  j++) {
+          for (int j = i;  j < 4;  j++) {
               charArray4[j] = 0;
           }
 
-          for (j = 0;  j < 4; j++) {
+          for (int j = 0;  j < 4; j++) {
             charArray4[j] = BASE64_REVS[charArray4[j]];
           }
 
@@ -3077,7 +3087,7 @@ namespace triagens {
           charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
           charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
-          for (j = 0;  j < i - 1;  j++) {
+          for (int j = 0;  j < i - 1;  j++) {
             ret += charArray3[j];
           }
         }
@@ -3223,11 +3233,10 @@ namespace triagens {
         }
 
         size_t k = 0;
-        size_t delPos;
         size_t offSet = 0;
 
         while (true) {
-          delPos = sourceStr.find(delimiter, offSet);
+          size_t delPos = sourceStr.find(delimiter, offSet);
 
           if ((delPos == sourceStr.npos) || (delPos >= sourceLength) || (offSet >= sourceLength)) {
             return sourceStr.substr(offSet);

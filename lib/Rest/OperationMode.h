@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_OPERATION_MODE_H
 #define TRIAGENS_REST_OPERATION_MODE_H 1
 
+#include "Basics/Common.h"
+
 #include "Basics/ProgramOptions.h"
 
 ////////////////////////////////////////////////////////////////////////////////

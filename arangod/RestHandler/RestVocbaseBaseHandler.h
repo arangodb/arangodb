@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Admin/RestBaseHandler.h"
 
 #include "BasicsC/json.h"
@@ -35,31 +37,20 @@
 #include "BasicsC/logging.h"
 
 #include "Rest/HttpResponse.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/RestTransactionContext.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/SingleCollectionWriteTransaction.h"
-#include "Utils/StandaloneTransaction.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_json_s;
-  struct TRI_primary_collection_s;
-  struct TRI_vocbase_col_s;
-  struct TRI_vocbase_s;
-}
+struct TRI_json_s;
+struct TRI_document_collection_t;
+struct TRI_vocbase_col_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class RestVocbaseBaseHandler
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace arango {
@@ -130,11 +121,6 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,20 +132,11 @@ namespace triagens {
 
         ~RestVocbaseBaseHandler ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
       protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
@@ -171,17 +148,17 @@ namespace triagens {
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkCreateCollection (const string&,
-                                    const TRI_col_type_e);
+        bool checkCreateCollection (std::string const&,
+                                    TRI_col_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generate20x (const rest::HttpResponse::HttpResponseCode,
-                          const string&,
-                          const TRI_voc_key_t,
-                          const TRI_voc_rid_t);
+        void generate20x (rest::HttpResponse::HttpResponseCode,
+                          std::string const&,
+                          TRI_voc_key_t,
+                          TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates ok message without content
@@ -195,62 +172,87 @@ namespace triagens {
 /// @brief generates ok message with no body but with certain status code
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateOk (const rest::HttpResponse::HttpResponseCode code) {
+        void generateOk (rest::HttpResponse::HttpResponseCode code) {
           _response = createResponse(code);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates created message
+/// @brief generates message for a saved document
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateCreated (const TRI_voc_cid_t cid,
-                              TRI_voc_key_t key,
-                              TRI_voc_rid_t rid) {
-          generate20x(rest::HttpResponse::CREATED, _resolver.getCollectionName(cid), key, rid);
-        }
+        void generateSaved (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+                            TRI_voc_cid_t cid,
+                            TRI_doc_mptr_copy_t const& mptr) {
+          TRI_ASSERT(mptr.getDataPtr() != nullptr); // PROTECTED by trx here
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates accepted message
-////////////////////////////////////////////////////////////////////////////////
+          rest::HttpResponse::HttpResponseCode statusCode;
+          if (trx.synchronous()) {
+            statusCode = rest::HttpResponse::CREATED;
+          }
+          else {
+            statusCode = rest::HttpResponse::ACCEPTED;
+          }
 
-        void generateAccepted (const TRI_voc_cid_t cid,
-                               const TRI_voc_key_t key,
-                               const TRI_voc_rid_t rid) {
-          generate20x(rest::HttpResponse::ACCEPTED, _resolver.getCollectionName(cid), key, rid);
+          generate20x(statusCode, trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid);  // PROTECTED by trx here
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key,
-                              const TRI_voc_rid_t rid) {
-          generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
+        void generateDeleted (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+                              TRI_voc_cid_t cid,
+                              TRI_voc_key_t key,
+                              TRI_voc_rid_t rid) {
+
+          rest::HttpResponse::HttpResponseCode statusCode;
+          if (trx.synchronous()) {
+            statusCode = rest::HttpResponse::OK;
+          }
+          else {
+            statusCode = rest::HttpResponse::ACCEPTED;
+          }
+
+          generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates updated message
+/// @brief generates document not found error message, read transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateUpdated (const TRI_voc_cid_t cid,
-                              const TRI_voc_key_t key,
-                              const TRI_voc_rid_t rid) {
-          generate20x(rest::HttpResponse::OK, _resolver.getCollectionName(cid), key, rid);
+        void generateDocumentNotFound (triagens::arango::SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx, 
+                                       TRI_voc_cid_t cid,
+                                       TRI_voc_key_t key) {
+          generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates document not found error message
+/// @brief generates document not found error message, write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (const TRI_voc_cid_t,
-                                       TRI_voc_key_t);
+        void generateDocumentNotFound (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx, 
+                                       TRI_voc_cid_t cid,
+                                       TRI_voc_key_t key) {
+          generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates document not found error message, no transaction info
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateDocumentNotFound (std::string const& collectionName,
+                                       TRI_voc_key_t key) {
+          generateError(rest::HttpResponse::NOT_FOUND,
+                        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                        "document " + DOCUMENT_PATH + "/" +
+                        DocumentHelper::assembleDocumentId(collectionName, key) + " not found");
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotImplemented (const string&);
+        void generateNotImplemented (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates forbidden
@@ -259,37 +261,59 @@ namespace triagens {
         void generateForbidden ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates precondition failed
+/// @brief generates precondition failed, for a read-transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (const TRI_voc_cid_t,
-                                         TRI_voc_key_t,
-                                         TRI_voc_rid_t);
+        void generatePreconditionFailed (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+                                         TRI_voc_cid_t cid,
+                                         TRI_doc_mptr_copy_t const& mptr,
+                                         TRI_voc_rid_t rid) {
+          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by RUNTIME
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates precondition failed, for a write-transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        void generatePreconditionFailed (SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
+                                         TRI_voc_cid_t cid,
+                                         TRI_doc_mptr_copy_t const& mptr,
+                                         TRI_voc_rid_t rid) {
+          return generatePreconditionFailed(trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), rid);  // PROTECTED by RUNTIME
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates precondition failed, without transaction info
+////////////////////////////////////////////////////////////////////////////////
+
+        void generatePreconditionFailed (std::string const&,
+                                         TRI_voc_key_t key,
+                                         TRI_voc_rid_t rid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateNotModified (const TRI_voc_rid_t);
+        void generateNotModified (TRI_voc_rid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (const TRI_voc_cid_t,
-                               TRI_doc_mptr_t const*,
+        void generateDocument (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+                               TRI_voc_cid_t,
+                               TRI_doc_mptr_copy_t const&,
                                TRI_shaper_t*,
-                               const bool);
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateTransactionError (const string&,
-                                       const int,
+        void generateTransactionError (std::string const&,
+                                       int,
                                        TRI_voc_key_t = 0,
                                        TRI_voc_rid_t = 0);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision
@@ -325,7 +349,7 @@ namespace triagens {
 /// if the attribute is not there or not a string, this returns 0
 ////////////////////////////////////////////////////////////////////////////////
 
-        char const* extractJsonStringValue (const TRI_json_t* const,
+        char const* extractJsonStringValue (TRI_json_t const*,
                                             char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,24 +358,16 @@ namespace triagens {
 /// cluster-wide collection ID in `cid`.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int parseDocumentId (string const&, 
+        int parseDocumentId (triagens::arango::CollectionNameResolver const*,
+                             std::string const&, 
                              TRI_voc_cid_t&, 
                              TRI_voc_key_t&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
       protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request context
@@ -365,24 +381,9 @@ namespace triagens {
 
         struct TRI_vocbase_s* _vocbase;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief utility object to look up names for collection ids and vice versa
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::arango::CollectionNameResolver _resolver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -403,10 +404,6 @@ namespace triagens {
     };
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #endif
 

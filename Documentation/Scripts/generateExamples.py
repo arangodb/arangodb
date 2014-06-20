@@ -105,7 +105,7 @@ STATE_ARANGOSH_RUN = 2
 state = STATE_BEGIN
 
 ################################################################################
-### @brief optioon states
+### @brief option states
 ################################################################################
 
 OPTION_NORMAL = 0
@@ -327,7 +327,7 @@ def generateArangoshOutput():
                 print "%s" % l[0]
             else:
                 print "XXX = %s" % l[0]
-                print "print(XXX);"
+                print "if (XXX !== undefined) {print(XXX);}"
 
         print "} catch (err) { print(err); }"
         print "var output = internal.stopCaptureMode();";

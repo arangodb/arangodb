@@ -82,7 +82,7 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _enableCluster(false),
     _disableHeartbeat(false) {
 
-  assert(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

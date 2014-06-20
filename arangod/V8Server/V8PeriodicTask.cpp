@@ -65,7 +65,7 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
     _parameters(parameters),
     _created(TRI_microtime()) {
 
-  assert(vocbase != 0);
+  TRI_ASSERT(vocbase != 0);
 
   // increase reference counter for the database used
   TRI_UseVocBase(_vocbase);

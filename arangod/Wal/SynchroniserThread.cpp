@@ -28,6 +28,7 @@
 #include "SynchroniserThread.h"
 #include "BasicsC/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Utils/Exception.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
@@ -39,12 +40,6 @@ using namespace triagens::wal;
 // --SECTION--                                          class SynchroniserThread
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait interval for the synchroniser thread when idle
-////////////////////////////////////////////////////////////////////////////////
-
-const uint64_t SynchroniserThread::Interval = 500000;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -53,12 +48,14 @@ const uint64_t SynchroniserThread::Interval = 500000;
 /// @brief create the synchroniser thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager)
+SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
+                                        uint64_t syncInterval)
   : Thread("WalSynchroniser"),
     _logfileManager(logfileManager),
     _condition(),
     _waiting(0),
     _stop(0),
+    _syncInterval(syncInterval),
     _logfileCache() {
 
   allowAsynchronousCancelation();
@@ -88,7 +85,7 @@ void SynchroniserThread::stop () {
   _condition.signal();
 
   while (_stop != 2) {
-    usleep(1000);
+    usleep(10000);
   }
 }
 
@@ -111,7 +108,8 @@ void SynchroniserThread::signalSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SynchroniserThread::run () {
-  while (_stop == 0) {
+  while (true) {
+    int stop = (int) _stop;
     uint32_t waiting = 0;
 
     {
@@ -120,46 +118,17 @@ void SynchroniserThread::run () {
     }
 
     // go on without the lock
+
     if (waiting > 0) {
-      // get region to sync
-      SyncRegion region = _logfileManager->slots()->getSyncRegion();
-      Logfile::IdType const id = region.logfileId;
-
-      if (id != 0) {
-        // now perform the actual syncing
-        Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
-        assert(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
-
-        // get the logfile's file descriptor
-        int fd = getLogfileDescriptor(region.logfileId);
-
-        if (fd < 0) {
-          // invalid file descriptor
-          LOG_FATAL_AND_EXIT("invalid wal logfile file descriptor");
-        }
-        else {
-          void** mmHandle = NULL;
-          bool res = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
-          
-          LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
-                    (unsigned long long) id,
-                    region.mem, 
-                    region.mem + region.size, 
-                    (unsigned long) region.size,
-                    region.waitForSync ? "true" : "false");
-
-          if (! res) {
-            LOG_ERROR("unable to sync wal logfile region");
-            // TODO: how to recover from this state?
-          }
-
-          if (status == Logfile::StatusType::SEAL_REQUESTED) {
-            // additionally seal the logfile
-            _logfileManager->setLogfileSealed(id);
-          }
-        }
-        
-        _logfileManager->slots()->returnSyncRegion(region);
+      try {
+        doSync();
+      }
+      catch (triagens::arango::Exception const& ex) {
+        int res = ex.code();
+        LOG_ERROR("got unexpected error in synchroniserThread: %s", TRI_errno_string(res));
+      }
+      catch (...) {
+        LOG_ERROR("got unspecific error in synchroniserThread");
       }
     }
 
@@ -167,14 +136,21 @@ void SynchroniserThread::run () {
     CONDITION_LOCKER(guard, _condition);
 
     if (waiting > 0) {
-      assert(_waiting >= waiting);
+      TRI_ASSERT(_waiting >= waiting);
       _waiting -= waiting;
     }
 
-    if (_waiting == 0) {
+    if (_waiting == 0 && stop == 0) {
       // sleep if nothing to do
-      guard.wait(Interval);
+      guard.wait(_syncInterval);
     }
+
+    if (stop > 0 && _waiting == 0) {
+      // stop requested and all synced, we can exit
+      break;
+    }
+
+    // next iteration
   }
 
   _stop = 2;
@@ -183,6 +159,54 @@ void SynchroniserThread::run () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief synchronise an unsynchronized region
+////////////////////////////////////////////////////////////////////////////////
+
+int SynchroniserThread::doSync () {
+  // get region to sync
+  SyncRegion region = _logfileManager->slots()->getSyncRegion();
+  Logfile::IdType const id = region.logfileId;
+
+  // an id of 0 means an empty region...
+  if (id == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // now perform the actual syncing
+  Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
+  TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
+
+  // get the logfile's file descriptor
+  int fd = getLogfileDescriptor(region.logfileId);
+  TRI_ASSERT(fd >= 0);
+  void** mmHandle = NULL;
+  bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
+         
+  LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
+            (unsigned long long) id,
+            region.mem, 
+            region.mem + region.size, 
+            (unsigned long) region.size,
+            region.waitForSync ? "true" : "false");
+
+  if (! result) {
+    LOG_ERROR("unable to sync wal logfile region");
+
+    return TRI_ERROR_ARANGO_MSYNC_FAILED;
+  }
+
+  // all ok
+
+  if (status == Logfile::StatusType::SEAL_REQUESTED) {
+    // additionally seal the logfile
+    _logfileManager->setLogfileSealed(id);
+  }
+      
+  _logfileManager->slots()->returnSyncRegion(region);
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile descriptor (it caches the descriptor for performance)

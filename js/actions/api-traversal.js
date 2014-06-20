@@ -571,10 +571,11 @@ function post_api_traversal(req, res) {
     // -----------------------------------------
 
     if (json.edgeCollection === undefined) {
-      return badParam(req, res, "missing graphname");
+      return badParam(req, res, arangodb.ERROR_GRAPH_NOT_FOUND,
+        "missing graphname");
     }
     if (typeof json.edgeCollection !== "string") {
-      return badParam(req, res, "invalid edgecollection");
+      return notFound(req, res, "invalid edgecollection");
     }
 
     try {
@@ -592,7 +593,8 @@ function post_api_traversal(req, res) {
 
   } else {
     if (typeof json.graphName !== "string" || !graph._exists(json.graphName)) {
-      return badParam(req, res, "invalid graphname");
+      return notFound(req, res, arangodb.ERROR_GRAPH_NOT_FOUND,
+        "invalid graphname");
     }
     datasource = traversal.generalGraphDatasourceFactory(json.graphName);
   }

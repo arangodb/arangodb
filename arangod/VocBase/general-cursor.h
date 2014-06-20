@@ -28,13 +28,11 @@
 #ifndef TRIAGENS_VOC_BASE_GENERAL_CURSOR_H
 #define TRIAGENS_VOC_BASE_GENERAL_CURSOR_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/associative.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -299,10 +297,6 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

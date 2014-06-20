@@ -39,10 +39,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-extern "C" {
 #include "mruby/array.h"
 #include "mruby/hash.h"
-}
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;

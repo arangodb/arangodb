@@ -31,7 +31,7 @@
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
 #include "VocBase/datafile.h"
-#include "VocBase/marker.h"
+#include "Wal/Marker.h"
 
 namespace triagens {
   namespace wal {
@@ -78,8 +78,8 @@ namespace triagens {
 /// @brief Logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        Logfile (Logfile const&);
-        Logfile& operator= (Logfile const&);
+        Logfile (Logfile const&) = delete;
+        Logfile& operator= (Logfile const&) = delete;
 
       public:
 
@@ -115,6 +115,7 @@ namespace triagens {
 
       static Logfile* openExisting (std::string const&,
                                     Logfile::IdType,
+                                    bool,
                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +127,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the filename
+////////////////////////////////////////////////////////////////////////////////
+
+      inline std::string filename () const {
+        if (_df == nullptr) {
+          return "";
+        }
+        return _df->getName(_df);
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the datafile pointer
@@ -185,10 +197,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       bool isWriteable (uint32_t size) const {
-        if (isSealed()) {
-          return false;
-        }
-        if (freeSize() < static_cast<uint64_t>(size)) {
+        if (isSealed() || freeSize() < static_cast<uint64_t>(size)) {
           return false;
         }
 
@@ -219,7 +228,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeCollected () const {
-        return (_status == StatusType::SEALED);
+        return (_status == StatusType::SEALED ||
+                _status == StatusType::COLLECTION_REQUESTED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,7 +237,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeRemoved () const {
-        return (_status == StatusType::COLLECTED);
+        return (_status == StatusType::COLLECTED && _collectQueueSize == 0);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,6 +246,14 @@ namespace triagens {
 
       static inline uint32_t overhead () {
         return TRI_JOURNAL_OVERHEAD;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status as a string
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string statusText () const {
+        return statusText(status());
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,34 +281,42 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change the logfile status
+/// @brief change the logfile status, without assertions
+////////////////////////////////////////////////////////////////////////////////
+
+      void forceStatus (StatusType status) {
+        _status = status;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change the logfile status, with assertions
 ////////////////////////////////////////////////////////////////////////////////
 
       void setStatus (StatusType status) {
         switch (status) {
           case StatusType::UNKNOWN:
           case StatusType::EMPTY:
-            assert(false);
+            TRI_ASSERT(false);
             break;
 
           case StatusType::OPEN:
-            assert(_status == StatusType::EMPTY);
+            TRI_ASSERT(_status == StatusType::EMPTY);
             break;
 
           case StatusType::SEAL_REQUESTED:
-            assert(_status == StatusType::OPEN);
+            TRI_ASSERT(_status == StatusType::OPEN);
             break;
 
           case StatusType::SEALED:
-            assert(_status == StatusType::SEAL_REQUESTED);
+            TRI_ASSERT(_status == StatusType::SEAL_REQUESTED);
             break;
 
           case StatusType::COLLECTION_REQUESTED:
-            assert(_status == StatusType::SEALED);
+            TRI_ASSERT(_status == StatusType::SEALED);
             break;
 
           case StatusType::COLLECTED:
-            assert(_status == StatusType::COLLECTION_REQUESTED);
+            TRI_ASSERT(_status == StatusType::COLLECTION_REQUESTED);
             break;
         }
 
@@ -318,6 +344,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_df_footer_marker_t getFooterMarker () const;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the number of collect operations waiting
+////////////////////////////////////////////////////////////////////////////////
+      
+      inline void increaseCollectQueueSize () {
+        ++_collectQueueSize;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the number of collect operations waiting
+////////////////////////////////////////////////////////////////////////////////
+      
+      inline void decreaseCollectQueueSize () {
+        --_collectQueueSize;
+      }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -340,6 +382,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
       StatusType _status;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of collect operations waiting
+////////////////////////////////////////////////////////////////////////////////
+
+      std::atomic<int64_t> _collectQueueSize;
 
     };
 

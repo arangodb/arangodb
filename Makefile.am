@@ -261,10 +261,8 @@ nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path
 if ENABLE_MRUBY
 
 nobase_pkgdataMRUBY_DATA = \
-	$(shell find @srcdir@/mr/actions -name "*.rb" -print) \
 	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
-	$(shell find @srcdir@/mr/common -name "*.rb" -print) \
-	$(shell find @srcdir@/mr/server -name "*.rb" -print)
+	$(shell find @srcdir@/mr/common -name "*.rb" -print) 
 
 endif
 

@@ -32,9 +32,7 @@
 #include "Basics/Common.h"
 #include "Scheduler/Task.h"
 
-extern "C" {
-  struct TRI_json_s;
-}
+struct TRI_json_s;
 
 namespace triagens {
   namespace rest {

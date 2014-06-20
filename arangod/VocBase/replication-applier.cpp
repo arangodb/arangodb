@@ -89,8 +89,8 @@ static int ReadTick (TRI_json_t const* json,
                      TRI_voc_tick_t* dst) {
   TRI_json_t* tick;
 
-  assert(json != NULL);
-  assert(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json != NULL);
+  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
                                      
   tick = TRI_LookupArrayJson(json, attributeName);
 
@@ -680,7 +680,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_vocbase_t* vocbase)
   
   SetTerminateFlag(applier, false); 
 
-  assert(applier->_databaseName != NULL);
+  TRI_ASSERT(applier->_databaseName != NULL);
 
   TRI_SetProgressReplicationApplier(applier, "applier created", false);
   

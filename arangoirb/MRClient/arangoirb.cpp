@@ -31,10 +31,7 @@
 #include <mruby/variable.h>
 #include <mruby/compile.h>
 
-#include <stdio.h>
-#include <fstream>
-
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
@@ -43,7 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/csv.h"
 #include "BasicsC/files.h"
-#include "BasicsC/init.h"
+#include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/shell-colors.h"
 #include "BasicsC/tri-strings.h"

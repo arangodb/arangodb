@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_V8_CONV_H
 #define TRIAGENS_V8_V8_CONV_H 1
 
+#include "Basics/Common.h"
+
 #include "V8/v8-globals.h"
 
 #include "BasicsC/json.h"
@@ -68,7 +70,6 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 
 TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const, 
                                            TRI_shaper_t*,
-                                           bool,
                                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +79,6 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const,
 int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const,
                                 TRI_shaped_json_t*,
                                 TRI_shaper_t*,
-                                bool,
                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////

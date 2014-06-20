@@ -273,7 +273,7 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const query,
       start = split;
     }
 
-    assert(end >= start);
+    TRI_ASSERT(end >= start);
 
     if (! TRI_SetQueryFulltextIndex(query, (size_t) i, start, (size_t) (end - start), match, operation)) {
       // normalisation failed

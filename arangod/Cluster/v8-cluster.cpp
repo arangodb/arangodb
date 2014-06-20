@@ -27,8 +27,6 @@
 
 #include "v8-cluster.h"
 
-#include "BasicsC/common.h"
-
 #include "VocBase/server.h"
 
 #include "Cluster/AgencyComm.h"
@@ -1291,7 +1289,7 @@ static void PrepareClusterCommRequest (
   TRI_v8_global_t* v8g = (TRI_v8_global_t*)
                          v8::Isolate::GetCurrent()->GetData();
 
-  assert(argv.Length() >= 4);
+  TRI_ASSERT(argv.Length() >= 4);
 
   reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
   if (argv[0]->IsString()) {
@@ -1429,7 +1427,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
              v8::String::New("request dropped whilst waiting for answer"));
     }
     else {   // Everything is OK
-      assert(res->status == CL_COMM_RECEIVED);
+      TRI_ASSERT(res->status == CL_COMM_RECEIVED);
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New();
       r->Set(v8g->StatusKey, v8::String::New("RECEIVED"));
@@ -1753,7 +1751,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  assert(v8g != 0);
+  TRI_ASSERT(v8g != 0);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;

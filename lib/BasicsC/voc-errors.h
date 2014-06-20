@@ -397,6 +397,18 @@ extern "C" {
 ///   a suitable fulltext index.
 /// - 1572: @LIT{invalid date value}
 ///   Will be raised when a value cannot be converted to a date.
+/// - 1573: @LIT{multi-modify query}
+///    "Will be raised when an AQL query contains more than one data-modifying
+///   operation."
+/// - 1574: @LIT{modify operation in subquery}
+///    "Will be raised when an AQL query contains a data-modifying operation
+///   inside a subquery."
+/// - 1575: @LIT{query options must be readable at query compile time}
+///    "Will be raised when an AQL data-modification query contains options
+///   that cannot be figured out at query compile time."
+/// - 1576: @LIT{query options expected}
+///    "Will be raised when an AQL data-modification query contains an invalid
+///   options specification."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -417,6 +429,8 @@ extern "C" {
 /// - 1653: @LIT{disallowed operation inside transaction}
 ///   Will be raised when a disallowed operation is carried out in a
 ///   transaction.
+/// - 1654: @LIT{transaction aborted}
+///   Will be raised when a transaction was aborted.
 /// - 1700: @LIT{invalid user name}
 ///   Will be raised when an invalid user name is used.
 /// - 1701: @LIT{invalid password}
@@ -2176,6 +2190,50 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_QUERY_INVALID_DATE_VALUE                                (1572)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1573: ERROR_QUERY_MULTI_MODIFY
+///
+/// multi-modify query
+///
+///  "Will be raised when an AQL query contains more than one data-modifying
+/// operation."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_MULTI_MODIFY                                      (1573)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1574: ERROR_QUERY_MODIFY_IN_SUBQUERY
+///
+/// modify operation in subquery
+///
+///  "Will be raised when an AQL query contains a data-modifying operation
+/// inside a subquery."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY                                (1574)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
+///
+/// query options must be readable at query compile time
+///
+///  "Will be raised when an AQL data-modification query contains options that
+/// cannot be figured out at query compile time."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              (1575)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1576: ERROR_QUERY_EXCEPTION_OPTIONS
+///
+/// query options expected
+///
+///  "Will be raised when an AQL data-modification query contains an invalid
+/// options specification."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
 ///
 /// invalid user function name
@@ -2257,6 +2315,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        (1653)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1654: ERROR_TRANSACTION_ABORTED
+///
+/// transaction aborted
+///
+/// Will be raised when a transaction was aborted.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_TRANSACTION_ABORTED                                     (1654)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1700: ERROR_USER_INVALID_NAME

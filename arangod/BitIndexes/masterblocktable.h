@@ -37,10 +37,6 @@
 
 #include "IndexIterators/index-iterator.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            bitarray private types
 // -----------------------------------------------------------------------------
@@ -265,7 +261,7 @@ static int extendMasterTable(MasterTable_t* mt) {
     // ........................................................................
     // something is terribly wrong
     // ........................................................................
-    assert(false);
+    TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }
 
@@ -387,7 +383,7 @@ static int insertMasterTable(MasterTable_t* mt, TRI_master_table_position_t* tab
     }
     ++blockEntryNum;
     if (blockEntryNum == BITARRAY_MASTER_TABLE_BLOCKSIZE) {
-      assert(false);
+      TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -433,7 +429,7 @@ int removeElementMasterTable(MasterTable_t* mt, TRI_master_table_position_t* pos
     // .........................................................................
 
     if ((block->_free & tempInt)) { // Catastrophic failure since the entry should NOT be free
-      assert(false);
+      TRI_ASSERT(false);
       return TRI_ERROR_INTERNAL;
     }
 
@@ -615,11 +611,6 @@ static int64_t compareIndexOf(MasterTable_t* mt, size_t item, bool* equality) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

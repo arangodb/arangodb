@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_DOCUMENT_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
@@ -135,8 +137,6 @@ namespace triagens {
 
       virtual bool deleteDocument ();
 
-#ifdef TRI_ENABLE_CLUSTER
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,6 @@ namespace triagens {
                                       bool isPatch,
                                       TRI_json_t* json);
 
-#endif
 
     };
   }

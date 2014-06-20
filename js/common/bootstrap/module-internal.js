@@ -756,13 +756,6 @@
   if (typeof SYS_REGISTER_TASK !== "undefined") {
     exports.registerTask = SYS_REGISTER_TASK;
     delete SYS_REGISTER_TASK;
-
-    // TODO: remove this in next release 
-    exports.definePeriodic = function (offset, period, module, funcname) {
-      require("console").warn("definePeriodic() is deprecated. please use registerTask() instead");
-      var command = "require('" + module + "')." + funcname + "();";
-      exports.registerTask({ offset: offset, period: period, command: command });
-    };
   }
 
 ////////////////////////////////////////////////////////////////////////////////

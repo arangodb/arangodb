@@ -28,11 +28,9 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_BATCH_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_BATCH_HANDLER_H 1
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Basics/Common.h"
 
-using namespace triagens::basics;
-using namespace triagens::rest;
-using namespace std;
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class RestBatchHandler

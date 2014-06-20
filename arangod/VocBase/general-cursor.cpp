@@ -103,7 +103,7 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
-  assert(result);
+  TRI_ASSERT(result);
 
   if (! result->_freed) {
     result->freeData(result);
@@ -258,7 +258,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_vocbase_t* vocbase,
                                                TRI_json_t* extra) {
   TRI_general_cursor_t* cursor;
   
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
 

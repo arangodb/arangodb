@@ -27,8 +27,6 @@
 
 #include "PathHandler.h"
 
-#include <fstream>
-
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"

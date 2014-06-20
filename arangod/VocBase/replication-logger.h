@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_LOGGER_H
 #define TRIAGENS_VOC_BASE_REPLICATION_LOGGER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
 #include "BasicsC/locks.h"
@@ -38,17 +38,13 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 struct TRI_df_marker_s;
-struct TRI_document_collection_s;
-struct TRI_doc_mptr_s;
+struct TRI_document_collection_t;
+struct TRI_doc_mptr_t;
 struct TRI_index_s;
 struct TRI_json_s;
 struct TRI_transaction_s;
@@ -63,11 +59,6 @@ struct TRI_vocbase_col_s;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logger configuration
@@ -117,18 +108,9 @@ typedef struct TRI_replication_logger_s {
 }
 TRI_replication_logger_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication logger
@@ -148,18 +130,9 @@ void TRI_DestroyReplicationLogger (TRI_replication_logger_t*);
 
 void TRI_FreeReplicationLogger (TRI_replication_logger_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication logger configuration
@@ -225,106 +198,6 @@ struct TRI_json_s* TRI_JsonStateReplicationLogger (TRI_replication_logger_state_
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_s* TRI_JsonReplicationLogger (TRI_replication_logger_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              public log functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogTransactionReplication (struct TRI_vocbase_s*,
-                                   struct TRI_transaction_s const*,
-                                   TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "create collection" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogCreateCollectionReplication (struct TRI_vocbase_s*,
-                                        TRI_voc_cid_t,
-                                        char const*, 
-                                        struct TRI_json_s const*,
-                                        TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "drop collection" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogDropCollectionReplication (struct TRI_vocbase_s*,
-                                      TRI_voc_cid_t,
-                                      char const*,
-                                      TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "rename collection" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogRenameCollectionReplication (struct TRI_vocbase_s*,
-                                        TRI_voc_cid_t,
-                                        char const*,
-                                        char const*,
-                                        TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "change collection properties" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogChangePropertiesCollectionReplication (struct TRI_vocbase_s*,
-                                                  TRI_voc_cid_t,
-                                                  char const*,
-                                                  struct TRI_json_s const*,
-                                                  TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "create index" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogCreateIndexReplication (struct TRI_vocbase_s*,
-                                   TRI_voc_cid_t,
-                                   char const*,
-                                   TRI_idx_iid_t,
-                                   struct TRI_json_s const*,
-                                   TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a "drop index" operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogDropIndexReplication (struct TRI_vocbase_s*,
-                                 TRI_voc_cid_t,
-                                 char const*,
-                                 TRI_idx_iid_t iid,
-                                 TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate a document operation
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_LogDocumentReplication (struct TRI_vocbase_s*,
-                                struct TRI_document_collection_s*,
-                                TRI_voc_document_operation_e,
-                                struct TRI_df_marker_s const*,
-                                struct TRI_doc_mptr_s const*,
-                                TRI_server_id_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @} 
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

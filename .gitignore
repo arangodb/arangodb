@@ -19,19 +19,16 @@ mr-*.h
 .idea
 .mruby-build-64
 .zlib-build-64
-.libbson-build-64
 .libev-build-32
 .v8-build-32
 .zlib-build-32
 .icu-build-32
 .mruby-build-32
-.libbson-build-32
 .setup-mr-directories
 .setup-js-directories
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
-3rdParty/libbson/BUILD/
 
 Doxygen/doc/
 Doxygen/manuals/
@@ -71,9 +68,10 @@ UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite
 arangod/Ahuacatl/ahuacatl-grammar.c
+arangod/Ahuacatl/ahuacatl-grammar.cpp
 arangod/Ahuacatl/ahuacatl-grammar.h
 arangod/Ahuacatl/ahuacatl-grammar.output
-arangod/Ahuacatl/ahuacatl-tokens.c
+arangod/Ahuacatl/ahuacatl-tokens.cpp
 bin/
 etc/arangodb/*.conf
 js/common/bootstrap/errors.js
@@ -82,6 +80,7 @@ lib/BasicsC/stamp-h2
 lib/BasicsC/voc-errors.c
 lib/BasicsC/voc-errors.h
 lib/JsonParser/json-parser.c
+lib/JsonParser/json-parser.cpp
 lib/V8/v8-json.cpp
 
 cppcheck.log
@@ -102,3 +101,4 @@ js/apps/*
 .sass-cache/
 
 3rdParty/etcd/src/
+Documentation/Books/allComments.txt

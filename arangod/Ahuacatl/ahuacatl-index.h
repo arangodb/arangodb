@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_INDEX_H
 #define TRIAGENS_AHUACATL_AHUACATL_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
 
 #include "VocBase/index.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_aql_context_s;
 
@@ -85,10 +81,6 @@ TRI_aql_index_t* TRI_DetermineIndexAql (struct TRI_aql_context_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

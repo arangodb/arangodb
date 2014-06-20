@@ -123,7 +123,7 @@ dnl GO
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(internal-go,
-  AS_HELP_STRING([--enable-internal-go], [use  go binaries from 3rdParty directory (default: no)]),
+  AS_HELP_STRING([--enable-internal-go], [use go binaries from 3rdParty directory (default: no)]),
   [tr_INTERNAL_GO="${enableval:-yes}"],
   [tr_INTERNAL_GO=no]
 )
@@ -166,12 +166,6 @@ m4_include([m4/configure.threads])
 m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
 m4_include([m4/configure.maintainer])
-
-dnl ============================================================================
-dnl --SECTION--                                                 CLUSTER FEATURES
-dnl ============================================================================
-
-m4_include([m4/configure.cluster])
 
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
