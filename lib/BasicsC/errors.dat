@@ -348,3 +348,8 @@ RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key alread
 RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
 RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."
+
+################################################################################
+## foxx app update via github
+################################################################################
+ERROR_APP_ALREADY_EXISTS,20000,"newest version of app already installed","newest version of app already installed"
