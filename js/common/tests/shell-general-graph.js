@@ -45,12 +45,13 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphCreationSuite() {
+
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
-  var vn1 = "UnitTestVertices1";
-  var vn2 = "UnitTestVertices2";
-  var vn3 = "UnitTestVertices3";
-  var vn4 = "UnitTestVertices4";
+  var vn1 = "UnitTestVerticies1";
+  var vn2 = "UnitTestVerticies2";
+  var vn3 = "UnitTestVerticies3";
+  var vn4 = "UnitTestVerticies4";
   var gn = "UnitTestGraph";
   var edgeDef = graph._edgeDefinitions(
     graph._undirectedRelation(rn, vn1),
@@ -1102,7 +1103,7 @@ function ChainedFluentAQLResultsSuite() {
 
     tearDown: dropData,
 
-    test_getAllVerticesResultingAQL: function() {
+    test_getAllVerticiesResultingAQL: function() {
       var query = g._vertices();
       var stmt = query.printQuery();
       assertEqual(stmt, plainVertexQueryStmt(0));
@@ -1110,7 +1111,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getAllVertices: function() {
+    test_getAllVerticies: function() {
       var result = g._vertices().toArray();
       assertEqual(result.length, 7);
       var sorted = _.sortBy(result, "name");
@@ -1149,7 +1150,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticesById: function() {
+    test_getVerticiesById: function() {
       var a_id = g[user].firstExample({name: uaName})._id;
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([a_id, b_id]).toArray();
@@ -1177,7 +1178,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, uaName);
     },
 
-    test_getVerticesByExampleResultingAQL: function() {
+    test_getVerticiesByExampleResultingAQL: function() {
       var query = g._vertices([{
         name: uaName
       },{
@@ -1192,7 +1193,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticesByExample: function() {
+    test_getVerticiesByExample: function() {
       var result = g._vertices([{
         name: uaName
       },{
@@ -1204,7 +1205,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, p1Name);
     },
 
-    test_getVerticesByExampleAndIdMixResultingAQL: function() {
+    test_getVerticiesByExampleAndIdMixResultingAQL: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var query = g._vertices([{
         name: uaName
@@ -1223,7 +1224,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_0, {});
     },
 
-    test_getVerticesByExampleAndIdMix: function() {
+    test_getVerticiesByExampleAndIdMix: function() {
       var b_id = g[user].firstExample({name: ubName})._id;
       var result = g._vertices([{
         name: uaName
@@ -2313,11 +2314,30 @@ function GeneralGraphCommonNeighborsSuite() {
 /// @brief checks GRAPH_COMMON_NEIGHBORS() and GRAPH_COMMON_PROPERTIES()
 ////////////////////////////////////////////////////////////////////////////////
 
+
+    testNeighborsAnyV3: function () {
+      actual = testGraph._neighbors(v3);
+      assertTrue(actual[0]._id, v2);
+      assertTrue(actual[1]._id, v5);
+      assertTrue(actual[2]._id, v8);
+      assertTrue(actual[3]._id, v5);
+      assertTrue(actual[4]._id, v7);
+    },
+
+    testNeighborsAnyV6: function () {
+      actual = testGraph._neighbors(v6);
+      assertTrue(actual[0]._id, v2);
+      assertTrue(actual[1]._id, v7);
+
+
+    },
+
+
     testCommonNeighborsAny: function () {
-      actual = testGraph._listCommonNeighbors(v3 , v6);
+      actual = testGraph._commonNeighbors(v3 , v6);
       assertEqual(actual[0][v3][v6][0]._id  , v2);
       assertEqual(actual[0][v3][v6][1]._id  , v7);
-      actual = testGraph._amountCommonNeighbors(v3 , v6);
+      actual = testGraph._countCommonNeighbors(v3 , v6);
       assertEqual(actual[0][v3][0][v6] , 2);
     },
 ////////////////////////////////////////////////////////////////////////////////
@@ -2325,8 +2345,7 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      actual = testGraph._listCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
-
+      actual = testGraph._commonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
       assertEqual(actual[0][v3][v6][0]._id, v2);
       assertEqual(actual[1][v5][v8][0]._id, v3);
       assertEqual(actual[1][v5][v7][0]._id, v3);
@@ -2336,15 +2355,17 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[4][v8][v5][0]._id, v3);
       assertEqual(actual[4][v8][v7][0]._id, v3);
 
-      actual = testGraph._amountCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
+      actual = testGraph._countCommonNeighbors({} , {},  {direction : 'inbound'},  {direction : 'inbound'});
       assertEqual(actual[0][v3][0][v6] , 1);
       assertEqual(actual[1][v5][0][v8] , 1);
       assertEqual(actual[1][v5][1][v7] , 1);
       assertEqual(actual[2][v6][0][v3] , 1);
-      assertEqual(actual[3][v7][1][v5] , 1);
-      assertEqual(actual[3][v7][0][v8] , 1);
+      assertEqual(actual[3][v7][0][v5] , 1);
+      assertEqual(actual[3][v7][1][v8] , 1);
+
       assertEqual(actual[4][v8][0][v5] , 1);
       assertEqual(actual[4][v8][1][v7] , 1);
+
     },
 
 
@@ -2353,7 +2374,7 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsOut: function () {
-      actual = testGraph._listCommonNeighbors(
+      actual = testGraph._commonNeighbors(
         {hugo: true}, {heinz: 1},
         {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
@@ -2370,7 +2391,7 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[0][Object.keys(actual[0])[0]][v3].length, 4);
       assertEqual(actual[0][Object.keys(actual[0])[0]][v8].length, 3);
 
-      actual = testGraph._amountCommonNeighbors(
+      actual = testGraph._countCommonNeighbors(
         {hugo: true }, {heinz: 1},
         {direction: 'outbound', minDepth: 1, maxDepth: 3},
         {direction: 'outbound', minDepth: 1, maxDepth: 3}
@@ -2386,7 +2407,7 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
-      actual = testGraph._listCommonProperties({} ,{} ,{});
+      actual = testGraph._commonProperties({} ,{} ,{});
       assertEqual(actual[0][v1][0]._id  , v2);
       assertEqual(actual[1][v2][0]._id  , v1);
       assertEqual(actual[2][v3][0]._id  , v8);
@@ -2401,12 +2422,12 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[6][v7][0]._id  , v4);
       assertEqual(actual[6][v7][1]._id  , v6);
       assertEqual(actual[6][v7][2]._id  , v8);
-      assertEqual(actual[7][v8][0]._id  , v3);
-      assertEqual(actual[7][v8][1]._id  , v4);
-      assertEqual(actual[7][v8][2]._id  , v6);
-      assertEqual(actual[7][v8][3]._id  , v7);
+      assertEqual(actual[7][v8][0]._id  , v4);
+      assertEqual(actual[7][v8][1]._id  , v6);
+      assertEqual(actual[7][v8][2]._id  , v7);
+      assertEqual(actual[7][v8][3]._id  , v3);
 
-      actual = testGraph._amountCommonProperties({} ,{} ,{});
+      actual = testGraph._countCommonProperties({} ,{} ,{});
       assertEqual(actual, [
         createKeyValueObject(v1, 1),
         createKeyValueObject(v2, 1),
@@ -2420,13 +2441,13 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
     testCommonPropertiesWithFilters: function () {
-      actual = testGraph._listCommonProperties({ageing : true} , {harald : 'meier'},  {});
+      actual = testGraph._commonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual[0][v5][0]._id  , v6);
       assertEqual(actual[1][v6][0]._id  , v4);
       assertEqual(actual[1][v6][1]._id  , v8);
       assertEqual(actual[1][v6][2]._id  , v7);
 
-      actual = testGraph._amountCommonProperties({ageing : true} , {harald : 'meier'},  {});
+      actual = testGraph._countCommonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual, [
         createKeyValueObject(v5, 1),
         createKeyValueObject(v6, 3)
@@ -2435,7 +2456,7 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
     testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
-      actual = testGraph._listCommonProperties( {} , {},  {ignoreProperties : 'harald'});
+      actual = testGraph._commonProperties( {} , {},  {ignoreProperties : 'harald'});
 
       assertEqual(actual[0][v1][0]._id  , v2);
       assertEqual(actual[1][v2][0]._id  , v1);
@@ -2444,7 +2465,7 @@ function GeneralGraphCommonNeighborsSuite() {
       assertEqual(actual[4][v6][0]._id  , v5);
       assertEqual(actual[5][v8][0]._id  , v3);
 
-      actual = testGraph._amountCommonProperties({} , {},  {ignoreProperties : 'harald'});
+      actual = testGraph._countCommonProperties({} , {},  {ignoreProperties : 'harald'});
       assertEqual(actual, [
         createKeyValueObject(v1, 1),
         createKeyValueObject(v2, 1),
@@ -2579,6 +2600,142 @@ function OrphanCollectionSuite() {
 
 }
 
+function MeasurementsSuite() {
+
+  var g;
+  var vertexId1, vertexId2;
+  var unitTestGraphName = "unitTestGraph";
+
+  var ec1 = "unitTestEdgeCollection1";
+  var ec2 = "unitTestEdgeCollection2";
+  var vc1 = "unitTestVertexCollection1";
+  var vc2 = "unitTestVertexCollection2";
+  var vc3 = "unitTestVertexCollection3";
+  var vc4 = "unitTestVertexCollection4";
+
+
+  var fillCollections = function() {
+    var ids = {};
+    var vertex = g[vc1].save({first_name: "Tam"});
+    ids.vId11 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tem"});
+    ids.vId12 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tim"});
+    ids.vId13 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tom"});
+    ids.vId14 = vertex._id;
+    vertex = g[vc1].save({first_name: "Tum"});
+    ids.vId15 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tam"});
+    ids.vId31 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tem"});
+    ids.vId32 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tim"});
+    ids.vId33 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tom"});
+    ids.vId34 = vertex._id;
+    vertex = g[vc3].save({first_name: "Tum"});
+    ids.vId35 = vertex._id;
+
+    var edge = g[ec1].save(ids.vId11, ids.vId12, {});
+    ids.eId11 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId13, {});
+    ids.eId12 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId14, {});
+    ids.eId13 = edge._id;
+    edge = g[ec1].save(ids.vId11, ids.vId15, {});
+    ids.eId14 = edge._id;
+    edge = g[ec1].save(ids.vId12, ids.vId11, {});
+    ids.eId15 = edge._id;
+    edge = g[ec1].save(ids.vId13, ids.vId11, {});
+    ids.eId16 = edge._id;
+    edge = g[ec1].save(ids.vId14, ids.vId11, {});
+    ids.eId17 = edge._id;
+    edge = g[ec1].save(ids.vId15, ids.vId11, {});
+    ids.eId18 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId31, {});
+    ids.eId21 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId32, {});
+    ids.eId22 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId33, {});
+    ids.eId23 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId34, {});
+    ids.eId24 = edge._id;
+    edge = g[ec2].save(ids.vId11, ids.vId35, {});
+    ids.eId25 = edge._id;
+    return ids;
+  };
+
+  return {
+
+    setUp : function() {
+      try {
+        arangodb.db._collection("_graphs").remove(unitTestGraphName);
+      } catch (ignore) {
+      }
+      g = graph._create(
+        unitTestGraphName,
+        graph._edgeDefinitions(
+          graph._undirectedRelationDefinition(ec1, vc1),
+          graph._directedRelationDefinition(ec2,
+            [vc1, vc2], [vc3, vc4]
+          )
+        )
+      );
+      fillCollections();
+    },
+
+    tearDown : function() {
+      graph._drop(unitTestGraphName);
+      try {db[vc1].drop()} catch (e) {}
+      try {db[vc2].drop()} catch (e) {}
+      try {db[vc3].drop()} catch (e) {}
+      try {db[vc4].drop()} catch (e) {}
+      try {db[ec1].drop()} catch (e) {}
+      try {db[ec2].drop()} catch (e) {}
+
+    },
+
+    test_absoluteEccentricity : function () {
+      var a = g._absoluteEccentricity({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+
+    test_eccentricity : function () {
+      var a = g._eccentricity({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+    test_absoluteCloseness : function () {
+      var a = g._absoluteCloseness({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+    test_closeness : function () {
+      var a = g._closeness({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+    test_absoluteBetweenness : function () {
+      var a = g._absoluteBetweenness({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+    test_betweenness : function () {
+      var a = g._betweenness({});
+      assertEqual(Object.keys(a[0]).length , 10);
+    },
+    test_radius : function () {
+      var a = g._radius({});
+      assertEqual(a[0] , 1);
+    },
+    test_diameter : function () {
+      var a = g._diameter({});
+      assertEqual(a[0] , 2);
+    }
+
+
+  };
+}
+
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
@@ -2594,6 +2751,7 @@ jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
+jsunity.run(MeasurementsSuite);
 
 return jsunity.done();
 

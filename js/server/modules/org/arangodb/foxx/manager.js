@@ -1575,6 +1575,18 @@ exports.fetchFromGithub = function (url, name, version) {
   return "app:" + source.name + ":" + source.version;
 };
 
+exports.availableJson = function () {
+  return utils.availableJson();
+};
+
+exports.listJson = function () {
+  return utils.listJson();
+};
+
+exports.getFishbowlStorage = function () {
+  return utils.getFishbowlStorage();
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

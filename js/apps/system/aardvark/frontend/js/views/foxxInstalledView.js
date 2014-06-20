@@ -9,9 +9,9 @@
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      'click .install': 'installDialog',
-      'click .purge': 'removeDialog',
-      'change select' : 'renderVersion'
+      //'click .install': 'installDialog',
+      //'click .purge': 'removeDialog',
+      'click .icon_arangodb_settings2': 'infoDialog'
     },
 
     renderVersion: function(e) {
@@ -25,13 +25,6 @@
         version: versionToRender
       });
 
-
-      $('#'+name+'Select').parent().remove();
-
-      this.renderVersionModel(toRender, name, selectOptions, versionToRender);
-      this.initialize();
-      //window.App.applicationsView.reload();
-
     },
 
     initialize: function(){
@@ -43,14 +36,59 @@
       ];
       var buttonPurgeConfig = [
         window.modalView.createDeleteButton(
-          "Remove", this.confirmRemoval.bind(this)
+          "Remove", this.confirmRemovalSingle.bind(this)
         )
+      ];
+      var buttonInfoConfig = [
+        window.modalView.createDeleteButton(
+          "Remove", this.confirmRemovalSingle.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Update", this.update.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Install", this.installDialog.bind(this)
+        )
+      ];
+      var buttonInfoMultipleVersionsConfig = [
+        window.modalView.createDeleteButton(
+          "Remove All", this.confirmRemovalAll.bind(this)
+        ),
+        window.modalView.createDeleteButton(
+          "Remove", this.confirmRemovalSingle.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Update", this.update.bind(this)
+        ),
+        window.modalView.createSuccessButton(
+          "Install", this.installDialog.bind(this)
+        )
+      ];
+      var buttonSystemInfoConfig = [
       ];
       this.showMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
         "Install Application",
         buttonConfig
+      );
+      this.showInfoMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Application Settings",
+        buttonInfoConfig
+      );
+      this.showInfoMultipleVersionsMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Application Settings",
+        buttonInfoMultipleVersionsConfig
+      );
+      this.showSystemInfoMod = window.modalView.show.bind(
+        window.modalView,
+        "modalTable.ejs",
+        "Application Settings",
+        buttonSystemInfoConfig
       );
       this.showPurgeMod = window.modalView.show.bind(
         window.modalView,
@@ -61,6 +99,7 @@
       this.appsView = this.options.appsView;
     },
 
+    //add select here too
     fillPurgeValues: function(mountinfo) {
       var list = [],
           isSystem,
@@ -73,9 +112,20 @@
       list.push(window.modalView.createReadOnlyEntry(
         "id_name", "Name", this.model.get("name")
       ));
-      list.push(window.modalView.createReadOnlyEntry(
-        "id_version", "Version", this.model.get("version")
-      ));
+      if (this.model.get("selectOptions")) {
+        list.push(window.modalView.createSelectEntry(
+          "foxx-version",
+          "Version",
+          "",
+          "Select version of the Foxx application",
+          this.model.get("selectOptions")
+        ));
+      }
+      else {
+        list.push(window.modalView.createReadOnlyEntry(
+          "id_version", "Version", this.model.get("version")
+        ));
+      }
       list.push(window.modalView.createReadOnlyEntry(
         "id_system", "System", isSystem
       ));
@@ -111,12 +161,65 @@
         "mount-path",
         true
       ));
-      list.push(window.modalView.createReadOnlyEntry(
-        "id_version", "Version", this.model.get("version")
-      ));
+      if (this.model.get("selectOptions")) {
+        list.push(window.modalView.createSelectEntry(
+          "foxx-version",
+          "Version",
+          "",
+          "Select version of the Foxx application",
+          this.model.get("selectOptions")
+        ));
+      }
+      else {
+        list.push(window.modalView.createReadOnlyEntry(
+          "id_version", "Version", this.model.get("version")
+        ));
+      }
       list.push(window.modalView.createReadOnlyEntry(
         "id_system", "System", isSystem
       ));
+      return list;
+    },
+
+    fillInfoValues: function() {
+      var list = [],
+          isSystem;
+      if (this.model.get("isSystem")) {
+        isSystem = "Yes";
+      } else {
+        isSystem = "No";
+      }
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_name", "Name", this.model.get("name")
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_description", "Description", this.model.get("description")
+      ));
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_author", "Author", this.model.get("author")
+      ));
+      if (this.model.get("selectOptions")) {
+        list.push(window.modalView.createSelectEntry(
+          "foxx-version",
+          "Version",
+          "",
+          "Select version of the Foxx application",
+          this.model.get("selectOptions")
+        ));
+      }
+      else {
+        list.push(window.modalView.createReadOnlyEntry(
+          "id_version", "Version", this.model.get("version")
+        ));
+      }
+      list.push(window.modalView.createReadOnlyEntry(
+        "id_system", "System", isSystem
+      ));
+      if (this.model.get("git")) {
+        list.push(window.modalView.createReadOnlyEntry(
+          "id_git", "Git", this.model.get("git")
+        ));
+      }
       return list;
     },
 
@@ -127,32 +230,116 @@
       this.showPurgeMod(this.fillPurgeValues(mountinfo));
     },
 
-    confirmRemoval: function(event) {
-      var name = this.model.get("name");
-      var result = this.model.collection.purgeFoxx(name);
+    confirmRemovalSingle: function(event) {
+
+      var version, self = this;
+
+      if (this.model.get("versions")) {
+        version = $("#foxx-version").val();
+      }
+      else {
+        version = this.model.get("version");
+      }
+
+      //find correct app install version
+      var toDelete = this.model.collection.findWhere({
+        name: self.model.get("name"),
+        version: version
+      });
+
+      var name = toDelete.get("app");
+      var result = toDelete.collection.purgeFoxx(name);
+
       if (result === true) {
         window.modalView.hide();
         window.App.applicationsView.reload();
       }
     },
 
+    confirmRemovalAll: function(event) {
+      var name = this.model.get("name");
+      var result = this.model.collection.purgeAllFoxxes(name);
+
+      if (result === true) {
+        window.modalView.hide();
+        window.App.applicationsView.reload();
+      }
+    },
+
+    infoDialog: function(event) {
+      var versions, isSystem = false;
+      if (this.model.get("isSystem")) {
+        isSystem = true;
+      } else {
+        isSystem = false;
+      }
+
+      versions = this.model.get("versions");
+
+      event.stopPropagation();
+      if (isSystem === false && !versions) {
+        this.showInfoMod(this.fillInfoValues());
+      }
+      else if (isSystem === false && versions) {
+        this.showInfoMultipleVersionsMod(this.fillInfoValues());
+      }
+      else {
+        this.showSystemInfoMod(this.fillInfoValues());
+      }
+    },
+
     installDialog: function(event) {
+      window.modalView.hide();
       event.stopPropagation();
       this.showMod(this.fillValues());
     },
 
+    update: function() {
+      var url = this.model.get("git"),
+      name = '',
+      version = 'master',
+      result;
+
+      if (url === undefined || url === '') {
+        // if no git is defined
+        return;
+      }
+
+      result = this.collection.installFoxxFromGithub(url, name, version);
+      if (result === true) {
+        window.modalView.hide();
+        window.App.applicationsView.reload();
+      }
+    },
+
     install: function() {
       var mountPoint = $("#mount-point").val(),
+        version = "",
         regex = /^(\/[^\/\s]+)+$/,
         self = this;
       if (!regex.test(mountPoint)){
         alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
         return false;
-      } 
-      this.model.collection.create({
+      }
+
+      if (this.model.get("selectOptions")) {
+        version = $("#foxx-version").val();
+      }
+      else {
+        version = this.model.get("version");
+      }
+
+      //find correct app install version
+      var toCreate = this.model.collection.findWhere({
+        name: self.model.get("name"),
+        version: version
+      });
+
+      //this.model.collection.create({
+      toCreate.collection.create({
         mount: mountPoint,
-        name: this.model.get("name"),
-        version: this.model.get("version")
+        name: toCreate.get("name"),
+        version: toCreate.get("version")
       },
       {
         success: function() {
@@ -169,33 +356,14 @@
       });
     },
 
-    renderVersionModel: function(model, name, selectOptions, activeVersion) {
-        $(this.el).html(this.template.render(model)).append(
-          '<div class="tileSelects"><select id="'+name+'Select">'+selectOptions+'</select></div>'
-        );
-
-        window.setTimeout(function() {
-          $('#'+name+'Select').val(activeVersion);
-        }, 100);
-
-    },
-
     render: function(){
-      var name = this.model.get("name"),
-      selectOptions = this.model.get("selectOptions"),
-      activeVersion = this.model.get("activeVersion");
+      var activeVersion = this.model.get("activeVersion");
 
       if (activeVersion === 0 || activeVersion === undefined) {
         activeVersion = this.model.get("highestVersion");
       }
 
-      //if multiple versions are installed
-      if (this.model.get("highestVersion")) {
-        this.renderVersionModel(this.model, name, selectOptions, activeVersion);
-      }
-      else {
-        $(this.el).html(this.template.render(this.model));
-      }
+      $(this.el).html(this.template.render(this.model));
 
       return $(this.el);
     }

@@ -6,562 +6,62 @@ This chapter describes various functions on a graph.
 
 !SUBSECTION Get vertex *from* of an edge
 
-Get the vertex of an edge defined as *_from*
-<br />
-`general-graph._getFromVertex(edgeId)`
-<br />
-Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
-<br />
-@EXAMPLES
-<br />
-
-```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   g._getFromVertex("relation/aliceAndBob")
-{ 
-  "name" : "Alice", 
-  "_id" : "female/alice", 
-  "_rev" : "236262839", 
-  "_key" : "alice" 
-}
-```
-<br />
+@startDocuBlock JSF_general_graph_getFromVertex
 
 !SUBSECTION Get vertex *to* of an edge
 
-Get the vertex of an edge defined as *_to*
-<br />
-`general-graph._getToVertex(edgeId)`
-<br />
-Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
-<br />
-@EXAMPLES
-<br />
+@startDocuBlock JSF_general_graph_getToVertex
 
-```
-arangosh>   var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh>   var g = examples.loadGraph("social");
-arangosh>   g._getToVertex("relation/aliceAndBob")
-{ 
-  "name" : "Bob", 
-  "_id" : "male/bob", 
-  "_rev" : "70784439", 
-  "_key" : "bob" 
-}
-```
-<br />
+!SECTION _neighbors
 
+@startDocuBlock JSF_general_graph_neighbors
 
-!SECTION _listCommonNeighbors
+!SECTION _commonNeighbors
 
-<br />
-`general_graph._listCommonNeighbors(vertex1Example, vertex2Examples,
-optionsVertex1, optionsVertex2)`
-*The general_graph._listCommonNeighbors function returns all common neighbors
-of the vertices defined by the examples.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex1Example and vertex2Example.
-<br />
-* String|Object|Array  *vertex1Example*     : An example for the desired
-vertices (see below).
-* String|Object|Array  *vertex2Example*     : An example for the desired
-vertices (see below).
-* Object               *optionsVertex1*     : Optional options, see below:
-* Object               *optionsVertex2*     : Optional options, see below:
-<br />
-Possible options and there defaults:
-* String               *direction*                        : The direction of the
-edges. Possible values are *outbound*, *inbound* and *any* (default).
-* String|Object|Array  *edgeExamples*                     : A filter example
-for the edges to the neighbors (see below).
-* String|Object|Array  *neighborExamples*                 : An example for
-the desired neighbors (see below).
-* String|Array         *edgeCollectionRestriction*        : One or multiple
-edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-depth a path to a neighbor must have to be returned (default is 1).
-* Number               *maxDepth*                         : Defines the maximal
-depth a path to a neighbor must have to be returned (default is 1).
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all common neighbors of capitals.
-<br />
+@startDocuBlock JSF_general_graph_common_neighbors
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._listCommonNeighbors({isCapital : true}, {isCapital : true});
-[ 
-  { 
-    "city/Berlin" : { 
-      "city/Munich" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "339311159", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "339966519", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "340163127", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  }, 
-  { 
-    "city/Munich" : { 
-      "city/Berlin" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "339311159", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "339966519", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "340163127", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  } 
-]
-```
-<br />
-A route planner example, all common outbound neighbors of munich with any other location
-which have a maximal depth of 2 :
-<br />
+!SECTION _countCommonNeighbors
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
-........> {direction : 'outbound', maxDepth : 2});
-[ 
-  { 
-    "city/Munich" : { 
-      "city/Berlin" : [ 
-        { 
-          "_id" : "city/Cologne", 
-          "_rev" : "424901175", 
-          "_key" : "Cologne", 
-          "isCapital" : false, 
-          "population" : 1000000 
-        }, 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "425556535", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "425753143", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ], 
-      "city/Cologne" : [ 
-        { 
-          "_id" : "village/Olpe", 
-          "_rev" : "425556535", 
-          "_key" : "Olpe", 
-          "isCapital" : false, 
-          "population" : 80000 
-        }, 
-        { 
-          "_id" : "village/Rosenheim", 
-          "_rev" : "425753143", 
-          "_key" : "Rosenheim", 
-          "isCapital" : false, 
-          "population" : 80000 
-        } 
-      ] 
-    } 
-  } 
-]
-```
-<br />
+@startDocuBlock JSF_general_graph_count_common_neighbors
+
+!SECTION _commonProperties
+
+@startDocuBlock JSF_general_graph_common_properties
+
+!SECTION _countCommonProperties
+
+@startDocuBlock JSF_general_graph_count_common_properties
 
 
+!SECTION _absoluteEccentricity
 
-!SECTION _amountCommonNeighbors
+@startDocuBlock JSF_general_graph_absolute_eccentricity
 
-<br />
-`general_graph._amountCommonNeighbors(vertex1Example, vertex2Examples,
-optionsVertex1, optionsVertex2)`
-*The general_graph._amountCommonNeighbors function returns the amount of
-common neighbors of the vertices defined by the examples.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex1Example and vertex2Example.
-<br />
-* String|Object|Array  *vertex1Example*     : An example for the desired
-vertices (see below).
-* String|Object|Array  *vertex2Example*     : An example for the desired
-vertices (see below).
-* Object               *optionsVertex1*     : Optional options, see below:
-* Object               *optionsVertex2*     : Optional options, see below:
-<br />
-Possible options and there defaults:
-* String               *direction*                        : The direction of the
-edges. Possible values are *outbound*, *inbound* and *any* (default).
-* String|Object|Array  *edgeExamples*                     : A filter example
-for the edges to the neighbors (see below).
-* String|Object|Array  *neighborExamples*                 : An example for
-the desired neighbors (see below).
-* String|Array         *edgeCollectionRestriction*        : One or multiple
-edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-depth a path to a neighbor must have to be returned (default is 1).
-* Number               *maxDepth*                         : Defines the maximal
-depth a path to a neighbor must have to be returned (default is 1).
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all common neighbors of capitals.
-<br />
+!SECTION _eccentricity
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._amountCommonNeighbors({isCapital : true}, {isCapital : true});
-[ 
-  { 
-    "city/Berlin" : [ 
-      { 
-        "city/Munich" : 3 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Munich" : [ 
-      { 
-        "city/Berlin" : 3 
-      } 
-    ] 
-  } 
-]
-```
-<br />
-A route planner example, all common outbound neighbors of munich with any other location
-which have a maximal depth of 2 :
-<br />
+@startDocuBlock JSF_general_graph_eccentricity
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._amountCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
-........> {direction : 'outbound', maxDepth : 2});
-[ 
-  { 
-    "city/Munich" : [ 
-      { 
-        "city/Berlin" : 3 
-      }, 
-      { 
-        "city/Cologne" : 2 
-      } 
-    ] 
-  } 
-]
-```
-<br />
+!SECTION _absoluteCloseness
 
+@startDocuBlock JSF_general_graph_absolute_closeness
 
+!SECTION _closeness
 
-!SECTION _listCommonProperties
+@startDocuBlock JSF_general_graph_closeness
 
-<br />
-`general_graph._listCommonProperties(vertex1Example, vertex2Examples,
-options)`
-*The general_graph._listCommonProperties function returns the vertices of
-the graph that share common properties.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex1Example and vertex2Example.
-<br />
-* String|Object|Array  *vertex1Example*     : An example for the desired
-vertices (see below).
-* String|Object|Array  *vertex2Example*     : An example for the desired
-vertices (see below).
-* Object               *options*     : Optional options, see below:
-<br />
-Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *vertex2CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *ignoreProperties* : One or multiple
-attributes of a document that should be ignored.
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all locations with the same properties:
-<br />
+!SECTION _absoluteBetweenness
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._listCommonProperties({}, {});
-[ 
-  { 
-    "city/Berlin" : [ 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "174396855", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Cologne" : [ 
-      { 
-        "_id" : "village/Rosenheim", 
-        "_rev" : "175052215", 
-        "_key" : "Rosenheim", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
-      { 
-        "_id" : "village/Olpe", 
-        "_rev" : "174855607", 
-        "_key" : "Olpe", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "174396855", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Munich" : [ 
-      { 
-        "_id" : "city/Berlin", 
-        "_rev" : "174003639", 
-        "_key" : "Berlin", 
-        "isCapital" : true, 
-        "population" : 3000000 
-      }, 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "174200247", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "village/Olpe" : [ 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "174200247", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      }, 
-      { 
-        "_id" : "village/Rosenheim", 
-        "_rev" : "175052215", 
-        "_key" : "Rosenheim", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    ] 
-  }, 
-  { 
-    "village/Rosenheim" : [ 
-      { 
-        "_id" : "city/Cologne", 
-        "_rev" : "174200247", 
-        "_key" : "Cologne", 
-        "isCapital" : false, 
-        "population" : 1000000 
-      }, 
-      { 
-        "_id" : "village/Olpe", 
-        "_rev" : "174855607", 
-        "_key" : "Olpe", 
-        "isCapital" : false, 
-        "population" : 80000 
-      } 
-    ] 
-  } 
-]
-```
-<br />
-A route planner example, all cities which share same properties except for population.
-<br />
+@startDocuBlock JSF_general_graph_absolute_betweenness
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._listCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
-........>  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
-[ 
-  { 
-    "city/Berlin" : [ 
-      { 
-        "_id" : "city/Munich", 
-        "_rev" : "179574199", 
-        "_key" : "Munich", 
-        "isCapital" : true, 
-        "population" : 1000000 
-      } 
-    ] 
-  }, 
-  { 
-    "city/Munich" : [ 
-      { 
-        "_id" : "city/Berlin", 
-        "_rev" : "179180983", 
-        "_key" : "Berlin", 
-        "isCapital" : true, 
-        "population" : 3000000 
-      } 
-    ] 
-  } 
-]
-```
-<br />
+!SECTION _betweenness
 
+@startDocuBlock JSF_general_graph_betweenness
 
+!SECTION _radius
 
-!SECTION _amountCommonProperties
+@startDocuBlock JSF_general_graph_radius
 
-<br />
-`general_graph._amountCommonProperties(vertex1Example, vertex2Examples,
-options)`
-*The general_graph._amountCommonProperties function returns the amount of vertices of
-the graph that share common properties.*
-<br />
-The function accepts an id, an example, a list of examples or even an empty
-example as parameter for vertex1Example and vertex2Example.
-<br />
-* String|Object|Array  *vertex1Example*     : An example for the desired
-vertices (see below).
-* String|Object|Array  *vertex2Example*     : An example for the desired
-vertices (see below).
-* Object               *options*     : Optional options, see below:
-<br />
-Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *vertex2CollectionRestriction* : One or multiple
-vertex collections that should be considered.
-* String|Array         *ignoreProperties* : One or multiple
-attributes of a document that should be ignored.
-<br />
-Examples for vertexExample:
-* {}                : Returns all possible vertices for this graph.
-* *idString*        : Returns the vertex with the id *idString*.
-* {*key* : *value*} : Returns the vertices that match this example.
-* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-match one of the examples.
-<br />
-@EXAMPLES
-<br />
-A route planner example, all locations with the same properties:
-<br />
+!SECTION _diameter
 
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._amountCommonProperties({}, {});
-[ 
-  { 
-    "city/Berlin" : 1 
-  }, 
-  { 
-    "city/Cologne" : 3 
-  }, 
-  { 
-    "city/Munich" : 2 
-  }, 
-  { 
-    "village/Olpe" : 2 
-  }, 
-  { 
-    "village/Rosenheim" : 2 
-  } 
-]
-```
-<br />
-A route planner example, all cities which share same properties except for population.
-<br />
-
-```
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._amountCommonProperties({}, {}, {vertex1CollectionRestriction : 'city',
-........>  vertex2CollectionRestriction : 'city' ,ignoreProperties: 'population'});
-[ 
-  { 
-    "city/Berlin" : 1 
-  }, 
-  { 
-    "city/Munich" : 1 
-  } 
-]
-```
-<br />
+@startDocuBlock JSF_general_graph_diameter
 
