@@ -104,19 +104,7 @@ function checkManifest (filename, mf) {
     mf.description = "";
   }
 
-  if (mf.hasOwnProperty("apps")) {
-    console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
-                 "Please change the attribute name to 'controllers'.", filename);
-
-    if (! mf.hasOwnProperty("controllers")) {
-      // controllers = apps
-      mf.controllers = mf.apps;
-      delete mf.apps;
-    }
-  }
-
-  // validate all attributes specified in the manifest
-
+  // Validate all attributes specified in the manifest
   // the following attributes are allowed with these types...
   var expected = {
     "assets":             [ false, "object" ],
