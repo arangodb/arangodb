@@ -93,6 +93,7 @@ function getStorage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest (filename, mf) {
+
   // add some default attributes
   if (! mf.hasOwnProperty("author")) {
     // add a default (empty) author
@@ -108,8 +109,8 @@ function checkManifest (filename, mf) {
     console.warn("Manifest '%s' still contains the deprecated 'apps' attribute. " +
                  "Please change the attribute name to 'controllers'.", filename);
 
-    if (! mf.hasOwnProperty("controllers")) {
-      // controllers = apps
+    // depricated "apps" is now "controllers"
+    if (! mf.hasOwnProperty("controllers") && mf.hasOwnProperty("apps")) {
       mf.controllers = mf.apps;
       delete mf.apps;
     }
@@ -143,6 +144,7 @@ function checkManifest (filename, mf) {
   };
 
   var att, failed = false;
+
   for (att in expected) {
     if (expected.hasOwnProperty(att)) {
       if (mf.hasOwnProperty(att)) {
@@ -992,6 +994,7 @@ exports.scanAppDirectory = function () {
 
   // now re-scan, starting with system apps
   scanDirectory(module.systemAppPath());
+
   // now scan database-specific apps
   scanDirectory(module.appPath());
 };
