@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,11 +39,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log information about the used index
@@ -239,7 +236,7 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
     pickedIndex->_idx = (TRI_index_t*) idx;
 
     pickedIndex->_fieldAccesses = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, fieldAccesses);
-    
+
     if (pickedIndex->_fieldAccesses == NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, pickedIndex);
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -283,18 +280,9 @@ static bool CanUseIndex (TRI_index_t const* idx) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free an index structure
@@ -318,7 +306,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   TRI_aql_index_t* picked = NULL;
   TRI_vector_pointer_t matches;
   size_t i, n;
-  
+
   TRI_InitVectorPointer(&matches, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_ASSERT(context);
@@ -343,7 +331,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
 
     lastTypeWasExact = true;
     numIndexFields = idx->_fields._length;
-    
+
     // now loop over all index fields, from left to right
     // index field order is important because skiplists can be used with leftmost prefixes as well,
     // but not with rightmost prefixes
@@ -470,7 +458,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
               // list or object, we cannot use this for comparison in a skiplist
               continue;
             }
-            
+
             value = candidate->_value._between._upper._value;
             if (TRI_IsListJson(value) || TRI_IsArrayJson(value)) {
               // list or object, we cannot use this for comparison in a skiplist
@@ -498,7 +486,7 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
     }
 
     // we now do or don't have an index candidate in the matches vector
-    if (matches._length < numIndexFields && 
+    if (matches._length < numIndexFields &&
         TRI_NeedsFullCoverageIndex(idx->_type)) {
       // the matches vector does not fully cover the indexed fields, but the index requires it
       continue;
@@ -517,11 +505,11 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
   return picked;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_COLLECTION_GUARD_H
-#define TRIAGENS_UTILS_COLLECTION_GUARD_H 1
+#ifndef ARANGODB_UTILS_COLLECTION_GUARD_H
+#define ARANGODB_UTILS_COLLECTION_GUARD_H 1
 
 #include "Basics/Common.h"
 #include "Utils/Exception.h"
@@ -46,7 +48,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
-         
+
         CollectionGuard (CollectionGuard const&) = delete;
         CollectionGuard& operator= (CollectionGuard const&) = delete;
 
@@ -61,7 +63,7 @@ namespace triagens {
             _collection(nullptr),
             _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
             _restoreOriginalStatus(restoreOriginalStatus) {
-  
+
           _collection = TRI_UseCollectionByIdVocBase(_vocbase, id, _originalStatus);
 
           if (_collection == nullptr) {
@@ -82,7 +84,7 @@ namespace triagens {
             _restoreOriginalStatus(restoreOriginalStatus) {
 
           _collection = TRI_UseCollectionByNameVocBase(_vocbase, name, _originalStatus);
-          
+
           if (_collection == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           }
@@ -96,8 +98,8 @@ namespace triagens {
           if (_collection != nullptr) {
             TRI_ReleaseCollectionVocBase(_vocbase, _collection);
 
-            if (_restoreOriginalStatus && 
-                (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING || 
+            if (_restoreOriginalStatus &&
+                (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
                  _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
               // re-unload the collection
               TRI_UnloadCollectionVocBase(_vocbase, _collection, false);
@@ -163,7 +165,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

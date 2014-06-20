@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -59,7 +61,7 @@ static int RandomHeight (void) {
 /// random height is taken.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl, 
+static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
                                                int height) {
   TRI_skiplist_node_t* new;
   new = (TRI_skiplist_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
@@ -78,7 +80,7 @@ static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
     new->height = height;
   }
 
-  new->next = (TRI_skiplist_node_t**) 
+  new->next = (TRI_skiplist_node_t**)
               TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                            sizeof(TRI_skiplist_node_t*) * new->height,
                            true);
@@ -87,7 +89,7 @@ static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
     return NULL;
   }
 
-  sl->_memoryUsed += sizeof(TRI_skiplist_node_t) + 
+  sl->_memoryUsed += sizeof(TRI_skiplist_node_t) +
                      sizeof(TRI_skiplist_node_t*) * new->height;
 
   return new;
@@ -100,7 +102,7 @@ static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
 static void SkipListFreeNode (TRI_skiplist_t* sl,
                               TRI_skiplist_node_t* node) {
   // update memory usage
-  sl->_memoryUsed -= sizeof(TRI_skiplist_node_t) + 
+  sl->_memoryUsed -= sizeof(TRI_skiplist_node_t) +
                      sizeof(TRI_skiplist_node_t*) * node->height;
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, node->next);
@@ -121,9 +123,9 @@ static void SkipListFreeNode (TRI_skiplist_t* sl,
 // at (*pos)[lev] the pointer to the node that contains the largest
 // document that is less than doc amongst those nodes that have height >
 // lev.
-// 
+//
 
-static int LookupLess (TRI_skiplist_t *sl, 
+static int LookupLess (TRI_skiplist_t *sl,
                        void *doc,
                        TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                        TRI_skiplist_node_t** next,
@@ -147,8 +149,8 @@ static int LookupLess (TRI_skiplist_t *sl,
     }
     (*pos)[lev] = cur;
   }
-  // Now cur == (*pos)[0] points to the largest node whose document 
-  // is less than doc. *next is the next node and can be NULL if there 
+  // Now cur == (*pos)[0] points to the largest node whose document
+  // is less than doc. *next is the next node and can be NULL if there
   // is none.
   return cmp;
 }
@@ -162,11 +164,11 @@ static int LookupLess (TRI_skiplist_t *sl,
 // node following (*pos)[0], or is NULL if there is no such node. The
 // array *pos contains for each level lev in 0..sl->start->height-1
 // at (*pos)[lev] the pointer to the node that contains the largest
-// document that is less than or equal to doc amongst those nodes 
+// document that is less than or equal to doc amongst those nodes
 // that have height > lev.
-// 
+//
 
-static int LookupLessOrEq (TRI_skiplist_t *sl, 
+static int LookupLessOrEq (TRI_skiplist_t *sl,
                            void *doc,
                            TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                            TRI_skiplist_node_t** next,
@@ -190,7 +192,7 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
     }
     (*pos)[lev] = cur;
   }
-  // Now cur == (*pos)[0] points to the largest node whose document 
+  // Now cur == (*pos)[0] points to the largest node whose document
   // is less than or equal to doc. *next is the next node and can be NULL
   // is if there none.
   return cmp;
@@ -203,7 +205,7 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
 // as the two previous ones.
 //
 
-static int LookupKeyLess (TRI_skiplist_t *sl, 
+static int LookupKeyLess (TRI_skiplist_t *sl,
                           void *key,
                           TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                           TRI_skiplist_node_t** next) {
@@ -232,7 +234,7 @@ static int LookupKeyLess (TRI_skiplist_t *sl,
   return cmp;
 }
 
-static int LookupKeyLessOrEq (TRI_skiplist_t *sl, 
+static int LookupKeyLessOrEq (TRI_skiplist_t *sl,
                         void *key,
                         TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                         TRI_skiplist_node_t** next) {
@@ -295,7 +297,7 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
     return NULL;
   }
-  
+
 
   sl->start->height = 1;
   sl->start->next[0] = NULL;
@@ -378,12 +380,12 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
     // We have found a duplicate in the proper total order!
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
-  
+
   // Uniqueness test if wanted:
   if (sl->unique) {
-    if ((pos[0] != sl->start && 
+    if ((pos[0] != sl->start &&
          0 == sl->cmp_elm_elm(sl->cmpdata,doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
-        (NULL != next && 
+        (NULL != next &&
          0 == sl->cmp_elm_elm(sl->cmpdata,doc,next->doc,TRI_CMP_PREORDER))) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
@@ -440,7 +442,7 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
   // doc. next points to the next node and can be NULL if there is none.
   // doc is in the skiplist iff next != NULL and cmp == 0 and in this
   // case it is stored at the node next.
-  
+
   if (NULL == next || 0 != cmp) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -453,7 +455,7 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
   for (lev = next->height-1; lev >= 0; lev--) {
       // Note the order from top to bottom. The element remains in the
       // skiplist as long as we are at a level > 0, only some optimisations
-      // in performance vanish before that. Only when we have removed it at 
+      // in performance vanish before that. Only when we have removed it at
       // level 0, it is really gone.
       pos[lev]->next[lev] = next->next[lev];
   }
@@ -464,7 +466,7 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
 
   return TRI_ERROR_NO_ERROR;
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of entries in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +485,7 @@ size_t TRI_SkipListMemoryUsage (TRI_skiplist_t const* sl) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up doc in the skiplist using the proper order
-/// comparison. 
+/// comparison.
 ///
 /// Only comparisons using the proper order are done. Returns NULL
 /// if doc is not in the skiplist.
@@ -569,7 +571,7 @@ TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key) {
 /// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, 
+TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl,
                                                  void *key) {
   TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
   TRI_skiplist_node_t* next;
@@ -582,3 +584,11 @@ TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl,
   return pos[0];
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

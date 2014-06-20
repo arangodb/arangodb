@@ -303,6 +303,13 @@ ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the col
 ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
 ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection used in edge def","The collection is already used in an edge definition of the graph.",
 ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
+ERROR_GRAPH_NO_AN_ARANGO_COLLECTION,1931," is not an ArangoCollection","The collection is not an ArangoCollection.",
+ERROR_GRAPH_NO_GRAPH_COLLECTION,1932,"collection _graphs does not exist","collection _graphs does not exist.",
+ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,1933,"Invalid example type. Has to be String, Array or Object","Invalid example type. Has to be String, Array or Object.",
+ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be Array or Object","Invalid example type. Has to be Array or Object.",
+ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,1935,"Invalid number of arguments. Expected: ","Invalid number of arguments. Expected: ",
+ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter type.",
+ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 
 ################################################################################
 ## Session errors
@@ -341,3 +348,8 @@ RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key alread
 RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
 RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
 RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."
+
+################################################################################
+## foxx app update via github
+################################################################################
+ERROR_APP_ALREADY_EXISTS,20000,"newest version of app already installed","newest version of app already installed"

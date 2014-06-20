@@ -14,7 +14,7 @@ var _ = require("underscore");
 // Helper function to correctly set up the prototype chain, for subclasses.
 // Similar to `goog.inherits`, but uses a hash of prototype properties and
 // class properties to be extended.
-exports.extend = function(protoProps, staticProps) {
+exports.extend = function (protoProps, staticProps) {
   var parent = this;
   var child;
 
@@ -24,7 +24,7 @@ exports.extend = function(protoProps, staticProps) {
   if (protoProps && _.has(protoProps, 'constructor')) {
     child = protoProps.constructor;
   } else {
-    child = function(){ return parent.apply(this, arguments); };
+    child = function () { return parent.apply(this, arguments); };
   }
 
   // Add static properties to the constructor function, if supplied.
@@ -32,13 +32,15 @@ exports.extend = function(protoProps, staticProps) {
 
   // Set the prototype chain to inherit from `parent`, without calling
   // `parent`'s constructor function.
-  var Surrogate = function(){ this.constructor = child; };
+  var Surrogate = function () { this.constructor = child; };
   Surrogate.prototype = parent.prototype;
-  child.prototype = new Surrogate;
+  child.prototype = new Surrogate();
 
   // Add prototype properties (instance properties) to the subclass,
   // if supplied.
-  if (protoProps) _.extend(child.prototype, protoProps);
+  if (protoProps) {
+    _.extend(child.prototype, protoProps);
+  }
 
   // Set a convenience property in case the parent's prototype is needed
   // later.

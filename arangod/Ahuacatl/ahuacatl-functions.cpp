@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -132,7 +134,7 @@ static bool CheckArgumentType (TRI_aql_node_t const* parameter,
       parameter->_type == TRI_AQL_NODE_FCALL_USER) {
     return true;
   }
-  
+
   if (parameter->_type == TRI_AQL_NODE_PARAMETER) {
     // node is a bind parameter
     char* name = TRI_AQL_NODE_STRING(parameter);
@@ -689,19 +691,19 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("GRAPH_ABSOLUTE_CLOSENESS", "GENERAL_GRAPH_ABSOLUTE_CLOSENESS", false, false, "s,als|a", NULL);
   REGISTER_FUNCTION("GRAPH_DIAMETER", "GENERAL_GRAPH_DIAMETER", false, false, "s|a", NULL);
   REGISTER_FUNCTION("GRAPH_RADIUS", "GENERAL_GRAPH_RADIUS", false, false, "s|a", NULL);
-  
+
   // date functions
   REGISTER_FUNCTION("DATE_NOW", "DATE_NOW", false, false, "", NULL); // NOW is non-deterministic
-  REGISTER_FUNCTION("DATE_TIMESTAMP", "DATE_TIMESTAMP", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL); 
-  REGISTER_FUNCTION("DATE_ISO8601", "DATE_ISO8601", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL); 
-  REGISTER_FUNCTION("DATE_DAYOFWEEK", "DATE_DAYOFWEEK", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_YEAR", "DATE_YEAR", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_MONTH", "DATE_MONTH", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_DAY", "DATE_DAY", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_HOUR", "DATE_HOUR", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_MINUTE", "DATE_MINUTE", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_SECOND", "DATE_SECOND", true, false, "ns", NULL); 
-  REGISTER_FUNCTION("DATE_MILLISECOND", "DATE_MILLISECOND", true, false, "ns", NULL); 
+  REGISTER_FUNCTION("DATE_TIMESTAMP", "DATE_TIMESTAMP", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL);
+  REGISTER_FUNCTION("DATE_ISO8601", "DATE_ISO8601", true, false, "ns|ns,ns,ns,ns,ns,ns", NULL);
+  REGISTER_FUNCTION("DATE_DAYOFWEEK", "DATE_DAYOFWEEK", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_YEAR", "DATE_YEAR", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_MONTH", "DATE_MONTH", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_DAY", "DATE_DAY", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_HOUR", "DATE_HOUR", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_MINUTE", "DATE_MINUTE", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_SECOND", "DATE_SECOND", true, false, "ns", NULL);
+  REGISTER_FUNCTION("DATE_MILLISECOND", "DATE_MILLISECOND", true, false, "ns", NULL);
 
   // misc functions
   REGISTER_FUNCTION("FAIL", "FAIL", false, false, "|s", NULL); // FAIL is non-deterministic, otherwise query optimisation will fail!
@@ -773,7 +775,7 @@ TRI_aql_function_t* TRI_GetByExternalNameFunctionAql (TRI_associative_pointer_t*
 
   function = (TRI_aql_function_t*) TRI_LookupByKeyAssociativePointer(functions, (void*) upperName);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, upperName);
-  
+
   return function;
 }
 
@@ -819,7 +821,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
-  
+
   function->_argPattern = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, argPattern);
 
   if (function->_argPattern == NULL) {
@@ -828,7 +830,7 @@ bool TRI_RegisterFunctionAql (TRI_associative_pointer_t* functions,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, function);
     return false;
   }
-  
+
 
   if (TRI_InsertKeyAssociativePointer(functions, function->_externalName, function, false)) {
     // function already registered
@@ -1021,7 +1023,11 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
   return true;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

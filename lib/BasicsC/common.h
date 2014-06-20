@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_COMMON_H
-#define TRIAGENS_BASICS_C_COMMON_H 1
+#ifndef ARANGODB_BASICS_C_COMMON_H
+#define ARANGODB_BASICS_C_COMMON_H 1
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             configuration options
@@ -170,7 +172,7 @@ static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
   return len-1;
 }
 
-// The following two possibilities are equivalent, but seem to produce 
+// The following two possibilities are equivalent, but seem to produce
 // a branch instruction in the assembler code rather than a conditional move:
 
 #if 0
@@ -191,8 +193,8 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper for assert()
 ///
-/// This wrapper maps TRI_ASSERT() to (void) 0 for non-maintainers. 
-/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE is set 
+/// This wrapper maps TRI_ASSERT() to (void) 0 for non-maintainers.
+/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE is set
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -224,5 +226,5 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

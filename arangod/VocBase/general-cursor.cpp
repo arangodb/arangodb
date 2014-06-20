@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,19 +42,10 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief delete at most this number of cursors during a gc cycle
 ////////////////////////////////////////////////////////////////////////////////
 
 #define CURSOR_MAX_DELETE 256
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                cursor result sets
@@ -61,11 +54,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor result set
@@ -122,10 +110,6 @@ void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           cursors
 // -----------------------------------------------------------------------------
@@ -133,11 +117,6 @@ void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an element in the ids index
@@ -217,18 +196,9 @@ static TRI_json_t* GetExtraGeneralCursor (const TRI_general_cursor_t* const curs
   return cursor->_extra;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a cursor
@@ -238,7 +208,7 @@ void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
   if (cursor->_extra != NULL) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cursor->_extra);
   }
-  
+
   TRI_FreeCursorResult(cursor->_result);
 
   TRI_DestroySpin(&cursor->_lock);
@@ -257,7 +227,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_vocbase_t* vocbase,
                                                const TRI_general_cursor_length_t batchSize,
                                                TRI_json_t* extra) {
   TRI_general_cursor_t* cursor;
-  
+
   TRI_ASSERT(vocbase != NULL);
 
   cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
@@ -271,7 +241,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_vocbase_t* vocbase,
 
   cursor->_result      = result;
   cursor->_extra       = extra; // might be NULL
-  
+
   cursor->_expires     = TRI_microtime() + 3600; // default lifetime: 1h
   cursor->_id          = TRI_NewTickServer();
 
@@ -409,7 +379,7 @@ void TRI_PersistGeneralCursor (TRI_general_cursor_t* cursor,
 /// @brief lookup a cursor by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase, 
+TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase,
                                              TRI_voc_tick_t id) {
   TRI_general_cursor_store_t* store = vocbase->_cursors;
 
@@ -427,7 +397,7 @@ TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase,
 /// @brief mark as cursor as deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase, 
+bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase,
                               TRI_voc_tick_t id) {
   TRI_general_cursor_store_t* store = vocbase->_cursors;
   bool result;
@@ -497,7 +467,7 @@ void TRI_FreeStoreGeneralCursor (TRI_general_cursor_store_t* store) {
 
 void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
                                bool force) {
-  double compareStamp = TRI_microtime(); 
+  double compareStamp = TRI_microtime();
   size_t deleteCount = 0;
 
   // we need an exclusive lock on the index
@@ -541,15 +511,15 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
         TRI_UnlockSpin(&cursor->_lock);
         TRI_FreeGeneralCursor(cursor);
         deleted = true;
-          
+
         // the remove might reposition elements in the container.
         // therefore break here and start iteration anew
         break;
       }
-        
+
       TRI_UnlockSpin(&cursor->_lock);
     }
-  
+
     if (! deleted) {
       // we did not find anything to delete, so give up
       break;
@@ -560,11 +530,11 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
   TRI_UnlockSpin(&store->_lock);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +55,7 @@ TRI_read_write_lock_t FailurePointsLock;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief make a delimited value from a string, so we can unambigiously 
+/// @brief make a delimited value from a string, so we can unambigiously
 /// search for it (e.g. searching for just "foo" would find "foo" and "foobar",
 /// so we'll be putting the value inside some delimiter: ",foo,")
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,9 +102,9 @@ void TRI_SegfaultDebugging (char const* message) {
 
 bool TRI_ShouldFailDebugging (char const* value) {
   char* found = NULL;
-  
+
   TRI_ReadLockReadWriteLock(&FailurePointsLock);
-  
+
   if (FailurePoints != NULL) {
     char* checkValue = MakeValue(value);
 
@@ -111,7 +113,7 @@ bool TRI_ShouldFailDebugging (char const* value) {
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
     }
   }
-  
+
   TRI_ReadUnlockReadWriteLock(&FailurePointsLock);
 
   return (found != NULL);
@@ -126,11 +128,11 @@ void TRI_AddFailurePointDebugging (char const* value) {
   char* checkValue;
 
   checkValue = MakeValue(value);
-  
+
   if (checkValue == NULL) {
     return;
   }
-  
+
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
 
   if (FailurePoints == NULL) {
@@ -162,7 +164,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
     }
     else {
       copy = TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false);
-      
+
       if (copy == NULL) {
         TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
@@ -176,7 +178,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
 
     FailurePoints = copy;
   }
-        
+
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
   TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
 }
@@ -194,11 +196,11 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     return;
   }
-  
+
   checkValue = MakeValue(value);
-  
+
   if (checkValue != NULL) {
-    char* found; 
+    char* found;
     char* copy;
     size_t n;
 
@@ -237,7 +239,7 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     copy[strlen(FailurePoints) - strlen(checkValue) + 1] = '\0';
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
     FailurePoints = copy;
-    
+
     TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
   }
@@ -255,7 +257,7 @@ void TRI_ClearFailurePointsDebugging () {
   }
 
   FailurePoints = NULL;
-  
+
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
 }
 
@@ -290,5 +292,5 @@ void TRI_ShutdownDebugging () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

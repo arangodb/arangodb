@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -88,10 +90,10 @@ namespace {
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone, 
-                                    v8::Handle<v8::Value> const obj) 
-  : _str(nullptr), 
-    _length(0), 
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC (TRI_memory_zone_t* memoryZone,
+                                    v8::Handle<v8::Value> const obj)
+  : _str(nullptr),
+    _length(0),
     _memoryZone(memoryZone) {
 
    v8::String::Value str(obj);
@@ -123,11 +125,11 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
                                                  const char* file,
                                                  int line) {
   v8::HandleScope scope;
-  
+
   if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_ERROR("encountered out-of-memory error in %s at line %d", file, line);
   }
-  
+
   v8::Handle<v8::String> errorMessage = v8::String::New(message.c_str(), (int) message.size());
 
   if (errorMessage.IsEmpty()) {
@@ -326,7 +328,7 @@ static v8::Handle<v8::Value> JS_Base64Decode (v8::Arguments const& argv) {
   try {
     string const value = TRI_ObjectToString(argv[0]);
     string const base64 = StringUtils::decodeBase64(value);
-  
+
     return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
@@ -354,7 +356,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
   try {
     string const value = TRI_ObjectToString(argv[0]);
     string const base64 = StringUtils::encodeBase64(value);
-  
+
     return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
   catch (...) {
@@ -704,7 +706,7 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
           else {
             // set "body" attribute in result
             const StringBuffer& sb = response->getBody();
-            result->Set(v8::String::New("body"), 
+            result->Set(v8::String::New("body"),
                         v8::String::New(sb.c_str(), (int) sb.length()));
           }
         }
@@ -880,7 +882,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
@@ -2528,7 +2530,7 @@ static v8::Handle<v8::Value> JS_HMAC (v8::Arguments const& argv) {
 
   string key = TRI_ObjectToString(argv[0]);
   string message = TRI_ObjectToString(argv[1]);
-  
+
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
   if (argv.Length() > 2 && ! argv[2]->IsUndefined()) {
     string algorithm = TRI_ObjectToString(argv[2]);
@@ -2593,7 +2595,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
 
   // extract the arguments
   if (3 < argv.Length() || argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, 
+    TRI_V8_EXCEPTION_USAGE(scope,
       "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
   }
 
@@ -2646,7 +2648,7 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (const char**) arguments, (size_t) n, 
+  TRI_CreateExternalProcess(*name, (const char**) arguments, (size_t) n,
                             usePipes, &external);
   if (arguments != 0) {
     for (uint32_t i = 0;  i < n;  ++i) {
@@ -2675,16 +2677,16 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   char* readPipe  = NULL;
   char* writePipe = NULL;
   if (0 != external._readPipe) {
-    readPipe = TRI_EncodeHexString((const char *)external._readPipe, 
+    readPipe = TRI_EncodeHexString((const char *)external._readPipe,
                                    sizeof(HANDLE), &readPipe_len);
-    result->Set(v8::String::New("readPipe"), 
+    result->Set(v8::String::New("readPipe"),
                 v8::String::New(readPipe, (int) readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
   if (0 != external._writePipe) {
-    writePipe = TRI_EncodeHexString((const char *)external._writePipe, 
+    writePipe = TRI_EncodeHexString((const char *)external._writePipe,
                                     sizeof(HANDLE), &writePipe_len);
-    result->Set(v8::String::New("writePipe"), 
+    result->Set(v8::String::New("writePipe"),
                 v8::String::New(writePipe, (int) writePipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
   }
@@ -2703,7 +2705,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   // extract the arguments
   if (argv.Length() < 1 || argv.Length() > 2 ||
       !argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, 
+    TRI_V8_EXCEPTION_USAGE(scope,
                            "statusExternal(<external-identifier>[, <wait>])");
   }
 
@@ -3409,5 +3411,5 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

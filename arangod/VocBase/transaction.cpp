@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,7 +80,7 @@ static inline bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a marker needs to be written
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static inline bool NeedWriteMarker (TRI_transaction_t const* trx) {
   return (trx->_nestingLevel == 0 && ! IsReadOnlyTransaction(trx) && ! IsSingleOperationTransaction(trx));
 }
@@ -112,7 +114,7 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 static void FreeOperations (TRI_transaction_t* trx) {
   size_t const n = trx->_collections._length;
   bool mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
-  
+
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -120,7 +122,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
     if (trxCollection->_operations == nullptr) {
       continue;
     }
- 
+
     if (mustRollback) {
       // revert all operations
       for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
@@ -133,12 +135,12 @@ static void FreeOperations (TRI_transaction_t* trx) {
       // update datafile statistics for all operations
       // pair (number of dead markers, size of dead markers)
       std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
-      
+
       for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
         triagens::wal::DocumentOperation* op = (*it);
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-            op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) { 
+            op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           TRI_voc_fid_t fid = op->oldHeader._fid;
           TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(op->oldHeader.getDataPtr());  // PROTECTED by trx from above
 
@@ -157,27 +159,27 @@ static void FreeOperations (TRI_transaction_t* trx) {
       // now update the stats in one go
       for (auto it = stats.begin(); it != stats.end(); ++it) {
         TRI_voc_fid_t fid = (*it).first;
-      
+
         TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, fid, false);
         // the old header might point to the WAL. in this case, there'll be no stats update
-      
+
         if (dfi != nullptr) {
-          dfi->_numberDead += (*it).second.first; 
-          dfi->_sizeDead += (*it).second.second; 
-          dfi->_numberAlive -= (*it).second.first; 
-          dfi->_sizeAlive -= (*it).second.second; 
+          dfi->_numberDead += static_cast<TRI_voc_ssize_t>((*it).second.first);
+          dfi->_sizeDead += (*it).second.second;
+          dfi->_numberAlive -= static_cast<TRI_voc_ssize_t>((*it).second.first);
+          dfi->_sizeAlive -= (*it).second.second;
         }
       }
     }
 
     for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
       triagens::wal::DocumentOperation* op = (*it);
-  
+
       delete op;
     }
-  
-    if (mustRollback) { 
-      document->_info._revision = trxCollection->_originalRevision; 
+
+    if (mustRollback) {
+      document->_info._revision = trxCollection->_originalRevision;
     }
     else if (! document->_info._isVolatile) {
       // only count logfileEntries if the collection is durable
@@ -198,10 +200,10 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
                                                      size_t* position) {
   size_t const n = trx->_collections._length;
   size_t i;
-   
+
   for (i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    
+
     if (cid < trxCollection->_cid) {
       // collection not found
       break;
@@ -214,7 +216,7 @@ static TRI_transaction_collection_t* FindCollection (const TRI_transaction_t* co
 
     // next
   }
-    
+
   if (position != nullptr) {
     // update the insert position if required
     *position = i;
@@ -272,14 +274,14 @@ static void FreeBarrier (TRI_transaction_collection_t* trxCollection) {
   if (trxCollection->_barrier != nullptr) {
     // we're done with this barrier
     TRI_barrier_blocker_t* barrier = reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier);
-    
+
     barrier->_usedByTransaction = false;
 
     if (! barrier->_usedByExternal) {
       // no one else is using this barrier, so we can free it
       TRI_FreeBarrier(trxCollection->_barrier);
     }
-    
+
     trxCollection->_barrier = nullptr;
   }
 }
@@ -296,7 +298,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection != nullptr);
 
   TRI_transaction_t* trx = trxCollection->_transaction;
-  
+
   if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) != 0) {
     // never lock
     return TRI_ERROR_NO_ERROR;
@@ -310,11 +312,11 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx,
-            nestingLevel, 
-            "read-locking collection %llu", 
+            nestingLevel,
+            "read-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginRead(document); 
+      res = document->beginRead(document);
     }
     else {
       res = document->beginReadTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
@@ -322,11 +324,11 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   }
   else {
     LOG_TRX(trx,
-            nestingLevel, 
-            "write-locking collection %llu", 
+            nestingLevel,
+            "write-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginWrite(document); 
+      res = document->beginWrite(document);
     }
     else {
       res = document->beginWriteTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
@@ -349,7 +351,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
                              int nestingLevel) {
 
   TRI_ASSERT(trxCollection != nullptr);
-  
+
   if ((trxCollection->_transaction->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) != 0) {
     // never unlock
     return TRI_ERROR_NO_ERROR;
@@ -360,7 +362,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(trxCollection->_locked == true);
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    
+
   if (trxCollection->_nestingLevel < nestingLevel) {
     // only process our own collections
     return TRI_ERROR_NO_ERROR;
@@ -368,15 +370,15 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
 
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction,
-            nestingLevel, 
-            "read-unlocking collection %llu", 
+            nestingLevel,
+            "read-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
     document->endRead(document);
   }
   else {
-    LOG_TRX(trxCollection->_transaction, 
-            nestingLevel, 
-            "write-unlocking collection %llu", 
+    LOG_TRX(trxCollection->_transaction,
+            nestingLevel,
+            "write-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
     document->endWrite(document);
   }
@@ -405,7 +407,7 @@ static int UseCollections (TRI_transaction_t* trx,
       // only process our own collections
       continue;
     }
-      
+
     if (trxCollection->_collection == nullptr) {
       // open the collection
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
@@ -424,12 +426,12 @@ static int UseCollections (TRI_transaction_t* trx,
         // something went wrong
         return TRI_errno();
       }
-      
+
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY &&
           ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
         return TRI_ERROR_ARANGO_READ_ONLY;
-      } 
+      }
 
       // store the waitForSync property
       trxCollection->_waitForSync = trxCollection->_collection->_collection->_info._waitForSync;
@@ -437,7 +439,7 @@ static int UseCollections (TRI_transaction_t* trx,
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
     TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-    
+
     if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
       // read-lock the compaction lock
       if (! trxCollection->_compactionLocked) {
@@ -445,19 +447,19 @@ static int UseCollections (TRI_transaction_t* trx,
         trxCollection->_compactionLocked = true;
       }
     }
-  
+
     if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && trxCollection->_originalRevision == 0) {
       // store original revision at transaction start
       trxCollection->_originalRevision = trxCollection->_collection->_collection->_info._revision;
     }
-        
+
     shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);
 
     if (! shouldLock) {
-      shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) && 
+      shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) &&
                    ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) == 0);
     }
-    
+
     if (shouldLock && ! trxCollection->_locked) {
       // r/w lock the collection
       int res = LockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
@@ -485,16 +487,16 @@ static int ReleaseCollections (TRI_transaction_t* trx,
   while (i-- > 0) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
-    if (trxCollection->_locked && 
+    if (trxCollection->_locked &&
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
       // unlock our own r/w locks
       UnlockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
     }
-    
+
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
 
-      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && 
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           trxCollection->_compactionLocked) {
         // read-unlock the compaction lock
         TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
@@ -504,7 +506,7 @@ static int ReleaseCollections (TRI_transaction_t* trx,
       if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
         // unuse collection, remove usage-lock
         LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
-  
+
         TRI_ReleaseCollectionVocBase(trx->_vocbase, trxCollection->_collection);
       }
 
@@ -524,14 +526,14 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_IF_FAILURE("TransactionWriteBeginMarker") {
     return TRI_ERROR_DEBUG;
   }
 
   int res;
-  
-  try { 
+
+  try {
     triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   }
@@ -557,14 +559,14 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_IF_FAILURE("TransactionWriteAbortMarker") {
     return TRI_ERROR_DEBUG;
   }
 
   int res;
 
-  try { 
+  try {
     triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   }
@@ -590,14 +592,14 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return TRI_ERROR_DEBUG;
   }
 
   int res;
 
-  try { 
+  try {
     triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   }
@@ -667,8 +669,8 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   trx->_generatingServer  = generatingServer;
 
   // note: the real transaction id will be acquired on transaction start
-  trx->_id                = 0; 
-  
+  trx->_id                = 0;
+
   trx->_status            = TRI_TRANSACTION_CREATED;
   trx->_type              = TRI_TRANSACTION_READ;
   trx->_hints             = 0;
@@ -700,10 +702,10 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
     TRI_AbortTransaction(trx, 0);
   }
-  
+
   // release the marker protector
-  bool const hasFailedOperations = (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED); 
-  triagens::wal::LogfileManager::instance()->unregisterTransaction(trx->_id, hasFailedOperations);  
+  bool const hasFailedOperations = (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
+  triagens::wal::LogfileManager::instance()->unregisterTransaction(trx->_id, hasFailedOperations);
 
   // free all collections
   size_t i = trx->_collections._length;
@@ -715,7 +717,7 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
-  
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
 }
 
@@ -729,11 +731,11 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
 
 bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const* trx,
                                               TRI_voc_cid_t cid) {
-  
+
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING ||
          trx->_status == TRI_TRANSACTION_ABORTED ||
          trx->_status == TRI_TRANSACTION_COMMITTED);
-   
+
   return trx->_waitForSync;
 }
 
@@ -744,19 +746,19 @@ bool TRI_WasSynchronousCollectionTransaction (TRI_transaction_t const* trx,
 TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t const* trx,
                                                             TRI_voc_cid_t cid,
                                                             TRI_transaction_type_e accessType) {
-  
+
   TRI_transaction_collection_t* trxCollection;
-  
+
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
              trx->_status == TRI_TRANSACTION_RUNNING);
-   
+
   trxCollection = FindCollection(trx, cid, nullptr);
-  
+
   if (trxCollection == nullptr) {
     // not found
     return nullptr;
   }
-  
+
   if (trxCollection->_collection == nullptr) {
     if ((trxCollection->_transaction->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
       // not opened. probably a mistake made by the caller
@@ -766,7 +768,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
       // ok
     }
   }
-  
+
   // check if access type matches
   if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType == TRI_TRANSACTION_READ) {
     // type doesn't match. probably also a mistake by the caller
@@ -787,14 +789,14 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 
   TRI_transaction_collection_t* trxCollection;
   size_t position;
-    
+
   LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
-          
+
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
 
-    if (accessType == TRI_TRANSACTION_WRITE && 
+    if (accessType == TRI_TRANSACTION_WRITE &&
         trx->_type == TRI_TRANSACTION_READ) {
       // if one collection is written to, the whole transaction becomes a write-transaction
       trx->_type = TRI_TRANSACTION_WRITE;
@@ -806,10 +808,10 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 
   if (trxCollection != nullptr) {
     // collection is already contained in vector
-   
+
     if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != accessType) {
       if (nestingLevel > 0) {
-        // trying to write access a collection that is only marked with read-access 
+        // trying to write access a collection that is only marked with read-access
         return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
       }
 
@@ -817,7 +819,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 
       // upgrade collection type to write-access
       trxCollection->_accessType = TRI_TRANSACTION_WRITE;
-    } 
+    }
 
     if (nestingLevel < trxCollection->_nestingLevel) {
       trxCollection->_nestingLevel = nestingLevel;
@@ -881,7 +883,7 @@ int TRI_LockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
 int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
                                      const TRI_transaction_type_e accessType,
                                      const int nestingLevel) {
-  
+
   if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
     return TRI_ERROR_INTERNAL;
@@ -903,7 +905,7 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
                                         TRI_transaction_type_e accessType,
                                         int nestingLevel) {
 
-  if (accessType == TRI_TRANSACTION_WRITE && 
+  if (accessType == TRI_TRANSACTION_WRITE &&
       trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
     LOG_WARNING("logic error. checking wrong lock type");
@@ -923,7 +925,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   TRI_transaction_t* trx = trxCollection->_transaction;
 
   TRI_ASSERT(operation.header != nullptr);
-  
+
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // default is false
@@ -931,12 +933,12 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   if (isSingleOperationTransaction) {
     waitForSync = syncRequested || trxCollection->_waitForSync;
   }
-  
+
   // upgrade the info for the transaction
   if (syncRequested || trxCollection->_waitForSync) {
     trx->_waitForSync = true;
   }
-  
+
   TRI_IF_FAILURE("TransactionOperationNoSlot") {
     return TRI_ERROR_DEBUG;
   }
@@ -944,9 +946,9 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   TRI_IF_FAILURE("TransactionOperationNoSlotExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
-  
+
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     // some error occurred
     return slotInfo.errorCode;
@@ -957,14 +959,14 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     // adjust the data position in the header
     operation.header->setDataPtr(slotInfo.mem);  // PROTECTED by ongoing trx from operation
   }
-      
+
   // set header file id
   operation.header->_fid = slotInfo.logfileId;
 
   TRI_ASSERT(operation.header->_fid > 0);
-  
+
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
-  
+
   if (isSingleOperationTransaction) {
     // operation is directly executed
     operation.handle();
@@ -1009,7 +1011,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
 /// @brief start a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_BeginTransaction (TRI_transaction_t* trx, 
+int TRI_BeginTransaction (TRI_transaction_t* trx,
                           TRI_transaction_hint_t hints,
                           int nestingLevel) {
   LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
@@ -1022,9 +1024,9 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
 
     // set hints
     trx->_hints = hints;
-  
+
     // register a protector
-    triagens::wal::LogfileManager::instance()->registerTransaction(trx->_id);  
+    triagens::wal::LogfileManager::instance()->registerTransaction(trx->_id);
   }
   else {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
@@ -1036,11 +1038,11 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     // all valid
     if (nestingLevel == 0) {
       UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
-      
+
       res = WriteBeginMarker(trx);
     }
   }
-  
+
 
   if (res != TRI_ERROR_NO_ERROR) {
     // something is wrong
@@ -1076,7 +1078,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
       // return original error
       return res;
     }
-      
+
     UpdateTransactionStatus(trx, TRI_TRANSACTION_COMMITTED);
 
     FreeOperations(trx);
@@ -1112,7 +1114,11 @@ int TRI_AbortTransaction (TRI_transaction_t* trx,
   return res;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

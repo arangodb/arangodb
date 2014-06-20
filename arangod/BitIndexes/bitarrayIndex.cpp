@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,12 +93,6 @@ static void BitarrayIndex_debugPrintMask           (BitarrayIndex*, uint64_t);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarrayIndex
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a bitarray index , but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -128,12 +124,6 @@ void BitarrayIndex_free (BitarrayIndex* baIndex) {
   BitarrayIndex_destroy(baIndex);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, baIndex);
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -292,8 +282,8 @@ int BitarrayIndex_insert (BitarrayIndex* baIndex, TRI_bitarray_index_key_t* elem
   mask._ignoreMask = 0;
 
   result = BitarrayIndex_generateInsertBitMask(baIndex, element, &mask);
-  //debugPrintMask(baIndex, mask._mask); 
- 
+  //debugPrintMask(baIndex, mask._mask);
+
   // ..........................................................................
   // It may happen that the values for one or more attributes are unsupported
   // in this an error will be returned.
@@ -301,8 +291,8 @@ int BitarrayIndex_insert (BitarrayIndex* baIndex, TRI_bitarray_index_key_t* elem
 
   if (result != TRI_ERROR_NO_ERROR) {
     return result;
-  }  
-  
+  }
+
   // ..........................................................................
   // insert the bit mask into the bit array
   // ..........................................................................
@@ -315,7 +305,7 @@ int BitarrayIndex_insert (BitarrayIndex* baIndex, TRI_bitarray_index_key_t* elem
 /// @brief attempts to locate one or more documents which match an index operator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex, 
+TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex,
                                           TRI_index_operator_t* indexOperator,
                                           TRI_vector_t* shapeList,
                                           TRI_bitarray_index_t* collectionIndex,
@@ -384,7 +374,7 @@ TRI_index_iterator_t* BitarrayIndex_find (BitarrayIndex* baIndex,
   return iterator;
 }
 
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the bit arrays and master table
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -901,8 +891,8 @@ static void  BitarrayIndex_freeMaskSet(TRI_bitarray_mask_set_t* maskSet) {
 }
 #endif
 
-static int BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const* valueList, 
-                                                     TRI_json_t const* value, 
+static int BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const* valueList,
+                                                     TRI_json_t const* value,
                                                      uint64_t* mask) {
   uint64_t other = 0;
   uint64_t tempMask = 0;
@@ -1279,13 +1269,11 @@ void BitarrayIndex_debugPrintMask(BitarrayIndex* baIndex, uint64_t mask) {
 */
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
-

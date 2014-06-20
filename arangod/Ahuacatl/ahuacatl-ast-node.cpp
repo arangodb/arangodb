@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,7 +59,7 @@
                                                                         \
   node->_type = type;                                                   \
   TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);         \
-  TRI_RegisterNodeContextAql(context, node);                                    
+  TRI_RegisterNodeContextAql(context, node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub node to a node
@@ -102,25 +104,25 @@ static void SetWriteOperation (TRI_aql_context_t* context,
     TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(collection, 0);
 
     if (nameNode == nullptr) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr); 
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, nullptr);
       return;
     }
-  
+
     context->_writeCollection = TRI_AQL_NODE_STRING(nameNode);
   }
   else if (collection->_type == TRI_AQL_NODE_PARAMETER) {
     // collection specified via bind parameter
-    context->_writeCollection = TRI_AQL_NODE_STRING(collection); 
+    context->_writeCollection = TRI_AQL_NODE_STRING(collection);
   }
   else {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_INTERNAL, nullptr); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_INTERNAL, nullptr);
     TRI_ASSERT(false);
     return;
   }
 
   if (options != nullptr) {
     if (! TRI_IsConstantValueNodeAql(options)) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, nullptr); 
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, nullptr);
       return;
     }
   }
@@ -144,7 +146,7 @@ static TRI_aql_node_t* CreateNodeInternalFcall (TRI_aql_context_t* const context
   {
     TRI_aql_function_t* function;
     TRI_associative_pointer_t* functions;
-    
+
     TRI_ASSERT(context->_vocbase);
     functions = context->_vocbase->_functions;
     TRI_ASSERT(functions);
@@ -161,7 +163,7 @@ static TRI_aql_node_t* CreateNodeInternalFcall (TRI_aql_context_t* const context
     if (! TRI_ValidateArgsFunctionAql(context, function, parameters)) {
       return NULL;
     }
-  
+
     // initialise
     ADD_MEMBER(parameters)
     TRI_AQL_NODE_DATA(node) = function;
@@ -184,7 +186,7 @@ static TRI_aql_node_t* CreateNodeUserFcall (TRI_aql_context_t* const context,
     char* copy = TRI_RegisterStringAql(context, internalName, strlen(internalName), false);
 
     if (copy == NULL) {
-      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+      TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return NULL;
     }
 
@@ -306,7 +308,7 @@ TRI_aql_node_t* TRI_CreateNodeForAql (TRI_aql_context_t* const context,
   TRI_AQL_NODE_DATA(node) = NULL;
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -348,7 +350,7 @@ TRI_aql_node_t* TRI_CreateNodeLetAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_LET)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -404,7 +406,7 @@ TRI_aql_node_t* TRI_CreateNodeRemoveAql (TRI_aql_context_t* const context,
 
   ADD_MEMBER(expression)
 
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, options); 
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, options);
 
   return node;
 }
@@ -421,7 +423,7 @@ TRI_aql_node_t* TRI_CreateNodeInsertAql (TRI_aql_context_t* const context,
 
   ADD_MEMBER(expression)
 
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_INSERT, options);  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_INSERT, options);
 
   return node;
 }
@@ -444,7 +446,7 @@ TRI_aql_node_t* TRI_CreateNodeUpdateAql (TRI_aql_context_t* const context,
     ADD_MEMBER(keyExpression)
   }
 
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, options);  
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, options);
 
   return node;
 }
@@ -466,8 +468,8 @@ TRI_aql_node_t* TRI_CreateNodeReplaceAql (TRI_aql_context_t* const context,
     // key explicitly specified
     ADD_MEMBER(keyExpression)
   }
-  
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REPLACE, options);  
+
+  SetWriteOperation(context, collection, TRI_AQL_QUERY_REPLACE, options);
 
   return node;
 }
@@ -562,7 +564,7 @@ TRI_aql_node_t* TRI_CreateNodeVariableAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_VARIABLE)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -592,7 +594,7 @@ TRI_aql_node_t* TRI_CreateNodeCollectionAql (TRI_aql_context_t* const context,
   node->_value._value._data = NULL;
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -643,7 +645,7 @@ TRI_aql_node_t* TRI_CreateNodeReferenceAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_REFERENCE)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -661,7 +663,7 @@ TRI_aql_node_t* TRI_CreateNodeParameterAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_PARAMETER)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -965,7 +967,7 @@ TRI_aql_node_t* TRI_CreateNodeAttributeAccessAql (TRI_aql_context_t* const conte
   CREATE_NODE(TRI_AQL_NODE_ATTRIBUTE_ACCESS)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1016,7 +1018,7 @@ TRI_aql_node_t* TRI_CreateNodeExpandAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_EXPAND)
 
   if (varname == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1097,7 +1099,7 @@ TRI_aql_node_t* TRI_CreateNodeValueStringAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_VALUE)
 
   if (value == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1137,7 +1139,7 @@ TRI_aql_node_t* TRI_CreateNodeArrayElementAql (TRI_aql_context_t* const context,
   CREATE_NODE(TRI_AQL_NODE_ARRAY_ELEMENT)
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1159,7 +1161,7 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
   char* upperName;
 
   if (name == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
 
@@ -1173,10 +1175,10 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
   }
 
   if (upperName == NULL) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); 
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return NULL;
   }
- 
+
   if (*upperName == '_') {
     // default internal namespace
     node = CreateNodeInternalFcall(context, name, upperName, parameters);
@@ -1196,11 +1198,11 @@ TRI_aql_node_t* TRI_CreateNodeFcallAql (TRI_aql_context_t* const context,
 
 bool TRI_PushListAql (TRI_aql_context_t* const context,
                       const TRI_aql_node_t* const value) {
-  TRI_aql_node_t* node 
+  TRI_aql_node_t* node
       = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
 
   TRI_ASSERT(node);
-  
+
   if (value == NULL ||
       TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&node->_members, (void*) value)) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -1217,7 +1219,7 @@ bool TRI_PushListAql (TRI_aql_context_t* const context,
 bool TRI_PushArrayAql (TRI_aql_context_t* const context,
                        const char* const name,
                        const TRI_aql_node_t* const value) {
-  TRI_aql_node_t* node 
+  TRI_aql_node_t* node
       = static_cast<TRI_aql_node_t*>(TRI_PeekStackParseAql(context));
   TRI_aql_node_t* element;
 
@@ -1227,7 +1229,7 @@ bool TRI_PushArrayAql (TRI_aql_context_t* const context,
 
   if (element == NULL ||
       TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&node->_members, element)) {
-    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);         
+    TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return false;
   }
 
@@ -1297,5 +1299,5 @@ TRI_aql_node_type_e TRI_ReverseOperatorRelationalAql (const TRI_aql_node_type_e 
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

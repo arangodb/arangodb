@@ -1286,7 +1286,7 @@ extern int ZEXPORT unzLocateFile (unzFile file, const char *szFileName, int iCas
 
 
 /*
-///////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Contributed by Ryan Haksi (mailto://cryogen@infoserve.net)
 // I need random access
 //
@@ -1370,7 +1370,7 @@ extern int ZEXPORT unzGoToFilePos(
 
 /*
 // Unzip Helper Functions - should be here?
-///////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 */
 
 /*
@@ -2121,3 +2121,11 @@ extern int ZEXPORT unzSetOffset (unzFile file, uLong pos)
 {
     return unzSetOffset64(file,pos);
 }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

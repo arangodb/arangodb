@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -43,7 +45,7 @@
 /// of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinkBarrierElement (TRI_barrier_t* element, 
+static void LinkBarrierElement (TRI_barrier_t* element,
                                 TRI_barrier_list_t* container) {
   TRI_ASSERT(container != NULL);
 
@@ -93,7 +95,7 @@ template <typename T> static T* CreateBarrier () {
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitBarrierList (TRI_barrier_list_t* container, 
+void TRI_InitBarrierList (TRI_barrier_list_t* container,
                           TRI_document_collection_t* collection) {
   container->_collection = collection;
 
@@ -145,10 +147,10 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 /// @brief check whether the barrier list contains an element of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,  
+bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
                               TRI_barrier_type_e type) {
   TRI_LockSpin(&container->_lock);
-  
+
   if (type == TRI_BARRIER_ELEMENT) {
     // shortcut
     bool hasBarriers = (container->_numBarrierElements > 0);
@@ -368,19 +370,23 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
   else {
     element->_next->_prev = element->_prev;
   }
-  
+
   if (element->_type == TRI_BARRIER_ELEMENT) {
     // decrease counter for barrier elements
     --container->_numBarrierElements;
   }
 
   TRI_UnlockSpin(&container->_lock);
-  
+
   // free the element
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

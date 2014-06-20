@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,7 +93,7 @@ namespace triagens {
           if (n < 0) {
             TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d", 
+            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d",
                       filename.c_str(),
                       strerror(errno),
                       (int) n,
@@ -119,7 +121,7 @@ namespace triagens {
         if (fd == -1) {
           THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
         }
-        
+
         // reserve space in the output buffer
         off_t fileSize = size(filename);
         if (fileSize > 0) {
@@ -141,7 +143,7 @@ namespace triagens {
                       filename.c_str(),
                       strerror(errno),
                       (int) n,
-                      fd); 
+                      fd);
             THROW_FILE_FUNC_ERROR("read", "", errno);
           }
 
@@ -151,7 +153,7 @@ namespace triagens {
         TRI_CLOSE(fd);
       }
 
-      
+
       void spit (string const& filename, const char* ptr, size_t len) {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
@@ -196,7 +198,7 @@ namespace triagens {
 
           if (n < 1) {
             TRI_CLOSE(fd);
-            LOG_TRACE("write failed for '%s' with %s and result %d on %d", 
+            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
                       filename.c_str(),
                       strerror(errno),
                       (int) n,
@@ -233,7 +235,7 @@ namespace triagens {
                       filename.c_str(),
                       strerror(errno),
                       (int) n,
-                      fd); 
+                      fd);
             THROW_FILE_FUNC_ERROR("write", "", errno);
           }
 
@@ -294,12 +296,13 @@ namespace triagens {
 
         int result = TRI_MKDIR(name.c_str(), mask);
 
-        if (result != 0 && errno == EEXIST && isDirectory(name)) {
+        int res = errno;
+        if (result != 0 && res == EEXIST && isDirectory(name)) {
           result = 0;
         }
 
         if (errorNumber) {
-          *errorNumber = errno;
+          *errorNumber = res;
         }
 
         return (result != 0) ? false : true;
@@ -326,7 +329,8 @@ namespace triagens {
           if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
             result.push_back(fd.name);
           }
-        } while(_findnext(handle, &fd) != -1);
+        } 
+        while(_findnext(handle, &fd) != -1);
 
         _findclose(handle);
 
@@ -360,7 +364,6 @@ namespace triagens {
       bool isDirectory (string const& path) {
         struct stat stbuf;
         int res = stat(path.c_str(), &stbuf);
-
         return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
       }
 
@@ -484,3 +487,11 @@ namespace triagens {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -42,28 +44,14 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for value list iteration callback function
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef bool (*convert_f) (TRI_string_buffer_t* const, const TRI_aql_node_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 static const char* GetStringOperator (const TRI_aql_node_type_e type) {
   switch (type) {
@@ -132,18 +120,9 @@ static bool AppendListValues (TRI_string_buffer_t* const buffer,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a json struct from a value node
@@ -242,9 +221,9 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE:
       // the conversion is the same for both...
-      value = TRI_RegisterStringAql(context, 
-                                    json->_value._string.data, 
-                                    json->_value._string.length - 1, 
+      value = TRI_RegisterStringAql(context,
+                                    json->_value._string.data,
+                                    json->_value._string.length - 1,
                                     false);
       node = TRI_CreateNodeValueStringAql(context, value);
       break;
@@ -294,9 +273,9 @@ TRI_aql_node_t* TRI_JsonNodeAql (TRI_aql_context_t* const context,
           nameJson = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
           TRI_ASSERT(TRI_IsStringJson(nameJson));
-          name = TRI_RegisterStringAql(context, 
-                                       nameJson->_value._string.data, 
-                                       nameJson->_value._string.length - 1, 
+          name = TRI_RegisterStringAql(context,
+                                       nameJson->_value._string.data,
+                                       nameJson->_value._string.length - 1,
                                        false);
           if (name == NULL) {
             TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
@@ -444,7 +423,7 @@ bool TRI_ValueStringAql (TRI_string_buffer_t* const buffer,
     }
 
     case TRI_AQL_TYPE_BOOL: {
-      if (value->_value._bool) { 
+      if (value->_value._bool) {
         return (TRI_AppendString2StringBuffer(buffer, "true", 4) == TRI_ERROR_NO_ERROR);
       }
       else {
@@ -486,7 +465,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
     case TRI_AQL_NODE_VALUE: {
       return TRI_ValueStringAql(buffer, &node->_value, node->_value._type);
     }
-    
+
     case TRI_AQL_NODE_PARAMETER: {
       return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
     }
@@ -591,7 +570,7 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
 
       return TRI_AppendStringStringBuffer(buffer, TRI_AQL_NODE_STRING(node)) == TRI_ERROR_NO_ERROR;
     }
-    
+
     case TRI_AQL_NODE_BOUND_ATTRIBUTE_ACCESS: {
       if (! TRI_NodeStringAql(buffer, TRI_AQL_NODE_MEMBER(node, 0))) {
         return false;
@@ -704,11 +683,11 @@ bool TRI_NodeStringAql (TRI_string_buffer_t* const buffer,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

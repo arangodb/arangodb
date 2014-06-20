@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,14 +41,14 @@ using namespace std;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                   ClusterComm connection options 
+// --SECTION--                                   ClusterComm connection options
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::arango::ClusterCommRestCallback(string& coordinator, 
+void triagens::arango::ClusterCommRestCallback(string& coordinator,
                              triagens::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
@@ -94,13 +96,13 @@ ClusterComm* ClusterComm::instance () {
 
 void ClusterComm::initialise () {
   auto* i = instance();
-  i->startBackgroundThread(); 
+  i->startBackgroundThread();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ClusterComm::cleanup () {
   auto i = instance();
   TRI_ASSERT(i != nullptr);
@@ -127,7 +129,7 @@ void ClusterComm::startBackgroundThread () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces an operation ID which is unique in this process
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 OperationID ClusterComm::getOperationID () {
   return TRI_NewTickServer();
 }
@@ -150,7 +152,7 @@ OperationID ClusterComm::getOperationID () {
 /// the pointers `headerFields` and `callback` and releases
 /// the memory when the operation has been finished. If `freeBody`
 /// is `true`, then the library takes ownership of the pointer `body`
-/// as well and deletes it at the end. If `freeBody` is `false, it 
+/// as well and deletes it at the end. If `freeBody` is `false, it
 /// is the caller's responsibility to ensure that the object object
 /// to which `body` points is retained until the full asynchronous
 /// operation is finished and has been reported back to the caller
@@ -160,7 +162,7 @@ OperationID ClusterComm::getOperationID () {
 /// Arguments: `clientTransactionID` is a string coming from the client
 /// and describing the transaction the client is doing, `coordTransactionID`
 /// is a number describing the transaction the coordinator is doing,
-/// `destination` is a string that either starts with "shard:" followed 
+/// `destination` is a string that either starts with "shard:" followed
 /// by a shardID identifying the shard this request is sent to,
 /// actually, this is internally translated into a server ID. It is also
 /// possible to specify a DB server ID directly here in the form of "server:"
@@ -205,7 +207,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
                               ":" + basics::StringUtils::itoa(op->operationID) +
                               ":" + clientTransactionID + ":" +
                               basics::StringUtils::itoa(coordTransactionID);
-  (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();                              
+  (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();
 
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
@@ -214,9 +216,9 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->freeBody             = freeBody;
   op->headerFields         = headerFields;
   op->callback             = callback;
-  op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0 
+  op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0
                                             : TRI_microtime()+timeout;
-  
+
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
 
@@ -227,7 +229,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
     list<ClusterCommOperation*>::iterator i = toSend.end();
     toSendByOpID[op->operationID] = --i;
   }
-  LOG_DEBUG("In asyncRequest, put into queue %llu", 
+  LOG_DEBUG("In asyncRequest, put into queue %llu",
             (unsigned long long) op->operationID);
   somethingToSend.signal();
 
@@ -271,9 +273,9 @@ ClusterCommResult* ClusterComm::syncRequest (
     res->operationID        = getOperationID();
   } while (res->operationID == 0);   // just to make sure
   res->status               = CL_COMM_SENDING;
-  
+
   double currentTime = TRI_microtime();
-  double endTime = timeout == 0.0 ? currentTime+24*60*60.0 
+  double endTime = timeout == 0.0 ? currentTime+24*60*60.0
                                   : currentTime+timeout;
 
   if (destination.substr(0,6) == "shard:") {
@@ -306,9 +308,9 @@ ClusterCommResult* ClusterComm::syncRequest (
     }
   }
   else {
-    httpclient::ConnectionManager* cm 
+    httpclient::ConnectionManager* cm
         = httpclient::ConnectionManager::instance();
-    httpclient::ConnectionManager::SingleServerConnection* connection 
+    httpclient::ConnectionManager::SingleServerConnection* connection
         = cm->leaseConnection(endpoint);
     if (0 == connection) {
       res->status = CL_COMM_ERROR;
@@ -328,9 +330,9 @@ ClusterCommResult* ClusterComm::syncRequest (
                                 connection->connection,
                                 endTime-currentTime, false);
       client->keepConnectionOnDestruction(true);
- 
+
       map<string, string> headersCopy(headerFields);
-      headersCopy.insert(make_pair(string("Authorization"), ServerState::instance()->getAuthentication())); 
+      headersCopy.insert(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
 
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
@@ -369,11 +371,11 @@ bool ClusterComm::match (
             ShardID const&             shardID,
             ClusterCommOperation* op) {
 
-  return ( (clientTransactionID == "" || 
+  return ( (clientTransactionID == "" ||
             clientTransactionID == op->clientTransactionID) &&
            (0 == coordTransactionID ||
             coordTransactionID == op->coordTransactionID) &&
-           (shardID == "" || 
+           (shardID == "" ||
             shardID == op->shardID) );
 }
 
@@ -381,7 +383,7 @@ bool ClusterComm::match (
 /// @brief check on the status of an operation
 ///
 /// This call never blocks and returns information about a specific operation
-/// given by `operationID`. Note that if the `status` is >= `CL_COMM_SENT`, 
+/// given by `operationID`. Note that if the `status` is >= `CL_COMM_SENT`,
 /// then the `result` field in the returned object is set, if the `status`
 /// is `CL_COMM_RECEIVED`, then `answer` is set. However, in both cases
 /// the ClusterComm library retains the operation in its queues! Therefore,
@@ -415,9 +417,9 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
   // Note that operations only ever move from the send queue to the
   // receive queue and never in the other direction. Therefore it is
   // OK to use two different locks here, since we look first in the
-  // send queue and then in the receive queue; we can never miss 
+  // send queue and then in the receive queue; we can never miss
   // an operation that is actually there.
-  
+
   // If the above did not give anything, look into the receive queue:
   {
     basics::ConditionLocker locker(&somethingReceived);
@@ -464,7 +466,7 @@ ClusterCommResult* ClusterComm::wait (
                 OperationID const          operationID,
                 ShardID const&             shardID,
                 ClusterCommTimeout         timeout) {
-  
+
   IndexIterator i;
   QueueIterator q;
   ClusterCommOperation* op = 0;
@@ -516,8 +518,8 @@ ClusterCommResult* ClusterComm::wait (
     }
     // This place is only reached on timeout
   }
-  else {   
-    // here, operationID == 0, so we have to do matching, we are only 
+  else {
+    // here, operationID == 0, so we have to do matching, we are only
     // interested, if at least one operation matches, if it is ready,
     // we return it immediately, otherwise, we report an error or wait.
     basics::ConditionLocker locker(&somethingReceived);
@@ -580,7 +582,7 @@ ClusterCommResult* ClusterComm::wait (
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore and drop current and future answers matching
 ///
-/// If clientTransactionID is empty, then any answer with any 
+/// If clientTransactionID is empty, then any answer with any
 /// clientTransactionID matches. If coordTransactionID is 0, then
 /// any answer with any coordTransactionID matches. If shardID is
 /// empty, then any answer from any ShardID matches. If operationID
@@ -658,7 +660,7 @@ void ClusterComm::drop (
 /// This is only called in a DBServer node and never in a coordinator
 /// node.
 ////////////////////////////////////////////////////////////////////////////////
-                
+
 void ClusterComm::asyncAnswer (string& coordinatorHeader,
                                triagens::rest::HttpResponse* responseToSend) {
 
@@ -680,20 +682,20 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
-      LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'", 
+      LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'",
                 coordinatorID.c_str());
     }
     else {
-      LOG_INFO("asyncAnswer: cannot find endpoint for server '%s'", 
+      LOG_INFO("asyncAnswer: cannot find endpoint for server '%s'",
                coordinatorID.c_str());
     }
     return;
   }
-  
-  httpclient::ConnectionManager::SingleServerConnection* connection 
+
+  httpclient::ConnectionManager::SingleServerConnection* connection
       = cm->leaseConnection(endpoint);
   if (0 == connection) {
-    LOG_ERROR("asyncAnswer: cannot create connection to server '%s'", 
+    LOG_ERROR("asyncAnswer: cannot create connection to server '%s'",
               coordinatorID.c_str());
     return;
   }
@@ -716,8 +718,8 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
-  httpclient::SimpleHttpResult* result = 
-                 client->request(rest::HttpRequest::HTTP_REQUEST_PUT, 
+  httpclient::SimpleHttpResult* result =
+                 client->request(rest::HttpRequest::HTTP_REQUEST_PUT,
                                  "/_api/shard-comm", body, len, headers);
   if (! result->isComplete()) {
     cm->brokenConnection(connection);
@@ -731,14 +733,14 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process an answer coming in on the HTTP socket 
+/// @brief process an answer coming in on the HTTP socket
 ///
 /// this is called for a request, which is actually an answer to one of
 /// our earlier requests, return value of "" means OK and nonempty is
 /// an error. This is only called in a coordinator node and not in a
 /// DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
-                
+
 string ClusterComm::processAnswer (string& coordinatorHeader,
                                    triagens::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
@@ -756,7 +758,7 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
   start = pos+1;
   pos = coordinatorHeader.find(":",start);
   if (pos == string::npos) {
-    return 
+    return
       string("could not find operationID in 'X-Arango-Coordinator'");
   }
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
@@ -959,7 +961,7 @@ void ClusterCommThread::run () {
         }
         else {
           // We need a connection to this server:
-          string endpoint 
+          string endpoint
               = ClusterInfo::instance()->getServerEndpoint(op->serverID);
           if (endpoint == "") {
             op->status = CL_COMM_ERROR;
@@ -976,7 +978,7 @@ void ClusterCommThread::run () {
           else {
             httpclient::ConnectionManager* cm
                 = httpclient::ConnectionManager::instance();
-            httpclient::ConnectionManager::SingleServerConnection* connection 
+            httpclient::ConnectionManager::SingleServerConnection* connection
                 = cm->leaseConnection(endpoint);
             if (0 == connection) {
               op->status = CL_COMM_ERROR;
@@ -1008,12 +1010,12 @@ void ClusterCommThread::run () {
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
               if (0 != op->body) {
-                op->result = client->request(op->reqtype, op->path, 
-                             op->body->c_str(), op->body->size(), 
+                op->result = client->request(op->reqtype, op->path,
+                             op->body->c_str(), op->body->size(),
                              *(op->headerFields));
               }
               else {
-                op->result = client->request(op->reqtype, op->path, 
+                op->result = client->request(op->reqtype, op->path,
                              NULL, 0, *(op->headerFields));
               }
 
@@ -1061,7 +1063,7 @@ void ClusterCommThread::run () {
       }
     }
 
-    // Finally, wait for some time or until something happens using 
+    // Finally, wait for some time or until something happens using
     // the condition variable:
     {
       basics::ConditionLocker locker(&cc->somethingToSend);
@@ -1071,7 +1073,7 @@ void ClusterCommThread::run () {
 
   // another thread is waiting for this value to shut down properly
   _stop = 2;
-  
+
   LOG_DEBUG("stopped ClusterComm thread");
 }
 
@@ -1091,7 +1093,11 @@ bool ClusterCommThread::init () {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

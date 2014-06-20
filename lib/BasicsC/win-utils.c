@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,11 +42,6 @@
 
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Windows_Utilties
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 int ftruncate (int fd, long newSize) {
   int result = _chsize(fd, newSize);
@@ -164,7 +161,7 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
 // calling function should decide what to do.
 ////////////////////////////////////////////////////////////////////////////////
 
-int finaliseWindows (const TRI_win_finalise_e finaliseWhat, 
+int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
                      const char* data) {
   int result = 0;
 
@@ -195,7 +192,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
   return -1;
 }
 
-int initialiseWindows (const TRI_win_initialise_e initialiseWhat, 
+int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
                        const char* data) {
 
   // ............................................................................
@@ -342,12 +339,11 @@ int TRI_OPEN_WIN32 (const char* filename, int openFlags) {
   return fileDescriptor;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
