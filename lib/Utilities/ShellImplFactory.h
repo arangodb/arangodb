@@ -1,11 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a basis class which defines the methods for determining
 ///        when an input is "complete"
-///       
+///
 /// @file
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +21,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILITIES_SHELLIMPL_FACTORY_H
-#define TRIAGENS_UTILITIES_SHELLIMPL_FACTORY_H 1
+#ifndef ARANGODB_UTILITIES_SHELL_IMPL_FACTORY_H
+#define ARANGODB_UTILITIES_SHELL_IMPL_FACTORY_H 1
 
 #include "Basics/Common.h"
 
@@ -36,12 +38,20 @@ namespace triagens {
 
      public:
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check if line is complete
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if line is complete
+////////////////////////////////////////////////////////////////////////////////
 
     ShellImplementation * buildShell (std::string const & history, Completer *);
-      
+
   };
 }
 #endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

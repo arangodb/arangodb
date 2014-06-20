@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -68,12 +70,12 @@ void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log information about the master state
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
                                    const char* prefix) {
   TRI_ASSERT(info->_endpoint != NULL);
 
-  LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu", 
+  LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu",
            prefix,
            info->_endpoint,
            (unsigned long long) info->_serverId,
@@ -82,11 +84,11 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
            (unsigned long long) info->_state._lastLogTick);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

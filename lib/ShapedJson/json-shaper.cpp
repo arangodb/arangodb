@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -300,7 +302,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 /// @brief finds an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper, 
+static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
                                                         char const* name,
                                                         bool isLocked) {
   TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked);
@@ -312,7 +314,7 @@ static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
 /// @brief looks up an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper, 
+static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
                                                   char const* name) {
   TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true);
 
@@ -331,7 +333,7 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
 /// @brief creates the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper, 
+char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper,
                                        TRI_shape_pid_t pid) {
   TRI_shape_path_t const* path;
   char const* e;
@@ -551,7 +553,7 @@ void TRI_InitialiseShaper () {
   shape->_type = TRI_SHAPE_LONG_STRING;
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
   shape->_sid = BasicShapes._sidLongString = 5;
-  
+
   // LIST
   shape = &BasicShapes._shapeList;
   shape->_size = sizeof(TRI_list_shape_t);
@@ -570,7 +572,11 @@ void TRI_ShutdownShaper () {
   // nothing to do
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

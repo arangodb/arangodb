@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,11 +41,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http response string
@@ -93,7 +90,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case EXPECTATION_FAILED:              return "417 Expectation Failed";
     case I_AM_A_TEAPOT:                   return "418 I'm a teapot";
     case UNPROCESSABLE_ENTITY:            return "422 Unprocessable Entity";
-    case PRECONDITION_REQUIRED:           return "428 Precondition Required"; 
+    case PRECONDITION_REQUIRED:           return "428 Precondition Required";
     case TOO_MANY_REQUESTS:               return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE: return "431 Request Header Fields Too Large";
 
@@ -184,18 +181,9 @@ const string& HttpResponse::getBatchErrorHeader () {
   return header;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new http response
@@ -226,18 +214,9 @@ HttpResponse::~HttpResponse () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response code
@@ -532,25 +511,25 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 /// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setCookie (string const& name, string const& value, 
+void HttpResponse::setCookie (string const& name, string const& value,
         int lifeTimeSeconds, string const& path, string const& domain,
         bool secure, bool httpOnly) {
-          
+
   triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
-  
+
   string tmp = StringUtils::trim(name);
   buffer->appendText(tmp.c_str(), tmp.length());
   buffer->appendChar('=');
-  
+
   tmp = StringUtils::urlEncode(value);
   buffer->appendText(tmp.c_str(), tmp.length());
-  
+
   if (lifeTimeSeconds != 0) {
     time_t rawtime;
 
-    time(&rawtime);    
+    time(&rawtime);
     if (lifeTimeSeconds > 0) {
-      rawtime += lifeTimeSeconds;      
+      rawtime += lifeTimeSeconds;
     }
     else {
       rawtime = 1;
@@ -566,7 +545,7 @@ void HttpResponse::setCookie (string const& name, string const& value,
       buffer->appendText(buffer2);
     }
   }
-  
+
   if (path != "") {
     buffer->appendText("; path=");
     buffer->appendText(path);
@@ -576,7 +555,7 @@ void HttpResponse::setCookie (string const& name, string const& value,
     buffer->appendText("; domain=");
     buffer->appendText(domain);
   }
-  
+
 
   if (secure) {
     buffer->appendText("; secure");
@@ -585,11 +564,11 @@ void HttpResponse::setCookie (string const& name, string const& value,
   if (httpOnly) {
     buffer->appendText("; HttpOnly");
   }
-  
+
   char const* l = StringUtils::duplicate(buffer->c_str());
   delete buffer;
   _cookies.push_back(l);
-  
+
   _freeables.push_back(l);
 }
 
@@ -687,7 +666,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     output->appendText("\r\n", 2);
   }
 
-  for (vector<char const*>::iterator iter = _cookies.begin(); 
+  for (vector<char const*>::iterator iter = _cookies.begin();
           iter != _cookies.end(); ++iter) {
     if (capitalizeHeaders) {
       output->appendText("Set-Cookie: ", 12);
@@ -696,9 +675,9 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendText("set-cookie: ", 12);
     }
     output->appendText(*iter);
-    output->appendText("\r\n", 2);    
+    output->appendText("\r\n", 2);
   }
-  
+
   if (seenTransferEncoding && transferEncoding == "chunked") {
     if (capitalizeHeaders) {
       output->appendText("Transfer-Encoding: chunked\r\n\r\n", 30);
@@ -792,15 +771,11 @@ int HttpResponse::deflate (size_t bufferSize) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

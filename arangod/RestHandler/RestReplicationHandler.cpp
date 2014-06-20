@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,7 +112,7 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       if (isCoordinatorError()) {
         return status_t(Handler::HANDLER_DONE);
       }
@@ -164,7 +166,7 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
-      
+
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       }
@@ -176,21 +178,21 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       handleCommandRestoreCollection();
     }
     else if (command == "restore-indexes") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       handleCommandRestoreIndexes();
     }
     else if (command == "restore-data") {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       if (ServerState::instance()->isCoordinator()) {
         handleCommandRestoreDataCoordinator();
       }
@@ -202,7 +204,7 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       if (isCoordinatorError()) {
         return status_t(Handler::HANDLER_DONE);
       }
@@ -230,7 +232,7 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       if (isCoordinatorError()) {
         return status_t(Handler::HANDLER_DONE);
       }
@@ -241,7 +243,7 @@ Handler::status_t RestReplicationHandler::execute() {
       if (type != HttpRequest::HTTP_REQUEST_PUT) {
         goto BAD_CALL;
       }
-      
+
       if (isCoordinatorError()) {
         return status_t(Handler::HANDLER_DONE);
       }
@@ -366,7 +368,7 @@ bool RestReplicationHandler::filterCollection (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool RestReplicationHandler::isCoordinatorError () {
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(HttpResponse::NOT_IMPLEMENTED,
@@ -374,7 +376,7 @@ bool RestReplicationHandler::isCoordinatorError () {
                   "replication API is not supported on a coordinator");
     return true;
   }
-    
+
   return false;
 }
 
@@ -881,7 +883,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// - `id`: the id of the batch
 ///
-/// Note: on a coordinator, this request must have the URL parameter 
+/// Note: on a coordinator, this request must have the URL parameter
 /// `DBserver` which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -922,7 +924,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// If the batch's ttl can be extended successully, the response is empty.
 ///
-/// Note: on a coordinator, this request must have the URL parameter 
+/// Note: on a coordinator, this request must have the URL parameter
 /// `DBserver` which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -952,7 +954,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
-/// Note: on a coordinator, this request must have the URL parameter 
+/// Note: on a coordinator, this request must have the URL parameter
 /// `DBserver` which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -1072,7 +1074,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
                   "need \"DBserver\" parameter");
     return;
   }
-  
+
   string const& dbname = _request->databaseName();
 
   map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
@@ -1100,9 +1102,9 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   ClusterCommResult* res;
   res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
                         _request->requestType(),
-                        "/_db/" + StringUtils::urlEncode(dbname) + 
+                        "/_db/" + StringUtils::urlEncode(dbname) +
                         _request->requestPath() + params,
-                        string(_request->body(),_request->bodySize()), 
+                        string(_request->body(),_request->bodySize()),
                         headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
@@ -1502,7 +1504,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// Note: on a coordinator, this request must have the URL parameter 
+/// Note: on a coordinator, this request must have the URL parameter
 /// `DBserver` which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -1629,7 +1631,7 @@ void RestReplicationHandler::handleCommandInventory () {
 /// Returns the list of collections and indexes available on the cluster.
 ///
 /// The response will be a list of JSON hash array, one for each collection,
-/// which contains exactly two keys "parameters" and "indexes". This 
+/// which contains exactly two keys "parameters" and "indexes". This
 /// information comes from Plan/Collections/<DB-Name>/* in the agency,
 /// just that the `indexes` attribute there is relocated to adjust it to
 /// the data format of arangodump.
@@ -1657,7 +1659,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
   if (found) {
     includeSystem = StringUtils::boolean(value);
   }
-  
+
   AgencyComm _agency;
   AgencyCommResult result;
 
@@ -1667,7 +1669,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
 
     AgencyCommLocker locker("Plan", "READ");
     if (! locker.successful()) {
-      generateError(HttpResponse::SERVER_ERROR, 
+      generateError(HttpResponse::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN);
     }
     else {
@@ -1685,12 +1687,12 @@ void RestReplicationHandler::handleCommandClusterInventory () {
           map<string, AgencyCommResultEntry>::iterator it;
           TRI_json_t json;
           TRI_InitList2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
-          for (it = result._values.begin(); 
+          for (it = result._values.begin();
                it != result._values.end(); ++it) {
             if (TRI_IsArrayJson(it->second._json)) {
-              TRI_json_t const* sub 
+              TRI_json_t const* sub
                   = TRI_LookupArrayJson(it->second._json, "isSystem");
-              if (includeSystem || 
+              if (includeSystem ||
                   (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
                 TRI_json_t coll;
                 TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &coll, 2);
@@ -1704,7 +1706,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
                 TRI_PushBack2ListJson(&json, &coll);
               }
             }
-          } 
+          }
 
           // Wrap the result:
           TRI_json_t wrap;
@@ -1909,7 +1911,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
                                               force, remoteServerId, errorMsg);
   }
   else {
-    res = processRestoreCollection(json, overwrite, recycleIds, force, 
+    res = processRestoreCollection(json, overwrite, recycleIds, force,
                                    remoteServerId, errorMsg);
   }
 
@@ -2175,7 +2177,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
   }
   // We take one shard if "shards" was not given
-  
+
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
   TRI_ReplaceArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
@@ -2234,7 +2236,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
 
-  int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards, 
+  int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
                                             parameters, errorMsg, 0.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2419,7 +2421,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
     TRI_json_t* res_json = 0;
-    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef, 
+    res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
                      true, IndexComparator, res_json, errorMsg, 3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not create index: " + string(TRI_errno_string(res));
@@ -2855,7 +2857,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       const size_t n = json->_value._objects._length;
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element 
+        TRI_json_t const* element
             = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
 
         if (! JsonHelper::isString(element)) {
@@ -2968,7 +2970,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                                "/_db/" + StringUtils::urlEncode(dbName) +
                                "/_api/replication/restore-data?collection=" +
-                               it->first, 
+                               it->first,
                                new string(bufs[j]->c_str(), bufs[j]->length()),
                                true, headers, NULL, 300.0);
         delete result;
@@ -2983,9 +2985,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       if (result->status == CL_COMM_RECEIVED) {
         if (result->answer_code == triagens::rest::HttpResponse::OK ||
             result->answer_code == triagens::rest::HttpResponse::CREATED) {
-          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                             result->answer->body());
-      
+
           if (JsonHelper::isArray(json)) {
             TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
             if (TRI_IsBooleanJson(r)) {
@@ -3002,13 +3004,13 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
       delete result;
     }
- 
+
     if (nrok != shardIdsMap.size()) {
       errorMsg = "some shard produced an error";
       res = TRI_ERROR_INTERNAL;
     }
   }
-  
+
   // Free all the string buffers:
   for (j = 0; j < shardIds.size(); j++) {
     delete bufs[j];
@@ -4059,7 +4061,11 @@ void RestReplicationHandler::handleCommandApplierDeleteState () {
   handleCommandApplierGetState();
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_TRANSACTION_CONTEXT_H
-#define TRIAGENS_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGODB_TRANSACTION_CONTEXT_H
+#define ARANGODB_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -74,7 +76,7 @@ namespace triagens {
         Context (Manager*,
                  triagens::wal::LogfileManager*,
                  TRI_vocbase_t*,
-                 Context**); 
+                 Context**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a transaction context
@@ -91,7 +93,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next work unit id inside the context
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         inline uint64_t nextWorkUnitId () {
           return ++_nextWorkUnitId;
         }
@@ -136,7 +138,7 @@ namespace triagens {
 /// @brief get or create a transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-        static Context* getContext (Manager*, 
+        static Context* getContext (Manager*,
                                     triagens::wal::LogfileManager*,
                                     TRI_vocbase_t*,
                                     Context**);
@@ -153,14 +155,14 @@ namespace triagens {
 /// @brief increase the reference count
 ////////////////////////////////////////////////////////////////////////////////
 
-        void increaseRefCount (); 
+        void increaseRefCount ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decrease the reference count
 /// the last user that calls this will destroy the context!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void decreaseRefCount (); 
+        void decreaseRefCount ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start a new unit of work
@@ -210,7 +212,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the collection name resolver
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         triagens::arango::CollectionNameResolver _resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +242,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current number of users of this context
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         int _refCount;
 
     };
@@ -250,7 +252,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

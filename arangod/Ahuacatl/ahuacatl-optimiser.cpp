@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -59,28 +61,14 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum buffer length when comparing sort conditions
 ////////////////////////////////////////////////////////////////////////////////
 
 #define COMPARE_LENGTH 128
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local optimiser structure that is used temporarily during the
@@ -92,18 +80,9 @@ typedef struct aql_optimiser_s {
 }
 aql_optimiser_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an optimiser structure
@@ -320,7 +299,7 @@ static void AttachCollectionHint (TRI_aql_context_t* const context,
                               availableIndexes,
                               collectionName,
                               hint->_ranges);
-  
+
   hint->_index = idx;
 }
 
@@ -532,7 +511,7 @@ static TRI_aql_node_t* AnnotateLoop (TRI_aql_statement_walker_t* const walker,
 
     while (scope->_sorts._length > 0) {
       char* criterion = static_cast<char*>
-             (TRI_RemoveVectorPointer(&scope->_sorts, 
+             (TRI_RemoveVectorPointer(&scope->_sorts,
                                       (size_t) (scope->_sorts._length - 1)));
 
       if (criterion != NULL) {
@@ -698,12 +677,12 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
   // execute the function code
   execContext = TRI_CreateExecutionContext(TRI_BeginStringBuffer(code), TRI_LengthStringBuffer(code));
   TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, code);
-  
+
   if (execContext == NULL) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
     return node;
   }
-  
+
   res = execContext->_error;
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -716,7 +695,7 @@ static TRI_aql_node_t* OptimiseFcall (TRI_aql_context_t* const context,
 
   res = execContext->_error;
   TRI_FreeExecutionContext(execContext);
-  
+
   if (res == TRI_ERROR_REQUEST_CANCELED) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, context, res, NULL);
     return node;
@@ -842,7 +821,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     limitValue = (int64_t) TRI_AQL_NODE_DOUBLE(limit);
   }
   else if (limit->_value._type == TRI_AQL_TYPE_NULL) {
-    limitValue = 0;  
+    limitValue = 0;
   }
   else if (limit->_value._type == TRI_AQL_TYPE_BOOL) {
     limitValue = (int64_t) TRI_AQL_NODE_BOOL(limit);
@@ -858,7 +837,7 @@ static TRI_aql_node_t* OptimiseLimit (TRI_aql_statement_walker_t* const walker,
     LOG_TRACE("optimised away limit");
 
     TRI_EmptyScopeStatementWalkerAql(walker);
-    return node; 
+    return node;
   }
 
   // we will not optimise in the main scope, e.g. LIMIT 5 RETURN 1
@@ -1570,7 +1549,7 @@ static void PatchVariables (TRI_aql_statement_walker_t* const walker) {
       if (expressionNode->_type == TRI_AQL_NODE_FCALL) {
         // the defining node is a function call
         // get the function name
-        TRI_aql_function_t* function 
+        TRI_aql_function_t* function
             = static_cast<TRI_aql_function_t*>
                          (TRI_AQL_NODE_DATA(expressionNode));
 
@@ -1607,13 +1586,13 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
                        const TRI_aql_node_t* const node) {
   TRI_aql_node_t* offset  = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* limit  = TRI_AQL_NODE_MEMBER(node, 1);
-  int64_t offsetValue; 
+  int64_t offsetValue;
   int64_t limitValue;
   TRI_aql_scope_t* scope;
   aql_optimiser_t* optimiser;
 
   optimiser = static_cast<aql_optimiser_t*>(walker->_data);
-  
+
   if (offset->_type != TRI_AQL_NODE_VALUE || limit->_type != TRI_AQL_NODE_VALUE) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
@@ -1645,7 +1624,7 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
     TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
   }
-  
+
   if (limitValue < 0) {
     TRI_SetErrorContextAql(__FILE__, __LINE__, optimiser->_context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
     return;
@@ -1748,18 +1727,9 @@ static bool DetermineIndexes (aql_optimiser_t* const optimiser) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimise the query
@@ -1781,11 +1751,11 @@ bool TRI_OptimiseAql (TRI_aql_context_t* const context) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

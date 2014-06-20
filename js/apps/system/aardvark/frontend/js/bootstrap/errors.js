@@ -223,6 +223,13 @@
     "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" }, 
     "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection used in edge def" }, 
     "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" }, 
+    "ERROR_GRAPH_NO_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" }, 
+    "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" }, 
+    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING" : { "code" : 1933, "message" : "Invalid example type. Has to be String, Array or Object" }, 
+    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT" : { "code" : 1934, "message" : "Invalid example type. Has to be Array or Object" }, 
+    "ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS" : { "code" : 1935, "message" : "Invalid number of arguments. Expected: " }, 
+    "ERROR_GRAPH_INVALID_PARAMETER" : { "code" : 1936, "message" : "Invalid parameter type." }, 
+    "ERROR_GRAPH_INVALID_ID"       : { "code" : 1937, "message" : "Invalid id" }, 
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" }, 
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 
@@ -237,7 +244,8 @@
     "RESULT_KEY_EXISTS"            : { "code" : 10000, "message" : "element not inserted into structure, because key already exists" }, 
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
     "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
-    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }, 
+    "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" }
   };
 }());
 

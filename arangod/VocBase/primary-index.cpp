@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,14 +34,14 @@
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial number of elements in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint64_t InitialSize () {
+static inline uint64_t InitialSize () {
   return 251;
 }
 
@@ -96,16 +98,16 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
-  idx->_nrAlloc = targetSize; 
+  idx->_nrAlloc = targetSize;
 
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function, compares a master pointer to another 
+/// @brief comparison function, compares a master pointer to another
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header, 
+static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header,
                                       void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
@@ -121,7 +123,7 @@ static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header,
 static inline bool IsEqualHashElement (char const* key, uint64_t hash, void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  return (hash == e->_hash && 
+  return (hash == e->_hash &&
           strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
@@ -179,7 +181,7 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
   uint64_t i, k;
 
   i = k = hash % n;
-  
+
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   // search the table
@@ -217,7 +219,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   i = k = header->_hash % n;
-  
+
   for (; i < n && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
   if (i == n) {
     for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
@@ -238,7 +240,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
   idx->_table[i] = (void*) header;
   ++idx->_nrUsed;
 
-  return TRI_ERROR_NO_ERROR; 
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,7 +296,11 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   return old;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

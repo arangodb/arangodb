@@ -8,6 +8,10 @@ As an example you can start with a set of vertices, select their direct neighbor
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
+!SECTION Definition of examples
+
+@startDocuBlock JSF_general_graph_example_description
+
 !SECTION Starting Points
 
 This section describes the entry points for the fluent interface.

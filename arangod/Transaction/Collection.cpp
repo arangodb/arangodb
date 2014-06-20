@@ -1,11 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction collection 
+/// @brief transaction collection
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +48,7 @@ using namespace triagens::transaction;
 Collection::Collection (TRI_vocbase_col_t* collection,
                         Collection::AccessType accessType,
                         bool responsibility,
-                        bool locked) 
+                        bool locked)
   : _collection(collection),
     _initialRevision(0),
     _accessType(accessType),
@@ -70,7 +72,7 @@ Collection::~Collection () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a new revision
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 TRI_voc_tick_t Collection::generateRevision () {
   return TRI_NewTickServer();
 }
@@ -82,7 +84,7 @@ TRI_voc_tick_t Collection::generateRevision () {
 string Collection::generateKey (TRI_voc_tick_t revision) {
   // no key specified, now create one
   TRI_key_generator_t* keyGenerator = static_cast<TRI_key_generator_t*>(primary()->_keyGenerator);
-  
+
   // create key using key generator
   string key(keyGenerator->generateKey(keyGenerator, revision));
 
@@ -113,7 +115,7 @@ void Collection::validateKey (std::string const& key) {
 
 int Collection::done () {
   int res = unlock();
-  unuse(); 
+  unuse();
 
   return res;
 }
@@ -126,7 +128,7 @@ int Collection::use () {
   if (hasResponsibility()) {
     if (! _used) {
       TRI_vocbase_col_t* collection = TRI_UseCollectionByIdVocBase(_collection->_vocbase, id());
-  
+
       if (collection == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
@@ -138,7 +140,7 @@ int Collection::use () {
       _used = true;
     }
   }
-      
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -165,7 +167,7 @@ int Collection::lock () {
   int res = TRI_ERROR_NO_ERROR;
 
   if (hasResponsibility()) {
-    if (! isLocked()) { 
+    if (! isLocked()) {
       TRI_document_collection_t* p = primary();
 
       if (p == nullptr) {
@@ -173,10 +175,10 @@ int Collection::lock () {
       }
 
       if (_accessType == Collection::AccessType::READ) {
-        res = p->beginRead(p); 
+        res = p->beginRead(p);
       }
       else {
-        res = p->beginWrite(p); 
+        res = p->beginWrite(p);
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
@@ -196,9 +198,9 @@ int Collection::unlock () {
   int res = TRI_ERROR_NO_ERROR;
 
   if (hasResponsibility()) {
-    if (isLocked()) { 
+    if (isLocked()) {
       TRI_document_collection_t* p = primary();
-      
+
       if (p == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
@@ -219,7 +221,11 @@ int Collection::unlock () {
   return res;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

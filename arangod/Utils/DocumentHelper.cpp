@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,11 +43,6 @@ using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
@@ -74,7 +71,7 @@ std::string DocumentHelper::assembleDocumentId (const std::string& collectionNam
 /// TODO: merge with RestVocBaseBaseHandler::parseDocumentId
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DocumentHelper::parseDocumentId (const std::string& input, 
+bool DocumentHelper::parseDocumentId (const std::string& input,
                                       TRI_voc_cid_t& cid,
                                       std::string& key) {
   size_t pos = input.find(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
@@ -98,7 +95,7 @@ bool DocumentHelper::parseDocumentId (const std::string& input,
 /// @brief extract the collection id and document key from an id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DocumentHelper::parseDocumentId (const char* input, 
+bool DocumentHelper::parseDocumentId (const char* input,
                                       TRI_voc_cid_t& cid,
                                       char** key) {
 
@@ -128,7 +125,7 @@ bool DocumentHelper::parseDocumentId (const char* input,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
-                                      const char* input, 
+                                      const char* input,
                                       TRI_voc_cid_t& cid,
                                       char** key) {
 
@@ -157,7 +154,7 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
 /// @brief extract the "_key" attribute from a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-int DocumentHelper::getKey (TRI_json_t const* json, 
+int DocumentHelper::getKey (TRI_json_t const* json,
                             TRI_voc_key_t* key) {
   *key = 0;
 
@@ -168,7 +165,7 @@ int DocumentHelper::getKey (TRI_json_t const* json,
 
   // check if _key is there
   const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, TRI_VOC_ATTRIBUTE_KEY);
- 
+
   if (k == 0) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -184,11 +181,11 @@ int DocumentHelper::getKey (TRI_json_t const* json,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

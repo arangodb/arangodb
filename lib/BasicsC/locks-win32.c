@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,10 +60,10 @@ int TRI_InitMutex (TRI_mutex_t* mutex) {
 int TRI_DestroyMutex (TRI_mutex_t* mutex) {
   if (CloseHandle(mutex->_mutex) == 0) {
     DWORD result = GetLastError();
-      
+
     LOG_FATAL_AND_EXIT("locks-win32.c:TRI_DestroyMutex:could not destroy the mutex -->%d",result);
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -647,7 +649,7 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 // Note that for the MAC OS we use the 'barrier' functions which ensure that
 // read/write operations on the scalars are executed in order. According to the
 // available documentation, the GCC variants of these COMPARE & SWAP operations
-// are implemented with a memory barrier. The MS Windows variants of these 
+// are implemented with a memory barrier. The MS Windows variants of these
 // operations (according to the documentation on MS site) also provide a full
 // memory barrier.
 // -----------------------------------------------------------------------------
@@ -710,7 +712,11 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

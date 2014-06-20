@@ -92,7 +92,10 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
-    throw "<" + name + "> must be an ArangoCollection ";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.code;
+    err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.message;
+    throw err;
   }
   return res;
 };
@@ -142,7 +145,10 @@ var findOrCreateOrphanCollections = function (graphName, orphanCollections, noCr
 var getGraphCollection = function() {
   var gCol = db._graphs;
   if (gCol === null || gCol === undefined) {
-    throw "_graphs collection does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.message;
+    throw err;
   }
   return gCol;
 };
@@ -177,6 +183,22 @@ var wrapCollection = function(col) {
   return wrapper;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_example_description
+/// 
+/// For many of the following functions *examples* can be passed in as a parameter.
+/// *Examples* are used to filter the result set for objects that match the conditions.
+/// These *examples* can have the following values:
+///
+/// * Empty, there is no matching executed all found results are valid.
+/// * A string, only the result having this value as it's *_id* is returned.
+/// * An example object, defining a set of attributes.
+///     Only results having these attributes are matched.
+/// * A list containing example objects and/or strings.
+///     All results matching at least one of the elements in the list are returned.
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 var transformExample = function(example) {
   if (example === undefined) {
@@ -196,7 +218,10 @@ var transformExample = function(example) {
     }
     return example;
   }
-  throw "Invalid example type. Has to be String, Array or Object";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.message;
+  throw err;
 };
 
 var checkAllowsRestriction = function(colList, rest, msg) {
@@ -395,23 +420,16 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// Select all edges for the vertices selected before.
+/// `graph_query.edges(examples)`
+/// *Select all edges for the vertices selected before.*
 ///
-/// `graph-query.edges(examples)`
 /// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -452,22 +470,15 @@ AQLGenerator.prototype.edges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// Select all outbound edges for the vertices selected before.
+/// `graph_query.outEdges(examples)`
+/// *Select all outbound edges for the vertices selected before.*
 /// 
-/// `graph-query.outEdges(examples)`
 ///
 /// Creates an AQL statement to select all *outbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -508,22 +519,15 @@ AQLGenerator.prototype.outEdges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
-/// Select all inbound edges for the vertices selected before.
+/// `graph_query.inEdges(examples)`
+/// *Select all inbound edges for the vertices selected before.*
 /// 
-/// `graph-query.inEdges(examples)`
 ///
 /// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -594,23 +598,16 @@ AQLGenerator.prototype._vertices = function(example, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_vertices
-/// Select all vertices connected to the edges selected before.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices connected to the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select all vertices for each of the edges selected
 /// in the step before.
 /// This includes all vertices contained in *_from* as well as *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -664,23 +661,16 @@ AQLGenerator.prototype.vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// Select all vertices where the edges selected before start.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices where the edges selected before start.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before start at.
 /// This includes all vertices contained in *_from* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -732,23 +722,16 @@ AQLGenerator.prototype.fromVertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// Select all vertices targeted by the edges selected before.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices targeted by the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before end in.
 /// This includes all vertices contained in *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -817,7 +800,8 @@ AQLGenerator.prototype.getLastVar = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_path
-/// The result of the query is the path to all elements.
+/// `graph_query.path()`
+/// *The result of the query is the path to all elements.*
 ///
 /// By defaut the result of the generated AQL query is the set of elements passing the last matches.
 /// So having a `vertices()` query as the last step the result will be set of vertices.
@@ -870,35 +854,25 @@ AQLGenerator.prototype.pathEdges = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
-/// Select all neighbors of the vertices selected in the step before.
+/// `graph_query.neighbors(examples, options)`
+/// *Select all neighbors of the vertices selected in the step before.*
 /// 
-/// `graph-query.neighbors(examples)`
 ///
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
 /// in the step before.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
-/// Possible options and there defaults:
-///   * String               *direction*                        : The direction of the
-///       edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * String|Object|Array  *edgeExamples*                     : A filter example
-///       for the edges to the neighbors (see below).
-///   * String|Array         *edgeCollectionRestriction*        : One or multiple
-///       edge collections that should be considered.
-///   * String|Array         *vertexCollectionRestriction* : One or multiple
-///       vertex collections that should be considered.
-///   * Number               *minDepth*                         : Defines the minimal
-///       depth a path to a neighbor must have to be returned (default is 1).
-///   * Number               *maxDepth*                         : Defines the maximal
-///       depth a path to a neighbor must have to be returned (default is 1).
+/// * *examples*: See [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+/// Possible options and their defaults:
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeExamples*: See [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
+///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 ///
 /// *Examples*
 ///
@@ -981,10 +955,10 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_restrict
-/// Restricts the last statement in the chain to return
-///   only elements of a specified set of collections
+/// `graph_query.restrict(restrictions)`
+/// *Restricts the last statement in the chain to return
+/// only elements of a specified set of collections*
 ///
-/// `graph-query.restrict(restrictions)`
 ///
 /// By default all collections in the graph are searched for matching elements
 /// whenever vertices and edges are requested.
@@ -993,12 +967,8 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
 /// 
-/// *restrictions* can have the following values:
-///
-/// * A string defining the name of one specific collection in the graph.
-///   Only elements from this collection are used for matching
-/// * A list of strings defining a set of collection names.
-///   Elements from all collections in this set are used for matching
+/// * *restrictions*: Define either one or a list of collections in the graph.
+///     Only elements from these collections are taken into account for the result.
 ///
 /// *Examples*
 ///
@@ -1062,20 +1032,13 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_filter
-/// Filter the result of the query
-///
-/// `graph-query.filter(examples)`
+/// `graph_query.filter(examples)`
+/// *Filter the result of the query*
 ///
 /// This can be used to further specfiy the expected result of the query.
 /// The result set is reduced to the set of elements that matches the given *examples*.
 /// 
-/// *examples* can have the following values:
-/// 
-///   * A string, only the elements having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only elements having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All elements matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -1124,7 +1087,10 @@ AQLGenerator.prototype.filter = function(example) {
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
     if (Object.prototype.toString.call(example) !== "[object Object]") {
-      throw "The example has to be an Object, or an Array";
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT.code;
+      err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT.message;
+      throw err;
     }
     ex = [example];
   } else {
@@ -1159,9 +1125,9 @@ AQLGenerator.prototype.execute = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// Returns an array containing the complete result.
+/// `graph_query.toArray()`
+/// *Returns an array containing the complete result.*
 ///
-/// `graph-query.toArray()`
 ///
 /// This function executes the generated query and returns the
 /// entire result as one array.
@@ -1191,9 +1157,8 @@ AQLGenerator.prototype.toArray = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_count
-/// Returns the number of returned elements if the query is executed.
-///
-/// `graph-query.count()`
+/// `graph_query.count()`
+/// *Returns the number of returned elements if the query is executed.*
 ///
 /// This function determines the amount of elements to be expected within the result of the query.
 /// It can be used at the beginning of execution of the query
@@ -1222,9 +1187,8 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// Checks if the query has further results.
-///
-/// `graph-query.neighbors(examples)`
+/// `graph_query.neighbors(examples)`
+/// *Checks if the query has further results.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *hasNext()* will
@@ -1263,9 +1227,8 @@ AQLGenerator.prototype.hasNext = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_next
-/// Request the next element in the result.
-///
-/// `graph-query.next()`
+/// `graph_query.next()`
+/// *Request the next element in the result.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *next()* will
@@ -1313,14 +1276,18 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelation
-///
-/// `general-graph._undirectedRelation(relationName, vertexCollections)`
+/// `graph_module._undirectedRelation(relationName, vertexCollections)`
 /// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
 /// list of *vertexCollections*. This relation allows the user to store
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *vertexCollections*: One or a list of collection names for which connections are allowed.
+///     Will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1343,17 +1310,26 @@ AQLGenerator.prototype.next = function() {
 
 
 var _undirectedRelation = function (relationName, vertexCollections) {
-
+  var err;
   if (arguments.length < 2) {
-    throw "method _undirectedRelation expects 2 arguments";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.message + "2";
+    throw err;
   }
 
   if (typeof relationName !== "string" || relationName === "") {
-    throw "<relationName> must be a not empty string";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg1 must not be empty";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(vertexCollections)) {
-    throw "<vertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg2 must not be empty";
+    throw err;
   }
 
   return {
@@ -1365,12 +1341,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Define an directed relation.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_directedRelation
-///
-/// `general-graph._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
+/// `graph_module._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
 /// *Define a directed relation.*
 ///
 /// The *relationName* defines the name of this relation and references to the underlying edge collection.
@@ -1378,6 +1350,13 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// The *toVertexCollections* is an Array of document collections holding the target vertices.
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *fromVertexCollections*: One or a list of collection names. Source vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
+/// * *toVertexCollections*: One or a list of collection names. Target vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1392,21 +1371,35 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 
 var _directedRelation = function (
   relationName, fromVertexCollections, toVertexCollections) {
-
+  var err;
   if (arguments.length < 3) {
-    throw "method _directedRelation expects 3 arguments";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.message + "3";
+    throw err;
   }
 
   if (typeof relationName !== "string" || relationName === "") {
-    throw "<relationName> must be a not empty string";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg1 must be non empty string";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(fromVertexCollections)) {
-    throw "<fromVertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message
+      + " arg2 must be non empty string or array";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(toVertexCollections)) {
-    throw "<toVertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message
+      + " arg3 must be non empty string or array";
+    throw err;
   }
 
   return {
@@ -1417,17 +1410,13 @@ var _directedRelation = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_call
-/// `general-graph._list()`
+/// @startDocuBlock JSF_general_graph_list
+/// `general_graph._list()`
 /// *List all graphs.*
-/// @endDocuBlock
-///
-/// @startDocuBlock JSF_general_graph_list_info
+//
 /// Lists all graph names stored in this database.
 ///
 /// *Examples*
-/// @endDocuBlock
-/// @startDocuBlock JSF_general_graph_list_examples
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1446,14 +1435,19 @@ var _list = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
+/// `graph_module._edgeDefinitions(relation1, relation2, ..., relationN)`
+/// *Create a list of edge definitions to construct a graph.*
 ///
 /// The edge definitions for a graph is an array containing arbitrary many directed
 /// and/or undirected relations as defined below.
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
-/// *Examples*
+/// *Parameter*
 ///
+/// * *relationX*: An object representing a definition of one relation in the graph
+///
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1480,9 +1474,16 @@ var _edgeDefinitions = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_extend_edge_definitions
+/// `graph_module._extendEdgeDefinitions(edgeDefinitions, relation1, relation2, ..., relationN)`
+/// *Extend the list of edge definitions to construct a graph.*
 ///
 /// In order to add more edge definitions to the graph before creating
 /// this function can be used to add more definitions to the initial list.
+///
+/// *Parameter*
+///
+/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
 ///
@@ -1517,7 +1518,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create
-/// `general-graph._create(graph-name, edge-definitions, orphan-collections)`
+/// `graph_module._create(graphName, edgeDefinitions, orphanCollections)`
 /// *Create a graph*
 ///
 ///
@@ -1528,9 +1529,11 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// These collections are refered to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
-/// * *graph-name*: string - unique identifier of the graph
-/// * *edge-definitions*: array - list of edge definition objects
-/// * *orphan-collections*: array - list of additonal vertex collection names
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
+/// * *edgeDefinitions* (optional): List of relation definition objects
+/// * *orphanCollections* (optional): List of additonal vertex collection names
 ///
 /// *Examples*
 ///
@@ -1707,7 +1710,11 @@ var bindEdgeCollections = function(self, edgeCollections) {
             var toCollection = to.split("/")[0];
             if (! _.contains(edgeDefinition.from, fromCollection)
               || ! _.contains(edgeDefinition.to, toCollection)) {
-              throw "Edge is not allowed between " + from + " and " + to + ".";
+              var err = new ArangoError();
+              err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code;
+              err.errorMessage =
+                arangodb.errors.ERROR_GRAPH_INVALID_EDGE.message + " between " + from + " and " + to + ".";
+              throw err;
             }
           }
         }
@@ -1858,15 +1865,13 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
-/// Creates and saves a new vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.save(data)`
+/// *Create a new vertex in vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.save(data)`
+/// *Parameter*
 ///
-/// *data*: json - data of vertex
+/// * *data*: Json data of vertex.
 ///
 /// *Examples*
 ///
@@ -1881,13 +1886,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_replace
-/// Replaces the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Replaces the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1903,13 +1909,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_update
-/// Updates the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Updates the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1925,12 +1932,17 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_remove
+/// `graph.vertexCollectionName.remove(vertexId, options)`
 /// Removes a vertex in collection *vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
 /// (see [edge remove](#edge.remove)).
+///
+/// *Parameter*
+///
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1948,14 +1960,15 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_save
-/// Creates and saves a new edge from vertex *from* to vertex *to* in
-/// collection *edgeCollectionName*
+/// `graph.edgeCollectionName.save(from, to, data, options)`
+/// *Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.save(from, to, data)`
+/// *Parameter*
 ///
-/// *from*: string - id of outgoing vertex
-/// *to*: string -  of ingoing vertex
-/// *data*: json - data of edge
+/// * *from*: *_id* attribute of the source vertex
+/// * *to*: *_id* attribute of the target vertex
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
 ///
@@ -1979,13 +1992,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_replace
+/// `graph.edgeCollectionName.replace(edgeId, data, options)`
 /// Replaces the data of an edge in collection *edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.replace(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -2001,13 +2015,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_update
-/// Updates the data of an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Updates the data of an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -2023,9 +2038,13 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_remove
-/// Removes an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.remove(edgeId, options)`
+/// *Removes an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.remove(edgeId, options)`
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 ///
@@ -2064,12 +2083,14 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
-/// `general-graph._graph(graph-name)`
+/// `graph_module._graph(graphName)`
 /// *Load a graph*
 ///
 /// A graph can be loaded by its name.
 ///
-/// * *graph-name*: string - unique identifier of the graph
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
 ///
 /// *Examples*
 ///
@@ -2276,12 +2297,19 @@ Graph.prototype._vertexCollections = function() {
 
 // might be needed from AQL itself
 Graph.prototype._EDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2300,12 +2328,19 @@ Graph.prototype._EDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._INEDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2325,12 +2360,19 @@ Graph.prototype._INEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._OUTEDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2516,7 +2558,10 @@ Graph.prototype._getEdgeCollectionByName = function(name) {
   if (this.__edgeCollections[name]) {
     return this.__edgeCollections[name];
   }
-  throw "Collection " + name + " does not exist in graph.";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
+  throw err;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2527,7 +2572,10 @@ Graph.prototype._getVertexCollectionByName = function(name) {
   if (this.__vertexCollections[name]) {
     return this.__vertexCollections[name];
   }
-  throw "Collection " + name + " does not exist in graph.";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
+  throw err;
 };
 
 

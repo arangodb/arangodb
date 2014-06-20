@@ -31,7 +31,7 @@
 var Model,
   _ = require("underscore"),
   is = require("org/arangodb/is"),
-  backbone_helpers = require("backbone"),
+  extend = require('org/arangodb/extend').extend,
   metadataKeys = ['_id', '_key', '_rev'],
   parseAttributes,
   parseRequiredAttributes;
@@ -285,7 +285,7 @@ _.extend(Model.prototype, {
 /// the second object those to be defined on the prototype.
 ////////////////////////////////////////////////////////////////////////////////
 
-Model.extend = backbone_helpers.extend;
+Model.extend = extend;
 
 exports.Model = Model;
 

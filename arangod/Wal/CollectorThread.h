@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_COLLECTOR_THREAD_H
-#define TRIAGENS_WAL_COLLECTOR_THREAD_H 1
+#ifndef ARANGODB_WAL_COLLECTOR_THREAD_H
+#define ARANGODB_WAL_COLLECTOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -86,7 +88,7 @@ namespace triagens {
                                TRI_voc_tick_t databaseId,
                                Logfile* logfile,
                                int64_t totalOperationsCount,
-                               size_t operationsSize) 
+                               size_t operationsSize)
         : collectionId(collectionId),
           databaseId(databaseId),
           logfile(logfile),
@@ -164,7 +166,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile info cache, updated when the collector transfers markers
 ////////////////////////////////////////////////////////////////////////////////
-        
+
       std::unordered_map<TRI_voc_fid_t, TRI_doc_datafile_info_t> dfi;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +222,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef key => document marker 
+/// @brief typedef key => document marker
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef std::unordered_map<std::string, struct TRI_df_marker_s const*> DocumentOperationsType;
@@ -325,7 +327,7 @@ namespace triagens {
 /// @brief transfer markers into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int executeTransferMarkers (TRI_document_collection_t*, 
+        int executeTransferMarkers (TRI_document_collection_t*,
                                     CollectorCache*,
                                     OperationsType const&);
 
@@ -333,13 +335,13 @@ namespace triagens {
 /// @brief insert the collect operations into a per-collection queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        int queueOperations (triagens::wal::Logfile*, 
+        int queueOperations (triagens::wal::Logfile*,
                              CollectorCache*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a collection's datafile information
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         int updateDatafileStatistics (TRI_document_collection_t*,
                                       CollectorCache*);
 
@@ -354,7 +356,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         char* nextFreeMarkerPosition (struct TRI_document_collection_t*,
-                                      TRI_voc_tick_t, 
+                                      TRI_voc_tick_t,
                                       TRI_df_marker_type_e,
                                       TRI_voc_size_t,
                                       CollectorCache*);
@@ -394,7 +396,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_server_s* _server;
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable for the collector thread
 ////////////////////////////////////////////////////////////////////////////////
@@ -416,7 +418,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         volatile sig_atomic_t _stop;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,7 +440,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

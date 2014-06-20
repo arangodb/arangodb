@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -431,7 +433,7 @@ bool TRI_ExistsFile (char const* path) {
     struct stat stbuf;
     size_t len;
     int res;
-     
+
     len  = strlen(path);
 
     // path must not end with a \ on Windows, other stat() will return -1
@@ -441,7 +443,7 @@ bool TRI_ExistsFile (char const* path) {
       if (copy == NULL) {
         return false;
       }
-      
+
       // remove trailing slash
       RemoveTrailingSeparator(copy);
 
@@ -996,8 +998,8 @@ bool TRI_fsync (int fd) {
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile (TRI_memory_zone_t* zone, 
-                     char const* filename, 
+char* TRI_SlurpFile (TRI_memory_zone_t* zone,
+                     char const* filename,
                      size_t* length) {
   TRI_string_buffer_t result;
   int fd;
@@ -1020,7 +1022,7 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE(fd);
       TRI_AnnihilateStringBuffer(&result);
-      
+
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return NULL;
     }
@@ -1039,12 +1041,12 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       return NULL;
     }
-    
+
     TRI_IncreaseLengthStringBuffer(&result, (size_t) n);
   }
 
   if (length != NULL) {
-    *length = TRI_LengthStringBuffer(&result); 
+    *length = TRI_LengthStringBuffer(&result);
   }
 
   TRI_CLOSE(fd);
@@ -1247,7 +1249,7 @@ int TRI_VerifyLockFile (char const* filename) {
   n = TRI_READ(fd, buffer, sizeof(buffer));
 
   TRI_CLOSE(fd);
-  
+
   if (n < 0) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -1373,7 +1375,7 @@ int TRI_DestroyLockFile (char const* filename) {
 char* TRI_GetFilename (char const* filename) {
   const char* p;
   const char* s;
-  
+
   p = s = filename;
 
   while (*p != '\0') {
@@ -1383,7 +1385,7 @@ char* TRI_GetFilename (char const* filename) {
     p++;
   }
 
-  return TRI_DuplicateString(s); 
+  return TRI_DuplicateString(s);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1418,7 +1420,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // backslash.
   // ...........................................................................
 
-  if ((fileName[0] > 64 && fileName[0] < 91) || 
+  if ((fileName[0] > 64 && fileName[0] < 91) ||
       (fileName[0] > 96 && fileName[0] < 123)) {
     if (fileName[1] == ':') {
       if (fileName[2] == '/' || fileName[2] == '\\') {
@@ -1450,7 +1452,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   // ...........................................................................
 
   ok = false;
-  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) || 
+  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) ||
       (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
     if (currentWorkingDirectory[1] == ':') {
       if (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\') {
@@ -1471,7 +1473,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   cwdLength  = strlen(currentWorkingDirectory);
   fileLength = strlen(fileName);
 
-  if (currentWorkingDirectory[cwdLength - 1] == '\\' || 
+  if (currentWorkingDirectory[cwdLength - 1] == '\\' ||
       currentWorkingDirectory[cwdLength - 1] == '/') {
     // we do not require a backslash
     result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false);
@@ -1724,7 +1726,7 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
       break;
     }
   }
-  
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
   res2 = fclose(fin);
@@ -1755,13 +1757,13 @@ char* TRI_GetTempPath () {
   // 'defined' for both, for example, GetTempPath (below) actually converts to
   // GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call unicode).
   // ..........................................................................
- 
+
   #define LOCAL_MAX_PATH_BUFFER 2049
   TCHAR   tempFileName[LOCAL_MAX_PATH_BUFFER];
   TCHAR   tempPathName[LOCAL_MAX_PATH_BUFFER];
   DWORD   dwReturnValue  = 0;
   UINT    uReturnValue   = 0;
-  HANDLE  tempFileHandle = INVALID_HANDLE_VALUE; 
+  HANDLE  tempFileHandle = INVALID_HANDLE_VALUE;
   BOOL    ok;
   char* result;
 
@@ -1772,11 +1774,11 @@ char* TRI_GetTempPath () {
   // ..........................................................................
 
   dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
-  
+
   if ( (dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
     LOG_TRACE("GetTempPathA failed: LOCAL_MAX_PATH_BUFFER=%d:dwReturnValue=%d", LOCAL_MAX_PATH_BUFFER, dwReturnValue);
-    // attempt to simply use the current directory      
+    // attempt to simply use the current directory
     _tcscpy(tempFileName,TEXT("."));
   }
 
@@ -1785,36 +1787,36 @@ char* TRI_GetTempPath () {
   // Having obtained the temporary path, we have to determine if we can actually
   // write to that directory
   // ...........................................................................
- 
-  uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);  
+
+  uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
 
   if (uReturnValue == 0) {
     LOG_TRACE("GetTempFileNameA failed");
     _tcscpy(tempFileName,TEXT("TRI_tempFile"));
   }
-  
-  tempFileHandle = CreateFile((LPTSTR) tempFileName, // file name 
-                              GENERIC_WRITE,         // open for write 
-                              0,                     // do not share 
-                              NULL,                  // default security 
+
+  tempFileHandle = CreateFile((LPTSTR) tempFileName, // file name
+                              GENERIC_WRITE,         // open for write
+                              0,                     // do not share
+                              NULL,                  // default security
                               CREATE_ALWAYS,         // overwrite existing
-                              FILE_ATTRIBUTE_NORMAL, // normal file 
-                              NULL);                 // no template 
+                              FILE_ATTRIBUTE_NORMAL, // normal file
+                              NULL);                 // no template
 
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_FATAL_AND_EXIT("Can not create a temporary file");   
+    LOG_FATAL_AND_EXIT("Can not create a temporary file");
   }
 
   ok = CloseHandle(tempFileHandle);
 
   if (! ok) {
-    LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");   
+    LOG_FATAL_AND_EXIT("Can not close the handle of a temporary file");
   }
 
   ok = DeleteFile(tempFileName);
-  
+
   if (! ok) {
-    LOG_FATAL_AND_EXIT("Can not destroy a temporary file");   
+    LOG_FATAL_AND_EXIT("Can not destroy a temporary file");
   }
 
 
@@ -1829,12 +1831,12 @@ char* TRI_GetTempPath () {
     char* temp = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false);
 
     if (temp == NULL) {
-      LOG_FATAL_AND_EXIT("Out of memory");   
+      LOG_FATAL_AND_EXIT("Out of memory");
     }
 
     for (j = 0; j < pathSize; ++j) {
       if (tempPathName[j] > 127) {
-        LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");   
+        LOG_FATAL_AND_EXIT("Invalid characters in temporary path name");
       }
       temp[j] = (char)(tempPathName[j]);
     }
@@ -1844,11 +1846,11 @@ char* TRI_GetTempPath () {
     RemoveTrailingSeparator(temp);
 
     //ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName, -1, temp, pathSize + 1,  NULL, NULL) != 0);
-    
+
     result = TRI_DuplicateString(temp);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
   }
-            
+
   return result;
 #else
   return TRI_DuplicateString("/tmp/arangodb");
@@ -1859,8 +1861,8 @@ char* TRI_GetTempPath () {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName (char const* directory, 
-                     char** result, 
+int TRI_GetTempName (char const* directory,
+                     char** result,
                      const bool createFile) {
   char* dir;
   char* temp;
@@ -1872,19 +1874,19 @@ int TRI_GetTempName (char const* directory,
     dir = TRI_Concatenate2File(temp, directory);
   }
   else {
-    dir = TRI_DuplicateString(temp); 
+    dir = TRI_DuplicateString(temp);
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, temp);
-  
+
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
-  
+
   TRI_CreateRecursiveDirectory(dir);
 
   if (! TRI_IsDirectory(dir)) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return TRI_ERROR_CANNOT_CREATE_DIRECTORY; 
+    return TRI_ERROR_CANNOT_CREATE_DIRECTORY;
   }
 
   tries = 0;
@@ -1899,7 +1901,7 @@ int TRI_GetTempName (char const* directory,
 
     number = TRI_StringUInt32(TRI_UInt32Random());
     pidString = TRI_StringUInt32(pid);
-    tempName = TRI_Concatenate4String("tmp-", pidString, "-", number); 
+    tempName = TRI_Concatenate4String("tmp-", pidString, "-", number);
     TRI_Free(TRI_CORE_MEM_ZONE, number);
     TRI_Free(TRI_CORE_MEM_ZONE, pidString);
 
@@ -1925,7 +1927,7 @@ int TRI_GetTempName (char const* directory,
         *result = filename;
         return TRI_ERROR_NO_ERROR;
       }
-      
+
       TRI_Free(TRI_CORE_MEM_ZONE, filename);
     }
 
@@ -2011,15 +2013,15 @@ char * __LocateInstallDirectory_In(HKEY rootKey) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate the installation directory 
+/// @brief locate the installation directory
 //
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
 #if _WIN32
 char* TRI_LocateInstallDirectory () {
-  // We look for the configuration first in HKEY_CURRENT_USER (arango was 
-  // installed for a single user). When we don't find  anything when look in 
+  // We look for the configuration first in HKEY_CURRENT_USER (arango was
+  // installed for a single user). When we don't find  anything when look in
   // HKEY_LOCAL_MACHINE (arango was installed as service).
 
   char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
@@ -2127,15 +2129,11 @@ void TRI_ShutdownFiles (void) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -56,6 +56,7 @@ mv ${PREFIX}.hpp ${PREFIX}.h || exit 1
 
 sed -e 's:\.hpp:.h:' < ${OUTPUT} \
   | sed -e 's:# if YYENABLE_NLS:# if defined(YYENABLE_NLS) \&\& YYENABLE_NLS:' \
+  | sed -e 's:__attribute__((__unused__)):' \
   > ${OUTPUT}.tmp
 
 # give some information

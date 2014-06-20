@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_INDEX_H
-#define TRIAGENS_VOC_BASE_INDEX_H 1
+#ifndef ARANGODB_VOC_BASE_INDEX_H
+#define ARANGODB_VOC_BASE_INDEX_H 1
 
 #include "Basics/Common.h"
 
@@ -105,7 +107,7 @@ typedef struct TRI_index_s {
   size_t (*memory) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s const*);
   void (*removeIndex) (struct TRI_index_s*, struct TRI_document_collection_t*);
-  
+
   // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
@@ -121,7 +123,7 @@ typedef struct TRI_index_s {
 
   // give index a hint about the expected size
   int (*sizeHint) (struct TRI_index_s*, size_t);
-  
+
   // .........................................................................................
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
@@ -270,8 +272,8 @@ TRI_index_search_value_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitIndex (TRI_index_t*,
-                    TRI_idx_iid_t, 
-                    TRI_idx_type_e, 
+                    TRI_idx_iid_t,
+                    TRI_idx_type_e,
                     struct TRI_document_collection_t*,
                     bool);
 
@@ -320,14 +322,14 @@ void TRI_FreeIndex (TRI_index_t*);
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (struct TRI_document_collection_t*, 
+bool TRI_RemoveIndexFile (struct TRI_document_collection_t*,
                           TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (struct TRI_document_collection_t*, 
+int TRI_SaveIndex (struct TRI_document_collection_t*,
                    TRI_index_t*,
                    TRI_server_id_t);
 
@@ -335,16 +337,16 @@ int TRI_SaveIndex (struct TRI_document_collection_t*,
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_t*, 
+TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_t*,
                               TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a basic index description as JSON
 /// this only contains the common index fields and needs to be extended by the
-/// specialised index 
+/// specialised index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*, 
+TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*,
                            TRI_index_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,14 +359,14 @@ void TRI_DestroyIndexResult (TRI_index_result_t*);
 /// @brief copies a path vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyPathVector (TRI_vector_t*, 
+void TRI_CopyPathVector (TRI_vector_t*,
                          TRI_vector_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies all pointers from a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyFieldsVector (TRI_vector_string_t*, 
+void TRI_CopyFieldsVector (TRI_vector_string_t*,
                            TRI_vector_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,7 +376,7 @@ void TRI_CopyFieldsVector (TRI_vector_string_t*,
 /// belong to the shaper.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const** TRI_FieldListByPathList (TRI_shaper_t const*, 
+char const** TRI_FieldListByPathList (TRI_shaper_t const*,
                                       TRI_vector_t const*);
 
 // -----------------------------------------------------------------------------
@@ -424,7 +426,7 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, 
+TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
                                                   TRI_index_operator_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,7 +459,7 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*, 
+struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*,
                                                  const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,8 +496,8 @@ void TRI_FreeFulltextIndex (TRI_index_t*);
 /// @brief returns an iterator for a lookup query
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*, 
-                                               TRI_index_operator_t*, 
+TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
+                                               TRI_index_operator_t*,
                                                bool (*filter) (TRI_index_iterator_t*) );
 
 
@@ -533,7 +535,11 @@ bool IndexComparator (TRI_json_t const* lhs, TRI_json_t const* rhs);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

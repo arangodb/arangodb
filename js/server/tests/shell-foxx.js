@@ -1,15 +1,97 @@
 require("internal").flushModuleCache();
 
+// Stubbing and Mocking
+
+var stub,
+  allow,
+  FunctionStub,
+  mockConstructor,
+  _ = require("underscore");
+
+// Sorry for Yak Shaving. But I can't take it anymore.
+
+// x = stub();
+
+stub = function () {
+  'use strict';
+  return function() {};
+};
+
+// allow(x)
+//   .toReceive("functionName")
+//   .andReturn({ x: 1 })
+
+FunctionStub = function(obj) {
+  'use strict';
+  this.obj = obj;
+};
+
+_.extend(FunctionStub.prototype, {
+  toReceive: function (functionName) {
+    'use strict';
+    this.functionName = functionName;
+    this.buildFunctionStub();
+    return this;
+  },
+
+  andReturn: function (returnValue) {
+    'use strict';
+    this.returnValue = returnValue;
+    this.buildFunctionStub();
+    return this;
+  },
+
+  buildFunctionStub: function () {
+    'use strict';
+    var returnValue = this.returnValue;
+
+    this.obj[this.functionName] = function () {
+      return returnValue;
+    };
+  }
+});
+
+allow = function(obj) {
+  'use strict';
+  return (new FunctionStub(obj));
+};
+
+/* Create a Mock Constructor
+ *
+ * Give the arguments you expect to mockConstructor:
+ * It checks, if it was called with new and the
+ * correct arguments.
+ *
+ * MyProto = mockConstructor(test);
+ *
+ * a = new MyProto(test);
+ *
+ * MyProto.assertIsSatisfied();
+ */
+mockConstructor = function () {
+  'use strict';
+  var expectedArguments = arguments,
+    satisfied = false,
+    MockConstructor = function () {
+    if (this.constructor === MockConstructor) {
+      // Was called as a constructor
+      satisfied = _.isEqual(arguments, expectedArguments);
+    }
+  };
+
+  MockConstructor.assertIsSatisfied = function () {
+    assertTrue(satisfied);
+  };
+
+  return MockConstructor;
+};
+
+
 var jsunity = require("jsunity"),
   FoxxController = require("org/arangodb/foxx").Controller,
   db = require("org/arangodb").db,
-  _ = require("underscore"),
   fakeContext,
-  fakeContextWithRootElement,
-  stub_and_mock = require("org/arangodb/stub_and_mock"),
-  stub = stub_and_mock.stub,
-  allow = stub_and_mock.allow,
-  mockConstructor = stub_and_mock.mockConstructor;
+  fakeContextWithRootElement;
 
 fakeContext = {
   prefix: "",

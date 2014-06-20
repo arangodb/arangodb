@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_UTILS_H
-#define TRIAGENS_V8_V8_UTILS_H 1
+#ifndef ARANGODB_V8_V8__UTILS_H
+#define ARANGODB_V8_V8__UTILS_H 1
 
 #include "Basics/Common.h"
 
@@ -49,31 +51,31 @@
 
 class TRI_Utf8ValueNFC {
   public:
-    TRI_Utf8ValueNFC (TRI_memory_zone_t*, 
+    TRI_Utf8ValueNFC (TRI_memory_zone_t*,
                       v8::Handle<v8::Value> const);
 
     ~TRI_Utf8ValueNFC ();
-    
+
     // Disallow copying and assigning.
     TRI_Utf8ValueNFC (TRI_Utf8ValueNFC const&) = delete;
     TRI_Utf8ValueNFC& operator= (TRI_Utf8ValueNFC const&) = delete;
 
-    inline char* operator* () { 
-      return _str; 
+    inline char* operator* () {
+      return _str;
     }
 
-    inline const char* operator* () const { 
-      return _str; 
+    inline const char* operator* () const {
+      return _str;
     }
 
-    inline size_t length () const { 
-      return _length; 
+    inline size_t length () const {
+      return _length;
     }
 
-    char* steal () { 
-      char* tmp = _str; 
-      _str = nullptr; 
-      return tmp; 
+    char* steal () {
+      char* tmp = _str;
+      _str = nullptr;
+      return tmp;
     }
 
   private:
@@ -201,7 +203,7 @@ v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> TRI_CreateErrorObject (const char* file,
-                                              int line, 
+                                              int line,
                                               int errorNumber,
                                               std::string const& message,
                                               bool autoPrepend);
@@ -238,5 +240,5 @@ void TRI_InitV8Utils (v8::Handle<v8::Context>,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -6,6 +6,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +21,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
@@ -34,51 +35,51 @@ using namespace triagens::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Data format of a legend in memory:
-/// 
+///
 /// Rough overview description:
-/// 
+///
 ///   - attribute-ID table
 ///   - shape table
 ///   - attribute-ID string data
 ///   - padding to achieve 8-byte alignment
 ///   - shape data
 ///   - padding to achieve 8-byte alignment
-/// 
-/// Description of the attribute-ID table (actual binary types in 
+///
+/// Description of the attribute-ID table (actual binary types in
 /// [square brackets]):
-/// 
+///
 ///   - number of entries [TRI_shape_size_t]
 ///   - each entry consists of:
-///   
+///
 ///       - attribute ID (aid) [TRI_shape_aid_t]
 ///       - offset to string value, measured from the beginning of the legend
 ///         [TRI_shape_size_t]
-/// 
-/// The entries in the attribute-ID table are sorted by ascending order of 
+///
+/// The entries in the attribute-ID table are sorted by ascending order of
 /// shape IDs to allow for binary search if needed.
 ///
 /// Description of the shape table:
-/// 
+///
 ///   - number of entries [TRI_shape_size_t]
 ///   - each entry consists of:
-/// 
+///
 ///       - shape ID (sid) [TRI_shape_sid_t]
 ///       - offset to shape data, measured from the beginning of the legend
 ///         [TRI_shape_size_t]
 ///       - size in bytes of the shape data for this shape ID [TRI_shape_size_t]
-/// 
-/// The entries in the shape table are sorted by ascending order of 
+///
+/// The entries in the shape table are sorted by ascending order of
 /// shape IDs to allow for binary search if needed.
 ///
-/// The strings for the attribute IDs are stored one after another, each 
+/// The strings for the attribute IDs are stored one after another, each
 /// including a terminating zero byte. At the end of the string data follow
 /// zero bytes to pad to a total length that is divisible by 8.
-/// 
+///
 /// The actual entries of the shape data is stored one after another. Alignment
-/// for each entry is automatically given by the length of the shape data. At 
+/// for each entry is automatically given by the length of the shape data. At
 /// the end there is padding to make the length of the total legend divisible
 /// by 8.
-/// 
+///
 /// Note that the builtin shapes are never dumped and that proper legends
 /// contain all attribute IDs
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,8 +123,8 @@ int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
 /// @brief add a shape to the legend
 ////////////////////////////////////////////////////////////////////////////////
 
-int JsonLegend::addShape (TRI_shape_sid_t sid, 
-                          char const* data, 
+int JsonLegend::addShape (TRI_shape_sid_t sid,
+                          char const* data,
                           uint32_t len) {
   // data and len must always be given, because in general we might have
   // to sniff recursively into the subobjects. :-(
@@ -172,7 +173,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     res = TRI_ERROR_NO_ERROR;  // just in case the length is 0
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, ptr, shape_spec->_sizeEntry);
+      res = addShape(shape_spec->_sidEntry, ptr, static_cast<uint32_t>(shape_spec->_sizeEntry));
       ptr += shape_spec->_sizeEntry;
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -188,8 +189,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     auto offsets = reinterpret_cast<TRI_shape_size_t const*>(len + 1);
     TRI_shape_length_list_t i;
     for (i = 0; i < *len; i++) {
-      res = addShape(shape_spec->_sidEntry, data + offsets[i],
-                                            offsets[i + 1] - offsets[i]);
+      res = addShape(shape_spec->_sidEntry, data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -206,7 +206,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     TRI_shape_length_list_t i;
 
     for (i = 0; i < *len; i++) {
-      res = addShape(sids[i], data + offsets[i], offsets[i + 1] - offsets[i]);
+      res = addShape(sids[i], data + offsets[i], static_cast<uint32_t>(offsets[i + 1] - offsets[i]));
       if (res != TRI_ERROR_NO_ERROR) {
         break;
       }
@@ -223,20 +223,19 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
     auto offsetsV = reinterpret_cast<TRI_shape_size_t const*>(data);
 
     TRI_shape_size_t i;
-    for (i = 0; res == TRI_ERROR_NO_ERROR && 
+    for (i = 0; res == TRI_ERROR_NO_ERROR &&
                 i < shape_spec->_fixedEntries + shape_spec->_variableEntries;
          i++) {
       res = addAttributeId(aids[i]);
     }
-    for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_fixedEntries; 
+    for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_fixedEntries;
          i++) {
       // Fixed size subdocs cannot have inhomogeneous lists as subdocs:
-      res = addShape(sids[i], data + offsetsF[i], offsetsF[i + 1] - offsetsF[i]);
+      res = addShape(sids[i], data + offsetsF[i], static_cast<uint32_t>(offsetsF[i + 1] - offsetsF[i]));
     }
     for (i = 0; res == TRI_ERROR_NO_ERROR && i < shape_spec->_variableEntries;
          i++) {
-      addShape(sids[i + shape_spec->_fixedEntries],
-               data + offsetsV[i], offsetsV[i + 1] - offsetsV[i]);
+      addShape(sids[i + shape_spec->_fixedEntries], data + offsetsV[i], static_cast<uint32_t>(offsetsV[i + 1] - offsetsV[i]));
     }
   }
 
@@ -331,3 +330,11 @@ void JsonLegend::dump (void* buf) {
     memset(c + shapeDataLength, 0, i - shapeDataLength);
   }
 }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
