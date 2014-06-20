@@ -7,7 +7,9 @@ def file_content(filepath):
     """ Fetches and formats file's content to perform the required operation.
     """
 
-    filelines = tuple(open(filepath, 'r'))
+    infile = open(filepath, 'r')
+    filelines = tuple(infile)
+    infile.close()
 
     comment_indexes = []
     comments = []
@@ -24,17 +26,94 @@ def file_content(filepath):
 
     return comments
 
-def example_content(filepath, fh):
-  """ Fetches an example file and inserts it using code
-  """
 
-  fh.write("\n```\n")
+def example_content(filepath, fh, tag):
+    """ Fetches an example file and inserts it using code
+    """
 
-  filelines = tuple(open(filepath, 'r'))
-  for line in enumerate(filelines):
-    fh.write("%s" % line[1])
+    first = True
+    arangosh = False
+    showdots = True
+    lastline = None
+    short = ""
+    shortLines = 0
+    long = ""
+    longLines = 0
+    shortable = False
 
-  fh.write("```\n")
+    # read in the context, split into long and short
+    infile = open(filepath, 'r')
+
+    for line in infile:
+        if first:
+            arangosh = line.startswith("arangosh>")
+            first = False
+
+        if arangosh:
+            if line.startswith("arangosh>") or line.startswith("........>"):
+                if lastline != None:
+                    short = short + lastline
+                    shortLines = shortLines + 1
+                    lastline = None
+
+                short = short + line
+                showdots = True
+            else:
+                if showdots:
+                    if lastline == None:
+                        lastline = line
+                    else:
+                        short = short + "~~~hidden~~~\n"
+                        shortLines = shortLines + 1
+                        shortable = True
+                        showdots = False
+                        lastline = None
+
+        long = long + line
+        longLines = longLines + 1
+
+    if lastline != None:
+        short = short + lastline
+        shortLines = shortLines + 1
+
+    infile.close()
+
+    if longLines - shortLines < 5:
+        shortable = False
+
+    # write example
+    fh.write("\n")
+    fh.write("<div id=\"%s_container\">\n" % tag)
+
+    longTag = "%s_long" % tag
+    shortTag = "%s_short" % tag
+
+    longToggle = "$('#%s').hide(); $('#%s').show();" % (longTag, shortTag)
+    shortToggle = "$('#%s').hide(); $('#%s').show();" % (shortTag, longTag)
+
+    if shortable:
+        fh.write("<div id=\"%s\" onclick=\"%s\" style=\"Display: none;\">\n" % (longTag, longToggle))
+    else:
+        fh.write("<div id=\"%s\">\n" % longTag)
+
+    fh.write("<pre>\n")
+    fh.write("```\n")
+    fh.write("%s" % long)
+    fh.write("```\n")
+    fh.write("</pre>\n")
+    fh.write("</div>\n")
+    
+    if shortable:
+        fh.write("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle))
+        fh.write("<pre>\n")
+        fh.write("```\n")
+        fh.write("%s" % short)
+        fh.write("```\n")
+        fh.write("</pre>\n")
+        fh.write("</div>\n")
+
+    fh.write("</div>\n")
+
 
 def fetch_comments(dirpath):
     """ Fetches comments from files and writes to a file in required format.
@@ -66,7 +145,7 @@ def fetch_comments(dirpath):
                           _filename = re.search("{(.*)}", _text).group(1)
                           dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
                           if os.path.isfile(dirpath):
-                            example_content(dirpath, fh)
+                            example_content(dirpath, fh, _filename)
                           else:
                             print "Could not find code for " + _filename
                         else:

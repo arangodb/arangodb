@@ -135,7 +135,7 @@ var actions = require("org/arangodb/actions");
 /// Exceptions thrown by users will make the server respond with a return code of 
 /// `HTTP 500` 
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Executing a transaction on a single collection:
 ///

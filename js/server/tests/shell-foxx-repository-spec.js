@@ -66,13 +66,18 @@ describe('Repository Methods', function () {
 
   beforeEach(function () {
     collection = createSpyObj('collection', [
+      'all',
       'save',
+      'count',
       'document',
       'byExample',
       'firstExample',
       'remove',
       'removeByExample',
-      'replace'
+      'update',
+      'updateByExample',
+      'replace',
+      'replaceByExample'
     ]);
     instance = new FoxxRepository(collection, { model: Model });
   });
@@ -139,11 +144,36 @@ describe('Repository Methods', function () {
       expect(collection.firstExample.calls.argsFor(0)).toEqual([example]);
     });
 
-    it('should find all');
+    it('should find all', function () {
+      var cursor = createSpyObj('cursor', ['skip', 'limit', 'toArray']),
+        result = [{}],
+        models;
+
+      collection.all.and.returnValue(cursor);
+      cursor.skip.and.returnValue(cursor);
+      cursor.limit.and.returnValue(cursor);
+      cursor.toArray.and.returnValue(result);
+
+      // TODO: Would prefer to mock the constructor and check for the specific instance
+      models = instance.all({ skip: 4, limit: 2 });
+      expect(models[0] instanceof Model).toBe(true);
+      expect(cursor.skip.calls.argsFor(0)).toEqual([4]);
+      expect(cursor.limit.calls.argsFor(0)).toEqual([2]);
+    });
   });
 
   describe('for removing entries', function () {
-    it('should allow to remove a model');
+    it('should allow to remove a model', function () {
+      var model = new Model(),
+        id = createSpy('id');
+
+      spyOn(model, 'get').and.returnValue(id);
+
+      instance.remove(model);
+
+      expect(collection.remove.calls.argsFor(0)).toEqual([id]);
+      expect(model.get.calls.argsFor(0)).toEqual(['_id']);
+    });
 
     it('should allow to remove by ID', function () {
       var id = createSpy('id');
@@ -202,15 +232,54 @@ describe('Repository Methods', function () {
       expect(collection.replace.calls.argsFor(0)).toEqual([id, data]);
     });
 
-    it('should replace by example');
+    it('should replace by example', function () {
+      var model = new Model({}),
+        idAndRev = createSpy('idAndRev'),
+        example = createSpy('example'),
+        data = createSpy('data'),
+        result;
+
+      spyOn(model, 'forDB').and.returnValue(data);
+      spyOn(model, 'set');
+      collection.replaceByExample.and.returnValue(idAndRev);
+
+      result = instance.replaceByExample(example, model);
+
+      expect(result).toBe(model);
+      expect(model.set.calls.argsFor(0)).toEqual([idAndRev]);
+      expect(collection.replaceByExample.calls.argsFor(0)).toEqual([example, data]);
+    });
   });
 
   describe('for updating entries', function () {
-    it('should update by id');
-    it('should update by example');
+    it('should update by id', function () {
+      var id = createSpy('id'),
+        updates = createSpy('updates'),
+        idAndRev = createSpy('idAndRev');
+
+      collection.update.and.returnValue(idAndRev);
+      instance.updateById(id, updates);
+
+      expect(collection.update.calls.argsFor(0)).toEqual([id, updates]);
+    });
+
+    it('should update by example', function () {
+      var example = createSpy('example'),
+        updates = createSpy('updates'),
+        idAndRev = createSpy('idAndRev');
+
+      collection.updateByExample.and.returnValue(idAndRev);
+      instance.updateByExample(example, updates);
+
+      expect(collection.updateByExample.calls.argsFor(0)).toEqual([example, updates]);
+    });
   });
 
   describe('for counting entries', function () {
-    it('should count all');
+    it('should count all', function () {
+      var count = createSpy('count');
+      collection.count.and.returnValue(count);
+      expect(instance.count()).toBe(count);
+    });
   });
 });

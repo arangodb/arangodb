@@ -170,7 +170,7 @@ var stringifyFunction = function (code, name) {
 /// Trying to unregister a function that does not exist will result in an 
 /// exception.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
@@ -213,7 +213,7 @@ var unregisterFunction = function (name) {
 ///
 /// This will return the number of functions unregistered.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
@@ -263,7 +263,7 @@ var unregisterFunctionsGroup = function (group) {
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimisations later.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
@@ -351,7 +351,7 @@ var registerFunction = function (name, code, isDeterministic) {
 ///
 /// @FUN{aqlfunctions.toArray(@FA{prefix})}
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To list all available user functions:
 ///

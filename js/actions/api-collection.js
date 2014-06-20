@@ -251,7 +251,7 @@ function parseBodyForCreateCollection (req, res) {
 ///   determine the target shard. Note that values of shard key attributes cannot
 ///   be changed once set.
 ///   This option is meaningless in a single server setup.
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
 ///     var url = "/_api/collection";
@@ -373,7 +373,7 @@ function post_api_collection (req, res) {
 /// By providing the optional URL parameter `excludeSystem` with a value of
 /// `true`, all system collections will be excluded from the response.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Return information about all collections:
 ///
@@ -500,7 +500,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Using an identifier:
 ///
@@ -560,7 +560,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Using an identifier and requesting the number of documents:
 ///
@@ -664,7 +664,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Using an identifier and requesting the figures of the collection:
 ///
@@ -711,7 +711,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Retrieving the revision of a collection
 ///
@@ -786,7 +786,7 @@ function get_api_collections (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Retrieving the checksum of a collection:
 ///
@@ -1014,7 +1014,7 @@ function get_api_collection (req, res) {
 /// If the `collection-name` is unknown, then a `HTTP 404`
 /// is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierLoad}
 ///     var cn = "products";
@@ -1085,7 +1085,7 @@ function put_api_collection_load (req, res, collection) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierUnload}
 ///     var cn = "products";
@@ -1128,7 +1128,7 @@ function put_api_collection_unload (req, res, collection) {
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierTruncate}
 ///     var cn = "products";
@@ -1198,7 +1198,7 @@ function put_api_collection_truncate (req, res, collection) {
 /// `numberOfShards` or `shardKeys` cannot be changed once a collection is 
 /// created.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierPropertiesSync}
 ///     var cn = "products";
@@ -1261,7 +1261,7 @@ function put_api_collection_properties (req, res, collection) {
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
 ///     var cn = "products1";
@@ -1338,7 +1338,7 @@ function put_api_collection_rename (req, res, collection) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Rotating a journal:
 ///
@@ -1460,7 +1460,7 @@ function put_api_collection (req, res) {
 /// @RESTRETURNCODE{404}
 /// If the `collection-name` is unknown, then a `HTTP 404` is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Using an identifier:
 ///

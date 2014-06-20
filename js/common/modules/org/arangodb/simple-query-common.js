@@ -365,7 +365,7 @@ SimpleQuery.prototype.execute = function () {
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
 ///
-/// @EXAMPLES
+/// *Examples*
 /// 
 /// @verbinclude simple2
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,7 +398,7 @@ SimpleQuery.prototype.limit = function (limit) {
 /// In general the input to @FN{limit} should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude simple8
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,7 +507,7 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 /// @note Not all simple queries support counting. In this case @LIT{null} is
 /// returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Ignore any limit:
 ///
@@ -537,7 +537,7 @@ SimpleQuery.prototype.count = function (applyPagination) {
 /// documents.  In this case the next document can be accessed using the
 /// @FN{next} operator, which will advance the cursor.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude simple7
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,7 +559,7 @@ SimpleQuery.prototype.hasNext = function () {
 /// will advance the underlying cursor. If you use @FN{next} on an
 /// exhausted cursor, then @LIT{undefined} is returned.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude simple5
 ////////////////////////////////////////////////////////////////////////////////

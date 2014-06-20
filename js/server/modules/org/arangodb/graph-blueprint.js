@@ -103,7 +103,7 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ///
 /// Changes or sets the property @FA{name} an @FA{edges} to @FA{value}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-edge-set-property
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +140,7 @@ Edge.prototype.setProperty = function (name, value) {
 ///
 /// Returns a list of in- or outbound edges of the @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +160,7 @@ Vertex.prototype.edges = function () {
 ///
 /// Returns a list of inbound edges of the @FA{vertex} with given label(s).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-get-in-edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +185,7 @@ Vertex.prototype.getInEdges = function () {
 ///
 /// Returns a list of outbound edges of the @FA{vertex} with given label(s).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-get-out-edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +232,7 @@ Vertex.prototype.getEdges = function () {
 ///
 /// Returns a list of inbound edges of the @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-inbound
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,7 +252,7 @@ Vertex.prototype.inbound = function () {
 ///
 /// Returns a list of outbound edges of the @FA{vertex}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-outbound
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +272,7 @@ Vertex.prototype.outbound = function () {
 ///
 /// Changes or sets the property @FA{name} a @FA{vertex} to @FA{value}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-vertex-set-property
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +312,7 @@ Vertex.prototype.setProperty = function (name, value) {
 ///
 /// Returns a known graph.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,7 +603,7 @@ Graph.prototype._replaceEdge = function (edge_id, data) {
 ///
 /// Returns the vertex identified by @FA{id} or @LIT{null}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-get-vertex
 ////////////////////////////////////////////////////////////////////////////////
@@ -625,7 +625,7 @@ Graph.prototype.getVertex = function (id) {
 /// Returns an iterator for all vertices of the graph. The iterator supports the
 /// methods @FN{hasNext} and @FN{next}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-get-vertices
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,7 +647,7 @@ Graph.prototype.getVertices = function () {
 ///
 /// Returns the edge identified by @FA{id} or @LIT{null}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-get-edge
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,7 +682,7 @@ Graph.prototype.getEdge = function (id) {
 /// Returns an iterator for all edges of the graph. The iterator supports the
 /// methods @FN{hasNext} and @FN{next}.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-get-edges
 ////////////////////////////////////////////////////////////////////////////////
@@ -703,7 +703,7 @@ Graph.prototype.getEdges = function () {
 ///
 /// Deletes the @FA{vertex} and all its edges.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-remove-vertex
 ////////////////////////////////////////////////////////////////////////////////
@@ -735,7 +735,7 @@ Graph.prototype.removeVertex = function (vertex, waitForSync) {
 ///
 /// Deletes the @FA{edge}. Note that the in and out vertices are left untouched.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @verbinclude graph-graph-remove-edge
 ////////////////////////////////////////////////////////////////////////////////

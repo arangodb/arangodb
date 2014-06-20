@@ -196,7 +196,7 @@ ArangoCollection.prototype.toString = function () {
 /// @FN{toArray}, @FN{next}, or @FN{hasNext} to access the result. The result
 /// can be limited using the @FN{skip} and @FN{limit} operator.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Use @FN{toArray} to get all documents at once:
 ///
@@ -256,7 +256,7 @@ ArangoCollection.prototype.all = function () {
 ///
 /// As alternative you can supply a list of paths and values.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Use @FN{toArray} to get all documents at once:
 ///
@@ -488,7 +488,7 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// queried attribute. If no skiplist index is present on the attribute, an
 /// error will be thrown.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Use @FN{toArray} to get all documents at once:
 ///
@@ -514,7 +514,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 /// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
 /// not as attribute.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Use @FN{toArray} to get all documents at once:
 ///
@@ -558,7 +558,7 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// @FN{within} operators can then be used to execute a geo-spatial query on 
 /// this particular index.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Assume you have a location stored as list in the attribute @LIT{home}
 /// and a destination stored in the attribute @LIT{work}. Then you can use the
@@ -670,7 +670,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To get the nearst two locations:
 ///
@@ -713,7 +713,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 /// This will add an attribute @FA{name} to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
@@ -737,7 +737,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 /// collection, for the specified attribute. If multiple fulltext indexes are defined
 /// for the collection and attribute, the most capable one will be selected.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// To find all documents which contain the terms @LIT{text} and @LIT{word}:
 ///
@@ -765,7 +765,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// - @LIT{probability} (optional, default all): a number between @LIT{0} and
 ///   @LIT{1}. Documents are chosen with this probability.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });

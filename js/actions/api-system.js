@@ -326,7 +326,7 @@ actions.defineHttp({
 /// @RESTRETURNCODE{200}
 /// Statistics were returned successfully.
 /// 
-/// @EXAMPLES
+/// *Examples*
 /// 
 /// @EXAMPLE_ARANGOSH_RUN{RestAdminStatistics1}
 ///     var url = "/_admin/statistics";
@@ -395,7 +395,7 @@ actions.defineHttp({
 /// @RESTRETURNCODE{200}
 /// Description was returned successfully.
 /// 
-/// @EXAMPLES
+/// *Examples*
 /// 
 /// @EXAMPLE_ARANGOSH_RUN{RestAdminStatisticsDescription1}
 ///     var url = "/_admin/statistics-description";
