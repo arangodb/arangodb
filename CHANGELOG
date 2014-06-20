@@ -24,12 +24,26 @@ v2.2.0 (XXXX-XX-XX)
   recent changes. This removes the need to store data-modifying operations in 
   both the actual place and the `_replication` collection. 
 
+  Note: the replication from the write-ahead log is still in development.
+
 * removed startup option `--server.disable-replication-logger`
 
-  This option is superfluous in ArangoDB 2.2. There is now always the write-ahead log,
-  and it is used as the server's replication log. Specifying the startup option
+  This option is superfluous in ArangoDB 2.2. There is no dedicated replication
+  logger in ArangoDB 2.2. There is now always the write-ahead log, and it is also
+  used as the server's replication log. Specifying the startup option
   `--server.disable-replication-logger` will do nothing in ArangoDB 2.2, but the
   option should not be used anymore as it might be removed in a future version.
+
+* changed behavior of replication logger
+
+  There is no dedicated replication logger in ArangoDB 2.2 as there is the 
+  write-ahead log now. The existing APIs for starting and stopping the replication
+  logger still exist in ArangoDB 2.2 for downwards-compatibility, but calling
+  the start or stop operations are no-ops in ArangoDB 2.2. When querying the
+  replication logger status via the API, the server will always report that the
+  replication logger is running. Configuring the replication logger is a no-op 
+  in ArangoDB 2.2, too. Changing the replication logger configuration has no
+  effect. Instead, the write-ahead log configuration can be changed.
 
 * removed MRuby integration for arangod
 
