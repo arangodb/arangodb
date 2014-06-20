@@ -170,7 +170,7 @@ static int ExtractCurrentFile (unzFile uf,
         }
       }
       else {
-        assert(result == 0);
+        TRI_ASSERT(result == 0);
         break;
       }
     }

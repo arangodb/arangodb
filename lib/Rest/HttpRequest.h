@@ -38,8 +38,6 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
-using namespace std;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
@@ -130,13 +128,13 @@ namespace triagens {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& protocol () const;
+        const std::string& protocol () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setProtocol (const string&);
+        void setProtocol (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
@@ -160,7 +158,7 @@ namespace triagens {
 /// @brief returns the full url of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& fullUrl () const {
+        const std::string& fullUrl () const {
           return _fullUrl;
         }
 
@@ -272,7 +270,7 @@ namespace triagens {
 /// @brief returns all suffix parts
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> const& suffix () const;
+        std::vector<std::string> const& suffix () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a suffix part
@@ -341,7 +339,7 @@ namespace triagens {
 /// Returns a copy of all header fields.
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, string> headers () const;
+        std::map<std::string, std::string> headers () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              public value methods
@@ -373,7 +371,7 @@ namespace triagens {
 /// Returns all key/value pairs of the request.
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, string> values () const;
+        std::map<std::string, std::string> values () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the value of an array key
@@ -382,7 +380,7 @@ namespace triagens {
 /// specified by the client.
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<char const*> const* arrayValue (char const* key) const;
+        std::vector<char const*> const* arrayValue (char const* key) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the value of an array key
@@ -391,7 +389,7 @@ namespace triagens {
 /// specified by the client. found is true if the client specified the key.
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<char const*> const* arrayValue (char const* key, bool& found) const;
+        std::vector<char const*> const* arrayValue (char const* key, bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all array values
@@ -399,7 +397,7 @@ namespace triagens {
 /// Returns all key/value pairs of the request.
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, vector<char const*>* > arrayValues () const;
+        std::map<std::string, std::vector<char const*>* > arrayValues () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the value of a cookie
@@ -423,7 +421,7 @@ namespace triagens {
 /// Returns all key/value pairs of the request.
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, string > cookieValues () const;
+        std::map<std::string, std::string > cookieValues () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               public body methods
@@ -475,19 +473,19 @@ namespace triagens {
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string translateVersion (HttpVersion);
+        static std::string translateVersion (HttpVersion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string translateMethod (const HttpRequestType);
+        static std::string translateMethod (const HttpRequestType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate an HTTP method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
-        static HttpRequestType translateMethod (const string&);
+        static HttpRequestType translateMethod (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the request method string to a string buffer
@@ -499,13 +497,13 @@ namespace triagens {
 /// @brief the expected content-type for a subpart
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string& getPartContentType ();
+        static const std::string& getPartContentType ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the expected content-type for a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string& getMultipartContentType ();
+        static const std::string& getMultipartContentType ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -589,7 +587,7 @@ namespace triagens {
 /// @brief array values
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Dictionary< vector<char const*>* > _arrayValues;
+        basics::Dictionary< std::vector<char const*>* > _arrayValues;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cookies
@@ -619,13 +617,13 @@ namespace triagens {
 /// @brief list of memory allocated which will be freed in the destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<char*> _freeables;
+        std::vector<char*> _freeables;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the protocol used
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _protocol;
+        std::string _protocol;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection info for the server and the peer
@@ -643,19 +641,19 @@ namespace triagens {
 /// @brief the prefix of the request path
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _prefix;
+        std::string _prefix;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the full url requested
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _fullUrl;
+        std::string _fullUrl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the suffixes for the request path
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> _suffix;
+        std::vector<std::string> _suffix;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the HTTP version
@@ -667,13 +665,13 @@ namespace triagens {
 /// @brief database name
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _databaseName;
+        std::string _databaseName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _user;
+        std::string _user;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request context

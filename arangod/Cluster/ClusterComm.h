@@ -28,7 +28,6 @@
 #ifndef TRIAGENS_CLUSTER_COMM_H
 #define TRIAGENS_CLUSTER_COMM_H 1
 
-#include "BasicsC/common.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ConditionVariable.h"
@@ -38,7 +37,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/voc-types.h"
-
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -256,10 +254,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
         
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = 0;
-        }
+        static void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not connection errors should be logged as errors

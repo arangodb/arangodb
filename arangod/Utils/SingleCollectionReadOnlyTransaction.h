@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
 #define TRIAGENS_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
 
+#include "Basics/Common.h"
+
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -49,11 +51,6 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,20 +60,18 @@ namespace triagens {
 /// that only allows read operations. Write operations are not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
-                                             const triagens::arango::CollectionNameResolver& resolver,
-                                             const TRI_voc_cid_t cid) :
-          SingleCollectionTransaction<T>(vocbase, resolver, cid, TRI_TRANSACTION_READ) {
+        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
+                                             TRI_voc_cid_t cid) :
+          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief same as above, but create using collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* const vocbase,
-                                             const triagens::arango::CollectionNameResolver& resolver,
-                                             const string& name) :
-          SingleCollectionTransaction<T>(vocbase, resolver, resolver.getCollectionId(name), TRI_TRANSACTION_READ) {
+        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
+                                             std::string const& name) :
+          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,10 +80,6 @@ namespace triagens {
 
         ~SingleCollectionReadOnlyTransaction () {
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 

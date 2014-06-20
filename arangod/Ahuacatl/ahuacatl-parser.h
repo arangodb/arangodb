@@ -28,12 +28,8 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_PARSER_H
 #define TRIAGENS_AHUACATL_AHUACATL_PARSER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -89,10 +85,6 @@ void TRI_FreeParserAql (TRI_aql_parser_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

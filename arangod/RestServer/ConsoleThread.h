@@ -32,9 +32,7 @@
 #include "Basics/Thread.h"
 #include "V8Server/ApplicationV8.h"
 
-extern "C" {
-  struct TRI_vocbase_s;
-}
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace rest {

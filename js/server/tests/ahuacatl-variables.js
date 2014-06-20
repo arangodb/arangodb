@@ -84,11 +84,44 @@ function ahuacatlVariablesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test loop variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testCounter1 : function () {
+      var actual = getQueryResults("LET sum = 42, iter = 7 FOR i IN 0..99 LET iter = iter + 2, sum = sum + i RETURN [ iter, sum ]");
+      assertEqual(100, actual.length);
+
+      var sum = 42, iter = 7, i;
+      for (i = 0; i < 99; ++i) {
+        sum += i;
+        iter += 2;
+        assertEqual(iter, actual[i][0]);
+        assertEqual(sum, actual[i][1]);
+      } 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test loop variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testCounter2 : function () {
+      assertEqual([ 5050 ], getQueryResults("LET sum = 0 LET s = (FOR i IN 1..100 LET sum = sum + i RETURN sum) RETURN sum")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test undeclared
+////////////////////////////////////////////////////////////////////////////////
+
+    testUndeclared : function () {
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "LET a = nonexisting + 1 RETURN 0"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test redeclaration
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare1 : function () {
-      assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 LET a = 1 RETURN 0"); 
+      assertEqual([ 1 ], getQueryResults("LET a = 1 LET a = 1 RETURN a")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +129,7 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare2 : function () {
-      assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 LET b = 1 LET c = 1 LET b = a RETURN 0"); 
+      assertEqual([ 2 ], getQueryResults("LET a = 1 LET a = 2 RETURN a")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +137,14 @@ function ahuacatlVariablesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRedeclare3 : function () {
+      assertEqual([ [ 1, 1, 3 ] ], getQueryResults("LET a = 1 LET b = 2 LET c = 3 LET b = a RETURN [ a, b, c ]")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test redeclaration
+////////////////////////////////////////////////////////////////////////////////
+
+    testRedeclare4 : function () {
       assertQueryError(errors.ERROR_QUERY_VARIABLE_REDECLARED.code, "LET a = 1 FOR a IN [ 1 ] RETURN 0"); 
     }
 

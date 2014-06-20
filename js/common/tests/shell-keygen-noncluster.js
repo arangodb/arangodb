@@ -30,6 +30,7 @@ var jsunity = require("jsunity");
 var wait = require("internal").wait;
 var console = require("console");
 var arangodb = require("org/arangodb");
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
@@ -282,10 +283,7 @@ function AutoIncrementSuite () {
       var d4 = c.save({ });
       assertEqual("13", d4._key);
      
-      c.unload();
-      console.log("waiting for collection to unload"); 
-      wait(5); 
-      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+      testHelper.waitUnload(c);
      
       d1 = c.save({ });
       assertEqual("17", d1._key);
@@ -319,10 +317,7 @@ function AutoIncrementSuite () {
       var d4 = c.save({ });
       assertEqual("8", d4._key);
      
-      c.unload();
-      console.log("waiting for collection to unload"); 
-      wait(5); 
-      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+      testHelper.waitUnload(c);
      
       d1 = c.save({ });
       assertEqual("10", d1._key);
@@ -338,10 +333,7 @@ function AutoIncrementSuite () {
       d4 = c.save({ _key: "19567" });
       assertEqual("19567", d4._key);
       
-      c.unload();
-      console.log("waiting for collection to unload"); 
-      wait(5); 
-      assertEqual(ArangoCollection.STATUS_UNLOADED, c.status()); 
+      testHelper.waitUnload(c);
       
       d1 = c.save({  });
       assertEqual("19568", d1._key);

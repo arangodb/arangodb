@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_HANDLER_H
 #define TRIAGENS_HTTP_SERVER_HTTP_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Rest/Handler.h"
 #include "Rest/HttpResponse.h"
 

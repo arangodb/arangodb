@@ -656,6 +656,7 @@ function CollectionSuite () {
 
       var d1 = c1.save({ hello : 1 });
 
+      internal.flushWal(true, true);
       f = c1.figures();
 
       assertEqual(0, f.datafiles.count);
@@ -673,10 +674,12 @@ function CollectionSuite () {
 
       var d2 = c1.save({ hello : 2 });
 
+      internal.flushWal(true, true);
       f = c1.figures();
 
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.datafiles.fileSize);
+
       assertEqual(1, f.journals.count);
       assertTrue(f.journals.fileSize > 0);
       assertEqual(2, f.alive.count);
@@ -687,6 +690,7 @@ function CollectionSuite () {
 
       c1.remove(d1);
 
+      internal.flushWal(true, true);
       f = c1.figures();
 
       assertEqual(0, f.datafiles.count);
@@ -701,6 +705,7 @@ function CollectionSuite () {
 
       c1.remove(d2);
 
+      internal.flushWal(true, true);
       f = c1.figures();
 
       assertEqual(0, f.datafiles.count);
@@ -718,6 +723,7 @@ function CollectionSuite () {
 
       c1.save({ b0rk : "abc" });
 
+      internal.flushWal(true, true);
       f = c1.figures();
 
       assertEqual(attributes + 1, f.attributes.count);

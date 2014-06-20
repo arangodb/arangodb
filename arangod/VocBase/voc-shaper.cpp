@@ -28,13 +28,17 @@
 
 #include "voc-shaper.h"
 
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
+#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
+#include "Wal/LogfileManager.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -54,20 +58,58 @@ typedef struct voc_shaper_s {
 
   TRI_associative_pointer_t    _accessors;
 
-  TRI_shape_aid_t              _nextAid;
-  TRI_shape_sid_t              _nextSid;
+  std::atomic<TRI_shape_aid_t> _nextAid;
+  std::atomic<TRI_shape_sid_t> _nextSid;
 
   TRI_document_collection_t*   _collection;
 
-  TRI_mutex_t                  _shapeLock;
-  TRI_mutex_t                  _attributeLock;
-  TRI_mutex_t                  _accessorLock;
+  triagens::basics::Mutex      _accessorLock;
+  triagens::basics::Mutex      _shapeLock;
+  triagens::basics::Mutex      _attributeLock;
 }
 voc_shaper_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts an attribute id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_shape_aid_t GetAttributeId (void const* marker) {
+  TRI_df_marker_t const* p = static_cast<TRI_df_marker_t const*>(marker);
+
+  if (p != nullptr) {
+    if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
+      return reinterpret_cast<TRI_df_attribute_marker_t const*>(p)->_aid;
+    }
+    else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+      return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts an attribute name from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* GetAttributeName (void const* marker) {
+  TRI_df_marker_t const* p = static_cast<TRI_df_marker_t const*>(marker);
+
+  if (p != nullptr) {
+    if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
+      return reinterpret_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
+    }
+    else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+      return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
+    }
+  }
+
+  return nullptr;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute name of a key
@@ -84,9 +126,7 @@ static uint64_t HashKeyAttributeName (TRI_associative_synced_t* array, void cons
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeName (TRI_associative_synced_t* array, void const* element) {
-  char const* e = (char const*) element;
-
-  return TRI_FnvHashString(e + sizeof(TRI_df_attribute_marker_t));
+  return TRI_FnvHashString(GetAttributeName(element));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,9 +135,8 @@ static uint64_t HashElementAttributeName (TRI_associative_synced_t* array, void 
 
 static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* key, void const* element) {
   char const* k = (char const*) key;
-  char const* e = (char const*) element;
 
-  return TRI_EqualString(k, e + sizeof(TRI_df_attribute_marker_t));
+  return TRI_EqualString(k, GetAttributeName(element));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,16 +145,13 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 
 static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper, 
                                               char const* name) {
-  voc_shaper_t* s;
-  void const* p;
+  TRI_ASSERT(name != nullptr);
 
-  assert(name != nullptr);
-
-  s = (voc_shaper_t*) shaper;
-  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
+  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   if (p != nullptr) {
-    return ((TRI_df_attribute_marker_t const*) p)->_aid;
+    return GetAttributeId(p);
   }
 
   return 0;
@@ -126,116 +162,71 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper, 
-                                                    char const* name,
-                                                    bool isLocked) { 
-  char* mem;
-  TRI_df_attribute_marker_t* marker;
-  TRI_df_marker_t* result;
-  TRI_doc_datafile_info_t* dfi;
-  TRI_voc_fid_t fid;
-  int res;
-  size_t n;
-  voc_shaper_t* s;
-  TRI_shape_aid_t aid;
-  TRI_voc_size_t totalSize;
-  void const* p;
-  void* f;
+                                                    char const* name) {
+  // check if the attribute exists
+  TRI_shape_aid_t aid = LookupAttributeByName(shaper, name);
 
-  assert(name != nullptr);
-
-  s = (voc_shaper_t*) shaper;
-  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
-
-  if (p != nullptr) {
-    return ((TRI_df_attribute_marker_t const*) p)->_aid;
+  if (aid != 0) {
+    // yes
+    return aid;
   }
 
-  // create a new attribute name
-  n = strlen(name) + 1;
-  
-  totalSize = (TRI_voc_size_t) (sizeof(TRI_df_attribute_marker_t) + n);
-  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
+  // we need to create a new attribute marker
 
-  if (mem == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return 0;
-  }
-
-  // marker points to mem, but has a different type
-  marker = (TRI_df_attribute_marker_t*) mem;
-  assert(marker != nullptr);
-
-  // init attribute marker
-  TRI_InitMarker(mem, TRI_DF_MARKER_ATTRIBUTE, totalSize);
-  
-  // copy attribute name into marker
-  memcpy(mem + sizeof(TRI_df_attribute_marker_t), name, n);
-  marker->_size = n;
-
-  // lock the index and check that the element is still missing
-  TRI_LockMutex(&s->_attributeLock);
-
-  p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
-
-  // if the element appeared, return the aid
-  if (p != nullptr) {
-    TRI_UnlockMutex(&s->_attributeLock);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
-
-    return ((TRI_df_attribute_marker_t const*) p)->_aid;
-  }
-
-  // get next attribute id and write into marker
+  // increase attribute id value
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
   aid = s->_nextAid++;
-  marker->_aid = aid;
+
+  TRI_document_collection_t* document = s->_collection;
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
   
-  if (! isLocked) {
-    // write-lock
-    s->_collection->base.beginWrite(&s->_collection->base);
+    // lock the index and check that the element is still missing
+    {
+      MUTEX_LOCKER(s->_attributeLock);
+
+      void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+
+      // if the element appeared, return the aid
+      if (p != nullptr) {
+        return GetAttributeId(p);
+      }
+    
+      TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      // write marker into wal
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+        // throw an exception which is caught at the end of this function
+        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+      }
+
+      void* f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
+  
+      // enter into the dictionaries
+      f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
+    }
+
+    return aid;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
-  // write attribute into the collection
-  res = TRI_WriteMarkerDocumentCollection(s->_collection, &marker->base, totalSize, &fid, &result, false);
-  
-  if (! isLocked) {
-    s->_collection->base.endWrite(&s->_collection->base);
-  }
- 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
+  LOG_WARNING("could not save attribute marker in log: %s", TRI_errno_string(res));
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_UnlockMutex(&s->_attributeLock);
-
-    LOG_ERROR("an error occurred while writing attribute data into shapes collection: %s", 
-              TRI_errno_string(res));
-    return 0;
-  }
-  
-  assert(result != nullptr);
-
-  // update datafile info
-  dfi = TRI_FindDatafileInfoPrimaryCollection(&s->_collection->base, fid, true);
-
-  if (dfi != nullptr) {
-    dfi->_numberAttributes++;
-    dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
-  }
-  
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, result, false);
-  assert(f == nullptr);
-  
-  // enter into the dictionaries
-  f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, result, false);
-  assert(f == nullptr);
-
-  // ...........................................................................
-  // and release the lock
-  // ...........................................................................
-
-  TRI_UnlockMutex(&s->_attributeLock);
-
-  return aid;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,9 +244,9 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
-  TRI_df_attribute_marker_t const* e = static_cast<TRI_df_attribute_marker_t const*>(element);
+  TRI_shape_aid_t aid = GetAttributeId(element);
 
-  return TRI_FnvHashPointer(&e->_aid, sizeof(TRI_shape_aid_t));
+  return TRI_FnvHashPointer(&aid, sizeof(TRI_shape_aid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,9 +255,9 @@ static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void co
 
 static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* key, void const* element) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
-  TRI_df_attribute_marker_t const* e = static_cast<TRI_df_attribute_marker_t const*>(element);
+  TRI_shape_aid_t aid = GetAttributeId(element);
 
-  return *k == e->_aid;
+  return *k == aid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,14 +267,13 @@ static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* ke
 static char const* LookupAttributeId (TRI_shaper_t* shaper, 
                                       TRI_shape_aid_t aid) {
   voc_shaper_t* s = (voc_shaper_t*) shaper;
-
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
 
   if (p == nullptr) {
     return nullptr;
   }
 
-  return static_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
+  return GetAttributeName(p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,10 +282,11 @@ static char const* LookupAttributeId (TRI_shaper_t* shaper,
 
 static uint64_t HashElementShape (TRI_associative_synced_t* array, 
                                   void const* element) {
-  char const* e = static_cast<char const*>(element);
-  TRI_shape_t const* ee = static_cast<TRI_shape_t const*>(element);
+  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  TRI_ASSERT(shape != nullptr);
+  char const* s = reinterpret_cast<char const*>(shape); 
 
-  return TRI_FnvHashPointer(e + + sizeof(TRI_shape_sid_t), ee->_size - sizeof(TRI_shape_sid_t));
+  return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), shape->_size - sizeof(TRI_shape_sid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,16 +296,15 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array,
 static bool EqualElementShape (TRI_associative_synced_t* array, 
                                void const* left, 
                                void const* right) {
-  char const* l = static_cast<char const*>(left);
-  char const* r = static_cast<char const*>(right);
+  TRI_shape_t const* l = static_cast<TRI_shape_t const*>(left);
+  TRI_shape_t const* r = static_cast<TRI_shape_t const*>(right);
+  char const* ll = reinterpret_cast<char const*>(l);
+  char const* rr = reinterpret_cast<char const*>(r);
 
-  TRI_shape_t const* ll = static_cast<TRI_shape_t const*>(left);
-  TRI_shape_t const* rr = static_cast<TRI_shape_t const*>(right);
-
-  return (ll->_size == rr->_size)
-    && memcmp(l + sizeof(TRI_shape_sid_t),
-              r + sizeof(TRI_shape_sid_t),
-              ll->_size - sizeof(TRI_shape_sid_t)) == 0;
+  return (l->_size == r->_size)
+    && memcmp(ll + sizeof(TRI_shape_sid_t),
+              rr + sizeof(TRI_shape_sid_t),
+              l->_size - sizeof(TRI_shape_sid_t)) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,23 +317,9 @@ static bool EqualElementShape (TRI_associative_synced_t* array,
 
 static TRI_shape_t const* FindShape (TRI_shaper_t* shaper, 
                                      TRI_shape_t* shape,
-                                     bool create,
-                                     bool isLocked) {
-  char* mem;
-  TRI_df_marker_t* result;
-  TRI_df_shape_marker_t* marker;
-  TRI_doc_datafile_info_t* dfi;
-  TRI_voc_fid_t fid;
-  TRI_voc_size_t totalSize;
-  TRI_shape_t const* found;
-  TRI_shape_t* l;
-  int res;
-  voc_shaper_t* s;
-  void* f;
-
-  s = (voc_shaper_t*) shaper;
-
-  found = TRI_LookupBasicShapeShaper(shape);
+                                     bool create) {
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
+  TRI_shape_t const* found = TRI_LookupBasicShapeShaper(shape);
 
   if (found == nullptr) {
     found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
@@ -358,94 +334,66 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
   // not found
   if (! create) {
-    return 0;
-  }
-
-  // initialise a new shape marker
-  totalSize = (TRI_voc_size_t) (sizeof(TRI_df_shape_marker_t) + shape->_size);
-  mem = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, totalSize, false);
-
-  if (mem == nullptr) {
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
-  marker = (TRI_df_shape_marker_t*) mem;
-  assert(marker != nullptr);
-
-  TRI_InitMarker(mem, TRI_DF_MARKER_SHAPE, totalSize);
-  
-  // copy shape into the marker
-  memcpy(mem + sizeof(TRI_df_shape_marker_t), shape, shape->_size);
-
-
-  // lock the index and check the element is still missing
-  TRI_LockMutex(&s->_shapeLock);
-
-  found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
-
-  if (found != 0) {
-    TRI_UnlockMutex(&s->_shapeLock);
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
-
-    return found;
-  }
-
-  // get next shape number and write into marker
-  ((TRI_shape_t*) (mem + sizeof(TRI_df_shape_marker_t)))->_sid = s->_nextSid++;
-
-  if (! isLocked) {
-    // write-lock
-    s->_collection->base.beginWrite(&s->_collection->base);
-  }
-
-  // write shape into the collection
-  res = TRI_WriteMarkerDocumentCollection(s->_collection, &marker->base, totalSize, &fid, &result, false);
-
-  if (! isLocked) {
-    // write-unlock
-    s->_collection->base.endWrite(&s->_collection->base);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_UnlockMutex(&s->_shapeLock);
-
-    LOG_ERROR("an error occurred while writing shape data into shapes collection: %s", 
-              TRI_errno_string(res));
-  
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
-
     return nullptr;
   }
   
-  assert(result != nullptr);
+  // get next shape id
+  TRI_shape_sid_t const sid = s->_nextSid++;
+  shape->_sid = sid;
   
-  // update datafile info
-  dfi = TRI_FindDatafileInfoPrimaryCollection(&s->_collection->base, fid, true);
+  TRI_document_collection_t* document = s->_collection;
 
-  if (dfi != nullptr) {
-    dfi->_numberShapes++;
-    dfi->_sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(totalSize);
-  }
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
+
+    // lock the index and check the element is still missing
+    MUTEX_LOCKER(s->_shapeLock);
+
+    found = static_cast<TRI_shape_t const*>(TRI_LookupByElementAssociativeSynced(&s->_shapeDictionary, shape));
+
+    if (found != nullptr) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+
+      return found;
+    }
+
+    TRI_IF_FAILURE("ShaperWriteShapeMarker") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     
-  // enter into the dictionaries
-  l = (TRI_shape_t*) (((char*) result) + sizeof(TRI_df_shape_marker_t));
+    // write marker into wal
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+    
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    char const* m = static_cast<char const*>(slotInfo.mem) + sizeof(triagens::wal::shape_marker_t);
+    TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
+
+    void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
+    TRI_ASSERT(f == nullptr);
+
+    f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
+    TRI_ASSERT(f == nullptr);
   
-  f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &l->_sid, l, false);
-  assert(f == nullptr);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+    return result;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
 
-  f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, l, false);
-  assert(f == nullptr);
+  LOG_WARNING("could not save shape marker in log: %s", TRI_errno_string(res));
 
-  TRI_UnlockMutex(&s->_shapeLock);
-  
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, mem);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
+  // must not free the shape here, as the caller is going to free it...
 
-  return l;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,9 +413,10 @@ static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
 
 static uint64_t HashElementShapeId (TRI_associative_synced_t* array, 
                                     void const* element) {
-  TRI_shape_t const* e = static_cast<TRI_shape_t const*>(element);
+  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  TRI_ASSERT(shape != nullptr);
 
-  return TRI_FnvHashPointer(&e->_sid, sizeof(TRI_shape_sid_t));
+  return TRI_FnvHashPointer(&shape->_sid, sizeof(TRI_shape_sid_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,9 +427,10 @@ static bool EqualKeyShapeId (TRI_associative_synced_t* array,
                              void const* key, 
                              void const* element) {
   TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
-  TRI_shape_t const* e = static_cast<TRI_shape_t const*>(element);
+  TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
+  TRI_ASSERT(shape != nullptr);
 
-  return *k == e->_sid;
+  return *k == shape->_sid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,20 +479,18 @@ static bool EqualElementAccessor (TRI_associative_pointer_t* array, void const* 
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitStep1VocShaper (voc_shaper_t* shaper) {
-  int res;
-
   shaper->base.findOrCreateAttributeByName = FindOrCreateAttributeByName;
   shaper->base.lookupAttributeByName       = LookupAttributeByName;
   shaper->base.lookupAttributeId           = LookupAttributeId;
   shaper->base.findShape                   = FindShape;
   shaper->base.lookupShapeId               = LookupShapeId;
 
-  res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
-                                  TRI_UNKNOWN_MEM_ZONE,
-                                  HashKeyAttributeName,
-                                  HashElementAttributeName,
-                                  EqualKeyAttributeName,
-                                  0);
+  int res = TRI_InitAssociativeSynced(&shaper->_attributeNames,
+                                      TRI_UNKNOWN_MEM_ZONE,
+                                      HashKeyAttributeName,
+                                      HashElementAttributeName,
+                                      EqualKeyAttributeName,
+                                      0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -624,10 +572,6 @@ static int InitStep1VocShaper (voc_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitStep2VocShaper (voc_shaper_t* shaper) { 
-  TRI_InitMutex(&shaper->_shapeLock);
-  TRI_InitMutex(&shaper->_attributeLock);
-  TRI_InitMutex(&shaper->_accessorLock);
-
   shaper->_nextAid = 1;                              // id of next attribute to hand out
   shaper->_nextSid = TRI_FirstCustomShapeIdShaper(); // id of next shape to hand out 
 
@@ -644,19 +588,14 @@ static int InitStep2VocShaper (voc_shaper_t* shaper) {
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
                                    TRI_document_collection_t* document) {
-  voc_shaper_t* shaper = static_cast<voc_shaper_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(voc_shaper_t), false));
-
-  if (shaper == nullptr) {
-    // out of memory
-    return nullptr;
-  }
+  voc_shaper_t* shaper = new voc_shaper_t;
 
   shaper->_collection = document;
 
   int res = TRI_InitShaper(&shaper->base, TRI_UNKNOWN_MEM_ZONE);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
+    delete shaper;
 
     return nullptr;
   }
@@ -664,7 +603,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   res = InitStep1VocShaper(shaper);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeShaper(&shaper->base);
+    delete shaper;
 
     return nullptr;
   }
@@ -672,7 +611,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
   res = InitStep2VocShaper(shaper);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeVocShaper(&shaper->base);
+    delete shaper;
 
     return nullptr;
   }
@@ -688,7 +627,7 @@ TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t* vocbase,
 void TRI_DestroyVocShaper (TRI_shaper_t* s) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
-  assert(shaper != nullptr);
+  TRI_ASSERT(shaper != nullptr);
 
   TRI_DestroyAssociativeSynced(&shaper->_attributeNames);
   TRI_DestroyAssociativeSynced(&shaper->_attributeIds);
@@ -703,10 +642,6 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
     }
   }
   TRI_DestroyAssociativePointer(&shaper->_accessors);
-
-  TRI_DestroyMutex(&shaper->_shapeLock);
-  TRI_DestroyMutex(&shaper->_attributeLock);
-
   TRI_DestroyShaper(s);
 }
 
@@ -716,7 +651,8 @@ void TRI_DestroyVocShaper (TRI_shaper_t* s) {
 
 void TRI_FreeVocShaper (TRI_shaper_t* shaper) {
   TRI_DestroyVocShaper(shaper);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, shaper);
+
+  delete shaper;
 }
 
 // -----------------------------------------------------------------------------
@@ -745,39 +681,55 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     TRI_shape_t* l = (TRI_shape_t*) p;
     void* f;
 
-    TRI_LockMutex(&shaper->_shapeLock);
+    MUTEX_LOCKER(shaper->_shapeLock);
 
     // remove the old marker
     // and re-insert the marker with the new pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
-    assert(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("shape already existed in shape ids array");
+    }
   
     // same for the shape dictionary
     // delete and re-insert 
     f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, true);
-    assert(f != nullptr);
-    
-    TRI_UnlockMutex(&shaper->_shapeLock);
+    // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("shape already existed in shape dictionary");
+    }
   }
   else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
     TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
     char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
     void* f;
-    
-    TRI_LockMutex(&shaper->_attributeLock);
+   
+    MUTEX_LOCKER(shaper->_attributeLock); 
  
     // remove attribute by name (p points to new location of name, but names
     // are identical in old and new marker) 
     // and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
-    assert(f != nullptr);
+    // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("attribute already existed in attribute names dictionary");
+    }
 
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, true);
-    assert(f != nullptr);
-    
-    TRI_UnlockMutex(&shaper->_attributeLock);
+    // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred 
+    // into the collection datafile yet
+    // TRI_ASSERT(f != nullptr);
+    if (f != nullptr) {
+      LOG_TRACE("attribute already existed in attribute ids dictionary");
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -789,18 +741,17 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
 
 int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
                               TRI_df_marker_t const* marker) {
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
   char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
   TRI_shape_t* l = (TRI_shape_t*) p;
-  void* f;
 
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
-  f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
-  assert(f == nullptr);
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
+  void* f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
+  TRI_ASSERT(f == nullptr);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, false);
-  assert(f == nullptr);
+  TRI_ASSERT(f == nullptr);
 
   if (shaper->_nextSid <= l->_sid) {
     shaper->_nextSid = l->_sid + 1;
@@ -815,20 +766,20 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
 
 int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
                                   TRI_df_marker_t const* marker) {
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
   TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
   char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
-  void* f;
 
   LOG_TRACE("found attribute '%s', aid: %lu", p, (unsigned long) m->_aid);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
+  void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
 
   if (f != nullptr) {
-    char const* name = shaper->_collection->base.base._info._name;
+    char const* name = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_WARNING("found duplicate attribute name '%s' in collection '%s'", p, name);
+    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", p, name);
+    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", p, name); 
 #endif    
@@ -837,10 +788,11 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, false);
   
   if (f != nullptr) {
-    char const* name = shaper->_collection->base.base._info._name;
+    char const* name = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_WARNING("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
 #endif    
@@ -861,26 +813,24 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
                                                      TRI_shape_sid_t sid,
                                                      TRI_shape_pid_t pid) {
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
   TRI_shape_access_t search;
-  TRI_shape_access_t* accessor;
-
   search._sid = sid;
   search._pid = pid;
+  
+  voc_shaper_t* shaper = (voc_shaper_t*) s;
 
-  TRI_LockMutex(&shaper->_accessorLock);
+  MUTEX_LOCKER(shaper->_accessorLock);
+
   TRI_shape_access_t const* found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
 
   if (found == nullptr) {
-    found = accessor = TRI_ShapeAccessor(&shaper->base, sid, pid);
+    found = TRI_ShapeAccessor(&shaper->base, sid, pid);
 
-    // TRI_ShapeAccessor can return a nullptr pointer
+    // TRI_ShapeAccessor can return a NULL pointer
     if (found != nullptr) {
-      TRI_InsertElementAssociativePointer(&shaper->_accessors, accessor, true);
+      TRI_InsertElementAssociativePointer(&shaper->_accessors, const_cast<void*>(static_cast<void const*>(found)), true);
     }
   }
-
-  TRI_UnlockMutex(&shaper->_accessorLock);
 
   return found;
 }
@@ -895,10 +845,7 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
                                      TRI_shape_pid_t pid,
                                      TRI_shaped_json_t* result,
                                      TRI_shape_t const** shape) {
-  TRI_shape_access_t const* accessor;
-  bool ok;
-
-  accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pid);
+  TRI_shape_access_t const* accessor = TRI_FindAccessorVocShaper(shaper, document->_sid, pid);
 
   if (accessor == nullptr) {
     LOG_TRACE("failed to get accessor for sid %lu and path %lu",
@@ -938,7 +885,7 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
     return false;
   }
 
-  ok = TRI_ExecuteShapeAccessor(accessor, document, result);
+  bool ok = TRI_ExecuteShapeAccessor(accessor, document, result);
 
   if (! ok) {
     LOG_TRACE("failed to get accessor for sid %lu and path %lu",
@@ -970,7 +917,7 @@ static int AttributeNameComparator (void const* lhs,
   attribute_entry_t const* l = static_cast<attribute_entry_t const*>(lhs);
   attribute_entry_t const* r = static_cast<attribute_entry_t const*>(rhs);
 
-  if (l->_attribute == NULL || r->_attribute == NULL) {
+  if (l->_attribute == nullptr || r->_attribute == nullptr) {
     // error !
     return -1;
   }
@@ -989,33 +936,33 @@ static int FillAttributesVector (TRI_vector_t* vector,
   
   TRI_InitVector(vector, TRI_UNKNOWN_MEM_ZONE, sizeof(attribute_entry_t));
 
-  // .............................................................................
+  // ...........................................................................
   // Determine the number of fixed sized values
-  // .............................................................................
+  // ...........................................................................
   
   char const* charShape = (char const*) shape;
 
   charShape = charShape + sizeof(TRI_shape_t);           
   TRI_shape_size_t fixedEntries = *((TRI_shape_size_t*)(charShape));
 
-  // .............................................................................
+  // ...........................................................................
   // Determine the number of variable sized values
-  // .............................................................................
+  // ...........................................................................
   
   charShape = charShape + sizeof(TRI_shape_size_t);
   TRI_shape_size_t variableEntries = *((TRI_shape_size_t*)(charShape));
 
-  // .............................................................................
+  // ...........................................................................
   // It may happen that the shaped_json_array is 'empty {}'
-  // .............................................................................
+  // ...........................................................................
   
   if (fixedEntries + variableEntries == 0) {
     return TRI_ERROR_NO_ERROR;
   }  
   
-  // .............................................................................
+  // ...........................................................................
   // Determine the list of shape identifiers
-  // .............................................................................
+  // ...........................................................................
   
   charShape = charShape + sizeof(TRI_shape_size_t);
   TRI_shape_sid_t const* sids = (TRI_shape_sid_t const*) charShape;
@@ -1031,13 +978,13 @@ static int FillAttributesVector (TRI_vector_t* vector,
 
     char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i]);
 
-    if (a == NULL) {
+    if (a == nullptr) {
       return TRI_ERROR_INTERNAL;
     }
 
     char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
 
-    if (copy == NULL) {
+    if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1056,13 +1003,13 @@ static int FillAttributesVector (TRI_vector_t* vector,
     
     char const* a = shaper->lookupAttributeId((TRI_shaper_t*) shaper, aids[i + fixedEntries]);
 
-    if (a == NULL) {
+    if (a == nullptr) {
       return TRI_ERROR_INTERNAL;
     }
     
     char* copy = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, a);
 
-    if (copy == NULL) {
+    if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
     
@@ -1090,7 +1037,7 @@ static void DestroyAttributesVector (TRI_vector_t* vector) {
   for (size_t i = 0; i < n; ++i) {
     attribute_entry_t* entry = static_cast<attribute_entry_t*>(TRI_AtVector(vector, i));
 
-    if (entry->_attribute != NULL) {
+    if (entry->_attribute != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, entry->_attribute);
     }
   }
@@ -1111,8 +1058,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_doc_mptr_t* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* leftShaper,
-                           TRI_shaper_t* rightShaper) {
+                           TRI_shaper_t* shaper) {
   
   TRI_shape_t const* leftShape;
   TRI_shape_t const* rightShape;
@@ -1127,7 +1073,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
-    ptr = (char const*) leftDocument->_data;
+    ptr = leftDocument->getShapedJsonPtr();  // ONLY IN INDEX
 
     left._sid = leftObject->_sid;
     left._data.length = (uint32_t) leftObject->_length;
@@ -1139,7 +1085,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
-    ptr = (char const*) rightDocument->_data;
+    ptr = rightDocument->getShapedJsonPtr();  // ONLY IN INDEX
 
     right._sid = rightObject->_sid;
     right._data.length = (uint32_t) rightObject->_length;
@@ -1150,33 +1096,33 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   }
     
   // get shape and type
-  if (leftShaper == rightShaper && left._sid == right._sid) {
+  if (left._sid == right._sid) {
     // identical collection and shape
-    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+    leftShape = rightShape = shaper->lookupShapeId(shaper, left._sid);
   }
   else {
     // different shapes
-    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
-    rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
+    leftShape  = shaper->lookupShapeId(shaper, left._sid);
+    rightShape = shaper->lookupShapeId(shaper, right._sid);
   }
 
   if (leftShape == nullptr || rightShape == nullptr) {
     LOG_ERROR("shape not found");
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   leftType   = leftShape->_type;
   rightType  = rightShape->_type;
 
-  // .............................................................................
+  // ...........................................................................
   // check ALL combinations of leftType and rightType
-  // .............................................................................
+  // ...........................................................................
 
   switch (leftType) {
 
-    // .............................................................................
+    // .........................................................................
     // illegal type
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_ILLEGAL: {
       switch (rightType) {
@@ -1197,9 +1143,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_ILLEGAL
 
-    // .............................................................................
+    // .........................................................................
     // nullptr
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_NULL: {
       switch (rightType) {
@@ -1222,9 +1168,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_NULL
 
-    // .............................................................................
+    // .........................................................................
     // BOOLEAN
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_BOOLEAN: {
       switch (rightType) {
@@ -1254,9 +1200,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_BOOLEAN
 
-    // .............................................................................
+    // .........................................................................
     // NUMBER
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_NUMBER: {
       switch (rightType) {
@@ -1286,9 +1232,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_NUMBER
     
-    // .............................................................................
+    // .........................................................................
     // STRING
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_SHORT_STRING: 
     case TRI_SHAPE_LONG_STRING: {
@@ -1307,17 +1253,17 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           // compare strings
           // extract the strings
           if (leftType == TRI_SHAPE_SHORT_STRING) {
-            leftString = (char*)(sizeof(TRI_shape_length_short_string_t) + left._data.data);
+            leftString = (char*) (sizeof(TRI_shape_length_short_string_t) + left._data.data);
           }
           else {
-            leftString = (char*)(sizeof(TRI_shape_length_long_string_t) + left._data.data);
+            leftString = (char*) (sizeof(TRI_shape_length_long_string_t) + left._data.data);
           }          
           
           if (rightType == TRI_SHAPE_SHORT_STRING) {
-            rightString = (char*)(sizeof(TRI_shape_length_short_string_t) + right._data.data);
+            rightString = (char*) (sizeof(TRI_shape_length_short_string_t) + right._data.data);
           }
           else {
-            rightString = (char*)(sizeof(TRI_shape_length_long_string_t) + right._data.data);
+            rightString = (char*) (sizeof(TRI_shape_length_long_string_t) + right._data.data);
           }         
           
           return TRI_compare_utf8(leftString, rightString);
@@ -1332,9 +1278,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     } // end of case TRI_SHAPE_LONG/SHORT_STRING 
 
     
-    // .............................................................................
+    // .........................................................................
     // HOMOGENEOUS LIST
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_HOMOGENEOUS_LIST: 
     case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: 
@@ -1410,8 +1356,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                                            nullptr,
                                            nullptr,
                                            &rightElement,
-                                           leftShaper,
-                                           rightShaper);
+                                           shaper);
 
             if (result != 0) { 
               return result;
@@ -1436,9 +1381,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
       } // end of switch (rightType) 
     } // end of case TRI_SHAPE_LIST ... 
     
-    // .............................................................................
+    // .........................................................................
     // ARRAY
-    // .............................................................................
+    // .........................................................................
 
     case TRI_SHAPE_ARRAY: {
       switch (rightType) {
@@ -1455,23 +1400,23 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
         }
         
         case TRI_SHAPE_ARRAY: {
-          // ............................................................................  
+          // ...................................................................
           // We are comparing a left JSON array with another JSON array on the right
-          // ............................................................................  
+          // ...................................................................
           
-          // ............................................................................
+          // ...................................................................
           // generate the left and right lists sorted by attribute names
-          // ............................................................................
+          // ...................................................................
 
           TRI_vector_t leftSorted;
           TRI_vector_t rightSorted;
 
           bool error = false;
-          if (FillAttributesVector(&leftSorted, &left, leftShape, leftShaper) != TRI_ERROR_NO_ERROR) {
+          if (FillAttributesVector(&leftSorted, &left, leftShape, shaper) != TRI_ERROR_NO_ERROR) {
             error = true;
           }
 
-          if (FillAttributesVector(&rightSorted, &right, rightShape, rightShaper) != TRI_ERROR_NO_ERROR) {
+          if (FillAttributesVector(&rightSorted, &right, rightShape, shaper) != TRI_ERROR_NO_ERROR) {
             error = true;
           }
 
@@ -1497,8 +1442,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                                            nullptr,
                                            nullptr,
                                            &r->_value,
-                                           leftShaper,
-                                           rightShaper);
+                                           shaper);
 
             if (result != 0) { 
               break;
@@ -1506,11 +1450,11 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
           }        
           
           if (result == 0) {
-            // ............................................................................
+            // .................................................................
             // The comparisions above indicate that the shaped_json_arrays are equal, 
             // however one more check to determine if the number of elements in the arrays
             // are equal.
-            // ............................................................................
+            // .................................................................
             if (leftLength < rightLength) {
               result = -1;
             }
@@ -1533,7 +1477,7 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
     } // end of case TRI_SHAPE_ARRAY
   } // end of switch (leftType)
   
-  assert(false);
+  TRI_ASSERT(false);
   return 0; //shut the vc++ up
 }
 

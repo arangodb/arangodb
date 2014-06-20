@@ -35,6 +35,9 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-shaper.h"
+#include "Utils/transactions.h"
+
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -230,19 +233,18 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
-                                            TRI_primary_collection_t* primary,
-                                            TRI_shaped_json_t const* document) {
-  TRI_shaper_t* shaper;
+                                            TRI_document_collection_t* document,
+                                            TRI_shaped_json_t const* shapedJson) {
   char* user;
   char* password;
   bool active;
   bool found;
   bool mustChange;
   
-  shaper = primary->_shaper;
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   // extract username
-  user = ExtractStringShapedJson(shaper, document, "user");
+  user = ExtractStringShapedJson(shaper, shapedJson, "user");
 
   if (user == NULL) {
     LOG_DEBUG("cannot extract username");
@@ -250,7 +252,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract password
-  password = ExtractStringShapedJson(shaper, document, "password");
+  password = ExtractStringShapedJson(shaper, shapedJson, "password");
 
   if (password == NULL) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
@@ -259,7 +261,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract active flag
-  active = ExtractBooleanShapedJson(shaper, document, "active", &found);
+  active = ExtractBooleanShapedJson(shaper, shapedJson, "active", &found);
 
   if (! found) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
@@ -269,7 +271,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   }
 
   // extract must-change-password flag
-  mustChange = ExtractBooleanShapedJson(shaper, document, "changePassword", &found);
+  mustChange = ExtractBooleanShapedJson(shaper, shapedJson, "changePassword", &found);
 
   if (! found) {
     mustChange = false;
@@ -430,75 +432,57 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_vocbase_col_t* collection;
-  TRI_primary_collection_t* primary;
-  void** beg;
-  void** end;
-  void** ptr;
-
   LOG_DEBUG("starting to load authentication and authorisation information");
 
-  collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
+  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
-  if (collection == NULL) {
+  if (collection == nullptr) {
     LOG_INFO("collection '_users' does not exist, no authentication available");
     return false;
   }
 
-  TRI_UseCollectionVocBase(vocbase, collection);
 
-  primary = collection->_collection;
+  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(vocbase, collection->_cid);
 
-  if (primary == NULL) {
-    LOG_FATAL_AND_EXIT("collection '_users' cannot be loaded");
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return false;
   }
 
-  assert(primary != NULL);
+  TRI_document_collection_t* document = trx.documentCollection();
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
-
-  // .............................................................................
-  // inside a write transaction
-  // .............................................................................
-
-  primary->beginRead(primary);
-
-  beg = primary->_primaryIndex._table;
-  end = beg + primary->_primaryIndex._nrAlloc;
-  ptr = beg;
+  
+  void** beg = document->_primaryIndex._table;
+  void** end = beg + document->_primaryIndex._nrAlloc;
+  void** ptr = beg;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
       TRI_vocbase_auth_t* auth;
-      TRI_doc_mptr_t const* d;
       TRI_shaped_json_t shapedJson;
 
-      d = (TRI_doc_mptr_t const*) *ptr;
+      TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->_data);
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, d->getDataPtr());  // PROTECTED by trx here
 
-      auth = ConvertAuthInfo(vocbase, primary, &shapedJson);
+      auth = ConvertAuthInfo(vocbase, document, &shapedJson);
 
-      if (auth != NULL) {
+      if (auth != nullptr) {
         TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
 
-        if (old != NULL) {
+        if (old != nullptr) {
           FreeAuthInfo(old);
         }
       }
     }
   }
 
-  collection->_collection->endRead(collection->_collection);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
-
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 
-  TRI_ReleaseCollectionVocBase(vocbase, collection);
+  trx.finish(TRI_ERROR_NO_ERROR);
 
   return true;
 }
@@ -511,7 +495,7 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
                            TRI_json_t const* json) {
   size_t i, n;
 
-  assert(TRI_IsListJson(json));
+  TRI_ASSERT(TRI_IsListJson(json));
   n = json->_value._objects._length;
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
@@ -572,7 +556,10 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
-  return TRI_LoadAuthInfo(vocbase);
+  bool result = TRI_LoadAuthInfo(vocbase);
+
+  vocbase->_authInfoLoaded = result;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,7 +611,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
   size_t len;
   size_t sha256Len;
 
-  assert(vocbase != NULL);
+  TRI_ASSERT(vocbase != NULL);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);

@@ -27,12 +27,6 @@
 
 #include "FileUtils.h"
 
-#include <errno.h>
-#include <fstream>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
 #endif
@@ -184,9 +178,7 @@ namespace triagens {
         }
 
         TRI_CLOSE(fd);
-        return;
       }
-
 
       void spit (string const& filename, string const& content) {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
@@ -217,7 +209,6 @@ namespace triagens {
         }
 
         TRI_CLOSE(fd);
-        return;
       }
 
 
@@ -251,9 +242,7 @@ namespace triagens {
         }
 
         TRI_CLOSE(fd);
-        return;
       }
-
 
 
       bool remove (string const& fileName, int* errorNumber) {

@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_REST_ENDPOINT_IP_H
 #define TRIAGENS_REST_ENDPOINT_IP_H 1
 
+#include "Basics/Common.h"
+
 #include "Rest/Endpoint.h"
 
 namespace triagens {

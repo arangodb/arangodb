@@ -33,11 +33,6 @@
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
                                    const TRI_json_t* const lhs,
                                    const TRI_json_t* const rhs,
@@ -169,8 +164,8 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   TRI_json_t* unique;
   size_t i, n;
 
-  assert(lhs->_type == TRI_JSON_ARRAY);
-  assert(rhs->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(lhs->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(rhs->_type == TRI_JSON_ARRAY);
 
   keys = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 
                              lhs->_value._objects._length + rhs->_value._objects._length);
@@ -184,7 +179,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   for (i = 0 ; i < n; i += 2) {
     TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i);
 
-    assert(TRI_IsStringJson(key));
+    TRI_ASSERT(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
   }
 
@@ -194,7 +189,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   for (i = 0 ; i < n; i += 2) {
     TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
 
-    assert(TRI_IsStringJson(key));
+    TRI_ASSERT(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
   }
 
@@ -209,18 +204,9 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   return unique; // might be NULL
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two json values
@@ -309,8 +295,8 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
     case TRI_JSON_ARRAY: {
       TRI_json_t* keys;
 
-      assert(lhs->_type == TRI_JSON_ARRAY);
-      assert(rhs->_type == TRI_JSON_ARRAY);
+      TRI_ASSERT(lhs->_type == TRI_JSON_ARRAY);
+      TRI_ASSERT(rhs->_type == TRI_JSON_ARRAY);
 
       keys = GetMergedKeyList(lhs, rhs);
 
@@ -325,7 +311,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
           int result;
 
           keyElement = TRI_AtVector(&keys->_value._objects, i);
-          assert(TRI_IsStringJson(keyElement));
+          TRI_ASSERT(TRI_IsStringJson(keyElement));
 
           lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
           rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
@@ -366,9 +352,9 @@ bool TRI_CheckInListJson (const TRI_json_t* const search,
                           const TRI_json_t* const list) {
   size_t i, n;
 
-  assert(search);
-  assert(list);
-  assert(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(search);
+  TRI_ASSERT(list);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
 
   // iterate over list
   n = list->_value._objects._length;
@@ -398,9 +384,9 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const list,
   TRI_json_t* result;
   size_t i, n;
 
-  assert(list);
-  assert(list->_type == TRI_JSON_LIST);
-  assert(lower || upper);
+  TRI_ASSERT(list);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(lower || upper);
 
   // create result list
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
@@ -449,8 +435,8 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
   TRI_json_t* result;
   size_t i, n;
 
-  assert(list);
-  assert(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
 
   // create result list
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
@@ -488,10 +474,10 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
   size_t i1, i2;
   size_t n1, n2;
 
-  assert(list1);
-  assert(list1->_type == TRI_JSON_LIST);
-  assert(list2);
-  assert(list2->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list1);
+  TRI_ASSERT(list1->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list2);
+  TRI_ASSERT(list2->_type == TRI_JSON_LIST);
 
   n1 = list1->_value._objects._length;
   n2 = list2->_value._objects._length;
@@ -601,10 +587,10 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
   size_t i1, i2;
   size_t n1, n2;
 
-  assert(list1);
-  assert(list1->_type == TRI_JSON_LIST);
-  assert(list2);
-  assert(list2->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list1);
+  TRI_ASSERT(list1->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list2);
+  TRI_ASSERT(list2->_type == TRI_JSON_LIST);
 
   n1 = list1->_value._objects._length;
   n2 = list2->_value._objects._length;
@@ -666,8 +652,8 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
 TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
   size_t n;
 
-  assert(list);
-  assert(list->_type == TRI_JSON_LIST);
+  TRI_ASSERT(list);
+  TRI_ASSERT(list->_type == TRI_JSON_LIST);
 
   n = list->_value._objects._length;
 
@@ -759,8 +745,8 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
                            const bool nullMeansRemove) {
   TRI_json_t* result;
 
-  assert(lhs->_type == TRI_JSON_ARRAY);
-  assert(rhs->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(lhs->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(rhs->_type == TRI_JSON_ARRAY);
 
   result = MergeRecursive(zone, lhs, rhs, nullMeansRemove);
 
@@ -836,7 +822,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
       tmphash = hash;
       for (i = 0;  i < n;  i += 2) {
         subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
-        assert(TRI_IsStringJson(subjson));
+        TRI_ASSERT(TRI_IsStringJson(subjson));
         tmphash ^= HashJsonRecursive(hash, subjson);
         subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects,
                                                    i+1);
@@ -910,10 +896,6 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
   }
   return hash;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

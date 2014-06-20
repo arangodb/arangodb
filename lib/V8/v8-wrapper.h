@@ -86,8 +86,8 @@ class V8Wrapper {
         _isolate(isolate) {
 
       // sanity checks
-      assert(_handle.IsEmpty());
-      assert(result->InternalFieldCount() > 0);
+      TRI_ASSERT(_handle.IsEmpty());
+      TRI_ASSERT(result->InternalFieldCount() > 0);
 
       // create a new persistent handle
       _handle = v8::Persistent<v8::Object>::New(_isolate, result);
@@ -105,7 +105,7 @@ class V8Wrapper {
 
     virtual ~V8Wrapper () {
       if (! _handle.IsEmpty()) {
-        assert(_handle.IsNearDeath(_isolate));
+        TRI_ASSERT(_handle.IsNearDeath(_isolate));
 
         _handle.ClearWeak(_isolate);
         _handle->SetInternalField(0, v8::Undefined());
@@ -155,7 +155,7 @@ class V8Wrapper {
 ////////////////////////////////////////////////////////////////////////////////
 
     virtual void ref () {
-      assert(! _handle.IsEmpty());
+      TRI_ASSERT(! _handle.IsEmpty());
       ++_refs;
       _handle.ClearWeak(_isolate);
     }
@@ -173,9 +173,9 @@ class V8Wrapper {
 ////////////////////////////////////////////////////////////////////////////////
 
     virtual void unref () {
-      assert(! _handle.IsEmpty());
-      assert(! _handle.IsWeak(_isolate));
-      assert(_refs > 0);
+      TRI_ASSERT(! _handle.IsEmpty());
+      TRI_ASSERT(! _handle.IsWeak(_isolate));
+      TRI_ASSERT(_refs > 0);
 
       if (--_refs == 0) {
         makeWeak();
@@ -254,9 +254,9 @@ class V8Wrapper {
                               void* data) {
       V8Wrapper* obj = static_cast<V8Wrapper*>(data);
 
-      assert(value == obj->_handle);
-      assert(! obj->_refs);
-      assert(value.IsNearDeath(isolate));
+      TRI_ASSERT(value == obj->_handle);
+      TRI_ASSERT(! obj->_refs);
+      TRI_ASSERT(value.IsNearDeath(isolate));
 
       delete obj;
     }

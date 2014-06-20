@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_LISTEN_TASK_H
 #define TRIAGENS_SCHEDULER_LISTEN_TASK_H 1
 
+#include "Basics/Common.h"
+
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netdb.h>
 #endif

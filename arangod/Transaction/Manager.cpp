@@ -29,15 +29,17 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Transaction/IdGenerator.h"
+#include "Transaction/State.h"
 #include "VocBase/vocbase.h"
 
+using namespace std;
 using namespace triagens::transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the transaction manager singleton
 ////////////////////////////////////////////////////////////////////////////////
 
-static Manager* ManagerInstance = 0;
+static Manager* Instance = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -47,7 +49,7 @@ static Manager* ManagerInstance = 0;
 /// @brief create the transaction manager
 ////////////////////////////////////////////////////////////////////////////////
 
-Manager::Manager () 
+Manager::Manager ()
   : _generator(),
     _lock(),
     _transactions() {
@@ -58,19 +60,26 @@ Manager::Manager ()
 ////////////////////////////////////////////////////////////////////////////////
 
 Manager::~Manager () {
-}
+  WRITE_LOCKER(_lock);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    Transaction* transaction = (*it).second;
+
+    if (transaction->state() == State::StateType::BEGUN) {
+      transaction->setState(State::StateType::ABORTED);
+    }
+  }
+
+  _transactions.clear();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the transaction manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
 Manager* Manager::instance () {
-  assert(ManagerInstance != 0);
-  return ManagerInstance;
+  TRI_ASSERT(Instance != nullptr);
+  return Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +87,9 @@ Manager* Manager::instance () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Manager::initialise () {
-  assert(ManagerInstance == 0);
+  TRI_ASSERT(Instance == nullptr);
 
-  ManagerInstance = new Manager();
+  Instance = new Manager();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,9 +97,9 @@ void Manager::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Manager::shutdown () {
-  if (ManagerInstance != 0) {
-    delete ManagerInstance;
-    ManagerInstance = 0;
+  if (Instance != nullptr) {
+    delete Instance;
+    Instance = nullptr;
   }
 }
 
@@ -98,12 +107,92 @@ void Manager::shutdown () {
 /// @brief create a transaction object
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase) {
-  Transaction::IdType id = _generator.next();
+Transaction* Manager::createTransaction (bool singleOperation) {
+  TRI_voc_tid_t id = _generator.next();
 
-  Transaction* transaction = new Transaction(this, id, vocbase);
+  Transaction* transaction = new Transaction(this, id, singleOperation);
+  
+  WRITE_LOCKER(_lock);
+  auto it = _transactions.insert(make_pair(id, transaction));
+
+  if (it.first == _transactions.end()) {
+    // couldn't insert transaction
+    delete transaction;
+
+    return nullptr;
+  }
 
   return transaction;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the status of a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+Transaction::StateType Manager::statusTransaction (TRI_voc_tid_t id) {
+  READ_LOCKER(_lock);
+  
+  auto it = _transactions.find(id);
+  if (it != _transactions.end()) {
+    return (*it).second->state();
+  }
+
+  // unknown transaction. probably already committed
+  return State::StateType::COMMITTED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get oldest still running transaction
+////////////////////////////////////////////////////////////////////////////////
+
+TransactionInfo Manager::getOldestRunning () {
+  READ_LOCKER(_lock);
+
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    Transaction* transaction = (*it).second;
+  
+    if (transaction->state() == State::StateType::BEGUN) {
+      return TransactionInfo(transaction->id(), transaction->elapsedTime());
+    }
+  }
+
+  return TransactionInfo();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether any of the specified transactions is still running
+////////////////////////////////////////////////////////////////////////////////
+
+bool Manager::containsRunning (vector<TRI_voc_tid_t> const& ids) {
+  READ_LOCKER(_lock);
+
+  for (auto it = ids.begin(); it != ids.end(); ++it) {
+    auto it2 = _transactions.find(*it);
+
+    if (it2 != _transactions.end()) {
+      Transaction* transaction = (*it2).second;
+
+      if (transaction->state() == State::StateType::BEGUN) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove failed transactions from the failed list
+////////////////////////////////////////////////////////////////////////////////
+
+int Manager::removeFailed (vector<TRI_voc_tid_t> const& ids) {
+  WRITE_LOCKER(_lock);
+
+  for (auto it = ids.begin(); it != ids.end(); ++it) {
+    _transactions.erase(*it);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,17 +200,16 @@ Transaction* Manager::createTransaction (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Manager::beginTransaction (Transaction* transaction) {
-  double startTime = TRI_microtime();
-  Transaction::IdType id = transaction->id();
-
   WRITE_LOCKER(_lock);
-  auto it = _transactions.insert(make_pair(id, Transaction::StateType::STATE_BEGUN));
-
-  if (it.first == _transactions.end()) {
-    return TRI_ERROR_INTERNAL;
+  
+  // check the transaction state first
+  if (transaction->state() != State::StateType::UNINITIALISED) {
+    transaction->setState(State::StateType::ABORTED);
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  transaction->setStartTime(startTime);
+  // sets status and start time stamp
+  transaction->setState(State::StateType::BEGUN);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -130,51 +218,49 @@ int Manager::beginTransaction (Transaction* transaction) {
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Manager::commitTransaction (Transaction* transaction) {
-  Transaction::IdType id = transaction->id();
+int Manager::commitTransaction (Transaction* transaction,
+                                bool waitForSync) {
+  TRI_voc_tid_t id = transaction->id();
   
   WRITE_LOCKER(_lock);
+  
+  if (transaction->state() != State::StateType::BEGUN) {
+    // set it to aborted
+    transaction->setState(State::StateType::ABORTED);
+    return TRI_ERROR_TRANSACTION_INTERNAL;
+  }
+
+  transaction->setState(State::StateType::COMMITTED);
+
   auto it = _transactions.find(id);
 
   if (it == _transactions.end()) {
-    return TRI_ERROR_INTERNAL;
+    // not found
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
+  // erase it in the list of transactions
   _transactions.erase(id);
+
   return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int Manager::abortTransaction (Transaction* transaction) {
-  Transaction::IdType id = transaction->id();
-  
+int Manager::rollbackTransaction (Transaction* transaction) {
   WRITE_LOCKER(_lock);
-  auto it = _transactions.find(id);
 
-  if (it == _transactions.end()) {
-    return TRI_ERROR_INTERNAL;
+  if (transaction->state() != State::StateType::BEGUN) {
+    // TODO: set it to aborted
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  (*it).second = Transaction::StateType::STATE_ABORTED;
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the status of a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-Transaction::StateType Manager::statusTransaction (Transaction::IdType id) {
-  READ_LOCKER(_lock);
+  transaction->setState(State::StateType::ABORTED);
   
-  auto it = _transactions.find(id);
-  if (it == _transactions.end()) {
-    return Transaction::StateType::STATE_COMMITTED;
-  }
-
-  return (*it).second;
+  // leave it in the list of transactions
+  return TRI_ERROR_NO_ERROR;
 }
 
 // mode: outline-minor

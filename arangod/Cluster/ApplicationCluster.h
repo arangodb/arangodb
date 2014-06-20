@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_CLUSTER_APPLICATION_CLUSTER_H
 #define TRIAGENS_CLUSTER_APPLICATION_CLUSTER_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 
-extern "C" {
-  struct TRI_server_s;
-}
+struct TRI_server_s;
 
 namespace triagens {
   namespace rest {

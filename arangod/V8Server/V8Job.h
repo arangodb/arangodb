@@ -28,12 +28,12 @@
 #ifndef TRIAGENS_V8SERVER_V8_JOB_H
 #define TRIAGENS_V8SERVER_V8_JOB_H 1
 
+#include "Basics/Common.h"
+
 #include "Dispatcher/Job.h"
 #include "BasicsC/json.h"
 
-extern "C" {
-  struct TRI_vocbase_s;
-}
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class V8Job

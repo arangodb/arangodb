@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_FULLTEXT_INDEX_FULLTEXT_COMMON_H
 #define TRIAGENS_FULLTEXT_INDEX_FULLTEXT_COMMON_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
@@ -82,10 +78,6 @@ typedef uint64_t TRI_fulltext_doc_t;
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

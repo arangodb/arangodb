@@ -37,11 +37,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double value from an array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -220,10 +215,6 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
 // -----------------------------------------------------------------------------
@@ -231,11 +222,6 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the index
@@ -258,13 +244,13 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   char const* location;
 
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
-  TRI_primary_collection_t* primary = idx->_collection;
+  TRI_document_collection_t* document = idx->_collection;
 
   // convert location to string
-  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_location);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_location);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (path == 0) {
-    return NULL;
+    return nullptr;
   }
 
   location = TRI_NAME_SHAPE_PATH(path);
@@ -272,8 +258,8 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
@@ -303,22 +289,22 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   char const* longitude;
   
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
-  TRI_primary_collection_t* primary = idx->_collection;
+  TRI_document_collection_t* document = idx->_collection;
 
   // convert latitude to string
-  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_latitude);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_latitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (path == 0) {
-    return NULL;
+    return nullptr;
   }
 
   latitude = TRI_NAME_SHAPE_PATH(path);
 
   // convert longitude to string
-  path = primary->_shaper->lookupAttributePathByPid(primary->_shaper, geo->_longitude);
+  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_longitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (path == 0) {
-    return NULL;
+    return nullptr;
   }
 
   longitude = TRI_NAME_SHAPE_PATH(path);
@@ -326,8 +312,8 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
   
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   // "constraint" and "unique" are identical for geo indexes. 
@@ -350,7 +336,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 
 static int InsertGeoIndex (TRI_index_t* idx, 
                            TRI_doc_mptr_t const* doc,
-                           const bool isRollback) {
+                           bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
@@ -362,10 +348,10 @@ static int InsertGeoIndex (TRI_index_t* idx,
   int res;
 
   geo = (TRI_geo_index_t*) idx;
-  shaper = geo->base._collection->_shaper;
+  shaper = geo->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // lookup latitude and longitude
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_data);
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (geo->_location != 0) {
     if (geo->_geoJson) {
@@ -431,7 +417,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
 
 static int RemoveGeoIndex (TRI_index_t* idx, 
                            TRI_doc_mptr_t const* doc,
-                           const bool isRollback) {
+                           bool isRollback) {
   GeoCoordinate gc;
   TRI_shaped_json_t shapedJson;
   TRI_geo_index_t* geo;
@@ -442,8 +428,8 @@ static int RemoveGeoIndex (TRI_index_t* idx,
   double longitude;
 
   geo = (TRI_geo_index_t*) idx;
-  shaper = geo->base._collection->_shaper;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->_data);
+  shaper = geo->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, doc->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // lookup OLD latitude and longitude
   if (geo->_location != 0) {
@@ -468,24 +454,15 @@ static int RemoveGeoIndex (TRI_index_t* idx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo-index for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
@@ -499,7 +476,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, primary, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, unique);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -537,7 +514,7 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_primary_collection_s* primary,
 /// @brief creates a geo-index for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
+TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
@@ -553,7 +530,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_primary_collection_s* primary,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, primary, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique);
 
   idx->_ignoreNull = ignoreNull;
   
@@ -611,18 +588,9 @@ void TRI_FreeGeoIndex (TRI_index_t* idx) {
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all points within a given radius
@@ -658,10 +626,6 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 
   return GeoIndex_NearestCountPoints(geo->_geoIndex, &gc, (int) count);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

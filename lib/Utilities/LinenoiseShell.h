@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_UTILITIES_LINENOISESHELL_H
 #define TRIAGENS_UTILITIES_LINENOISESHELL_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 #include "Completer.h"
 #include "ShellImplementation.h"
@@ -37,7 +37,6 @@
 #include "V8/v8-utils.h"
 
 namespace triagens {
-  using namespace std;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @addtogroup Shell
@@ -51,7 +50,7 @@ namespace triagens {
     ///                                               public constructor, destructor
     ////////////////////////////////////////////////////////////////////////////////
 
-    LinenoiseShell(string const& history, Completer *);
+    LinenoiseShell(std::string const& history, Completer *);
 
     virtual ~LinenoiseShell();
 

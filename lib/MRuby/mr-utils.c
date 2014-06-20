@@ -97,7 +97,7 @@ static mrb_value MR_JsonParse (mrb_state* mrb, mrb_value self) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, errmsg);
 
     mrb_exc_raise(mrb, exc);
-    assert(false);
+    TRI_ASSERT(false);
   }
 
   return MR_ObjectJson(mrb, json);

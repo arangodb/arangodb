@@ -33,9 +33,6 @@
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/GeneralServerJob.h"
 
-using namespace std;
-using namespace triagens::rest;
-
 namespace triagens {
   namespace rest {
 
@@ -84,7 +81,7 @@ namespace triagens {
 /// @brief gets the coordinator header
 ////////////////////////////////////////////////////////////////////////////////
 
-        string& getCoordinatorHeader () {
+        std::string& getCoordinatorHeader () {
           return _coordHeader;
         }
 
@@ -234,7 +231,7 @@ namespace triagens {
 /// @brief callback typedef
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef void (*callback_fptr)(string&, HttpResponse*);
+        typedef void (*callback_fptr)(std::string&, HttpResponse*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate typedef
@@ -444,7 +441,7 @@ namespace triagens {
             return;
           }
 
-          assert(job != 0);
+          TRI_ASSERT(job != 0);
 
           *jobId = (AsyncJobResult::IdType) generate();
           job->assignId((uint64_t) *jobId);
@@ -476,10 +473,10 @@ namespace triagens {
 
         template<typename S, typename HF>
         void finishAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job) {
-          assert(job != 0);
+          TRI_ASSERT(job != 0);
 
           typename HF::GeneralHandler* handler = job->getHandler();
-          assert(handler != 0);
+          TRI_ASSERT(handler != 0);
 
           AsyncJobResult::IdType jobId = job->id();
 

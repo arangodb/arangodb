@@ -2326,7 +2326,7 @@ void GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_
     }
 
     default : {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 }
@@ -2342,7 +2342,7 @@ static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexO
   if (geoIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2352,7 +2352,7 @@ static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index
   if (geoIndex == NULL || indexOperator == NULL) {
     return NULL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -2361,7 +2361,7 @@ static int GeoIndex_freeMethodCall (void* theIndex, void* data) {
   if (geoIndex == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 

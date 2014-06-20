@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transaction operations
+/// @brief transaction operations interface
 ///
 /// @file
 ///
@@ -27,33 +27,64 @@
 
 #include "Operations.h"
 
+#include "BasicsC/logging.h"
+
+using namespace std;
 using namespace triagens::transaction;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the operations
+/// @brief get a document
 ////////////////////////////////////////////////////////////////////////////////
 
-Operations::Operations (TRI_voc_cid_t id) 
-  : _id(id),
-    _numInserts(0),
-    _numUpdates(0),
-    _numDeletes(0) {
+int getDocument () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the operations
+/// @brief save a document
 ////////////////////////////////////////////////////////////////////////////////
 
-Operations::~Operations () {
+int saveDocument () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a document
+////////////////////////////////////////////////////////////////////////////////
+
+int removeDocument () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document
+////////////////////////////////////////////////////////////////////////////////
+
+int updateDocument () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a document
+////////////////////////////////////////////////////////////////////////////////
+
+int replaceDocument () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief truncate a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int truncate () { 
+  int res = TRI_ERROR_NO_ERROR;
+  return res;
+}
 
 // Local Variables:
 // mode: outline-minor

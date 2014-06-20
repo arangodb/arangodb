@@ -141,8 +141,8 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::buildServers () {
-  assert(_handlerFactory != 0);
-  assert(_applicationScheduler->scheduler() != 0);
+  TRI_ASSERT(_handlerFactory != 0);
+  TRI_ASSERT(_applicationScheduler->scheduler() != 0);
 
   EndpointServer* server;
 
