@@ -20,11 +20,11 @@ The edge definitions for a graph is an Array containing arbitrary many directed 
 
 !SUBSUBSECTION Undirected Relation
 
-@startDocuBlock JSF_general_graph_undirectedRelationDefinition
+@startDocuBlock JSF_general_graph_undirectedRelation
 
 !SUBSUBSECTION Directed Relation
 
-@startDocuBlock JSF_general_graph_directedRelationDefinition 
+@startDocuBlock JSF_general_graph_directedRelation
 
 !SUBSECTION Orphan Collections
 
@@ -58,8 +58,8 @@ Example Call:
 ```js
 > var graph = require("org/arangodb/graph");
 > var edgeDefinitions = graph._edgeDefinitions();
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelationDefinition("friend_of", ["Customer"]));
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelation("friend_of", ["Customer"]));
+> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 > graph._create("myStore", edgeDefinitions);
 {
   _id: "_graphs/123",
@@ -72,7 +72,7 @@ alternative call:
 
 ```js
 > var graph = require("org/arangodb/graph");
-> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelationDefinition("friend_of", ["Customer"]), graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelation("friend_of", ["Customer"]), graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 > graph._create("myStore", edgeDefinitions);
 {
   _id: "_graphs/123",
