@@ -27,6 +27,7 @@
           result = true;
         },
         error: function(data) {
+          console.log(data);
           result = false;
         }
       });
@@ -40,6 +41,26 @@
         type: "GET",
         async: false, // sequential calls!
         url: "/_admin/aardvark/foxxes/mountinfo/"+key,
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          result = data;
+        },
+        error: function(data) {
+          result = data;
+        }
+      });
+
+      return result;
+    },
+
+    gitInfo: function (key) {
+      var result;
+      $.ajax({
+        cache: false,
+        type: "GET",
+        async: false, // sequential calls!
+        url: "/_admin/aardvark/foxxes/gitinfo/"+key,
         contentType: "application/json",
         processData: false,
         success: function(data) {
