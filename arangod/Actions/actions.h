@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ACTIONS_ACTIONS_H
-#define TRIAGENS_ACTIONS_ACTIONS_H 1
+#ifndef ARANGODB_ACTIONS_ACTIONS_H
+#define ARANGODB_ACTIONS_ACTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -72,7 +74,7 @@ class TRI_action_result_t {
     bool canceled;
 
     triagens::rest::HttpResponse* response;
-    
+
     double sleep;
 };
 
@@ -129,10 +131,10 @@ void TRI_CleanupActions ();
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-LINE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

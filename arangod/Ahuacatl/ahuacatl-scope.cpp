@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -152,7 +154,7 @@ static void FreeScope (TRI_aql_scope_t* const scope) {
   // free variables lookup hash
   n = scope->_variables._nrAlloc;
   for (i = 0; i < n; ++i) {
-    TRI_aql_variable_t* variable 
+    TRI_aql_variable_t* variable
         = static_cast<TRI_aql_variable_t*>(scope->_variables._table[i]);
 
     if (variable) {
@@ -448,8 +450,8 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
 
   TRI_ASSERT(context);
   TRI_ASSERT(name);
- 
-  result = GetVariableInScope(context, name); 
+
+  result = GetVariableInScope(context, name);
 
   if (result != nullptr && allowDuplicateName) {
     scope = CurrentScope(context);
@@ -477,7 +479,11 @@ bool TRI_AddVariableScopeAql (TRI_aql_context_t* const context,
   return true;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

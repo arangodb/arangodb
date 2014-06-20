@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_AHUACATL_AHUACATL_CONTEXT_H
-#define TRIAGENS_AHUACATL_AHUACATL_CONTEXT_H 1
+#ifndef ARANGODB_AHUACATL_AHUACATL__CONTEXT_H
+#define ARANGODB_AHUACATL_AHUACATL__CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/associative.h"
@@ -83,7 +85,7 @@ typedef struct TRI_aql_context_s {
     TRI_associative_pointer_t _names;
   }
   _parameters;
-  
+
   const char*                 _query;
 
   size_t                      _variableIndex;
@@ -93,7 +95,7 @@ typedef struct TRI_aql_context_s {
   TRI_aql_query_type_e        _type;
   char*                       _writeCollection;
   struct TRI_aql_node_s*      _writeOptions;
-  
+
   struct TRI_json_s*          _userOptions;
   bool                        _fullCount;
   bool                        _isCoordinator;
@@ -197,7 +199,11 @@ struct TRI_json_s* TRI_GetOptionContextAql (TRI_aql_context_t* const,
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

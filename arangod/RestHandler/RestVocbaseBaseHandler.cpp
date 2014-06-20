@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,7 +92,7 @@ const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 const string RestVocbaseBaseHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
@@ -101,7 +103,7 @@ const string RestVocbaseBaseHandler::QUEUE_NAME = "STANDARD";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request) 
+RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request)
   : RestBaseHandler(request),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
     _vocbase(_context->getVocbase()) {
@@ -144,7 +146,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
   }
 
 
-  if (ServerState::instance()->isCoordinator() ||  
+  if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBserver()) {
     // create-collection is not supported in a cluster
     generateTransactionError(name, TRI_ERROR_CLUSTER_UNSUPPORTED);
@@ -152,8 +154,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
   }
 
 
-  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase, 
-                                                                          name.c_str(), 
+  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase,
+                                                                          name.c_str(),
                                                                           type,
                                                                           TRI_GetIdServer());
 
@@ -409,7 +411,7 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
       generateDocumentNotFound(collectionName, key);
       return;
-    
+
     case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
       generateError(HttpResponse::BAD, res);
       return;
@@ -419,7 +421,7 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:
-      generateError(HttpResponse::SERVER_ERROR, res, 
+      generateError(HttpResponse::SERVER_ERROR, res,
                     "coordinator: no responsible shard found");
       return;
 
@@ -428,11 +430,11 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
-    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: { 
+    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
       generateError(HttpResponse::BAD, res);
       return;
     }
-    
+
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
       generateError(HttpResponse::NOT_IMPLEMENTED, res);
       return;
@@ -470,7 +472,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
     while (s < e && (e[-1] == ' ' || e[-1] == '\t')) {
       --e;
     }
-    
+
     if (s < e && (e[-1] == '"' || e[-1] == '\'')) {
       --e;
     }
@@ -640,7 +642,11 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
   return TRI_ERROR_NO_ERROR;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

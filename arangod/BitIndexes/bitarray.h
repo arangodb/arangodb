@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef TRIAGENS_BIT_INDEXES_BITARRAY_H
-#define TRIAGENS_BIT_INDEXES_BITARRAY_H 1
+#ifndef ARANGODB_BIT_INDEXES_BITARRAY_H
+#define ARANGODB_BIT_INDEXES_BITARRAY_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/locks.h"
@@ -45,11 +47,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                             bitarray public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Structure for the position for the of the document within the Master Table.
@@ -116,10 +113,6 @@ typedef struct TRI_bitarray_params_s {
   */
 } TRI_bitarray_index_params_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 int TRI_InitBitarray (TRI_bitarray_t**, TRI_memory_zone_t*, size_t, void*);
 
 int TRI_DestroyBitarray (TRI_bitarray_t*);
@@ -128,17 +121,21 @@ int TRI_FreeBitarray (TRI_bitarray_t*);
 
 int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t*,
                                       TRI_bitarray_mask_t*,
-                                      struct TRI_doc_mptr_t*);  
+                                      struct TRI_doc_mptr_t*);
 
-int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*, 
+int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t*,
                                   TRI_bitarray_mask_set_t*,
-                                  struct TRI_index_iterator_s*); 
+                                  struct TRI_index_iterator_s*);
 
 int TRI_RemoveElementBitarray (TRI_bitarray_t*, struct TRI_doc_mptr_t*);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

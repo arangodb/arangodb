@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +49,7 @@ using namespace triagens::arango;
 /// @brief hashes a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_associative_pointer_t* array, 
+static uint64_t HashKey (TRI_associative_pointer_t* array,
                          void const* key) {
   char const* k = (char const*) key;
 
@@ -58,7 +60,7 @@ static uint64_t HashKey (TRI_associative_pointer_t* array,
 /// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array, 
+static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array,
                                      void const* element) {
   TRI_vocbase_auth_t const* e = static_cast<TRI_vocbase_auth_t const*>(element);
 
@@ -69,8 +71,8 @@ static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array,
 /// @brief compares an auth info and a username
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array, 
-                              void const* key, 
+static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
+                              void const* key,
                               void const* element) {
   char const* k = (char const*) key;
   TRI_vocbase_auth_t const* e = static_cast<TRI_vocbase_auth_t const*>(element);
@@ -82,7 +84,7 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
 /// @brief hashes the cache entry
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array, 
+static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array,
                                       void const* element) {
   TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
 
@@ -93,8 +95,8 @@ static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array,
 /// @brief compares a auth cache entry and a hash
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAuthCache (TRI_associative_pointer_t* array, 
-                               void const* key, 
+static bool EqualKeyAuthCache (TRI_associative_pointer_t* array,
+                               void const* key,
                                void const* element) {
   char const* k = (char const*) key;
   TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
@@ -140,7 +142,7 @@ static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
     return NULL;
   }
 
-  result = TRI_DuplicateString2(json->_value._string.data, 
+  result = TRI_DuplicateString2(json->_value._string.data,
                                 json->_value._string.length - 1);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -240,7 +242,7 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
   bool active;
   bool found;
   bool mustChange;
-  
+
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   // extract username
@@ -321,7 +323,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
   vocbase->_authInfo._nrUsed = 0;
-  
+
   // clear cache
   beg = vocbase->_authCache._table;
   end = vocbase->_authCache._table + vocbase->_authCache._nrAlloc;
@@ -354,14 +356,14 @@ int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
                              HashElementAuthInfo,
                              EqualKeyAuthInfo,
                              NULL);
-  
+
   TRI_InitAssociativePointer(&vocbase->_authCache,
                              TRI_CORE_MEM_ZONE,
                              HashKey,
                              HashElementAuthCache,
                              EqualKeyAuthCache,
                              NULL);
-  
+
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
 
   return TRI_ERROR_NO_ERROR;
@@ -401,21 +403,21 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
   // username
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                       user, 
-                       "user", 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                       user,
+                       "user",
                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "root"));
 
   // password
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                       user, 
-                       "password", 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                       user,
+                       "password",
                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "$1$c776f5f4$ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b"));
 
   // active
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, 
-                       user, 
-                       "active", 
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+                       user,
+                       "active",
                        TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
   TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, user);
@@ -454,7 +456,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
-  
+
   void** beg = document->_primaryIndex._table;
   void** end = beg + document->_primaryIndex._nrAlloc;
   void** ptr = beg;
@@ -522,31 +524,31 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
         ! TRI_IsBooleanJson(active)) {
       continue;
     }
-  
+
     TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true));
 
     if (auth == NULL) {
       continue;
     }
-    
-    auth->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+
+    auth->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
                                             username->_value._string.data,
                                             username->_value._string.length - 1);
 
-    auth->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
+    auth->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
                                             password->_value._string.data,
                                             password->_value._string.length - 1);
 
     auth->_active = active->_value._boolean;
 
-    TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, 
-                                    auth->_username, 
+    TRI_InsertKeyAssociativePointer(&vocbase->_authInfo,
+                                    auth->_username,
                                     auth,
                                     false);
   }
 
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
-  
+
   return true;
 }
 
@@ -711,5 +713,5 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

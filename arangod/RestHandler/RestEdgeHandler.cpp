@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -56,30 +58,16 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestEdgeHandler::RestEdgeHandler (HttpRequest* request)  
+RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
   : RestDocumentHandler(request) {
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge
@@ -134,7 +122,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of an
-/// edge, or if the collection specified is not an edge collection. 
+/// edge, or if the collection specified is not an edge collection.
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
@@ -151,16 +139,16 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///     g.addVertex(1);
 ///     g.addVertex(2);
 ///     var url = "/_api/edge/?collection=edges&from=vertices/1&to=vertices/2";
-/// 
+///
 ///     var response = logCurlRequest("POST", url, { "name": "Emil" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var edge_id = JSON.parse(body)._id;
 ///     var response2 = logCurlRequest("GET", "/_api/edge/" + edge_id);
-/// 
+///
 ///     assert(response2.code === 200);
 ///
 ///     logJsonResponse(response2);
@@ -247,11 +235,11 @@ bool RestEdgeHandler::createDocument () {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
- 
+
   TRI_document_collection_t* primary = trx.documentCollection();
- 
+
   if (primary->_info._type != TRI_COL_TYPE_EDGE) {
-    // check if we are inserting with the EDGE handler into a non-EDGE collection    
+    // check if we are inserting with the EDGE handler into a non-EDGE collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
@@ -289,7 +277,7 @@ bool RestEdgeHandler::createDocument () {
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-    
+
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -304,12 +292,12 @@ bool RestEdgeHandler::createDocument () {
   // .............................................................................
   // inside write transaction
   // .............................................................................
-  
+
   // will hold the result
   TRI_doc_mptr_copy_t mptr;
   res = trx.createEdge(&mptr, json, waitForSync, &edge);
   res = trx.finish(res);
-  
+
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -385,22 +373,22 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTDESCRIPTION
 /// Returns the edge identified by `document-handle`. The returned
-/// edge contains a few special attributes: 
+/// edge contains a few special attributes:
 ///
 /// - `_id` contains the document handle
 ///
 /// - `_rev` contains the revision
 ///
-/// - `_from` and `to` contain the document handles of the connected 
+/// - `_from` and `to` contain the document handles of the connected
 ///   vertex documents
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the edge was found
 ///
 /// @RESTRETURNCODE{304}
-/// is returned if the "If-None-Match" header is given and the edge has 
+/// is returned if the "If-None-Match" header is given and the edge has
 /// the same version
 ///
 /// @RESTRETURNCODE{404}
@@ -409,7 +397,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -451,20 +439,20 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally fetch an edge document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally fetch an edge document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of an edge document or check if
 /// it was deleted.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the edge document was found
 ///
@@ -493,7 +481,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 /// The handle of the edge document.
-/// 
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -502,7 +490,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace an edge document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter (see below).
@@ -512,7 +500,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally replace an edge document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the edge document identified by `document-handle`.
 /// If the edge document exists and can be updated, then a `HTTP 201` is returned
@@ -559,7 +547,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// For example, to conditionally replace an edge document based on a specific revision
 /// id, you can use the following request:
-/// 
+///
 /// - PUT /_api/document/`document-handle`?rev=`etag`
 ///
 /// If a target revision id is provided in the request (e.g. via the `etag` value
@@ -593,7 +581,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of an edge
-/// document or if applied to a non-edge collection. The response body contains an 
+/// document or if applied to a non-edge collection. The response body contains an
 /// error document in this case.
 ///
 /// @RESTRETURNCODE{404}
@@ -602,9 +590,9 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an edge
@@ -622,7 +610,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
-/// If the intention is to delete existing attributes with the patch command, 
+/// If the intention is to delete existing attributes with the patch command,
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing edge document that are contained in the patch document with an
@@ -634,7 +622,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch an edge document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter.
@@ -644,7 +632,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally patch an edge document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Partially updates the edge document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
@@ -653,7 +641,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// in the existing edge document if they do exist there.
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default. 
+/// value of `null` be saved for the attribute by default.
 ///
 /// Note that internal attributes such as `_key`, `_from` and `_to` are immutable
 /// once set and cannot be updated.
@@ -695,7 +683,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation or when
-/// applied on an non-edge collection. The response body contains an error document 
+/// applied on an non-edge collection. The response body contains an error document
 /// in this case.
 ///
 /// @RESTRETURNCODE{404}
@@ -704,7 +692,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -716,14 +704,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the edge document identified by `document-handle`. 
-/// 
+/// Deletes the edge document identified by `document-handle`.
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete an edge document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing edge
@@ -737,7 +725,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally delete an edge document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute `_id` contains the known
@@ -767,15 +755,15 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the 
+/// document's current revision in the `_rev` attribute. Additionally, the
 /// attributes `_id` and `_key` will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

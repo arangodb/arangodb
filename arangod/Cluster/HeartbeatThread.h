@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_HEARTBEAT_THREAD_H
-#define TRIAGENS_CLUSTER_HEARTBEAT_THREAD_H 1
+#ifndef ARANGODB_CLUSTER_HEARTBEAT_THREAD_H
+#define ARANGODB_CLUSTER_HEARTBEAT_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -53,7 +55,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-      
+
       private:
         HeartbeatThread (HeartbeatThread const&);
         HeartbeatThread& operator= (HeartbeatThread const&);
@@ -79,7 +81,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +98,7 @@ namespace triagens {
           if (_stop > 0) {
             return;
           }
-          
+
           LOG_TRACE("stopping heartbeat thread");
 
           _stop = 1;
@@ -143,32 +145,32 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-      
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan change, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         bool handlePlanChangeCoordinator (uint64_t,
                                           uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a plan change, DBServer case
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         bool handlePlanChangeDBServer (uint64_t,
                                        uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a state change
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         bool handleStateChange (AgencyCommResult&,
                                 uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the last value of Sync/Commands/my-id from the agency 
+/// @brief fetch the last value of Sync/Commands/my-id from the agency
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t getLastCommandIndex ();
@@ -194,13 +196,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Job dispatcher
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         triagens::rest::ApplicationDispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief v8 dispatcher
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +244,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         volatile sig_atomic_t _stop;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,8 +260,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-

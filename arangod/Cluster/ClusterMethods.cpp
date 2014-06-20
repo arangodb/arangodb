@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
@@ -51,12 +52,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierchical JSON
 ////////////////////////////////////////////////////////////////////////////////
-          
+
 template<typename T>
 static T ExtractFigure (TRI_json_t const* json,
                         char const* group,
                         char const* name) {
-  
+
   TRI_json_t const* g = TRI_LookupArrayJson(json, group);
 
   if (! TRI_IsArrayJson(g)) {
@@ -85,9 +86,9 @@ void mergeResponseHeaders (HttpResponse* response,
     const string& key = (*it).first;
 
     // the following headers are ignored
-    if (key != "http/1.1" && 
-        key != "connection" && 
-        key != "content-length" && 
+    if (key != "http/1.1" &&
+        key != "connection" &&
+        key != "content-length" &&
         key != "server") {
       response->setHeader(key, (*it).second);
     }
@@ -102,20 +103,20 @@ void mergeResponseHeaders (HttpResponse* response,
 std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest::HttpRequest* request) {
   map<string, string> const& headers = request->headers();
   map<string, string>::const_iterator it = headers.begin();
-  
+
   map<string, string> result;
-  
+
   while (it != headers.end()) {
     const string& key = (*it).first;
 
     // ignore the following headers
-    if (key != "x-arango-async" && 
-        key != "authorization" && 
-        key != "content-length" && 
-        key != "connection" && 
-        key != "expect" && 
+    if (key != "x-arango-async" &&
+        key != "authorization" &&
+        key != "content-length" &&
+        key != "connection" &&
+        key != "expect" &&
         key != "host" &&
-        key != "origin" && 
+        key != "origin" &&
         key.substr(0, 14) != "access-control") {
       result.insert(make_pair(key, (*it).second));
     }
@@ -138,7 +139,7 @@ bool shardKeysChanged (std::string const& dbname,
 
   TRI_json_t nullJson;
   TRI_InitNullJson(&nullJson);
-  
+
   if (! TRI_IsArrayJson(oldJson) || ! TRI_IsArrayJson(newJson)) {
     // expecting two arrays. everything else is an error
     return true;
@@ -166,7 +167,7 @@ bool shardKeysChanged (std::string const& dbname,
       // if attribute is undefined, use "null" instead
       o = &nullJson;
     }
-      
+
     if (n == 0) {
       // if attribute is undefined, use "null" instead
       n = &nullJson;
@@ -190,7 +191,7 @@ int usersOnCoordinator (std::string const& dbname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  
+
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, TRI_COL_NAME_USERS);
 
@@ -213,7 +214,7 @@ int usersOnCoordinator (std::string const& dbname,
 
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
-  
+
     // set collection name (shard id)
     string* body = new string;
     body->append("{\"collection\":\"");
@@ -265,7 +266,7 @@ int usersOnCoordinator (std::string const& dbname,
   if (nrok != (int) shards.size()) {
     return TRI_ERROR_INTERNAL;
   }
-  
+
   return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
                                // the DBserver could have reported an error.
 }
@@ -281,7 +282,7 @@ int revisionOnCoordinator (std::string const& dbname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  
+
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
@@ -290,7 +291,7 @@ int revisionOnCoordinator (std::string const& dbname,
   }
 
   rid = 0;
-  
+
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   ClusterCommResult* res;
@@ -303,7 +304,7 @@ int revisionOnCoordinator (std::string const& dbname,
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" + 
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/revision",
                            0, false, headers, NULL, 300.0);
     delete res;
@@ -343,7 +344,7 @@ int revisionOnCoordinator (std::string const& dbname,
   if (nrok != (int) shards.size()) {
     return TRI_ERROR_INTERNAL;
   }
-  
+
   return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
                                // the DBserver could have reported an error.
 }
@@ -359,21 +360,21 @@ int figuresOnCoordinator (string const& dbname,
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  
+
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-   
-  // prefill with 0s 
+
+  // prefill with 0s
   result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
   if (result == 0) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   ClusterCommResult* res;
@@ -386,7 +387,7 @@ int figuresOnCoordinator (string const& dbname,
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" + 
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/figures",
                            0, false, headers, NULL, 300.0);
     delete res;
@@ -445,7 +446,7 @@ int figuresOnCoordinator (string const& dbname,
     result = 0;
     return TRI_ERROR_INTERNAL;
   }
-  
+
   return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
                                // the DBserver could have reported an error.
 }
@@ -462,16 +463,16 @@ int countOnCoordinator (
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  
+
   result = 0;
-  
+
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  
+
   ClusterCommResult* res;
   map<ShardID, ServerID> shards = collinfo->shardIds();
   map<ShardID, ServerID>::iterator it;
@@ -512,7 +513,7 @@ int countOnCoordinator (
   if (nrok != (int) shards.size()) {
     return TRI_ERROR_INTERNAL;
   }
-  
+
   return TRI_ERROR_NO_ERROR;   // the cluster operation was OK, however,
                                // the DBserver could have reported an error.
 }
@@ -549,7 +550,7 @@ int createDocumentOnCoordinator (
   // and only sharding attribute, because in this case we can delegate
   // the responsibility to make _key attributes unique to the responsible
   // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding 
+  // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
@@ -560,7 +561,7 @@ int createDocumentOnCoordinator (
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
     TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                                      _key.c_str(), _key.size()));
   }
   else {
@@ -598,7 +599,7 @@ int createDocumentOnCoordinator (
                         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection="+
                         StringUtils::urlEncode(shardID) + "&waitForSync=" +
                         (waitForSync ? "true" : "false"), body, headers, 60.0);
-  
+
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
     delete res;
@@ -656,7 +657,7 @@ int deleteDocumentOnCoordinator (
   string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
-  // because we can easily determine which shard is responsible for the 
+  // because we can easily determine which shard is responsible for the
   // document. Otherwise we have to contact all shards and ask them to
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
@@ -664,7 +665,7 @@ int deleteDocumentOnCoordinator (
   if (0 == json) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key", 
+  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -698,7 +699,7 @@ int deleteDocumentOnCoordinator (
                           StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key)+
                           "?waitForSync="+(waitForSync ? "true" : "false")+
                           revstr+policystr, "", headers, 60.0);
-  
+
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
       delete res;
@@ -795,7 +796,7 @@ int truncateCollectionOnCoordinator ( string const& dbname,
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                           "/_db/" + StringUtils::urlEncode(dbname) + 
+                           "/_db/" + StringUtils::urlEncode(dbname) +
                            "/_api/collection/" + it->first + "/truncate",
                            0, false, headersCopy, NULL, 60.0);
     delete res;
@@ -847,7 +848,7 @@ int getDocumentOnCoordinator (
   string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
-  // because we can easily determine which shard is responsible for the 
+  // because we can easily determine which shard is responsible for the
   // document. Otherwise we have to contact all shards and ask them to
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
@@ -855,7 +856,7 @@ int getDocumentOnCoordinator (
   if (0 == json) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key", 
+  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -889,7 +890,7 @@ int getDocumentOnCoordinator (
                           "/_db/"+dbname+"/_api/document/"+
                           StringUtils::urlEncode(shardID)+"/"+StringUtils::urlEncode(key)+
                           revstr, "", headers, 60.0);
-  
+
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
       delete res;
@@ -922,7 +923,7 @@ int getDocumentOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headersCopy = new map<string, string>(headers);
 
-    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first, 
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            reqType,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
@@ -957,7 +958,7 @@ int getDocumentOnCoordinator (
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getAllDocumentsOnCoordinator ( 
+int getAllDocumentsOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1010,7 +1011,7 @@ int getAllDocumentsOnCoordinator (
       return TRI_ERROR_INTERNAL;
     }
     p = res->answer->body();
-    
+
     char const* q = p + res->answer->bodySize();
     while (*p != '\n' && *p != 0) {
       p++;
@@ -1074,7 +1075,7 @@ int modifyDocumentOnCoordinator (
   //     can read off the responsible shard, therefore can use the fast
   //     path, this is always true if _key is the one and only sharding
   //     attribute, however, if there is any other sharding attribute,
-  //     it is possible that the user has changed the values in any of 
+  //     it is possible that the user has changed the values in any of
   //     them, in that case we will get a "not found" or a "sharding
   //     attributes changed answer" in the fast path. In the latter case
   //     we have to delegate to the slow path.
@@ -1084,16 +1085,16 @@ int modifyDocumentOnCoordinator (
   //     only sharding attribute, it is always given, if not all sharding
   //     attributes are explicitly given (at least as value `null`), we must
   //     assume that the fast path cannot be used. If all sharding attributes
-  //     are given, we first try the fast path, but might, as above, 
+  //     are given, we first try the fast path, but might, as above,
   //     have to use the slow path after all.
 
   bool usesDefaultShardingAttributes;
   ShardID shardID;
 
-  int error = ci->getResponsibleShard(collid, 
-                                      json, 
-                                      ! isPatch, 
-                                      shardID, 
+  int error = ci->getResponsibleShard(collid,
+                                      json,
+                                      ! isPatch,
+                                      shardID,
                                       usesDefaultShardingAttributes);
 
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -1116,7 +1117,7 @@ int modifyDocumentOnCoordinator (
   else {
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PUT;
   }
-  
+
   string policystr;
   if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
     policystr = "&policy=last";
@@ -1125,7 +1126,7 @@ int modifyDocumentOnCoordinator (
   string body = JsonHelper::toString(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (! isPatch || 
+  if (! isPatch ||
       error != TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN) {
     // This is the fast method, we only have to ask one shard, unless
     // the we are in isPatch==false and the user has actually changed the
@@ -1137,7 +1138,7 @@ int modifyDocumentOnCoordinator (
                           StringUtils::urlEncode(shardID) + "/" + StringUtils::urlEncode(key) +
                           "?waitForSync=" + (waitForSync ? "true" : "false") +
                           revstr + policystr, body, headers, 60.0);
-  
+
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
       delete res;
@@ -1174,10 +1175,10 @@ int modifyDocumentOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headersCopy = new map<string, string>(headers);
 
-    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first, 
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            reqType,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
-                           StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) + 
+                           StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr,
                            &body, false, headersCopy, NULL, 60.0);
     delete res;
@@ -1210,7 +1211,7 @@ int modifyDocumentOnCoordinator (
 /// @brief creates an edge in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int createEdgeOnCoordinator ( 
+int createEdgeOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  bool waitForSync,
@@ -1237,7 +1238,7 @@ int createEdgeOnCoordinator (
   // and only sharding attribute, because in this case we can delegate
   // the responsibility to make _key attributes unique to the responsible
   // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding 
+  // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
@@ -1248,7 +1249,7 @@ int createEdgeOnCoordinator (
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
     TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, 
+                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                                      _key.c_str(), _key.size()));
   }
   else {
@@ -1280,11 +1281,11 @@ int createEdgeOnCoordinator (
   res = cc->syncRequest("", TRI_NewTickServer(), "shard:" + shardID,
                         triagens::rest::HttpRequest::HTTP_REQUEST_POST,
                         "/_db/" + dbname + "/_api/edge?collection=" +
-                        StringUtils::urlEncode(shardID) + "&waitForSync=" + 
+                        StringUtils::urlEncode(shardID) + "&waitForSync=" +
                         (waitForSync ? "true" : "false") +
-                        "&from=" + StringUtils::urlEncode(from) + "&to=" + StringUtils::urlEncode(to), 
+                        "&from=" + StringUtils::urlEncode(from) + "&to=" + StringUtils::urlEncode(to),
                         body, headers, 60.0);
-  
+
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
     delete res;
@@ -1316,7 +1317,7 @@ int createEdgeOnCoordinator (
 TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
                                              string const& collectionName) {
   shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
-  
+
   if ((*c).empty()) {
     return 0;
   }
@@ -1328,7 +1329,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   }
 
   TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);
-  
+
   TRI_json_t const* json = (*c).getIndexes();
 
   if (TRI_IsListJson(json)) {
@@ -1357,7 +1358,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
         }
 
         TRI_index_t* idx = (TRI_index_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
-        
+
         if (idx == 0) {
           continue;
         }
@@ -1365,7 +1366,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
         idx->_iid      = iid;
         idx->_type     = type;
         idx->_unique   = unique;
-          
+
         TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
         value = TRI_LookupArrayJson(v, "fields");
@@ -1375,8 +1376,8 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
             TRI_json_t const* f = TRI_LookupListJson(value, j);
 
             if (TRI_IsStringJson(f)) {
-              char* fieldName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, 
-                                                      f->_value._string.data, 
+              char* fieldName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
+                                                      f->_value._string.data,
                                                       f->_value._string.length - 1);
 
               TRI_PushBackVectorString(&idx->_fields, fieldName);
@@ -1397,17 +1398,19 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 }  // namespace triagens
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief c binding for getIndexesCoordinator 
+/// @brief c binding for getIndexesCoordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t* TRI_GetCoordinatorIndexes (char const* databaseName, 
+TRI_vector_pointer_t* TRI_GetCoordinatorIndexes (char const* databaseName,
                                                  char const* collectionName) {
   return getIndexesCoordinator(string(databaseName), string(collectionName));
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
-

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,11 +39,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dummy no-operations node (re-used for ALL non-operations)}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,18 +50,9 @@ static TRI_aql_node_t* DummyNopNode;
 
 static TRI_aql_node_t* DummyReturnEmptyNode;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the statement at a certain position
@@ -92,13 +80,13 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
   while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
     TRI_aql_node_type_e type = node->_type;
-    
+
     if (i == position) {
       TRI_ASSERT(type == TRI_AQL_NODE_SCOPE_START);
       list->_statements._buffer[i] = DummyReturnEmptyNode;
     }
     else {
-      list->_statements._buffer[i] = TRI_GetDummyNopNodeAql(); 
+      list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
     }
     ++i;
 
@@ -113,24 +101,15 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
         break;
       }
     }
-    
+
   }
 
   return i;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create and initialize a statement list
@@ -164,18 +143,9 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init the global nodes at program start
@@ -368,7 +338,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
         i = InvalidateEmptyScope(list, i);
         j = i;
         continue;
-      } 
+      }
     }
 
     /* should not happen anymore
@@ -384,11 +354,11 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
   list->_statements._length = j;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

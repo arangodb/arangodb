@@ -1,19 +1,19 @@
 /* A Bison parser, made by GNU Bison 2.7.  */
 
 /* Bison implementation for Yacc-like parsers in C
-   
+
       Copyright (C) 1984, 1989-1990, 2000-2012 Free Software Foundation, Inc.
-   
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -26,7 +26,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-   
+
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -76,9 +76,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <Basics/Common.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/tri-strings.h>
+#include "Basics/Common.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -245,7 +245,7 @@ int Ahuacatlparse ();
 ////////////////////////////////////////////////////////////////////////////////
 
 int Ahuacatllex (YYSTYPE*, YYLTYPE*, void*);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register parse error
 ////////////////////////////////////////////////////////////////////////////////
@@ -1990,11 +1990,11 @@ yyreduce:
 #line 233 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node;
-      
+
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_FOR)) {
         ABORT_OOM
       }
-      
+
       node = TRI_CreateNodeForAql(context, (yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
       if (node == NULL) {
         ABORT_OOM
@@ -2014,7 +2014,7 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2051,7 +2051,7 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2063,7 +2063,7 @@ yyreduce:
 #line 291 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -2077,14 +2077,14 @@ yyreduce:
 #line 299 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeCollectAql(
-                context, 
+                context,
                 static_cast<const TRI_aql_node_t* const>
-                           (TRI_PopStackParseAql(context)), 
+                           (TRI_PopStackParseAql(context)),
                 (yyvsp[(4) - (4)].strval));
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2141,7 +2141,7 @@ yyreduce:
 #line 345 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       TRI_aql_node_t* node = TRI_CreateNodeListAql(context);
-      
+
       if (node == NULL) {
         ABORT_OOM
       }
@@ -2154,13 +2154,13 @@ yyreduce:
 /* Line 1792 of yacc.c  */
 #line 353 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_aql_node_t* list 
+      TRI_aql_node_t* list
           = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2232,11 +2232,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
     }
     break;
 
@@ -2248,7 +2248,7 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
@@ -2263,11 +2263,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2284,11 +2284,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2305,11 +2305,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2326,11 +2326,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2347,11 +2347,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2368,11 +2368,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2389,11 +2389,11 @@ yyreduce:
       if (node == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, node)) {
         ABORT_OOM
       }
-      
+
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
@@ -2428,7 +2428,7 @@ yyreduce:
       TRI_aql_node_t* result;
       TRI_aql_node_t* subQuery;
       TRI_aql_node_t* nameNode;
-      
+
       context->_subQueries--;
 
       if (! TRI_EndScopeAql(context)) {
@@ -2440,7 +2440,7 @@ yyreduce:
       if (subQuery == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, subQuery)) {
         ABORT_OOM
       }
@@ -2518,19 +2518,19 @@ yyreduce:
       if ((yyvsp[(1) - (3)].node) == NULL || (yyvsp[(3) - (3)].node) == NULL) {
         ABORT_OOM
       }
-      
+
       list = TRI_CreateNodeListAql(context);
       if (list == NULL) {
         ABORT_OOM
       }
-       
+
       if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&list->_members, (void*) (yyvsp[(1) - (3)].node))) {
         ABORT_OOM
       }
       if (TRI_ERROR_NO_ERROR != TRI_PushBackVectorPointer(&list->_members, (void*) (yyvsp[(3) - (3)].node))) {
         ABORT_OOM
       }
-      
+
       node = TRI_CreateNodeFcallAql(context, "RANGE", list);
 
       if (node == NULL) {
@@ -2592,9 +2592,9 @@ yyreduce:
 /* Line 1792 of yacc.c  */
 #line 680 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
-      TRI_aql_node_t* list 
+      TRI_aql_node_t* list
         = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
-      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, 
+      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context,
                                     static_cast<char const* const>
                                                (TRI_PopStackParseAql(context)),
                                     list);
@@ -2635,7 +2635,7 @@ yyreduce:
   case 61:
 /* Line 1792 of yacc.c  */
 #line 712 "arangod/Ahuacatl/ahuacatl-grammar.y"
-    { 
+    {
       TRI_aql_node_t* node = TRI_CreateNodeOperatorUnaryNotAql(context, (yyvsp[(2) - (2)].node));
       if (node == NULL) {
         ABORT_OOM
@@ -3050,11 +3050,11 @@ yyreduce:
       if (varname == NULL) {
         ABORT_OOM
       }
-      
+
       // push the varname onto the stack
       TRI_PushStackParseAql(context, varname);
-      
-      // push on the stack what's going to be expanded (will be popped when we come back) 
+
+      // push on the stack what's going to be expanded (will be popped when we come back)
       TRI_PushStackParseAql(context, (yyvsp[(1) - (1)].node));
 
       // create a temporary variable for the row iterator (will be popped by "expansion" rule")
@@ -3085,7 +3085,7 @@ yyreduce:
       if (expand == NULL) {
         ABORT_OOM
       }
-      
+
       if (! TRI_AppendStatementListAql(context->_statements, expand)) {
         ABORT_OOM
       }
@@ -3111,7 +3111,7 @@ yyreduce:
     {
       // variable or collection
       TRI_aql_node_t* node;
-      
+
       if (TRI_VariableExistsScopeAql(context, (yyvsp[(1) - (1)].strval))) {
         node = TRI_CreateNodeReferenceAql(context, (yyvsp[(1) - (1)].strval));
       }
@@ -3132,7 +3132,7 @@ yyreduce:
 #line 1044 "arangod/Ahuacatl/ahuacatl-grammar.y"
     {
       (yyval.node) = (yyvsp[(1) - (1)].node);
-      
+
       if ((yyval.node) == NULL) {
         ABORT_OOM
       }
@@ -3145,7 +3145,7 @@ yyreduce:
     {
       // named variable access, e.g. variable.reference
       (yyval.node) = TRI_CreateNodeAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
-      
+
       if ((yyval.node) == NULL) {
         ABORT_OOM
       }
@@ -3158,7 +3158,7 @@ yyreduce:
     {
       // named variable access, e.g. variable.@reference
       (yyval.node) = TRI_CreateNodeBoundAttributeAccessAql(context, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
-      
+
       if ((yyval.node) == NULL) {
         ABORT_OOM
       }
@@ -3171,7 +3171,7 @@ yyreduce:
     {
       // indexed variable access, e.g. variable[index]
       (yyval.node) = TRI_CreateNodeIndexedAql(context, (yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
-      
+
       if ((yyval.node) == NULL) {
         ABORT_OOM
       }
@@ -3296,14 +3296,14 @@ yyreduce:
       if ((yyvsp[(1) - (1)].strval) == NULL) {
         ABORT_OOM
       }
-      
+
       value = TRI_DoubleString((yyvsp[(1) - (1)].strval));
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
         TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
         YYABORT;
       }
-      
+
       node = TRI_CreateNodeValueDoubleAql(context, value);
 
       if (node == NULL) {
@@ -3425,7 +3425,7 @@ yyreduce:
       if ((yyvsp[(1) - (1)].strval) == NULL) {
         ABORT_OOM
       }
-      
+
       if (strlen((yyvsp[(1) - (1)].strval)) < 2 || (yyvsp[(1) - (1)].strval)[0] != '@') {
         TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, (yyvsp[(1) - (1)].strval));
         YYABORT;
@@ -3753,3 +3753,11 @@ yyreturn:
 }
 
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
