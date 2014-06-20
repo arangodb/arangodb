@@ -27,6 +27,9 @@
           result = true;
         },
         error: function(data) {
+          if (data.responseText.indexOf() !== -1) {
+            alert("Already newest app version installed.");
+          }
           result = false;
         }
       });
