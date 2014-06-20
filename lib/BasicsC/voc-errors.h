@@ -516,6 +516,20 @@ extern "C" {
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
+/// - 1931: @LIT{ is not an ArangoCollection}
+///   The collection is not an ArangoCollection.
+/// - 1932: @LIT{collection _graphs does not exist}
+///   collection _graphs does not exist.
+/// - 1933: @LIT{Invalid example type. Has to be String, Array or Object}
+///   Invalid example type. Has to be String, Array or Object.
+/// - 1934: @LIT{Invalid example type. Has to be Array or Object}
+///   Invalid example type. Has to be Array or Object.
+/// - 1935: @LIT{Invalid number of arguments. Expected: }
+///   Invalid number of arguments. Expected: 
+/// - 1936: @LIT{Invalid parameter type.}
+///   Invalid parameter type.
+/// - 1937: @LIT{Invalid id}
+///   Invalid id
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2729,6 +2743,76 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1931: ERROR_GRAPH_NO_AN_ARANGO_COLLECTION
+///
+///  is not an ArangoCollection
+///
+/// The collection is not an ArangoCollection.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NO_AN_ARANGO_COLLECTION                           (1931)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
+///
+/// collection _graphs does not exist
+///
+/// collection _graphs does not exist.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION                               (1932)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1933: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING
+///
+/// Invalid example type. Has to be String, Array or Object
+///
+/// Invalid example type. Has to be String, Array or Object.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING               (1933)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1934: ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT
+///
+/// Invalid example type. Has to be Array or Object
+///
+/// Invalid example type. Has to be Array or Object.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      (1934)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
+///
+/// Invalid number of arguments. Expected: 
+///
+/// Invalid number of arguments. Expected: 
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       (1935)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1936: ERROR_GRAPH_INVALID_PARAMETER
+///
+/// Invalid parameter type.
+///
+/// Invalid parameter type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_PARAMETER                                 (1936)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1937: ERROR_GRAPH_INVALID_ID
+///
+/// Invalid id
+///
+/// Invalid id
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_INVALID_ID                                        (1937)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

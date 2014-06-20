@@ -884,7 +884,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
       case TRI_WAL_MARKER_ATTRIBUTE: {
         char const* name = base + sizeof(attribute_marker_t);
         size_t n = strlen(name) + 1; // add NULL byte
-        TRI_voc_size_t const totalSize = sizeof(TRI_df_attribute_marker_t) + n;
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_df_attribute_marker_t) + n);
 
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DF_MARKER_ATTRIBUTE, totalSize, cache);
 
@@ -911,7 +911,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
       case TRI_WAL_MARKER_SHAPE: {
         char const* shape = base + sizeof(shape_marker_t);
         ptrdiff_t shapeLength = source->_size - (shape - base);
-        TRI_voc_size_t const totalSize = sizeof(TRI_df_shape_marker_t) + shapeLength;
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_df_shape_marker_t) + shapeLength);
 
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DF_MARKER_SHAPE, totalSize, cache);
 
@@ -938,9 +938,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
 
         char const* key = base + orig->_offsetKey;
         size_t n = strlen(key) + 1; // add NULL byte
-        TRI_voc_size_t const totalSize = sizeof(TRI_doc_document_key_marker_t) +
-                                         TRI_DF_ALIGN_BLOCK(n) + 
-                                         shapeLength;
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_doc_document_key_marker_t) + TRI_DF_ALIGN_BLOCK(n) + shapeLength);
         
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_DOCUMENT, totalSize, cache);
 
@@ -953,7 +951,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         m->_tid        = 0; // convert into standalone transaction 
         m->_shape      = orig->_shape;
         m->_offsetKey  = sizeof(TRI_doc_document_key_marker_t);
-        m->_offsetJson = m->_offsetKey + TRI_DF_ALIGN_BLOCK(n);
+        m->_offsetJson = static_cast<uint16_t>(m->_offsetKey + TRI_DF_ALIGN_BLOCK(n));
   
         // copy key into marker
         memcpy(dst + m->_offsetKey, key, n);
@@ -981,11 +979,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         size_t to = strlen(toKey) + 1; // add NULL byte
         char const* fromKey = base + orig->_offsetFromKey;
         size_t from = strlen(fromKey) + 1; // add NULL byte
-        TRI_voc_size_t const totalSize = sizeof(TRI_doc_edge_key_marker_t) + 
-                                         TRI_DF_ALIGN_BLOCK(n) + 
-                                         TRI_DF_ALIGN_BLOCK(to) + 
-                                         TRI_DF_ALIGN_BLOCK(from) + 
-                                         shapeLength;
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_doc_edge_key_marker_t) + TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from) + shapeLength);
 
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_EDGE, totalSize, cache);
 
@@ -998,12 +992,12 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         m->base._rid           = orig->_revisionId;
         m->base._tid           = 0; // convert into standalone transaction 
         m->base._shape         = orig->_shape;
-        m->base._offsetKey     = offsetKey;
-        m->base._offsetJson    = offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from);
+        m->base._offsetKey     = static_cast<uint16_t>(offsetKey);
+        m->base._offsetJson    = static_cast<uint16_t>(offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from));
         m->_toCid              = orig->_toCid;
         m->_fromCid            = orig->_fromCid;
-        m->_offsetToKey        = offsetKey + TRI_DF_ALIGN_BLOCK(n);
-        m->_offsetFromKey      = offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to);
+        m->_offsetToKey        = static_cast<uint16_t>(offsetKey + TRI_DF_ALIGN_BLOCK(n));
+        m->_offsetFromKey      = static_cast<uint16_t>(offsetKey + TRI_DF_ALIGN_BLOCK(n) + TRI_DF_ALIGN_BLOCK(to));
 
         // copy key into marker
         memcpy(dst + offsetKey, key, n);
@@ -1027,7 +1021,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
 
         char const* key = base + sizeof(remove_marker_t);
         size_t n = strlen(key) + 1; // add NULL byte
-        TRI_voc_size_t const totalSize = sizeof(TRI_doc_deletion_key_marker_t) + n;
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_doc_deletion_key_marker_t) + n);
 
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_DELETION, totalSize, cache);
 

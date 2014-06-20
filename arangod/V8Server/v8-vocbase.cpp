@@ -2432,28 +2432,29 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
+/// @startDocuBlock SaveEdgeCol
+/// `edge-collection.save(from, to, document)`
 ///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document})}
-///
-/// Saves a new edge and returns the document-handle. @FA{from} and @FA{to}
+/// Saves a new edge and returns the document-handle. *from* and *to*
 /// must be documents or document references.
 ///
-/// @FUN{@FA{edge-collection}.save(@FA{from}, @FA{to}, @FA{document}, @FA{waitForSync})}
+/// `edge-collection.save(from, to, document, waitForSync)
 ///
-/// The optional @FA{waitForSync} parameter can be used to force
-/// synchronisation of the document creation operation to disk even in case
-/// that the @LIT{waitForSync} flag had been disabled for the entire collection.
-/// Thus, the @FA{waitForSync} parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the @FA{waitForSync} parameter
-/// to @LIT{true}. If the @FA{waitForSync} parameter is not specified or set to
-/// @LIT{false}, then the collection's default @LIT{waitForSync} behavior is
-/// applied. The @FA{waitForSync} parameter cannot be used to disable
-/// synchronisation for collections that have a default @LIT{waitForSync} value
-/// of @LIT{true}.
+/// The optional *waitForSync* parameter can be used to force
+/// synchronization of the document creation operation to disk even in case
+/// that the *waitForSync* flag had been disabled for the entire collection.
+/// Thus, the *waitForSync* parameter can be used to force synchronization
+/// of just specific operations. To use this, set the *waitForSync* parameter
+/// to *true*. If the *waitForSync* parameter is not specified or set to
+/// *false*, then the collection's default *waitForSync* behavior is
+/// applied. The *waitForSync* parameter cannot be used to disable
+/// synchronization for collections that have a default *waitForSync* value
+/// of *true*.
 ///
 /// @EXAMPLES
 ///
 /// @TINYEXAMPLE{shell_create-edge,create an edge}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> SaveEdgeCol (
@@ -5619,27 +5620,27 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
+/// @startDocuBlock col_ensureIndex
+/// `collection.ensureIndex(index-description)
 ///
-/// @FUN{@FA{collection}.ensureIndex(@FA{index-description})}
-///
-/// Ensures that an index according to the @FA{index-description} exists. A
+/// Ensures that an index according to the *index-description* exists. A
 /// new index will be created if none exists with the given description.
 ///
-/// The @FA{index-description} must contain at least a `type` attribute. 
-/// `type` can be one of the following values:
-/// - `hash`: hash index
-/// - `skiplist`: skiplist index
-/// - `fulltext`: fulltext index
-/// - `bitarray`: bitarray index
-/// - `geo1`: geo index, with one attribute
-/// - `geo2`: geo index, with two attributes
-/// - `cap`: cap constraint
+/// The *index-description* must contain at least a *type* attribute. 
+/// *type* can be one of the following values:
+/// - *hash*: hash index
+/// - *skiplist*: skiplist index
+/// - *fulltext*: fulltext index
+/// - *bitarray*: bitarray index
+/// - *geo1*: geo index, with one attribute
+/// - *geo2*: geo index, with two attributes
+/// - *cap*: cap constraint
 ///
 /// Other attributes may be necessary, depending on the index type.
 ///
 /// Calling this method returns an index object. Whether or not the index 
 /// object existed before the call is indicated in the return attribute 
-/// `isNewlyCreated`.
+/// *isNewlyCreated*.
 ///
 /// @EXAMPLES
 ///
@@ -5655,6 +5656,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ///   "isNewlyCreated" : true 
 /// }
 /// @endcode
+/// endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv) {
@@ -5677,14 +5679,15 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
-///
-/// @FUN{@FA{collection}.count()}
+/// @startDocuBlock col_count
+/// `collection.count()`
 ///
 /// Returns the number of living documents in the collection.
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude shell-collection-count
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
@@ -5740,10 +5743,11 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafiles
-///
-/// @FUN{@FA{collection}.datafiles()}
+/// @startDocuBlock col_datafiles
+/// `collection.datafiles()`
 ///
 /// Returns information about the datafiles. The collection must be unloaded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) {
@@ -5898,7 +5902,7 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 ///
 /// Drops a *collection* and all its indexes.
 ///
-/// *EXAMPLES*
+/// @EEXAMPLES
 ///
 /// @verbinclude shell_collection-drop
 ////////////////////////////////////////////////////////////////////////////////
@@ -5978,21 +5982,22 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
+/// @startDocuBock col_dropIndex
+/// `collection.dropIndex(index)`
 ///
-/// @FUN{@FA{collection}.dropIndex(@FA{index})}
-///
-/// Drops the index. If the index does not exist, then @LIT{false} is
-/// returned. If the index existed and was dropped, then @LIT{true} is
+/// Drops the index. If the index does not exist, then *false* is
+/// returned. If the index existed and was dropped, then *true* is
 /// returned. Note that you cannot drop some special indexes (e.g. the primary 
 /// index of a collection or the edge index of an edge collection).
 ///
-/// @FUN{@FA{collection}.dropIndex(@FA{index-handle})}
+/// `collection.dropIndex(index-handle)`
 ///
 /// Same as above. Instead of an index an index handle can be given.
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude shell_index-drop-index
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
@@ -6327,7 +6332,7 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
-///
+/// @startDocuBlock col_getIndexes
 /// @FUN{getIndexes()}
 ///
 /// Returns a list of all indexes defined for the collection. 
@@ -6335,6 +6340,7 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 /// @EXAMPLES
 ///
 /// @verbinclude shell_index-read-all
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
@@ -6399,9 +6405,10 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 ///
 /// Loads a collection into memory.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude shell_collection-load
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_LoadVocbaseCol (v8::Arguments const& argv) {
@@ -6547,7 +6554,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// *Note*: some other collection properties, such as *type*, *isVolatile*,
 /// or *keyOptions* cannot be changed once the collection is created.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Read all properties
 ///
@@ -6801,12 +6808,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 /// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document deletion operation to disk even in case that the
 /// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronisation of just
+/// the *waitForSync* parameter can be used to force synchronization of just
 /// specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `collection.remove(document-handle, data)`
@@ -6814,7 +6821,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 /// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Remove a document:
 ///
@@ -6849,7 +6856,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 /// !db.example.document(a1);
 /// !           ^
 /// @endcode
-/// endCodeBlock
+/// @endCodeBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -6870,7 +6877,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Note: this method is not available in a cluster.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude shell_collection-rename
 /// @endDocuBlock
@@ -6956,14 +6963,14 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// `collection.replace(document, data, overwrite: true, waitForSync: true or false)` 
 ///
 /// The optional *waitForSync* parameter can be used to force
-/// synchronisation of the document replacement operation to disk even in case
+/// synchronization of the document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronisation
+/// Thus, the *waitForSync* parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `collection.replace(document-handle, data)`
@@ -6971,7 +6978,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// As before. Instead of document a @FA{document-handle} can be passed as
 /// first argument.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Create and update a document:
 ///
@@ -7137,14 +7144,14 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
 /// be removed from the target document.
 ///
 /// The optional *waitForSync* parameter can be used to force
-/// synchronisation of the document update operation to disk even in case
+/// synchronization of the document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronisation
+/// Thus, the *waitForSync* parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The method returns a document with the attributes *_id*, *_rev* and
@@ -7372,14 +7379,14 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
 ///
 /// Creates a new document in the *collection* from the given *data* as
 /// above. The optional *waitForSync* parameter can be used to force
-/// synchronisation of the document creation operation to disk even in case
+/// synchronization of the document creation operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronisation
+/// Thus, the *waitForSync* parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// *Examples*
@@ -7541,12 +7548,13 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type of a collection
-///
-/// @FUN{@FA{collection}.type()}
+/// @startDocuBlock col_type
+/// `collection.type()`
 ///
 /// Returns the type of a collection. Possible values are:
 /// - 2: document collection
 /// - 3: edge collection
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
@@ -7587,7 +7595,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 /// Starts unloading a collection from memory. Note that unloading is deferred
 /// until all query have finished.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude shell_collection-unload
 /// @endDocuBlock
@@ -7685,7 +7693,7 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 /// collection exists, create a collection named *collection-name* with the
 /// default properties.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude shell_read-collection-short-cut
 /// @endDocuBlock
@@ -7926,7 +7934,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 /// collection exists. Accessing collections by identifier is discouraged for
 /// end users. End users should access collections using the collection name.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Get a collection by name:
 ///
@@ -7939,6 +7947,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 /// Unknown collection:
 ///
 /// @verbinclude shell_read-collection-unknown
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
@@ -7994,7 +8003,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 ///
 /// Returns all collections of the given database.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude shell_read-collection-all
 /// @endDocuBlock
@@ -8124,7 +8133,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// Creates a new document collection named *collection-name*.
 /// If the collection name already exists or if the name format is invalid, an
 /// error is thrown. For more information on valid collection names please refer
-/// to the [naming coventions](../NamingConvention/README.md).
+/// to the [naming conventions](../NamingConvention/README.md).
 ///
 /// `db._create(collection-name`, `properties)`
 ///
@@ -8134,7 +8143,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   a document will only return after the data was synced to disk.
 ///
 /// * *journalSize* (optional, default is a 
-///   [configuration parameter](../CommandLindeOptions/Arangod.md): The maximal 
+///   [configuration parameter](../CommandLineOptions/Arangod.md): The maximal 
 ///   size of a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
@@ -8150,7 +8159,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   or re-starting the server will also cause full loss of data in the
 ///   collection. Setting this option will make the resulting collection be
 ///   slightly faster than regular collections because ArangoDB does not
-///   enforce any synchronisation to disk and does not calculate any CRC
+///   enforce any synchronization to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles).
 ///
 /// * *keyOptions* (optional): additional options for key generation. If
@@ -8195,7 +8204,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///   attribute and this can only be done efficiently if this is the
 ///   only shard key by delegating to the individual shards.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// With defaults:
 ///
@@ -8212,6 +8221,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With a special key option:
 ///
 /// @verbinclude shell_create-collection-keyoptions
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
@@ -8220,14 +8230,15 @@ static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
+/// @startDocuBlock col_createDocumentaion
+/// `db._createDocumentCollection(collection-name)`
 ///
-/// @FUN{db._createDocumentCollection(@FA{collection-name})}
+/// `db._createDocumentCollection(collection-name, properties)`
 ///
-/// @FUN{db._createDocumentCollection(@FA{collection-name}, @FA{properties})}
-///
-/// Creates a new document collection named @FA{collection-name}.
+/// Creates a new document collection named *collection-name*.
 /// This is an alias for @ref JS_CreateVocbase, with the difference that the
 /// collection type is not automatically detected.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments const& argv) {
@@ -8236,21 +8247,20 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new edge collection
+/// @startDocuBlock col_createEdgeCollection
+/// `db._createEdgeCollection(collection-name)`
 ///
-/// @FUN{db._createEdgeCollection(@FA{collection-name})}
-///
-/// Creates a new edge collection named @FA{collection-name}. If the
+/// Creates a new edge collection named *collection-name*. If the
 /// collection name already exists, then an error is thrown. The default value
-/// for @LIT{waitForSync} is @LIT{false}.
+/// for *waitForSync* is *false*.
 ///
-/// @FUN{db._createEdgeCollection(@FA{collection-name}, @FA{properties})}
+/// `db._createEdgeCollection(collection-name, properties)`
 ///
-/// @FA{properties} must be an object with the following attributes:
+/// *properties* must be an object with the following attributes:
 ///
-/// - @LIT{waitForSync} (optional, default @LIT{false}): If @LIT{true} creating
+/// * *waitForSync* (optional, default *false*): If *true* creating
 ///   a document will only return after the data was synced to disk.
-///
-/// - @LIT{journalSize} (optional, default is a @ref CommandLineArangod
+/// * *journalSize* (optional, default is a @ref CommandLineArangod
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
@@ -8258,6 +8268,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 /// @EXAMPLES
 ///
 /// See @ref JS_CreateVocbase for examples.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const& argv) {
@@ -8279,17 +8290,17 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// deleted.
 ///
 /// `db._remove(document, true, waitForSync)` or
-/// `db._remove(document, {overwrite: true or false, waitForSynca: true or false})`
+/// `db._remove(document, {overwrite: true or false, waitForSync: true or false})`
 ///
 /// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document deletion operation to disk even in case that the
 /// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronisation of just
+/// the *waitForSync* parameter can be used to force synchronization of just
 /// specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `db._remove(document-handle, data)`
@@ -8297,7 +8308,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// As before. Instead of document a *document-handle* can be passed as first
 /// argument.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Remove a document:
 ///
@@ -8374,7 +8385,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 /// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Returns the document:
 ///
@@ -8433,14 +8444,14 @@ static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
 /// `db._replace(document, data, true, waitForSync)`
 ///
 /// The optional *waitForSync* parameter can be used to force
-/// synchronisation of the document replacement operation to disk even in case
+/// synchronization of the document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronisation
+/// Thus, the *waitForSync* parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `db._replace(document-handle, data)`
@@ -8448,7 +8459,7 @@ static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
 /// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
 ///
-/// *ExamplesÜ
+/// @EXAMPLES
 ///
 /// Create and replace a document:
 ///
@@ -8476,14 +8487,14 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 /// be removed from the target document.
 ///
 /// The optional *waitForSync* parameter can be used to force
-/// synchronisation of the document update operation to disk even in case
+/// synchronization of the document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronisation
+/// Thus, the *waitForSync* parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The method returns a document with the attributes *_id*, *_rev* and
@@ -8505,7 +8516,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 /// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Create and update a document:
 ///
@@ -8519,10 +8530,11 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the server version string
-///
-/// @FUN{@FA{db}._version()}
+/// @startDocuBlock
+/// `db._version()`
 ///
 /// Returns the server version string.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_VersionServer (v8::Arguments const& argv) {
@@ -8534,7 +8546,7 @@ static v8::Handle<v8::Value> JS_VersionServer (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the path to database files
 /// @startDocuBlock database_path
-/// *db._path()*
+/// `db._path()`
 ///
 /// Returns the filesystem path of the current database as a string. 
 /// @endDocuBlock
@@ -8555,7 +8567,7 @@ static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database id
 /// @startDocuBlock database_id
-/// *db._id()*
+/// `db._id()`
 ///
 /// Returns the id of the current database as a string. 
 /// @endDocuBlock
@@ -8576,7 +8588,7 @@ static v8::Handle<v8::Value> JS_IdDatabase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database name
 /// @startDocuBlock database_name
-/// *db._name()*
+/// `db._name()`
 ///
 /// Returns the name of the current database as a string. 
 /// @endDocuBlock
@@ -8597,12 +8609,12 @@ static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database type
 /// @startDocuBlock database_isSystem
-/// *db._isSystem()*
+/// `db._isSystem()`
 ///
-/// Returns whether the currently used database is the `_system` database.
+/// Returns whether the currently used database is the *_system* database.
 /// The system database has some special privileges and properties, for example,
 /// database management operations such as create or drop can only be executed
-/// from within this database. Additionally, the `_system` database itself 
+/// from within this database. Additionally, the *_system* database itself 
 /// cannot be dropped.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -8622,7 +8634,7 @@ static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change the current database
 /// @startDocuBlock database_useDatabase
-/// *db._useDatabase(name)*
+/// `db._useDatabase(name)`
 ///
 /// Changes the current database to the database specified by *name*. Note
 /// that the database specified by *name* must already exist.
@@ -8765,7 +8777,7 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all existing databases
 /// @startDocuBlock database_listDatabase
-/// *db._listDatabases()*
+/// `db._listDatabases()`
 ///
 /// Returns the list of all databases. This method can only be used from within
 /// the *_system* database.
@@ -8929,7 +8941,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 /// @startDocuBlock database_createDatabase
-/// *db._createDatabase(name, options, users)*
+/// `db._createDatabase(name, options, users)`
 ///
 /// Creates a new database with the name specified by *name*. 
 /// There are restrictions for database names 
@@ -8948,13 +8960,10 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 /// object can contain the following attributes:
 ///
 /// * *username*: the user name as a string. This attribute is mandatory.
-///
 /// * *passwd*: the user password as a string. If not specified, then it defaults
 ///   to the empty string.
-///
 /// * *active*: a boolean flag indicating whether the user account should be
-///   actived or not. The default value is *true*.
-///
+///   active or not. The default value is *true*.
 /// * *extra*: an optional JSON object with extra user information. The data
 ///   contained in *extra* will be stored for the user but not be interpreted
 ///   further by ArangoDB.
@@ -9128,7 +9137,7 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an existing database
 /// @startDocuBlock database_dropDatabase
-/// *db._dropDatabase(name)*
+/// `db._dropDatabase(name)`
 ///
 /// Drops the database specified by *name*. The database specified by 
 /// *name* must exist. 
