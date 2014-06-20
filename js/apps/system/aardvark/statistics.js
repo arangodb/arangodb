@@ -36,8 +36,8 @@ var FoxxController = require("org/arangodb/foxx").Controller;
 var controller = new FoxxController(applicationContext);
 var db = require("org/arangodb").db;
 
-var STATISTICS_INTERVALL = require("org/arangodb/statistics").STATISTICS_INTERVALL;
-var STATISTICS_HISTORY_INTERVALL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVALL;
+var STATISTICS_INTERVAL = require("org/arangodb/statistics").STATISTICS_INTERVAL;
+var STATISTICS_HISTORY_INTERVAL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -135,7 +135,7 @@ function computeStatisticsRaw (result, start, clusterId) {
       +    filter
       + "  SORT s.time "
       + "  return s",
-    { start: start - 2 * STATISTICS_INTERVALL, clusterId: clusterId });
+    { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
   
   result.times = [];
 
@@ -240,11 +240,11 @@ function computeStatisticsRaw (result, start, clusterId) {
   // add next start time
   if (lastRaw === null) {
     result.nextStart = internal.time();
-    result.waitFor = STATISTICS_INTERVALL;
+    result.waitFor = STATISTICS_INTERVAL;
   }
   else {
     result.nextStart = lastRaw.time;
-    result.waitFor = (lastRaw.time + STATISTICS_INTERVALL) - internal.time();
+    result.waitFor = (lastRaw.time + STATISTICS_INTERVAL) - internal.time();
   }
 }
 
@@ -267,7 +267,7 @@ function computeStatisticsRaw15M (result, start, clusterId) {
       +    filter
       + "  SORT s.time "
       + "  return s",
-    { start: start - 2 * STATISTICS_HISTORY_INTERVALL, clusterId: clusterId });
+    { start: start - 2 * STATISTICS_HISTORY_INTERVAL, clusterId: clusterId });
   
   var lastRaw = null;
   var lastRaw2 = null;
@@ -442,7 +442,7 @@ controller.get("short", function (req, res) {
     start = parseFloat(start, 10);
   }
   else {
-    start = internal.time() - STATISTICS_INTERVALL * 10;
+    start = internal.time() - STATISTICS_INTERVAL * 10;
   }
 
   var clusterId;

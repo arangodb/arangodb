@@ -27,7 +27,6 @@
 
 #include "VocbaseContext.h"
 
-#include "BasicsC/common.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -60,8 +59,8 @@ VocbaseContext::VocbaseContext (HttpRequest* request,
   _server(server),
   _vocbase(vocbase) {
 
-  assert(_server != 0);
-  assert(_vocbase != 0);
+  TRI_ASSERT(_server != nullptr);
+  TRI_ASSERT(_vocbase != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +79,6 @@ VocbaseContext::~VocbaseContext () {
 /// @brief whether or not to use special cluster authentication
 ////////////////////////////////////////////////////////////////////////////////
   
-#ifdef TRI_ENABLE_CLUSTER
 bool VocbaseContext::useClusterAuthentication () const {
   if (ServerState::instance()->isDBserver()) {
     return true;
@@ -95,14 +93,13 @@ bool VocbaseContext::useClusterAuthentication () const {
 
   return false;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
         
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
-  assert(_vocbase != 0);
+  TRI_ASSERT(_vocbase != 0);
 
   if (! _vocbase->_settings.requireAuthentication) {
     // no authentication required at all
@@ -158,7 +155,6 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
     ++auth;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (useClusterAuthentication()) {
     string const expected = ServerState::instance()->getAuthentication();
   
@@ -180,7 +176,6 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
     return HttpResponse::OK;
   }
-#endif
 
   // look up the info in the cache first
   bool mustChange;

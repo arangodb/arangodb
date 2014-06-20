@@ -32,9 +32,7 @@
 #include "ShapedJson/Legends.h"
 #include "Wal/Logfile.h"
 
-extern "C" {
-  struct TRI_df_marker_s;
-}
+struct TRI_df_marker_s;
 
 namespace triagens {
   namespace wal {
@@ -83,12 +81,6 @@ namespace triagens {
       private:
        
         Slot ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a slot
-////////////////////////////////////////////////////////////////////////////////
-
-        ~Slot ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -239,7 +231,8 @@ namespace triagens {
         StatusType _status;
 
     };
-
+      
+    static_assert(sizeof(Slot) == 32, "invalid slot size");
   }
 }
 

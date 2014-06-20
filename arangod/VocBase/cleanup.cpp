@@ -80,14 +80,15 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CleanupDocumentCollection (TRI_document_collection_t* document) {
+  bool unloadChecked = false;
+
   // loop until done
   while (true) {
     TRI_barrier_list_t* container;
     TRI_barrier_t* element;
-    bool hasUnloaded = false;
 
-    container = &document->base._barrierList;
-    element = NULL;
+    container = &document->_barrierList;
+    element = nullptr;
 
     // check and remove all callback elements at the beginning of the list
     TRI_LockSpin(&container->_lock);
@@ -96,7 +97,7 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
     // to document data in a datafile. We must then not unload or remove a file
 
-    if (container->_begin == NULL ||
+    if (container->_begin == nullptr ||
         container->_begin->_type == TRI_BARRIER_ELEMENT ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION ||
@@ -122,16 +123,40 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     // any newer TRI_BARRIER_ELEMENTS will always reference data inside other datafiles.
 
     element = container->_begin;
-    assert(element);
+    TRI_ASSERT(element != nullptr);
+
+    if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
+      // check if we can really unload, this is only the case if the collection's WAL markers
+      // were fully collected
+
+      if (! unloadChecked) {
+        // we must release the lock temporarily to check if the collection is fully collected
+        TRI_UnlockSpin(&container->_lock);
+
+        // must not hold the spin lock while querying the collection
+        if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+          // collection is not fully collected - postpone the unload
+          return;
+        }
+
+        unloadChecked = true;
+        continue;
+      }
+      // fall-through intentional
+    }
+    else {
+      // retry in next iteration
+      unloadChecked = false;
+    }
 
     // found an element to go on with
     container->_begin = element->_next;
 
-    if (element->_next == NULL) {
-      container->_end = NULL;
+    if (element->_next == nullptr) {
+      container->_end = nullptr;
     }
     else {
-      element->_next->_prev = NULL;
+      element->_next->_prev = nullptr;
     }
 
     // yes, we can release the lock here
@@ -161,10 +186,8 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     }
     else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
       // collection is unloaded
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
       if (hasUnloaded) {
@@ -174,10 +197,8 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
     }
     else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
       // collection is dropped
-      TRI_barrier_collection_cb_t* ce;
-
-      ce = (TRI_barrier_collection_cb_t*) element;
-      hasUnloaded = ce->callback(ce->_collection, ce->_data);
+      TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+      bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
       if (hasUnloaded) {
@@ -226,8 +247,8 @@ void TRI_CleanupVocBase (void* data) {
   uint64_t iterations = 0;
 
   TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
-  assert(vocbase);
-  assert(vocbase->_state == 1);
+  TRI_ASSERT(vocbase);
+  TRI_ASSERT(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -259,16 +280,15 @@ void TRI_CleanupVocBase (void* data) {
 
       for (i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection;
-        TRI_primary_collection_t* primary;
         TRI_document_collection_t* document;
 
         collection = (TRI_vocbase_col_t*) collections._buffer[i];
 
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-        primary = collection->_collection;
+        document = collection->_collection;
 
-        if (primary == NULL) {
+        if (document == NULL) {
           TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
@@ -279,8 +299,6 @@ void TRI_CleanupVocBase (void* data) {
         // the collection pointer outside the lock is ok
 
         // maybe cleanup indexes, unload the collection or some datafiles
-        document = (TRI_document_collection_t*) primary;
-
         // clean indexes?
         if (iterations % (uint64_t) CLEANUP_INDEX_ITERATIONS == 0) {
           document->cleanupIndexes(document);

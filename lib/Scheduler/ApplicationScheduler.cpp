@@ -380,7 +380,7 @@ void ApplicationScheduler::installSignalHandler (SignalTask* task) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
   }
 
-  assert(_scheduler != 0);
+  TRI_ASSERT(_scheduler != 0);
   _scheduler->registerTask(task);
 }
 
@@ -579,7 +579,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
   
-  assert(_scheduler != 0);
+  TRI_ASSERT(_scheduler != 0);
 
   if (0.0 < _reportInterval) {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
@@ -598,7 +598,7 @@ void ApplicationScheduler::buildControlCHandler () {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
   
-  assert(_scheduler != 0);
+  TRI_ASSERT(_scheduler != 0);
 
   // control C handler
   Task* controlC = new ControlCTask(_applicationServer);

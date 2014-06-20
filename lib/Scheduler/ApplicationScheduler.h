@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_SCHEDULER_APPLICATION_SCHEDULER_H
 #define TRIAGENS_SCHEDULER_APPLICATION_SCHEDULER_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 
 // -----------------------------------------------------------------------------

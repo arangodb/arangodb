@@ -34,6 +34,7 @@ var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 var wait = require("internal").wait;
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -253,20 +254,17 @@ function CollectionEdgeSuite () {
       assertEqual("vx2", k2._key);
       assertEqual(vn + "/vx2", k2._id);
 
-      vertex.unload();
-      edge.unload();
-
-      console.log("waiting for collections to unload"); 
-      wait(4);
+      testHelper.waitUnload(vertex);
+      testHelper.waitUnload(edge);
 
       var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
       var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
       
+      testHelper.waitUnload(vertex);
+      testHelper.waitUnload(edge);
       vertex.unload();
       edge.unload();
 
-      console.log("waiting for collections to unload"); 
-      wait(4);
       var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
       
       d1 = edge.document("ex1");

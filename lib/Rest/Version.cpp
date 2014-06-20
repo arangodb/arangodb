@@ -31,10 +31,8 @@
 #include "BasicsC/win-utils.h"
 #endif
 
-#include "BasicsC/common.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
-#include "Basics/Common.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 
@@ -49,11 +47,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise
@@ -91,7 +84,7 @@ int32_t Version::getNumericServerVersion () {
     ++p;
   }
 
-  assert(*p == '.');
+  TRI_ASSERT(*p == '.');
   int32_t major = TRI_Int32String2(apiVersion, (p - apiVersion));
 
   apiVersion = ++p;
@@ -101,7 +94,7 @@ int32_t Version::getNumericServerVersion () {
     ++p;
   }
 
-  assert((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
+  TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
   int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
 
   return (int32_t) (minor * 100L + major * 10000L);
@@ -235,8 +228,8 @@ std::string Version::getVerboseVersionString () {
           << getServerVersion()
           << " -- "
           << "ICU " << getICUVersion() << ", "
-          << "V8 version " << getV8Version() << ", "
-          << "SSL engine " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", "
+          << getOpenSSLVersion();
 
   return version.str();
 }
@@ -287,24 +280,11 @@ void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static variables
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 std::map<std::string, std::string> Version::Values;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

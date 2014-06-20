@@ -472,6 +472,188 @@ function COMPILE_REGEX (regex, modifiers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a document
+////////////////////////////////////////////////////////////////////////////////
+
+function REMOVE_DOCUMENT (ops, document) {
+  "use strict";
+
+  var weight = TYPEWEIGHT(document);
+  if (weight === TYPEWEIGHT_STRING) {
+    ops.push(document);
+    return;
+  }
+  if (weight !== TYPEWEIGHT_DOCUMENT) { 
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (document.hasOwnProperty("_key")) {
+    ops.push(document._key);
+  }
+  else {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a document
+////////////////////////////////////////////////////////////////////////////////
+
+function INSERT_DOCUMENT (ops, document) {
+  "use strict";
+
+  if (TYPEWEIGHT(document) === TYPEWEIGHT_DOCUMENT) {
+    ops.push(document);
+    return;
+  }
+      
+  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document
+////////////////////////////////////////////////////////////////////////////////
+
+function UPDATE_DOCUMENT (ops, document) {
+  "use strict";
+
+  if (TYPEWEIGHT(document) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (document.hasOwnProperty("_key")) {
+    ops.push(document);
+  }
+  
+  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a document, using an explicit key specification
+////////////////////////////////////////////////////////////////////////////////
+
+function UPDATE_DOCUMENT_KEY (ops, document, key) {
+  "use strict";
+
+  if (TYPEWEIGHT(key) !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  }
+  if (TYPEWEIGHT(document) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  document._key = key;
+  ops.push(document);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered remove operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_REMOVE (ops, collection, options) {
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (options.ignoreErrors) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.remove(ops[i], options);
+        ++count;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.remove(ops[i], options);
+      ++count;
+    }
+  }
+
+  return { executed: count, ignored: ops.length - count };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered save operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_INSERT (ops, collection, options) {
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (options.ignoreErrors) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.save(ops[i]);
+        ++count;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.save(ops[i]);
+      ++count;
+    }
+  }
+
+  return { executed: count, ignored: ops.length - count };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered update operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_UPDATE (ops, collection, options) {
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (options.ignoreErrors) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.update(ops[i]._key, ops[i], options);
+        ++count;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.update(ops[i]._key, ops[i], options);
+      ++count;
+    }
+  }
+
+  return { executed: count, ignored: ops.length - count };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute buffered replace operations
+////////////////////////////////////////////////////////////////////////////////
+
+function EXECUTE_REPLACE (ops, collection, options) {
+  var count = 0, i, n = ops.length, c = COLLECTION(collection);
+
+  if (options.ignoreErrors) {
+    for (i = 0; i < n; ++i) {
+      try {
+        c.replace(ops[i]._key, ops[i], options);
+        ++count;
+      }
+      catch (err) {
+      }
+    }
+  }
+  else { 
+    for (i = 0; i < n; ++i) {
+      c.replace(ops[i]._key, ops[i], options);
+      ++count;
+    }
+  }
+
+  return { executed: count, ignored: ops.length - count };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief call a function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3608,6 +3790,29 @@ function MERGE_RECURSIVE () {
   }
 
   return result; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a value, using a lookup document
+////////////////////////////////////////////////////////////////////////////////
+
+function TRANSLATE (value, lookup, defaultValue) {
+  "use strict";
+
+  if (defaultValue === undefined) {
+    defaultValue = value;
+  }
+
+  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRANSLATE");
+  }
+
+  var key = String(value);
+  if (lookup.hasOwnProperty(key)) {
+    return lookup[key];
+  }
+
+  return defaultValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6818,6 +7023,14 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
+exports.REMOVE_DOCUMENT = REMOVE_DOCUMENT;
+exports.INSERT_DOCUMENT = INSERT_DOCUMENT;
+exports.UPDATE_DOCUMENT = UPDATE_DOCUMENT;
+exports.UPDATE_DOCUMENT_KEY = UPDATE_DOCUMENT_KEY;
+exports.EXECUTE_REMOVE = EXECUTE_REMOVE;
+exports.EXECUTE_INSERT = EXECUTE_INSERT;
+exports.EXECUTE_UPDATE = EXECUTE_UPDATE;
+exports.EXECUTE_REPLACE = EXECUTE_REPLACE;
 exports.FCALL = FCALL;
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
@@ -6952,6 +7165,7 @@ exports.UNSET = UNSET;
 exports.KEEP = KEEP;
 exports.MERGE = MERGE;
 exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
+exports.TRANSLATE = TRANSLATE;
 exports.MATCHES = MATCHES;
 exports.PASSTHRU = PASSTHRU;
 exports.SLEEP = SLEEP;

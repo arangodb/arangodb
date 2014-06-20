@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_SERVER_DISPATCHER_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralServer.h"
 
 #include "Dispatcher/Dispatcher.h"
@@ -302,7 +304,7 @@ namespace triagens {
           }
 
           ServerJob* job = dynamic_cast<ServerJob*>(ajob);
-          assert(job != 0);
+          TRI_ASSERT(job != 0);
 
           if (jobId != 0) {
             _jobManager->initAsyncJob<S, HF>(job, jobId);
@@ -364,7 +366,7 @@ namespace triagens {
                 }
 
                 ServerJob* job = dynamic_cast<ServerJob*>(ajob);
-                assert(job != 0);
+                TRI_ASSERT(job != 0);
 
                 registerJob(handler, job);
                 return true;

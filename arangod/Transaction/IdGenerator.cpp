@@ -28,6 +28,7 @@
 #include "IdGenerator.h"
 #include "VocBase/server.h"
 
+using namespace std;
 using namespace triagens::transaction;
 
 // -----------------------------------------------------------------------------
@@ -38,7 +39,7 @@ using namespace triagens::transaction;
 /// @brief create an id generator
 ////////////////////////////////////////////////////////////////////////////////
 
-IdGenerator::IdGenerator (Transaction::IdType id) {
+IdGenerator::IdGenerator (TRI_voc_tid_t id) {
   setLastId(id);
 }
 
@@ -57,7 +58,7 @@ IdGenerator::~IdGenerator () {
 /// @brief set minimal transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-void IdGenerator::setLastId (Transaction::IdType id) {
+void IdGenerator::setLastId (TRI_voc_tid_t id) {
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 }
 
@@ -65,8 +66,8 @@ void IdGenerator::setLastId (Transaction::IdType id) {
 /// @brief create a transaction id
 ////////////////////////////////////////////////////////////////////////////////
 
-Transaction::IdType IdGenerator::next () {
-  return static_cast<Transaction::IdType>(TRI_NewTickServer());
+TRI_voc_tid_t IdGenerator::next () {
+  return static_cast<TRI_voc_tid_t>(TRI_NewTickServer());
 }
 
 // -----------------------------------------------------------------------------

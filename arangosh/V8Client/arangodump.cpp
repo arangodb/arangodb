@@ -25,10 +25,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
-
-#include <stdio.h>
-#include <fstream>
+#include "Basics/Common.h"
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
@@ -37,7 +34,7 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
-#include "BasicsC/init.h"
+#include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/terminal-utils.h"
@@ -653,6 +650,28 @@ static int DumpCollection (int fd,
   return TRI_ERROR_INTERNAL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a WAL flush request
+////////////////////////////////////////////////////////////////////////////////
+  
+static void FlushWal () { 
+  map<string, string> headers;
+  const string url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
+
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+                                               url,
+                                               nullptr, 
+                                               0,  
+                                               headers); 
+
+  if (response == nullptr || ! response->isComplete() || response->wasHttpError()) {
+    cerr << "got invalid response from server: " + Client->getErrorMessage() << endl;
+  }
+
+  if (response != nullptr) {
+    delete response;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from server
@@ -689,6 +708,7 @@ static int RunDump (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
+  FlushWal();
 
   const StringBuffer& data = response->getBody();
 

@@ -27,6 +27,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
@@ -138,9 +139,9 @@ function CollectionVolatileSuite () {
 
       c.save({"test": true});
       assertEqual(1, c.count());
-      c.unload();
+
+      testHelper.waitUnload(c);
       
-      internal.wait(4);
       assertEqual(true, c.properties().isVolatile);
       assertEqual(0, c.count());
     },
@@ -159,8 +160,7 @@ function CollectionVolatileSuite () {
       
       assertEqual(10000, c.count());
       
-      c.unload();
-      c = null;
+      testHelper.waitUnload(c);
       
       internal.wait(5);
       c = internal.db[cn];

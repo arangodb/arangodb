@@ -326,7 +326,7 @@ char const* TRI_errno_string (int error) {
     return "unknown error";
   }
 
-  assert(entry->_message != NULL);
+  TRI_ASSERT(entry->_message != NULL);
 
   return entry->_message;
 }

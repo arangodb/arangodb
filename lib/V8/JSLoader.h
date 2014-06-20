@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_JSLOADER_H
 #define TRIAGENS_V8_JSLOADER_H 1
 
+#include "Basics/Common.h"
+
 #include "Utilities/ScriptLoader.h"
 
 #include <v8.h>

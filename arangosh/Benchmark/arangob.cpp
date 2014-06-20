@@ -27,15 +27,13 @@
 
 #include "Basics/Common.h"
 
-#include <stdio.h>
-
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/init.h"
+#include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 #include "BasicsC/tri-strings.h"

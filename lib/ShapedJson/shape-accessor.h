@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_SHAPED_JSON_SHAPE_ACCESSOR_H
 #define TRIAGENS_SHAPED_JSON_SHAPE_ACCESSOR_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -116,10 +112,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -595,7 +595,7 @@ void AgencyComm::cleanup () {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint* agencyEndpoint = (*it);
 
-      assert(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != 0);
       delete agencyEndpoint;
 
       ++it;
@@ -622,9 +622,9 @@ bool AgencyComm::tryConnect () {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint* agencyEndpoint = (*it);
 
-      assert(agencyEndpoint != 0);
-      assert(agencyEndpoint->_endpoint != 0);
-      assert(agencyEndpoint->_connection != 0);
+      TRI_ASSERT(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint->_endpoint != 0);
+      TRI_ASSERT(agencyEndpoint->_connection != 0);
 
       if (agencyEndpoint->_endpoint->isConnected()) {
         return true;
@@ -657,9 +657,9 @@ void AgencyComm::disconnect () {
   while (it != _globalEndpoints.end()) {
     AgencyEndpoint* agencyEndpoint = (*it);
 
-    assert(agencyEndpoint != 0);
-    assert(agencyEndpoint->_connection != 0);
-    assert(agencyEndpoint->_endpoint != 0);
+    TRI_ASSERT(agencyEndpoint != 0);
+    TRI_ASSERT(agencyEndpoint->_connection != 0);
+    TRI_ASSERT(agencyEndpoint->_endpoint != 0);
 
     agencyEndpoint->_connection->disconnect();
     agencyEndpoint->_endpoint->disconnect();
@@ -685,7 +685,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      assert(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != 0);
      
       if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
         // a duplicate. just ignore
@@ -791,7 +791,7 @@ const std::vector<std::string> AgencyComm::getEndpoints () {
     while (it != AgencyComm::_globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      assert(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != 0);
 
       result.push_back(agencyEndpoint->_endpoint->getSpecification());
       ++it;
@@ -821,7 +821,7 @@ const std::string AgencyComm::getEndpointsString () {
 
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      assert(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != 0);
 
       result.append(agencyEndpoint->_endpoint->getSpecification());
       ++it;
@@ -1443,7 +1443,7 @@ bool AgencyComm::lock (std::string const& key,
     }
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return false;
 }
 
@@ -1493,7 +1493,7 @@ bool AgencyComm::unlock (std::string const& key,
     }
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return false;
 }
 
@@ -1508,13 +1508,13 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
     {
       WRITE_LOCKER(AgencyComm::_globalLock);
  
-      const size_t numEndpoints = _globalEndpoints.size(); 
+      const size_t numEndpoints TRI_UNUSED = _globalEndpoints.size(); 
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
     
       while (it != _globalEndpoints.end()) {
         AgencyEndpoint* agencyEndpoint = (*it);
 
-        assert(agencyEndpoint != 0);
+        TRI_ASSERT(agencyEndpoint != 0);
 
         if (! endpoint.empty() && 
             agencyEndpoint->_endpoint->getSpecification() != endpoint) {
@@ -1534,7 +1534,7 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
             AgencyComm::_globalEndpoints.push_back(agencyEndpoint);
           }
 
-          assert(_globalEndpoints.size() == numEndpoints);
+          TRI_ASSERT(_globalEndpoints.size() == numEndpoints);
   
           return agencyEndpoint;
         }
@@ -1553,7 +1553,7 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
   }
 
   // just to shut up compilers
-  assert(false);
+  TRI_ASSERT(false);
   return 0;
 }
 
@@ -1564,10 +1564,10 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
                                   bool wasWorking) {
   WRITE_LOCKER(AgencyComm::_globalLock);
-  const size_t numEndpoints = _globalEndpoints.size(); 
+  const size_t numEndpoints TRI_UNUSED = _globalEndpoints.size(); 
   
-  assert(agencyEndpoint != 0);
-  assert(agencyEndpoint->_busy);
+  TRI_ASSERT(agencyEndpoint != 0);
+  TRI_ASSERT(agencyEndpoint->_busy);
 
   // set to non-busy
   agencyEndpoint->_busy = false;
@@ -1582,7 +1582,7 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
     }
   }
           
-  assert(_globalEndpoints.size() == numEndpoints);
+  TRI_ASSERT(_globalEndpoints.size() == numEndpoints);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1622,7 +1622,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
     }
   }
  
-  assert(numEndpoints > 0);
+  TRI_ASSERT(numEndpoints > 0);
 
   size_t tries = 0;
   std::string realUrl = url;
@@ -1631,7 +1631,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
   while (tries++ < numEndpoints) {
     AgencyEndpoint* agencyEndpoint = popEndpoint(forceEndpoint);
 
-    assert(agencyEndpoint != 0);
+    TRI_ASSERT(agencyEndpoint != 0);
 
     send(agencyEndpoint->_connection, 
          method,
@@ -1648,7 +1648,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
       requeueEndpoint(agencyEndpoint, false);
 
       // a 307 does not count as a success
-      assert(! result.successful());
+      TRI_ASSERT(! result.successful());
 
       std::string endpoint;
 
@@ -1736,15 +1736,15 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
                        std::string const& url, 
                        std::string const& body) {
  
-  assert(connection != 0);
+  TRI_ASSERT(connection != 0);
 
   if (method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
       method == triagens::rest::HttpRequest::HTTP_REQUEST_HEAD ||
       method == triagens::rest::HttpRequest::HTTP_REQUEST_DELETE) {
-    assert(body.empty());
+    TRI_ASSERT(body.empty());
   }
 
-  assert(! url.empty());
+  TRI_ASSERT(! url.empty());
 
   result._connected  = false;
   result._statusCode = 0;

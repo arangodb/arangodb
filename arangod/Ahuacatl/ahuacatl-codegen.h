@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_CODEGEN_H
 #define TRIAGENS_AHUACATL_AHUACATL_CODEGEN_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/associative.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/tri-strings.h"
@@ -39,10 +39,6 @@
 #include "Ahuacatl/ahuacatl-conversions.h"
 #include "Ahuacatl/ahuacatl-scope.h"
 #include "VocBase/document-collection.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -85,7 +81,7 @@ typedef struct TRI_aql_codegen_scope_s {
   TRI_aql_codegen_register_t _limitRegister;  // limit offset, limit
   TRI_aql_codegen_register_t _subqueryRegister;
   TRI_associative_pointer_t _variables; // list of variables in scope
-  char* _prefix;                        // prefix for variable names, used in FUNCTION scopes only
+  char const* _prefix;                  // prefix for variable names, used in FUNCTION scopes only
   TRI_aql_for_hint_t* _hint;            // generic hint
 }
 TRI_aql_codegen_scope_t;
@@ -129,10 +125,6 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

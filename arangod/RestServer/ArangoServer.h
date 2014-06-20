@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
 #define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #ifdef _WIN32
   #include "BasicsC/win-utils.h"
 #endif
@@ -37,10 +39,8 @@
 
 #include "VocBase/vocbase.h"
 
-extern "C" {
-  struct TRI_server_s;
-  struct TRI_vocbase_defaults_s;
-}
+struct TRI_server_s;
+struct TRI_vocbase_defaults_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -54,10 +54,6 @@ namespace triagens {
     class AsyncJobManager;
     class HttpServer;
     class HttpsServer;
-  }
-
-  namespace wal {
-    class LogfileManager;
   }
 
   namespace admin {
@@ -155,13 +151,15 @@ namespace triagens {
         int runScript (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the system database
+/// @brief opens all system databases
 ////////////////////////////////////////////////////////////////////////////////
 
-        void openDatabases (bool checkVersion, bool performUpgrade);
+        void openDatabases (bool,
+                            bool,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes the database
+/// @brief closes all database
 ////////////////////////////////////////////////////////////////////////////////
 
         void closeDatabases ();
@@ -191,12 +189,6 @@ namespace triagens {
         std::string _tempPath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief write-ahead log manager
-////////////////////////////////////////////////////////////////////////////////
-
-        wal::LogfileManager* _logfileManager;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief application scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -224,23 +216,13 @@ namespace triagens {
 /// @brief cluster application feature
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
         triagens::arango::ApplicationCluster* _applicationCluster;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief asynchronous job manager
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::AsyncJobManager* _jobManager;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application MR
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MRUBY
-        ApplicationMR* _applicationMR;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application V8
