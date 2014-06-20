@@ -4153,7 +4153,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// * Number *maxLength*      : Defines the maximal length a path must
 /// have to be returned (default is 10).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Return all paths of the graph "social":
 ///
@@ -5081,7 +5081,7 @@ function IS_EXAMPLE_SET (example) {
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that match one of
 ///  the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, shortest distance from all villages to other cities:
 ///
@@ -5182,7 +5182,7 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// are *outbound*, *inbound* and *any* (default).
 /// * Object               *options*            : Optional options, see below:
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, start a traversal from Munich :
 ///
@@ -5287,7 +5287,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#SUBSUBSECTION GRAPH_SHORTEST_PATH).
 /// It does not return the actual path but only the distance between two vertices.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, distance from all villages to other cities:
 ///
@@ -5360,7 +5360,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///  contains the connection.
 /// * Object               *options*            : Optional options, see below:
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, start a traversal from Munich :
 ///
@@ -5535,7 +5535,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all neighbors of locations with a distance of either
 /// 700 or 600.:
@@ -5658,7 +5658,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the edges/vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all edges to locations with a distance of either 700 or 600.:
 ///
@@ -5733,7 +5733,7 @@ function GENERAL_GRAPH_EDGES (
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all vertices of the graph
 ///
@@ -5848,7 +5848,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -5965,7 +5965,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all locations with the same properties:
 ///
@@ -6118,7 +6118,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the absolute eccentricity of all locations.
 ///
@@ -6209,7 +6209,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the eccentricity of all locations.
 ///
@@ -6307,7 +6307,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the absolute closeness of all locations.
 ///
@@ -6397,7 +6397,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the closeness of all locations.
 ///
@@ -6491,7 +6491,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the absolute betweenness of all locations.
 ///
@@ -6599,7 +6599,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the betweenness of all locations.
 ///
@@ -6686,7 +6686,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the radius of the graph.
 ///
@@ -6778,7 +6778,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, the diameter of the graph.
 ///

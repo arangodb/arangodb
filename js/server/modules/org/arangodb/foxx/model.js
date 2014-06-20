@@ -48,7 +48,7 @@ var Model,
 ///
 /// If you initialize a model, you can give it initial @FA{data} as an object.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     instance = new Model({
@@ -171,7 +171,7 @@ _.extend(Model.prototype, {
 ///
 /// Get the value of an attribute
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     instance = new Model({
@@ -195,7 +195,7 @@ _.extend(Model.prototype, {
 ///
 /// Set the value of an attribute or multiple attributes at once
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     instance = new Model({
@@ -226,7 +226,7 @@ _.extend(Model.prototype, {
 ///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     instance = new Model({

@@ -54,7 +54,7 @@ var Controller,
 ///
 /// * `urlPrefix`: All routes you define within will be prefixed with it.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app = new Controller(applicationContext, {
@@ -174,6 +174,11 @@ extend(Controller.prototype, {
 
     this.applicationContext.clearComments();
 
+    if (method === 'post' || method === 'put' || method === 'patch') {
+      var UndocumentedBody = require('org/arangodb/foxx').Model.extend();
+      requestContext.bodyParam("undocumented body", "Undocumented body param", UndocumentedBody);
+    }
+
     return requestContext;
   },
 
@@ -206,7 +211,7 @@ extend(Controller.prototype, {
 /// the user provided for `barn` via the `params` function (see the Request
 /// object).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.get('/goose/barn', function (req, res) {
@@ -229,7 +234,7 @@ extend(Controller.prototype, {
 /// This handles requests from the HTTP verb `post`.  See above for the
 /// arguments you can give.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.post('/goose/barn', function (req, res) {
@@ -252,7 +257,7 @@ extend(Controller.prototype, {
 /// This handles requests from the HTTP verb `put`.  See above for the arguments
 /// you can give.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.put('/goose/barn', function (req, res) {
@@ -275,7 +280,7 @@ extend(Controller.prototype, {
 /// This handles requests from the HTTP verb `patch`.  See above for the
 /// arguments you can give.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.patch('/goose/barn', function (req, res) {
@@ -302,7 +307,7 @@ extend(Controller.prototype, {
 /// therefore needs to be called as app['delete']. There is also an alias `del`
 /// for this very reason.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app['delete']('/goose/barn', function (req, res) {
@@ -336,7 +341,7 @@ extend(Controller.prototype, {
 /// omit the path, the function will be executed before each request, no matter
 /// the path.  Your function gets a Request and a Response object.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.before('/high/way', function(req, res) {
@@ -373,7 +378,7 @@ extend(Controller.prototype, {
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.after('/high/way', function(req, res) {
@@ -438,7 +443,7 @@ extend(Controller.prototype, {
 /// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
 ///
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.activateAuthentication({
@@ -479,7 +484,7 @@ extend(Controller.prototype, {
 /// "Username or Password was wrong".
 /// Both `onSuccess` and `onError` should take request and result as arguments.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.login('/login', {
@@ -514,7 +519,7 @@ extend(Controller.prototype, {
 /// Both `onSuccess` and `onError` should take request and result as arguments.
 ///
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.logout('/logout', {
@@ -557,7 +562,7 @@ extend(Controller.prototype, {
 /// (for example `admin`) use the option `defaultAttributes` which should be a hash
 /// mapping attribute names to default values.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.register('/logout', {
@@ -598,7 +603,7 @@ extend(Controller.prototype, {
 /// "No session was found".
 /// Both `onSuccess` and `onError` should take request and result as arguments.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @code
 ///     app.changePassword('/changePassword', {
