@@ -160,7 +160,8 @@ extend(Controller.prototype, {
     'use strict';
     var newRoute = internal.constructRoute(method, route, callback, this),
       requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement),
-      summary;
+      summary,
+      undocumentedBody;
 
     this.routingInfo.routes.push(newRoute);
 
@@ -175,8 +176,8 @@ extend(Controller.prototype, {
     this.applicationContext.clearComments();
 
     if (method === 'post' || method === 'put' || method === 'patch') {
-      var UndocumentedBody = require('org/arangodb/foxx').Model.extend();
-      requestContext.bodyParam("undocumented body", "Undocumented body param", UndocumentedBody);
+      undocumentedBody = require('org/arangodb/foxx').Model.extend();
+      requestContext.bodyParam("undocumented body", "Undocumented body param", undocumentedBody);
     }
 
     return requestContext;
