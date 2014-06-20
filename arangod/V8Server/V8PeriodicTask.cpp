@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
@@ -46,7 +47,7 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (string const& id, 
+V8PeriodicTask::V8PeriodicTask (string const& id,
                                 string const& name,
                                 TRI_vocbase_t* vocbase,
                                 ApplicationV8* v8Dealer,
@@ -115,7 +116,7 @@ bool V8PeriodicTask::handlePeriod () {
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",
     _parameters);
-    
+
   if (! _dispatcher->addJob(job)) {
     // just in case the dispatcher cannot accept the job (e.g. when shutting down)
     delete job;
@@ -130,5 +131,5 @@ bool V8PeriodicTask::handlePeriod () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

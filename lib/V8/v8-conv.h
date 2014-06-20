@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_V8_V8_CONV_H
-#define TRIAGENS_V8_V8_CONV_H 1
+#ifndef ARANGODB_V8_V8__CONV_H
+#define ARANGODB_V8_V8__CONV_H 1
 
 #include "Basics/Common.h"
 
@@ -68,7 +70,7 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 /// @brief converts an V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const, 
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const,
                                            TRI_shaper_t*,
                                            bool);
 
@@ -97,7 +99,7 @@ std::string TRI_ObjectToString (v8::Handle<v8::Value> const);
 /// @brief converts an V8 object to a character
 ////////////////////////////////////////////////////////////////////////////////
 
-char TRI_ObjectToCharacter (v8::Handle<v8::Value> const, 
+char TRI_ObjectToCharacter (v8::Handle<v8::Value> const,
                             bool& error);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +112,7 @@ int64_t TRI_ObjectToInt64 (v8::Handle<v8::Value> const);
 /// @brief converts an V8 object to a uint64_t
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const, 
+uint64_t TRI_ObjectToUInt64 (v8::Handle<v8::Value> const,
                              const bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +125,7 @@ double TRI_ObjectToDouble (v8::Handle<v8::Value> const);
 /// @brief converts a V8 object to a double with error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ObjectToDouble (v8::Handle<v8::Value> const, 
+double TRI_ObjectToDouble (v8::Handle<v8::Value> const,
                            bool& error);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,5 +156,5 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context>);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

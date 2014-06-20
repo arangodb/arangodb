@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_TRANSACTION_MARKER_H
-#define TRIAGENS_TRANSACTION_MARKER_H 1
+#ifndef ARANGODB_TRANSACTION_MARKER_H
+#define ARANGODB_TRANSACTION_MARKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/BsonHelper.h"
@@ -37,7 +39,7 @@ namespace triagens {
 
     struct Marker {
       Marker (TRI_df_marker_type_e type,
-              size_t size) 
+              size_t size)
         : buffer(new char[sizeof(TRI_df_marker_t) + size]),
           size(sizeof(TRI_df_marker_t) + size) {
 
@@ -58,7 +60,7 @@ namespace triagens {
       inline TRI_df_marker_t* header () const {
         return (TRI_df_marker_t*) buffer;
       }
-      
+
       inline char* data () const {
         return (char*) buffer + sizeof(TRI_df_marker_t);
       }
@@ -76,7 +78,7 @@ namespace triagens {
         memcpy(ptr, src, length);
         advance(ptr, length);
       }
-      
+
       char*          buffer;
       uint32_t const size;
     };
@@ -88,7 +90,7 @@ namespace triagens {
                       std::string const& key,
                       TRI_voc_tick_t revision,
                       triagens::basics::Bson const& document)
-        : Marker(TRI_WAL_MARKER_DOCUMENT, 
+        : Marker(TRI_WAL_MARKER_DOCUMENT,
                  sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + sizeof(TRI_voc_tick_t) + key.size() + 2 + document.getSize()) {
 
         char* p = data();
@@ -98,7 +100,7 @@ namespace triagens {
         store<TRI_voc_tick_t>(p, revision);
 
         // store key
-        store<uint8_t>(p, (uint8_t) key.size()); 
+        store<uint8_t>(p, (uint8_t) key.size());
         store(p, key.c_str(), key.size());
         store<unsigned char>(p, '\0');
 
@@ -110,12 +112,12 @@ namespace triagens {
       }
 
     };
-    
+
     struct RemoveMarker : public Marker {
       RemoveMarker (TRI_voc_tick_t databaseId,
                     TRI_voc_cid_t collectionId,
                     TRI_voc_tid_t transactionId,
-                    std::string const& key) 
+                    std::string const& key)
         : Marker(TRI_WAL_MARKER_REMOVE,
                  sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_voc_tid_t) + key.size() + 2) {
 
@@ -125,7 +127,7 @@ namespace triagens {
         store<TRI_voc_tid_t>(p, transactionId);
 
         // store key
-        store<uint8_t>(p, (uint8_t) key.size()); 
+        store<uint8_t>(p, (uint8_t) key.size());
         store(p, key.c_str(), key.size());
         store<unsigned char>(p, '\0');
       }
@@ -140,7 +142,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,7 +41,7 @@ using namespace triagens::wal;
 /// @brief create the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile::Logfile (Logfile::IdType id, 
+Logfile::Logfile (Logfile::IdType id,
                   TRI_datafile_t* df,
                   StatusType status)
   : _id(id),
@@ -76,8 +78,8 @@ Logfile* Logfile::createNew (std::string const& filename,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to create logfile '%s': %s", 
-                filename.c_str(), 
+      LOG_ERROR("unable to create logfile '%s': %s",
+                filename.c_str(),
                 TRI_errno_string(res));
       return nullptr;
     }
@@ -101,8 +103,8 @@ Logfile* Logfile::openExisting (std::string const& filename,
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to open logfile '%s': %s", 
-                filename.c_str(), 
+      LOG_ERROR("unable to open logfile '%s': %s",
+                filename.c_str(),
                 TRI_errno_string(res));
       return nullptr;
     }
@@ -175,8 +177,8 @@ char* Logfile::reserve (size_t size) {
 
   _df->_next += size;
   _df->_currentSize += (TRI_voc_size_t) size;
- 
-  return result; 
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +189,7 @@ TRI_df_header_marker_t Logfile::getHeaderMarker () const {
   TRI_df_header_marker_t header;
   size_t const size = sizeof(TRI_df_header_marker_t);
   TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, size);
-  
+
   header._version     = TRI_DF_VERSION;
   header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
   header._fid         = static_cast<TRI_voc_fid_t>(_id);
@@ -203,11 +205,15 @@ TRI_df_footer_marker_t Logfile::getFooterMarker () const {
   TRI_df_footer_marker_t footer;
   size_t const size = sizeof(TRI_df_footer_marker_t);
   TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, size);
- 
-  return footer; 
+
+  return footer;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

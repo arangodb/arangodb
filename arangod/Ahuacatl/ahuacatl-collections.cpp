@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,7 +53,7 @@ static void FreeIndexes (TRI_aql_collection_t* collection) {
   if (collection->_availableIndexes == nullptr) {
     return;
   }
-    
+
   for (size_t i = 0; i < collection->_availableIndexes->_length; ++i) {
     TRI_index_t* idx = (TRI_index_t*) TRI_AtVectorPointer(collection->_availableIndexes, i);
 
@@ -77,7 +79,7 @@ static char* GetIndexIdString (TRI_aql_collection_hint_t* const hint) {
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 //  TRI_AppendUInt64StringBuffer(&buffer, hint->_collection->_name); // cid);
-  TRI_AppendStringStringBuffer(&buffer, hint->_collection->_name); 
+  TRI_AppendStringStringBuffer(&buffer, hint->_collection->_name);
   TRI_AppendCharStringBuffer(&buffer, '/');
   TRI_AppendUInt64StringBuffer(&buffer, hint->_index->_idx->_iid);
 
@@ -123,14 +125,14 @@ static TRI_aql_collection_t* CreateCollectionContainer (const char* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool SetupCollections (TRI_aql_context_t* context) {
-  if (context->_writeCollection != nullptr) { 
+  if (context->_writeCollection != nullptr) {
     TRI_aql_collection_t* collection = CreateCollectionContainer(context->_writeCollection);
-    
+
     if (collection == nullptr) {
       TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL);
       return false;
     }
-    
+
     TRI_PushBackVectorPointer(&context->_collections, (void*) collection);
   }
 
@@ -143,7 +145,7 @@ static bool SetupCollections (TRI_aql_context_t* context) {
   for (size_t i = 0; i < n; ++i) {
     char* name = static_cast<char*>(context->_collectionNames._table[i]);
 
-    if (name == nullptr || 
+    if (name == nullptr ||
         (context->_writeCollection != nullptr && TRI_EqualString(name, context->_writeCollection))) {
       continue;
     }
@@ -363,7 +365,7 @@ bool TRI_SetupCollectionsAql (TRI_aql_context_t* context) {
 /// @brief add a collection name to the list of collections used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_AddCollectionAql (TRI_aql_context_t* context, 
+bool TRI_AddCollectionAql (TRI_aql_context_t* context,
                            const char* name) {
   TRI_ASSERT(context != NULL);
   TRI_ASSERT(name != NULL);
@@ -403,7 +405,11 @@ TRI_vector_pointer_t* TRI_GetIndexesCollectionAql (TRI_aql_context_t* context,
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_CLUSTER_INFO_H
-#define TRIAGENS_CLUSTER_CLUSTER_INFO_H 1
+#ifndef ARANGODB_CLUSTER_CLUSTER_INFO_H
+#define ARANGODB_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -44,7 +46,7 @@ struct TRI_server_s;
 namespace triagens {
   namespace arango {
     class ClusterInfo;
-    
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                       some types for ClusterInfo
 // -----------------------------------------------------------------------------
@@ -68,13 +70,13 @@ namespace triagens {
       public:
 
         CollectionInfo ();
-        
+
         CollectionInfo (struct TRI_json_s*);
 
         CollectionInfo (CollectionInfo const&);
 
         CollectionInfo& operator= (CollectionInfo const&);
-        
+
         ~CollectionInfo ();
 
 // -----------------------------------------------------------------------------
@@ -181,7 +183,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a copy of the key options
-/// the caller is responsible for freeing it 
+/// the caller is responsible for freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* keyOptions () const {
@@ -269,13 +271,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-      
+
       private:
-     
-        TRI_json_t*                        _json;   
+
+        TRI_json_t*                        _json;
     };
 
-    
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                       class CollectionInfoCurrent
 // -----------------------------------------------------------------------------
@@ -290,17 +292,17 @@ namespace triagens {
       public:
 
         CollectionInfoCurrent ();
-        
+
         CollectionInfoCurrent (ShardID const&, struct TRI_json_s*);
 
         CollectionInfoCurrent (CollectionInfoCurrent const&);
 
         CollectionInfoCurrent& operator= (CollectionInfoCurrent const&);
-        
+
         ~CollectionInfoCurrent ();
 
       private:
-        
+
         void freeAllJsons ();
 
         void copyAllJsons ();
@@ -351,7 +353,7 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
-            return (TRI_col_type_e) triagens::basics::JsonHelper::getNumericValue<int> 
+            return (TRI_col_type_e) triagens::basics::JsonHelper::getNumericValue<int>
                                       (_json, "type", (int) TRI_COL_TYPE_UNKNOWN);
           }
           else {
@@ -402,7 +404,7 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
           if (it != _jsons.end()) {
             TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getBooleanValue(_json, 
+            return triagens::basics::JsonHelper::getBooleanValue(_json,
                                                                  name, false);
           }
           return false;
@@ -418,7 +420,7 @@ namespace triagens {
           bool b;
           for (it = _jsons.begin(); it != _jsons.end(); ++it) {
             TRI_json_t* _json = it->second;
-            b = triagens::basics::JsonHelper::getBooleanValue(_json, 
+            b = triagens::basics::JsonHelper::getBooleanValue(_json,
                                                               name, false);
             m.insert(make_pair(it->first,b));
           }
@@ -525,7 +527,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a copy of the key options
-/// the caller is responsible for freeing it 
+/// the caller is responsible for freeing it
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* keyOptions () const {
@@ -533,7 +535,7 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
-            TRI_json_t const* keyOptions 
+            TRI_json_t const* keyOptions
                  = triagens::basics::JsonHelper::getArrayElement
                                         (_json, "keyOptions");
 
@@ -619,7 +621,7 @@ namespace triagens {
           map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
-            TRI_json_t* const node 
+            TRI_json_t* const node
               = triagens::basics::JsonHelper::getArrayElement
                                   (_json, "shardKeys");
             return triagens::basics::JsonHelper::stringList(node);
@@ -678,13 +680,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-      
+
       private:
-     
+
         map<ShardID, TRI_json_t*> _jsons;
     };
 
-    
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ClusterInfo
 // -----------------------------------------------------------------------------
@@ -716,7 +718,7 @@ namespace triagens {
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ClusterInfo ();
         ClusterInfo (ClusterInfo const&);    // not implemented
         void operator= (ClusterInfo const&);  // not implemented
@@ -724,7 +726,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       public:
 
         ~ClusterInfo ();
@@ -732,7 +734,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -744,26 +746,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void initialise ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void cleanup ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a number of cluster-wide unique IDs, returns the first
 /// one and guarantees that <number> are reserved for the caller.
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         uint64_t uniqid (uint64_t = 1);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -831,7 +833,7 @@ namespace triagens {
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<shared_ptr<CollectionInfo> > getCollections 
+        const std::vector<shared_ptr<CollectionInfo> > getCollections
                                                            (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -857,7 +859,7 @@ namespace triagens {
 /// @brief create database in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createDatabaseCoordinator (string const& name, 
+        int createDatabaseCoordinator (string const& name,
                                        TRI_json_t const* json,
                                        string& errorMsg, double timeout);
 
@@ -865,14 +867,14 @@ namespace triagens {
 /// @brief drop database in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropDatabaseCoordinator (string const& name, string& errorMsg, 
+        int dropDatabaseCoordinator (string const& name, string& errorMsg,
                                      double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create collection in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createCollectionCoordinator (string const& databaseName, 
+        int createCollectionCoordinator (string const& databaseName,
                                          string const& collectionID,
                                          uint64_t numberOfShards,
                                          TRI_json_t const* json,
@@ -882,16 +884,16 @@ namespace triagens {
 /// @brief drop collection in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropCollectionCoordinator (string const& databaseName, 
+        int dropCollectionCoordinator (string const& databaseName,
                                        string const& collectionID,
-                                       string& errorMsg, 
+                                       string& errorMsg,
                                        double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set collection properties in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int setCollectionPropertiesCoordinator (string const& databaseName, 
+        int setCollectionPropertiesCoordinator (string const& databaseName,
                                                 string const& collectionID,
                                                 TRI_col_info_t const*);
 
@@ -899,7 +901,7 @@ namespace triagens {
 /// @brief set collection status in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int setCollectionStatusCoordinator (string const& databaseName, 
+        int setCollectionStatusCoordinator (string const& databaseName,
                                             string const& collectionID,
                                             TRI_vocbase_col_status_e status);
 
@@ -907,20 +909,20 @@ namespace triagens {
 /// @brief ensure an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int ensureIndexCoordinator (string const& databaseName, 
+        int ensureIndexCoordinator (string const& databaseName,
                                     string const& collectionID,
                                     TRI_json_t const* json,
                                     bool create,
                                     bool (*compare)(TRI_json_t const*, TRI_json_t const*),
                                     TRI_json_t*& resultJson,
-                                    string& errorMsg, 
+                                    string& errorMsg,
                                     double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropIndexCoordinator (string const& databaseName, 
+        int dropIndexCoordinator (string const& databaseName,
                                   string const& collectionID,
                                   TRI_idx_iid_t iid,
                                   string& errorMsg,
@@ -956,7 +958,7 @@ namespace triagens {
         std::vector<ServerID> getCurrentDBServers ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for 
+/// @brief lookup the server's endpoint by scanning Target/MapIDToEnpdoint for
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1000,14 +1002,14 @@ namespace triagens {
         double getTimeout (double timeout) const {
           if (timeout == 0.0) {
             return 24.0 * 3600.0;
-          } 
+          }
           return timeout;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the poll interval
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         double getPollInterval () const {
           return 5.0;
         }
@@ -1015,7 +1017,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the timeout for reloading the server list
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         double getReloadServerListTimeout () const {
           return 60.0;
         }
@@ -1025,7 +1027,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
-        
+
         AgencyComm                         _agency;
         triagens::basics::ReadWriteLock    _lock;
 
@@ -1042,13 +1044,13 @@ namespace triagens {
         // Cached data from the agency, we reload whenever necessary:
         std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases;
               // from Plan/Databases
-        std::map<DatabaseID, std::map<ServerID, struct TRI_json_s*> > 
+        std::map<DatabaseID, std::map<ServerID, struct TRI_json_s*> >
               _currentDatabases;        // from Current/Databases
 
-        AllCollections                  _collections;  
+        AllCollections                  _collections;
                                         // from Plan/Collections/
         bool                            _collectionsValid;
-        AllCollectionsCurrent           _collectionsCurrent;  
+        AllCollectionsCurrent           _collectionsCurrent;
                                         // from Current/Collections/
         bool                            _collectionsCurrentValid;
         std::map<ServerID, std::string> _servers;
@@ -1074,7 +1076,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the sole instance
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static ClusterInfo* _theinstance;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1090,7 +1092,7 @@ namespace triagens {
         static const double operationTimeout;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reload timeout 
+/// @brief reload timeout
 ////////////////////////////////////////////////////////////////////////////////
 
         static const double reloadServerListTimeout;
@@ -1102,7 +1104,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

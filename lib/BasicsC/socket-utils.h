@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_SOCKET_UTILS_H
-#define TRIAGENS_BASICS_C_SOCKET_UTILS_H 1
+#ifndef ARANGODB_BASICS_C_SOCKET__UTILS_H
+#define ARANGODB_BASICS_C_SOCKET__UTILS_H 1
 
 #include "BasicsC/common.h"
 
@@ -54,11 +56,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Sockets
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -74,18 +71,9 @@ extern "C" {
 #endif
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Sockets
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket abstraction for different OSes
@@ -134,7 +122,7 @@ static inline TRI_socket_t TRI_accept (TRI_socket_t s, struct sockaddr* address,
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind (TRI_socket_t s, const struct sockaddr* address, 
+static inline int TRI_bind (TRI_socket_t s, const struct sockaddr* address,
               int addr_len) {
 #ifdef _WIN32
   return bind(s.fileHandle, address, addr_len);
@@ -173,12 +161,12 @@ static inline int TRI_send (TRI_socket_t s, const void* buffer, size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr, 
+static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr,
                             int* len) {
   return getsockname(s.fileHandle, addr, len);
 }
 #else
-static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr, 
+static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr,
                             socklen_t* len) {
   return getsockname(s.fileDescriptor, addr, len);
 }
@@ -235,7 +223,7 @@ static inline bool TRI_isvalidsocket (TRI_socket_t s) {
 static inline void TRI_invalidatesocket (TRI_socket_t* s) {
 #ifdef _WIN32
   s->fileHandle     = TRI_INVALID_SOCKET;
-  s->fileDescriptor = -1; 
+  s->fileDescriptor = -1;
 #else
   s->fileDescriptor = TRI_INVALID_SOCKET;
 #endif
@@ -280,10 +268,6 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t);
 
 bool TRI_SetCloseOnExecSocket (TRI_socket_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
@@ -291,11 +275,6 @@ bool TRI_SetCloseOnExecSocket (TRI_socket_t);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Sockets
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises the sockets components
@@ -309,17 +288,17 @@ void TRI_InitialiseSockets (void);
 
 void TRI_ShutdownSockets (void);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -72,10 +74,10 @@ EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         int listenBacklog,
                         bool reuseAddress,
                         const std::string& host,
-                        const uint16_t port) 
-  : Endpoint(type, domainType, encryption, specification, listenBacklog), 
+                        const uint16_t port)
+  : Endpoint(type, domainType, encryption, specification, listenBacklog),
     _reuseAddress(reuseAddress),
-    _host(host), 
+    _host(host),
     _port(port) {
 
   TRI_ASSERT(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
@@ -99,8 +101,8 @@ EndpointIp::~EndpointIp () {
 /// @brief connects a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip, 
-                                        double connectTimeout, 
+TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
+                                        double connectTimeout,
                                         double requestTimeout) {
   // set address and port
   char host[NI_MAXHOST];
@@ -217,7 +219,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 
 #ifdef _WIN32
 
-TRI_socket_t EndpointIp::connect (double connectTimeout, 
+TRI_socket_t EndpointIp::connect (double connectTimeout,
                                   double requestTimeout) {
   struct addrinfo* result = 0;
   struct addrinfo* aip;
@@ -375,5 +377,5 @@ bool EndpointIp::initIncoming (TRI_socket_t incoming) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

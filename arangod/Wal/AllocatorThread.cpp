@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,14 +53,14 @@ const uint64_t AllocatorThread::Interval = 500 * 1000;
 /// @brief create the allocator thread
 ////////////////////////////////////////////////////////////////////////////////
 
-AllocatorThread::AllocatorThread (LogfileManager* logfileManager) 
+AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
   : Thread("WalAllocator"),
     _logfileManager(logfileManager),
     _condition(),
     _requestedSize(0),
     _stop(0),
     _inRecovery(true) {
-  
+
   allowAsynchronousCancelation();
 }
 
@@ -97,7 +99,7 @@ void AllocatorThread::stop () {
 void AllocatorThread::signal (uint32_t markerSize) {
   CONDITION_LOCKER(guard, _condition);
 
-  if (_requestedSize == 0 || 
+  if (_requestedSize == 0 ||
       markerSize > _requestedSize) {
     // logfile must be as big as the requested marker
     _requestedSize = markerSize;
@@ -135,7 +137,7 @@ void AllocatorThread::run () {
     }
 
     try {
-      if (requestedSize == 0 && 
+      if (requestedSize == 0 &&
           ! _inRecovery &&
           ! _logfileManager->hasReserveLogfiles()) {
         // only create reserve files if we are not in the recovery mode
@@ -145,12 +147,12 @@ void AllocatorThread::run () {
 
         LOG_ERROR("unable to create new WAL reserve logfile");
       }
-      else if (requestedSize > 0 && 
+      else if (requestedSize > 0 &&
                _logfileManager->logfileCreationAllowed(requestedSize)) {
         if (createReserveLogfile(requestedSize)) {
           continue;
         }
-      
+
         LOG_ERROR("unable to create new WAL reserve logfile");
       }
     }
@@ -161,8 +163,8 @@ void AllocatorThread::run () {
     catch (...) {
       LOG_ERROR("got unspecific error in allocatorThread");
     }
-    
-    {  
+
+    {
       CONDITION_LOCKER(guard, _condition);
       guard.wait(Interval);
     }
@@ -171,7 +173,11 @@ void AllocatorThread::run () {
   _stop = 2;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,31 +20,27 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_REPLICATION_COMMON_H
-#define TRIAGENS_VOC_BASE_REPLICATION_COMMON_H 1
+#ifndef ARANGODB_VOC_BASE_REPLICATION__COMMON_H
+#define ARANGODB_VOC_BASE_REPLICATION__COMMON_H 1
 
 #include "Basics/Common.h"
 
 #include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       REPLICATION 
+// --SECTION--                                                       REPLICATION
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP response header for "check for more data?"
@@ -82,30 +79,21 @@
 #define TRI_REPLICATION_LOGGER_EVENTS_DEFAULT 1048576
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum cumulated size of log events to keep (lower bound for logger 
+/// @brief minimum cumulated size of log events to keep (lower bound for logger
 /// config)
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_REPLICATION_LOGGER_SIZE_MIN 1048576
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default cumulated size of log events to keep 
+/// @brief default cumulated size of log events to keep
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_REPLICATION_LOGGER_SIZE_DEFAULT 134217728  
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#define TRI_REPLICATION_LOGGER_SIZE_DEFAULT 134217728
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication operations
@@ -136,18 +124,9 @@ typedef enum {
 }
 TRI_replication_operation_e;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
@@ -162,13 +141,13 @@ void TRI_GetTimeStampReplication (char*,
 
 bool TRI_ExcludeCollectionReplication (const char*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

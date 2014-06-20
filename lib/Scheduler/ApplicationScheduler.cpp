@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,7 +213,7 @@ static SignalTask* localSignalTask;
     public:
       SchedulerReporterTask (Scheduler* scheduler, double _reportInterval)
         : Task("Scheduler-Reporter"),
-          PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval), 
+          PeriodicTask("Scheduler-Reporter", 1.0, _reportInterval),
           _scheduler(scheduler) {
       }
 
@@ -578,7 +580,7 @@ void ApplicationScheduler::buildSchedulerReporter () {
   if (_scheduler == 0) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
-  
+
   TRI_ASSERT(_scheduler != 0);
 
   if (0.0 < _reportInterval) {
@@ -597,7 +599,7 @@ void ApplicationScheduler::buildControlCHandler () {
   if (_scheduler == 0) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
-  
+
   TRI_ASSERT(_scheduler != 0);
 
   // control C handler
@@ -695,5 +697,5 @@ void ApplicationScheduler::adjustFileDescriptors () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

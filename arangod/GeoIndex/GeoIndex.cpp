@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +109,7 @@ typedef struct {
   GeoString end;
   int level;
   int points[GeoIndexPOTSIZE];
-} 
+}
 GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
@@ -134,7 +136,7 @@ typedef struct {
   GeoPot * pots;        /* the pots themselves       */
   GeoCoordinate * gc;   /* the slots themselves      */
   size_t _memoryUsed;   /* the amount of memory currently used */
-} 
+}
 GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
@@ -186,7 +188,7 @@ typedef struct
     GeoFix fixdist[GeoIndexFIXEDPOINTS];
     double snmd;
     GeoFix distrej[GeoIndexFIXEDPOINTS];
-} 
+}
 GeoDetailedPoint;
 /* =================================================== */
 /*                   GeoResults   structure            */
@@ -215,7 +217,7 @@ typedef struct
     int allocpoints;
     int * slot;
     double * snmd;
-} 
+}
 GeoResults;
 /* =================================================== */
 /*                 GeoStack    structure               */
@@ -348,12 +350,12 @@ int GeoIndexNewPot(GeoIx * gix)
         newpotct= (int) x;
         gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots, newpotct * sizeof(GeoPot)));
 
-        if (gp == NULL) { 
+        if (gp == NULL) {
           return -2;
         }
         gix->pots = gp;
 
-        // update memory usage        
+        // update memory usage
         gix->_memoryUsed -= gix->potct * sizeof(GeoPot);
         gix->_memoryUsed += newpotct * sizeof(GeoPot);
 
@@ -2374,3 +2376,11 @@ size_t GeoIndex_MemoryUsage (void* theIndex) {
 }
 /* end of GeoIndex.c  */
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

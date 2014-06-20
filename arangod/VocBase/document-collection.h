@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection with global read-write lock, derived from
 /// TRI_document_collection_t
 ///
@@ -6,7 +6,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H
-#define TRIAGENS_VOC_BASE_DOCUMENT_COLLECTION_H 1
+#ifndef ARANGODB_VOC_BASE_DOCUMENT__COLLECTION_H
+#define ARANGODB_VOC_BASE_DOCUMENT__COLLECTION_H 1
 
 #include "Basics/Common.h"
 
@@ -118,7 +120,7 @@ struct TRI_doc_mptr_t {
     TRI_doc_mptr_t*        _prev;    // previous master pointer
     TRI_doc_mptr_t*        _next;    // next master pointer
 
-    TRI_doc_mptr_t () : _rid(0), _fid(0), _dataptr(nullptr), _hash(0), 
+    TRI_doc_mptr_t () : _rid(0), _fid(0), _dataptr(nullptr), _hash(0),
                         _prev(nullptr), _next(nullptr) {
     }
 
@@ -175,7 +177,7 @@ struct TRI_doc_mptr_t {
     char const* getShapedJsonPtr () const {
       TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(_dataptr);
 
-      if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || 
+      if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
           marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
         auto offset = (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))->_offsetJson;
         return static_cast<char const*>(_dataptr) + offset;
@@ -192,10 +194,10 @@ struct TRI_doc_mptr_t {
 
       return nullptr;
     }
-    
+
     TRI_doc_mptr_t& operator= (TRI_doc_mptr_t const&) = delete;
     TRI_doc_mptr_t(TRI_doc_mptr_t const&) = delete;
-    
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,12 +208,12 @@ struct TRI_doc_mptr_copy_t : public TRI_doc_mptr_t {
     TRI_doc_mptr_copy_t () : TRI_doc_mptr_t() {
     }
 
-    TRI_doc_mptr_copy_t (TRI_doc_mptr_copy_t const& that) 
+    TRI_doc_mptr_copy_t (TRI_doc_mptr_copy_t const& that)
       : TRI_doc_mptr_t() {
       copy(that);
     }
 
-    TRI_doc_mptr_copy_t (TRI_doc_mptr_t const& that) 
+    TRI_doc_mptr_copy_t (TRI_doc_mptr_t const& that)
       : TRI_doc_mptr_t() {
       copy(that);
     }
@@ -291,10 +293,10 @@ typedef struct TRI_doc_collection_info_s {
 
   int64_t         _sizeAlive;
   int64_t         _sizeDead;
-  int64_t         _sizeShapes;  
-  int64_t         _sizeAttributes; 
-  int64_t         _sizeTransactions; 
-  int64_t         _sizeIndexes; 
+  int64_t         _sizeShapes;
+  int64_t         _sizeAttributes;
+  int64_t         _sizeTransactions;
+  int64_t         _sizeIndexes;
 
   int64_t         _datafileSize;
   int64_t         _journalfileSize;
@@ -453,10 +455,10 @@ public:
   TRI_headers_t*               _headersPtr;
   KeyGenerator*                _keyGenerator;
   struct TRI_cap_constraint_s* _capConstraint;
-  
+
   TRI_vector_pointer_t         _allIndexes;
   std::set<TRI_voc_tid_t>*     _failedTransactions;
-  
+
   int64_t                      _uncollectedLogfileEntries;
   int64_t                      _numberDocuments;
   TRI_read_write_lock_t        _compactionLock;
@@ -479,14 +481,14 @@ public:
 
   int (*beginWrite) (struct TRI_document_collection_t*);
   int (*endWrite) (struct TRI_document_collection_t*);
-  
+
   int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
   int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void (*dump) (struct TRI_document_collection_t*);
-#endif 
- 
+#endif
+
   TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
   TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
 
@@ -531,7 +533,7 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_co
 size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase const*,
                                               TRI_document_collection_t*,
                                               void*,
-                                              bool (*callback)(TRI_doc_mptr_t const*, 
+                                              bool (*callback)(TRI_doc_mptr_t const*,
                                               TRI_document_collection_t*, void*));
 
 
@@ -676,7 +678,7 @@ void TRI_FreeDocumentCollection (TRI_document_collection_t*);
 /// note: the write-lock for the collection must be held to call this
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t*, 
+void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t*,
                                            TRI_voc_rid_t,
                                            bool);
 
@@ -689,7 +691,7 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
                                          struct TRI_json_s const*,
                                          struct TRI_index_s**);
@@ -715,7 +717,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*,
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*, 
+bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*,
                                          size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,7 +740,7 @@ bool TRI_CloseCompactorDocumentCollection (TRI_document_collection_t*,
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*,  
+TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*,
                                                        TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -767,7 +769,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*)
 /// @brief drops an index, including index file removal and replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*, 
+bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_server_id_t);
 
@@ -1064,7 +1066,11 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

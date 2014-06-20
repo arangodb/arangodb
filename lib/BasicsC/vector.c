@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,7 +112,7 @@ void TRI_FreeVector (TRI_memory_zone_t* zone, TRI_vector_t* vector) {
 /// @brief ensures a vector has space for extraCapacity more items
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReserveVector (TRI_vector_t* vector, 
+int TRI_ReserveVector (TRI_vector_t* vector,
                        size_t extraCapacity) {
   size_t oldLength = vector->_length;
   size_t minLength = oldLength + extraCapacity;
@@ -120,7 +122,7 @@ int TRI_ReserveVector (TRI_vector_t* vector,
   if (vector->_capacity >= minLength) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   newSize = vector->_capacity;
   while (newSize < minLength) {
     newSize = (size_t) (1 + GROW_FACTOR * newSize);
@@ -142,7 +144,7 @@ int TRI_ReserveVector (TRI_vector_t* vector,
 /// @brief copies a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone, 
+TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
                               TRI_vector_t const* vector) {
   TRI_vector_t* copy;
 
@@ -181,7 +183,7 @@ TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
 /// @brief copy data from one vector into another
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyDataVector (TRI_vector_t* dst, 
+int TRI_CopyDataVector (TRI_vector_t* dst,
                         TRI_vector_t const* source) {
   if (dst->_elementSize != source->_elementSize) {
     return TRI_ERROR_INTERNAL;
@@ -238,7 +240,7 @@ void TRI_ClearVector (TRI_vector_t* vector) {
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeVector (TRI_vector_t* vector, 
+int TRI_ResizeVector (TRI_vector_t* vector,
                       size_t n) {
   if (vector->_length == n) {
     return TRI_ERROR_NO_ERROR;
@@ -333,7 +335,7 @@ int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t n) {
     if (n >= newSize) {
       newSize = n + 1;
     }
-    
+
     TRI_ASSERT(newSize > n);
 
     newBuffer = (char*) TRI_Allocate(vector->_memoryZone, newSize * vector->_elementSize, false);
@@ -479,7 +481,7 @@ void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
 /// @brief ensures a vector has space for extraCapacity more items
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector, 
+int TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector,
                               size_t extraCapacity) {
   size_t oldLength = vector->_length;
   size_t minLength = oldLength + extraCapacity;
@@ -548,7 +550,7 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
 /// @brief copies all pointers from a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst, 
+int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst,
                                TRI_vector_pointer_t const* src) {
   if (src->_length == 0) {
     dst->_length = 0;
@@ -594,7 +596,7 @@ void TRI_ClearVectorPointer (TRI_vector_pointer_t* vector) {
 /// @brief resizes the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector, 
+int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector,
                              size_t n) {
   if (vector->_length == n) {
     return TRI_ERROR_NO_ERROR;
@@ -1036,7 +1038,7 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
     if (n >= newSize) {
       newSize = n + 1;
     }
-    
+
     TRI_ASSERT(newSize > n);
 
     newBuffer = (char**) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(char*));
@@ -1054,7 +1056,7 @@ int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n
             vector->_buffer + n,
             sizeof(char**) * (vector->_length - n));
   }
-  
+
   TRI_ASSERT(vector->_capacity >= vector->_length);
 
   vector->_length++;
@@ -1094,7 +1096,11 @@ char* TRI_AtVectorString (TRI_vector_string_t const* vector, size_t pos) {
   return (char*) vector->_buffer[pos];
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

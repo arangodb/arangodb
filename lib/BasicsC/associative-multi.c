@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +49,7 @@
 /// @brief forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size); 
+static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -59,14 +61,14 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size);
 
 int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                           TRI_memory_zone_t* zone,
-                          uint64_t (*hashKey) (TRI_multi_pointer_t*, 
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*,
                                                void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_t*, 
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*,
                                                    void const*, bool),
-                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, 
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*,
                                                      void const*, void const*),
-                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, 
-                                                         void const*, 
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*,
+                                                         void const*,
                                                          void const*, bool)) {
   array->hashKey = hashKey;
   array->hashElement = hashElement;
@@ -77,7 +79,7 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrUsed  = 0;
   array->_nrAlloc = 0;
 
-  if (NULL == (array->_table_alloc = TRI_Allocate(zone, 
+  if (NULL == (array->_table_alloc = TRI_Allocate(zone,
                  sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE + 64, true))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -225,7 +227,7 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
   // that is equal to element. If checkEquality is set to false, the caller
   // guarantees that there is no entry that compares equal to element
   // in the table, which saves a lot of element comparisons. This function
-  // always returns a pointer into the table, which is either empty or 
+  // always returns a pointer into the table, which is either empty or
   // points to an entry that compares equal to element.
 
   uint64_t hash;
@@ -234,9 +236,9 @@ static inline uint64_t FindElementPlace (TRI_multi_pointer_t* array,
   hash = array->hashElement(array, element, false);
   i = hash % array->_nrAlloc;
 
-  while (array->_table[i].ptr != NULL && 
-         (! checkEquality || 
-          ! array->isEqualElementElement(array, element, 
+  while (array->_table[i].ptr != NULL &&
+         (! checkEquality ||
+          ! array->isEqualElementElement(array, element,
                                                 array->_table[i].ptr, false))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
@@ -266,7 +268,7 @@ static uint64_t LookupByElement (TRI_multi_pointer_t* array,
   // start of a linked list, or a free slot:
   while (array->_table[i].ptr != NULL &&
          (array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX ||
-          ! array->isEqualElementElement(array, element, 
+          ! array->isEqualElementElement(array, element,
                                                 array->_table[i].ptr, true))) {
     i = TRI_IncModU64(i, array->_nrAlloc);
 #ifdef TRI_INTERNAL_STATS
@@ -320,7 +322,7 @@ static inline void InvalidateEntry (TRI_multi_pointer_t* array, uint64_t i) {
 /// @brief helper to move an entry from one slot to another
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void MoveEntry (TRI_multi_pointer_t* array, 
+static inline void MoveEntry (TRI_multi_pointer_t* array,
                               uint64_t from, uint64_t to) {
   // Moves an entry, adjusts the linked lists, but does not take care
   // for the hole. to must be unused. from can be any element in a
@@ -348,7 +350,7 @@ static void HealHole (TRI_multi_pointer_t* array, uint64_t i) {
     // Find out where this element ought to be:
     // If it is the start of one of the linked lists, we need to hash
     // by key, otherwise, we hash by the full identity of the element:
-    hash = array->hashElement(array, array->_table[j].ptr, 
+    hash = array->hashElement(array, array->_table[j].ptr,
                      array->_table[j].prev == TRI_MULTI_POINTER_INVALID_INDEX);
     k = hash % array->_nrAlloc;
     if (! IsBetween(i, k, j)) {
@@ -395,7 +397,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   void* old;
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-  TRI_CheckMultiPointerHash(array, true, true); 
+  TRI_CheckMultiPointerHash(array, true, true);
 #endif
 
   // if we were adding and the table is more than half full, extend it
@@ -419,7 +421,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-    TRI_CheckMultiPointerHash(array, true, true); 
+    TRI_CheckMultiPointerHash(array, true, true);
 #endif
     return NULL;
   }
@@ -427,7 +429,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   // Now find the first slot with an entry with the same key that is the
   // start of a linked list, or a free slot:
   while (array->_table[i].ptr != NULL &&
-         (! array->isEqualElementElement(array, element, 
+         (! array->isEqualElementElement(array, element,
                                                 array->_table[i].ptr,true) ||
           array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
     i = TRI_IncModU64(i, array->_nrAlloc);
@@ -445,12 +447,12 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-    TRI_CheckMultiPointerHash(array, true, true); 
+    TRI_CheckMultiPointerHash(array, true, true);
 #endif
     return NULL;
   }
 
-  // Otherwise, entry i points to the beginning of the linked list of which 
+  // Otherwise, entry i points to the beginning of the linked list of which
   // we want to make element a member. Perhaps an equal element is right here:
   if (checkEquality && array->isEqualElementElement(array, element,
                                                     array->_table[i].ptr,
@@ -460,7 +462,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
       array->_table[i].ptr = element;
     }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-    TRI_CheckMultiPointerHash(array, true, true); 
+    TRI_CheckMultiPointerHash(array, true, true);
 #endif
     return old;
   }
@@ -476,7 +478,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
       array->_table[j].ptr = element;
     }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-    TRI_CheckMultiPointerHash(array, true, true); 
+    TRI_CheckMultiPointerHash(array, true, true);
 #endif
     return old;
   }
@@ -493,7 +495,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
   array->_nrUsed++;
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-  TRI_CheckMultiPointerHash(array, true, true); 
+  TRI_CheckMultiPointerHash(array, true, true);
 #endif
   return NULL;
 }
@@ -547,7 +549,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array, 
+void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t* array,
                                        void const* element) {
   uint64_t i;
 
@@ -574,7 +576,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
 #endif
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-  TRI_CheckMultiPointerHash(array, true, true); 
+  TRI_CheckMultiPointerHash(array, true, true);
 #endif
   i = LookupByElement(array, element);
   if (array->_table[i].ptr == NULL) {
@@ -591,7 +593,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       // the hole:
       InvalidateEntry(array, i);
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-      TRI_CheckMultiPointerHash(array, false, false); 
+      TRI_CheckMultiPointerHash(array, false, false);
 #endif
       HealHole(array, i);
     }
@@ -600,7 +602,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       array->_table[j].prev = TRI_MULTI_POINTER_INVALID_INDEX;
       MoveEntry(array, j, i);
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-      TRI_CheckMultiPointerHash(array, false, false); 
+      TRI_CheckMultiPointerHash(array, false, false);
 #endif
       HealHole(array, j);
     }
@@ -616,14 +618,14 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
     }
     InvalidateEntry(array, i);
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-    TRI_CheckMultiPointerHash(array, false, false); 
+    TRI_CheckMultiPointerHash(array, false, false);
 #endif
     HealHole(array, i);
   }
   array->_nrUsed--;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-  TRI_CheckMultiPointerHash(array, true, true); 
-#endif  
+  TRI_CheckMultiPointerHash(array, true, true);
+#endif
   // return success
   return old;
 }
@@ -643,7 +645,7 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = TRI_NearPrime((uint64_t) size);
-  array->_table_alloc = TRI_Allocate(array->_memoryZone, 
+  array->_table_alloc = TRI_Allocate(array->_memoryZone,
                  array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
   array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
 
@@ -684,7 +686,11 @@ int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   return ResizeMultiPointer(array, 2*size+1);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

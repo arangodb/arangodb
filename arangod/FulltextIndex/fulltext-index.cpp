@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -41,11 +43,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,18 +55,9 @@
 
 #define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH) * 4)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of characters indexed. should be one byte long
@@ -145,10 +133,6 @@ typedef struct {
 }
 index_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
 // -----------------------------------------------------------------------------
@@ -170,11 +154,6 @@ static size_t MemorySubNodeList (const uint32_t);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print some indentation
@@ -277,9 +256,9 @@ static inline size_t Padding (const uint32_t numEntries) {
 /// @brief re-allocate memory for the index and update memory usage statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void* ReallocateMemory (index_t* const idx, 
-                                      void* old, 
-                                      const size_t newSize, 
+static inline void* ReallocateMemory (index_t* const idx,
+                                      void* old,
+                                      const size_t newSize,
                                       const size_t oldSize) {
   void* data;
 
@@ -522,7 +501,7 @@ static bool ExtendSubNodeList (index_t* const idx,
       // out of memory
       return false;
     }
-  
+
     // initialise the chunk of memory we just got
     InitialiseSubNodeList(node->_followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
@@ -537,7 +516,7 @@ static bool ExtendSubNodeList (index_t* const idx,
 
     oldSize = MemorySubNodeList(numAllocated);
 
-    followers = ReallocateMemory(idx, node->_followers, nextSize, oldSize); 
+    followers = ReallocateMemory(idx, node->_followers, nextSize, oldSize);
     if (followers == NULL) {
       // out of memory
       return false;
@@ -557,7 +536,7 @@ static bool ExtendSubNodeList (index_t* const idx,
       // copy existing sub-nodes into the new sub-nodes list
       memmove(FollowersNodes(followers), FollowersNodesPos(followers, numAllocated), sizeof(node_t*) * numFollowers);
     }
-  
+
     return true;
   }
 }
@@ -1246,18 +1225,9 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
   return MakeListResult(idx, list);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  string functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the common prefix length of two words
@@ -1274,18 +1244,9 @@ static inline size_t CommonPrefixLength (const char* const lhs,
   return length;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the fulltext index
@@ -1368,18 +1329,9 @@ void TRI_FreeFtsIndex (TRI_fts_index_t* ftx) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                             document addition / removal functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
@@ -1577,18 +1529,9 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   query functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
@@ -1715,18 +1658,9 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
   return MakeListResult(idx, result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
@@ -1876,11 +1810,11 @@ bool TRI_CompactFulltextIndex (TRI_fts_index_t* const ftx) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

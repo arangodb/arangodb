@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,11 +59,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -76,7 +73,7 @@ triagens::httpclient::GeneralClientConnection* Connection = 0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 triagens::httpclient::SimpleHttpClient* Client = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +95,7 @@ static vector<string> Collections;
 static bool IncludeSystemCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output directory 
+/// @brief output directory
 ////////////////////////////////////////////////////////////////////////////////
 
 static string OutputDirectory;
@@ -159,21 +156,12 @@ static struct {
   uint64_t _totalBatches;
   uint64_t _totalCollections;
   uint64_t _totalWritten;
-} 
+}
 Stats;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -203,24 +191,15 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   ProgramOptions options;
   BaseClient.parse(options, description, "", argc, argv, "arangodump.conf");
-  
+
   if (1 == arguments.size()) {
     OutputDirectory = arguments[0];
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -309,12 +288,12 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   }
-      
-  return "got error from server: HTTP " + 
-         StringUtils::itoa(result->getHttpReturnCode()) + 
+
+  return "got error from server: HTTP " +
+         StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" +
          details;
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
@@ -323,11 +302,11 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 static string GetArangoVersion () {
   map<string, string> headers;
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
-                                               0, 
-                                               0,  
-                                               headers); 
+                                               0,
+                                               0,
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -338,13 +317,13 @@ static string GetArangoVersion () {
   }
 
   string version;
-    
+
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // default value
     version = "arango";
-  
+
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
     if (json != 0) {
@@ -379,11 +358,11 @@ static string GetArangoVersion () {
 
 static bool GetArangoIsCluster () {
   map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
                                         0,
-                                        headers); 
+                                        headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -394,10 +373,10 @@ static bool GetArangoIsCluster () {
   }
 
   string role = "UNDEFINED";
-    
+
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
     if (json != 0) {
@@ -434,11 +413,11 @@ static int StartBatch (string DBserver, string& errorMsg) {
     urlExt = "?DBserver="+DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
                                                url + urlExt,
-                                               body.c_str(), 
-                                               body.size(),  
-                                               headers); 
+                                               body.c_str(),
+                                               body.size(),
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -452,26 +431,26 @@ static int StartBatch (string DBserver, string& errorMsg) {
     }
     return TRI_ERROR_INTERNAL;
   }
- 
+
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from server: HTTP " + 
+    errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
     delete response;
-    
+
     return TRI_ERROR_INTERNAL;
   }
-    
+
   // convert response body to json
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str());
   delete response;
 
   if (json == 0) {
     errorMsg = "got malformed JSON";
-    
+
     return TRI_ERROR_INTERNAL;
   }
-  
+
   // look up "id" value
   const string id = JsonHelper::getStringValue(json, "id", "");
 
@@ -488,7 +467,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
 
 static void ExtendBatch (string DBserver) {
   assert(BatchId > 0);
-  
+
   map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   const string body = "{\"ttl\":300}";
@@ -497,11 +476,11 @@ static void ExtendBatch (string DBserver) {
     urlExt = "?DBserver="+DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url + urlExt,
                                                body.c_str(),
-                                               body.size(), 
-                                               headers); 
+                                               body.size(),
+                                               headers);
 
   // ignore any return value
   if (response != 0) {
@@ -515,7 +494,7 @@ static void ExtendBatch (string DBserver) {
 
 static void EndBatch (string DBserver) {
   assert(BatchId > 0);
-  
+
   map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   string urlExt;
@@ -525,11 +504,11 @@ static void EndBatch (string DBserver) {
 
   BatchId = 0;
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                url + urlExt,
                                                0,
-                                               0, 
-                                               headers); 
+                                               0,
+                                               headers);
 
   // ignore any return value
   if (response != 0) {
@@ -548,28 +527,28 @@ static int DumpCollection (int fd,
                            const uint64_t maxTick,
                            string& errorMsg) {
 
-  const string baseUrl = "/_api/replication/dump?collection=" + cid + 
+  const string baseUrl = "/_api/replication/dump?collection=" + cid +
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
                          "&ticks=false&translateIds=true";
-    
+
   map<string, string> headers;
 
   uint64_t fromTick = TickStart;
 
   while (1) {
     string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
-  
+
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
-                                                 0, 
-                                                 0,  
-                                                 headers); 
+                                                 0,
+                                                 0,
+                                                 headers);
 
     if (response == 0 || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -599,8 +578,8 @@ static int DumpCollection (int fd,
     if (found) {
       checkMore = StringUtils::boolean(header);
       res = TRI_ERROR_NO_ERROR;
-   
-      if (checkMore) { 
+
+      if (checkMore) {
         // TODO: fix hard-coded headers
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
@@ -622,10 +601,10 @@ static int DumpCollection (int fd,
       errorMsg = "got invalid response server: required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-      
+
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer& body = response->getBody();
-     
+
       if (! TRI_WritePointer(fd, body.c_str(), body.length())) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -653,16 +632,16 @@ static int DumpCollection (int fd,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a WAL flush request
 ////////////////////////////////////////////////////////////////////////////////
-  
-static void FlushWal () { 
+
+static void FlushWal () {
   map<string, string> headers;
   const string url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
-                                               nullptr, 
-                                               0,  
-                                               headers); 
+                                               nullptr,
+                                               0,
+                                               headers);
 
   if (response == nullptr || ! response->isComplete() || response->wasHttpError()) {
     cerr << "got invalid response from server: " + Client->getErrorMessage() << endl;
@@ -680,14 +659,14 @@ static void FlushWal () {
 static int RunDump (string& errorMsg) {
   map<string, string> headers;
 
-  const string url = "/_api/replication/inventory?includeSystem=" + 
+  const string url = "/_api/replication/inventory?includeSystem=" +
                      string(IncludeSystemCollections ? "true" : "false");
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
-                                               0, 
-                                               0,  
-                                               headers); 
+                                               0,
+                                               0,
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -698,13 +677,13 @@ static int RunDump (string& errorMsg) {
 
     return TRI_ERROR_INTERNAL;
   }
- 
+
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from server: HTTP " + 
+    errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
     delete response;
-    
+
     return TRI_ERROR_INTERNAL;
   }
 
@@ -712,7 +691,7 @@ static int RunDump (string& errorMsg) {
 
   const StringBuffer& data = response->getBody();
 
-    
+
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
 
   delete response;
@@ -822,12 +801,12 @@ static int RunDump (string& errorMsg) {
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
       int fd;
-      
+
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
-      
+
       fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
@@ -873,7 +852,7 @@ static int RunDump (string& errorMsg) {
       }
 
       ExtendBatch("");
-      int res = DumpCollection(fd, cid, name, parameters, maxTick, errorMsg); 
+      int res = DumpCollection(fd, cid, name, parameters, maxTick, errorMsg);
 
       TRI_CLOSE(fd);
 
@@ -904,10 +883,10 @@ static int DumpShard (int fd,
                       string& errorMsg) {
 
   const string baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
-                         "&collection=" + name + 
+                         "&collection=" + name +
                          "&chunkSize=" + StringUtils::itoa(ChunkSize) +
                          "&ticks=false&translateIds=true";
-    
+
   map<string, string> headers;
 
   uint64_t fromTick = 0;
@@ -915,18 +894,18 @@ static int DumpShard (int fd,
 
   while (1) {
     string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
-  
+
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
     }
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
-                                                 0, 
-                                                 0,  
-                                                 headers); 
+                                                 0,
+                                                 0,
+                                                 headers);
 
     if (response == 0 || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -956,8 +935,8 @@ static int DumpShard (int fd,
     if (found) {
       checkMore = StringUtils::boolean(header);
       res = TRI_ERROR_NO_ERROR;
-   
-      if (checkMore) { 
+
+      if (checkMore) {
         // TODO: fix hard-coded headers
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
@@ -979,10 +958,10 @@ static int DumpShard (int fd,
       errorMsg = "got invalid response server: required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-      
+
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer& body = response->getBody();
-     
+
       if (! TRI_WritePointer(fd, body.c_str(), body.length())) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1017,14 +996,14 @@ static int RunClusterDump (string& errorMsg) {
 
   map<string, string> headers;
 
-  const string url = "/_api/replication/clusterInventory?includeSystem=" + 
+  const string url = "/_api/replication/clusterInventory?includeSystem=" +
                      string(IncludeSystemCollections ? "true" : "false");
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
-                                               0, 
-                                               0,  
-                                               headers); 
+                                               0,
+                                               0,
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -1035,20 +1014,20 @@ static int RunClusterDump (string& errorMsg) {
 
     return TRI_ERROR_INTERNAL;
   }
- 
+
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from server: HTTP " + 
+    errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
     delete response;
-    
+
     return TRI_ERROR_INTERNAL;
   }
 
 
   const StringBuffer& data = response->getBody();
 
-    
+
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
 
   delete response;
@@ -1139,12 +1118,12 @@ static int RunClusterDump (string& errorMsg) {
       fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
 
       int fd;
-      
+
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
-      
+
       fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
@@ -1172,7 +1151,7 @@ static int RunClusterDump (string& errorMsg) {
       // save the actual data
 
       // First we have to go through all the shards, what are they?
-      TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, 
+      TRI_json_t const* shards = JsonHelper::getArrayElement(parameters,
                                                              "shards");
       map<string, string> shardTab = JsonHelper::stringObject(shards);
       // This is now a map from shardIDs to DBservers
@@ -1202,7 +1181,7 @@ static int RunClusterDump (string& errorMsg) {
         string shardName = it->first;
         string DBserver = it->second;
         if (Progress) {
-          cout << "dumping shard '" << shardName << "' from DBserver '" 
+          cout << "dumping shard '" << shardName << "' from DBserver '"
                << DBserver << "' ..." << endl;
         }
         res = StartBatch(DBserver, errorMsg);
@@ -1211,7 +1190,7 @@ static int RunClusterDump (string& errorMsg) {
           TRI_CLOSE(fd);
           return res;
         }
-        res = DumpShard(fd, DBserver, shardName, errorMsg); 
+        res = DumpShard(fd, DBserver, shardName, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_CLOSE(fd);
@@ -1270,7 +1249,7 @@ int main (int argc, char* argv[]) {
   TRIAGENS_REST_INITIALISE(argc, argv);
 
   TRI_InitialiseLogging(false);
-  
+
   // .............................................................................
   // set defaults
   // .............................................................................
@@ -1331,12 +1310,12 @@ int main (int argc, char* argv[]) {
                                                 BaseClient.connectTimeout(),
                                                 ArangoClient::DEFAULT_RETRIES,
                                                 BaseClient.sslProtocol());
-  
+
   if (Connection == 0) {
     cerr << "out of memory" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-  
+
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
 
   if (Client == 0) {
@@ -1350,16 +1329,16 @@ int main (int argc, char* argv[]) {
   const string versionString = GetArangoVersion();
 
   if (! Connection->isConnected()) {
-    cerr << "Could not connect to endpoint '" << BaseClient.endpointString() 
+    cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-   
+
   // successfully connected
   cout << "Server version: " << versionString << endl;
 
-  // validate server version 
+  // validate server version
   int major = 0;
   int minor = 0;
 
@@ -1368,7 +1347,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
-  if (major < 1 || 
+  if (major < 1 ||
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
@@ -1377,7 +1356,7 @@ int main (int argc, char* argv[]) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
     }
   }
-  
+
   if (major >= 2) {
     // Version 1.4 did not yet have a cluster mode
     clusterMode = GetArangoIsCluster();
@@ -1390,12 +1369,12 @@ int main (int argc, char* argv[]) {
   }
 
   if (! Connection->isConnected()) {
-    cerr << "Lost connection to endpoint '" << BaseClient.endpointString() 
+    cerr << "Lost connection to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-  
+
   if (! isDirectory) {
     int res = TRI_CreateDirectory(OutputDirectory.c_str());
 
@@ -1406,13 +1385,13 @@ int main (int argc, char* argv[]) {
   }
 
   if (Progress) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointString() 
-          << "', database: '" << BaseClient.databaseName() << "', username: '" 
+    cout << "Connected to ArangoDB '" << BaseClient.endpointString()
+          << "', database: '" << BaseClient.databaseName() << "', username: '"
           << BaseClient.username() << "'" << endl;
-    
+
     cout << "Writing dump to output directory '" << OutputDirectory << "'" << endl;
   }
-  
+
   memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
@@ -1427,7 +1406,7 @@ int main (int argc, char* argv[]) {
     if (res == TRI_ERROR_NO_ERROR) {
       res = RunDump(errorMsg);
     }
-  
+
     if (BatchId > 0) {
       EndBatch("");
     }
@@ -1435,11 +1414,11 @@ int main (int argc, char* argv[]) {
   else {   // clusterMode == true
     res = RunClusterDump(errorMsg);
   }
-  
+
   if (Progress) {
     if (DumpData) {
-      cout << "Processed " << Stats._totalCollections << " collection(s), " << 
-              "wrote " << Stats._totalWritten << " byte(s) into datafiles, " << 
+      cout << "Processed " << Stats._totalCollections << " collection(s), " <<
+              "wrote " << Stats._totalWritten << " byte(s) into datafiles, " <<
               "sent " << Stats._totalBatches << " batch(es)" << endl;
     }
     else {
@@ -1463,15 +1442,11 @@ int main (int argc, char* argv[]) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

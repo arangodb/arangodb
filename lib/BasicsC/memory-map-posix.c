@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,18 +37,13 @@
 #include <sys/mman.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Memory_map
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 // @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor, 
-                     void** mmHandle, 
-                     void* startingAddress, 
-                     size_t numOfBytesToFlush, 
+int TRI_FlushMMFile (int fileDescriptor,
+                     void** mmHandle,
+                     void* startingAddress,
+                     size_t numOfBytesToFlush,
                      int flags) {
 
   // ...........................................................................
@@ -122,9 +119,9 @@ int TRI_MMFile (void* memoryAddress,
 // @brief unmap a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile (void* memoryAddress, 
-                  size_t numOfBytesToUnMap, 
-                  int fileDescriptor, 
+int TRI_UNMMFile (void* memoryAddress,
+                  size_t numOfBytesToUnMap,
+                  int fileDescriptor,
                   void** mmHandle) {
   int result;
 
@@ -147,10 +144,10 @@ int TRI_UNMMFile (void* memoryAddress,
 // @brief protect a region in a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile (void* memoryAddress, 
-                       size_t numOfBytesToProtect,  
-                       int flags,  
-                       int fileDescriptor, 
+int TRI_ProtectMMFile (void* memoryAddress,
+                       size_t numOfBytesToProtect,
+                       int flags,
+                       int fileDescriptor,
                        void** mmHandle) {
   int result;
 
@@ -165,14 +162,13 @@ int TRI_ProtectMMFile (void* memoryAddress,
   return TRI_ERROR_SYS_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
