@@ -55,7 +55,15 @@ static LogfileManager* Instance = nullptr;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum logfile size
+/// @brief minimum value for --wal.open-logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+constexpr uint32_t MinOpenLogfiles () {
+  return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum value for --wal.logfile-size
 ////////////////////////////////////////////////////////////////////////////////
 
 constexpr uint32_t MinFileSize () {
@@ -350,16 +358,20 @@ bool LogfileManager::prepare () {
 
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
-    LOG_FATAL_AND_EXIT("invalid logfile size. Please use a value of at least %lu", (unsigned long) MinFileSize());
+    LOG_FATAL_AND_EXIT("invalid value for --wal.logfile-size. Please use a value of at least %lu", (unsigned long) MinFileSize());
   }
   
   _filesize = (uint32_t) (((_filesize + PageSize - 1) / PageSize) * PageSize);
  
   if (_numberOfSlots < MinSlots() || _numberOfSlots > MaxSlots()) { 
     // invalid number of slots
-    LOG_FATAL_AND_EXIT("invalid slots size. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
+    LOG_FATAL_AND_EXIT("invalid value for --wal.slots. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
   }
 
+  if (_maxOpenLogfiles < 2) {
+    LOG_FATAL_AND_EXIT("invalid value for --wal.open-logfiles. Please use a value of at least %lu", (unsigned long) MinOpenLogfiles());
+  }
+  
   if (_syncInterval < 5) {
     LOG_FATAL_AND_EXIT("invalid sync interval.");
   } 
