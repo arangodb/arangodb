@@ -214,7 +214,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
  
   LOG_WARNING("could not save collection drop marker in log: %s", TRI_errno_string(res));
 
-  // TODO: what to do here 
+  // TODO: what to do here? 
   return true;
 }
 

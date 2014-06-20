@@ -4369,6 +4369,7 @@ function transactionServerFailuresSuite () {
             fail();
           }
         });
+        fail();
       }
       catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
@@ -4407,6 +4408,7 @@ function transactionServerFailuresSuite () {
             fail();
           }
         });
+        fail();
       }
       catch (err) {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
@@ -4449,9 +4451,143 @@ function transactionServerFailuresSuite () {
             assertEqual(1000, c.count());
           }
         });
+        fail();
       }
       catch (err) {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write abort marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoAbortMarker : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+      internal.debugSetFailAt("TransactionWriteAbortMarker");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 1000; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+
+            assertEqual(1000, c.count());
+
+            throw "rollback!";
+          }
+        });
+      }
+      catch (err) {
+        // ignore the intentional error
+      }
+      
+      internal.debugClearFailAt();
+
+      testHelper.waitUnload(c);
+
+      assertEqual(100, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write attribute marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoAttributeMarker : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 200; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+      
+            internal.debugSetFailAt("ShaperWriteAttributeMarker");
+            c.save({ _key: "test100", newAttribute: "foo" });
+          }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write shape marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoShapeMarker : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 200; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+      
+            internal.debugSetFailAt("ShaperWriteShapeMarker");
+            c.save({ _key: "test100", newAttribute: "foo", reallyNew: "foo" });
+          }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
       }
 
       assertEqual(100, c.count());

@@ -528,10 +528,25 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   TRI_DEBUG_INTENTIONAL_FAIL_IF("TransactionWriteBeginMarker") {
     return TRI_ERROR_DEBUG;
   }
-  
-  triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
 
-  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
+  int res;
+  
+  try { 
+    triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save transaction begin marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -547,9 +562,24 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_DEBUG;
   }
 
-  triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+  int res;
 
-  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
+  try { 
+    triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save transaction abort marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,9 +595,24 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
     return TRI_ERROR_DEBUG;
   }
 
-  triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+  int res;
 
-  return GetLogfileManager()->allocateAndWrite(marker.mem(), marker.size(), false).errorCode;
+  try { 
+    triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save transaction commit marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
