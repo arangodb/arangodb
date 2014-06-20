@@ -429,6 +429,8 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
+/// *Parameter*
+///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
@@ -478,6 +480,8 @@ AQLGenerator.prototype.edges = function(example) {
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
+/// *Parameter*
+///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
@@ -526,6 +530,8 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
+///
+/// *Parameter*
 ///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
@@ -600,12 +606,13 @@ AQLGenerator.prototype._vertices = function(example, options) {
 /// @startDocuBlock JSF_general_graph_fluent_aql_vertices
 /// `graph_query.vertices(examples)`
 /// *Select all vertices connected to the edges selected before.*
-/// 
 ///
 /// Creates an AQL statement to select all vertices for each of the edges selected
 /// in the step before.
 /// This includes all vertices contained in *_from* as well as *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
+///
+/// *Parameter*
 ///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
@@ -661,14 +668,16 @@ AQLGenerator.prototype.vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// `graph_query.vertices(examples)`
-/// *Select all vertices where the edges selected before start.*
+/// `graph_query.fromVertices(examples)`
+/// *Select all source vertices of the edges selected before.*
 /// 
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before start at.
 /// This includes all vertices contained in *_from* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
+///
+/// *Parameter*
 ///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
@@ -722,7 +731,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// `graph_query.vertices(examples)`
+/// `graph_query.toVertices(examples)`
 /// *Select all vertices targeted by the edges selected before.*
 /// 
 ///
@@ -730,6 +739,8 @@ AQLGenerator.prototype.fromVertices = function(example) {
 /// in the step before end in.
 /// This includes all vertices contained in *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
+///
+/// *Parameter*
 ///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
@@ -1039,6 +1050,8 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// This can be used to further specfiy the expected result of the query.
 /// The result set is reduced to the set of elements that matches the given *examples*.
 /// 
+/// *Parameter*
+///
 /// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
@@ -1188,7 +1201,7 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// `graph_query.neighbors(examples)`
+/// `graph_query.hasNext()`
 /// *Checks if the query has further results.*
 ///
 /// The generated statement maintains a cursor for you.
@@ -1414,7 +1427,7 @@ var _directedRelation = function (
 /// @startDocuBlock JSF_general_graph_list
 /// `general_graph._list()`
 /// *List all graphs.*
-//
+///
 /// Lists all graph names stored in this database.
 ///
 /// *Examples*
