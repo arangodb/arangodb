@@ -138,7 +138,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "<relationName> must be a not empty string");
+        assertEqual(err.errorMessage, "Invalid parameter type. arg1 must not be empty");
       }
     },
 
@@ -148,7 +148,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "method _undirectedRelation expects 2 arguments");
+        assertEqual(err.errorMessage, "Invalid number of arguments. Expected: 2");
       }
     },
 
@@ -160,7 +160,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "<vertexCollections> must be a not empty string or array");
+        assertEqual(err.errorMessage, "Invalid parameter type. arg2 must not be empty");
       }
     },
 
@@ -183,7 +183,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "<relationName> must be a not empty string");
+        assertEqual(err.errorMessage, "Invalid parameter type. arg1 must be non empty string");
       }
     },
 
@@ -193,7 +193,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "method _directedRelation expects 3 arguments");
+        assertEqual(err.errorMessage, "Invalid number of arguments. Expected: 3");
       }
     },
 
@@ -205,7 +205,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "<fromVertexCollections> must be a not empty string or array");
+        assertEqual(err.errorMessage, "Invalid parameter type. arg2 must be non empty string or array");
       }
 
 
@@ -219,7 +219,7 @@ function GeneralGraphCreationSuite() {
         fail();
       }
       catch (err) {
-        assertEqual(err, "<toVertexCollections> must be a not empty string or array");
+        assertEqual(err.errorMessage, "Invalid parameter type. arg3 must be non empty string or array");
       }
     },
 
@@ -2021,7 +2021,9 @@ function EdgesAndVerticesSuite() {
         g[ec1].save(vertexId1, vertexId2, {});
         fail();
       } catch (e) {
-        assertEqual(e, "Edge is not allowed between " + vertexId1 + " and " + vertexId2 + ".");
+        require("internal").print("*************++");
+        require("internal").print(e);
+        assertEqual(e.errorNum, 1937);
       }
       g[vc1].remove(vertexId1);
       g[vc2].remove(vertexId2);

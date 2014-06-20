@@ -93,7 +93,10 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
-    throw "<" + name + "> must be an ArangoCollection ";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.code;
+    err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NO_AN_ARANGO_COLLECTION.message;
+    throw err;
   }
   return res;
 };
@@ -143,7 +146,10 @@ var findOrCreateOrphanCollections = function (graphName, orphanCollections, noCr
 var getGraphCollection = function() {
   var gCol = db._graphs;
   if (gCol === null || gCol === undefined) {
-    throw "_graphs collection does not exist.";
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.message;
+    throw err;
   }
   return gCol;
 };
@@ -197,7 +203,10 @@ var transformExample = function(example) {
     }
     return example;
   }
-  throw "Invalid example type. Has to be String, Array or Object";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.message;
+  throw err;
 };
 
 var checkAllowsRestriction = function(colList, rest, msg) {
@@ -1112,7 +1121,10 @@ AQLGenerator.prototype.filter = function(example) {
   var ex = [];
   if (Object.prototype.toString.call(example) !== "[object Array]") {
     if (Object.prototype.toString.call(example) !== "[object Object]") {
-      throw "The example has to be an Object, or an Array";
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT.code;
+      err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT.message;
+      throw err;
     }
     ex = [example];
   } else {
@@ -1331,17 +1343,26 @@ AQLGenerator.prototype.next = function() {
 
 
 var _undirectedRelation = function (relationName, vertexCollections) {
-
+  var err;
   if (arguments.length < 2) {
-    throw "method _undirectedRelation expects 2 arguments";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.message + "2";
+    throw err;
   }
 
   if (typeof relationName !== "string" || relationName === "") {
-    throw "<relationName> must be a not empty string";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg1 must not be empty";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(vertexCollections)) {
-    throw "<vertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg2 must not be empty";
+    throw err;
   }
 
   return {
@@ -1380,21 +1401,35 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 
 var _directedRelation = function (
   relationName, fromVertexCollections, toVertexCollections) {
-
+  var err;
   if (arguments.length < 3) {
-    throw "method _directedRelation expects 3 arguments";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS.message + "3";
+    throw err;
   }
 
   if (typeof relationName !== "string" || relationName === "") {
-    throw "<relationName> must be a not empty string";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message + " arg1 must be non empty string";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(fromVertexCollections)) {
-    throw "<fromVertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message
+      + " arg2 must be non empty string or array";
+    throw err;
   }
 
   if (!isValidCollectionsParameter(toVertexCollections)) {
-    throw "<toVertexCollections> must be a not empty string or array";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_PARAMETER.message
+      + " arg3 must be non empty string or array";
+    throw err;
   }
 
   return {
@@ -1440,7 +1475,7 @@ var _list = function() {
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
@@ -1472,7 +1507,7 @@ var _edgeDefinitions = function () {
 /// In order to add more edge definitions to the graph before creating
 /// this function can be used to add more definitions to the initial list.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1520,7 +1555,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// * *edge-definitions*: array - list of edge definition objects
 /// * *orphan-collections*: array - list of additonal vertex collection names
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Create an empty graph, edge definitions can be added at runtime:
 ///
@@ -1534,7 +1569,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph = require("org/arangodb/general-graph");
-///   g = graph._create("mygraph", [graph._undirectedRelationDefinition("relation", ["male", "female"])], ["sessions"]);
+///   g = graph._create("mygraph", [graph._undirectedRelation("relation", ["male", "female"])], ["sessions"]);
 /// ~ graph._drop("mygraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -1695,7 +1730,11 @@ var bindEdgeCollections = function(self, edgeCollections) {
             var toCollection = to.split("/")[0];
             if (! _.contains(edgeDefinition.from, fromCollection)
               || ! _.contains(edgeDefinition.to, toCollection)) {
-              throw "Edge is not allowed between " + from + " and " + to + ".";
+              var err = new ArangoError();
+              err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code;
+              err.errorMessage =
+                arangodb.errors.ERROR_GRAPH_INVALID_EDGE.message + " between " + from + " and " + to + ".";
+              throw err;
             }
           }
         }
@@ -2059,7 +2098,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ///
 /// * *graph-name*: string - unique identifier of the graph
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Load a graph:
 ///
@@ -2162,7 +2201,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// * *graphName*: string - unique identifier of the graph
 /// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// Drop a graph:
 ///
@@ -2264,12 +2303,19 @@ Graph.prototype._vertexCollections = function() {
 
 // might be needed from AQL itself
 Graph.prototype._EDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2288,12 +2334,19 @@ Graph.prototype._EDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._INEDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2313,12 +2366,19 @@ Graph.prototype._INEDGES = function(vertexId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._OUTEDGES = function(vertexId) {
+  var err;
   if (vertexId.indexOf("/") === -1) {
-    throw vertexId + " is not a valid id";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
+    throw err;
   }
   var collection = vertexId.split("/")[0];
   if (!db._collection(collection)) {
-    throw collection + " does not exist.";
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
+    throw err;
   }
 
   var edgeCollections = this._edgeCollections();
@@ -2504,7 +2564,10 @@ Graph.prototype._getEdgeCollectionByName = function(name) {
   if (this.__edgeCollections[name]) {
     return this.__edgeCollections[name];
   }
-  throw "Collection " + name + " does not exist in graph.";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
+  throw err;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2515,7 +2578,10 @@ Graph.prototype._getVertexCollectionByName = function(name) {
   if (this.__vertexCollections[name]) {
     return this.__vertexCollections[name];
   }
-  throw "Collection " + name + " does not exist in graph.";
+  var err = new ArangoError();
+  err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
+  throw err;
 };
 
 
@@ -2560,7 +2626,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -2576,10 +2642,13 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._listCommonNeighbors('city/Munich', {}, {direction : 'outbound', maxDepth : 2},
-/// {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._listCommonNeighbors(
+/// |   'city/Munich', 
+/// |   {},
+/// |   {direction : 'outbound', maxDepth : 2},
+///     {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2650,7 +2719,7 @@ Graph.prototype._listCommonNeighbors = function(vertex1Example, vertex2Example, 
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -2746,7 +2815,7 @@ Graph.prototype._amountCommonNeighbors = function(vertex1Example, vertex2Example
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all locations with the same properties:
 ///
@@ -2824,7 +2893,7 @@ Graph.prototype._listCommonProperties = function(vertex1Example, vertex2Example,
 /// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
 /// match one of the examples.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// A route planner example, all locations with the same properties:
 ///
