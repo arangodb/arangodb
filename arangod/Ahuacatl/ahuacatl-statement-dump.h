@@ -28,11 +28,7 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_STATEMENT_DUMP_H
 #define TRIAGENS_AHUACATL_AHUACATL_STATEMENT_DUMP_H 1
 
-#include "BasicsC/common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/Common.h"
 
 struct TRI_aql_statement_list_s;
 
@@ -76,10 +72,6 @@ void TRI_DumpStatementsAql (struct TRI_aql_statement_list_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

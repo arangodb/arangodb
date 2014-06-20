@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8_V8LINE_EDITOR_H
 #define TRIAGENS_V8_V8LINE_EDITOR_H 1
 
+#include "Basics/Common.h"
+
 #include "Utilities/LineEditor.h"
 #include "Utilities/Completer.h"
 

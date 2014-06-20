@@ -104,6 +104,28 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes the WAL
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/wal/flush",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    if (req.requestType !== actions.PUT) {
+      actions.resultUnsupported(req, res);
+      return;
+    }
+
+    /*jslint node: true, stupid: true */
+    internal.flushWal(req.parameters.waitForSync === "true", 
+                      req.parameters.waitForCollector === "true");
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the server authentication information
 ////////////////////////////////////////////////////////////////////////////////
 

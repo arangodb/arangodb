@@ -39,6 +39,7 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/GeneralServer.h"
 
+using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
@@ -64,7 +65,7 @@ RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
                                     Dispatcher* data)
   : RestBaseHandler(request),
     _dispatcher(data) {
-  assert(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != 0);
 }
 
 // -----------------------------------------------------------------------------

@@ -98,7 +98,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
     c = (uint64_t) 256 * 1024; // 256 kb
   }
   
-  assert(c > 0);
+  TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
 }
@@ -280,7 +280,7 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
   }
   else {
     // some error occurred
-    assert(res != TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
 
     errorMsg = TRI_errno_string(res);
   }
@@ -424,7 +424,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
 
   if (_transactionState._trx != 0) {
     // transactional operation
-    assert(tid > 0);
+    TRI_ASSERT(tid > 0);
 
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_transactionState._trx, cid, TRI_TRANSACTION_WRITE);
   
@@ -444,7 +444,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
 
   else {
     // standalone operation
-    assert(tid == 0);
+    TRI_ASSERT(tid == 0);
 
     // update the apply tick for all standalone operations
     updateTick = true;
@@ -690,7 +690,8 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  int res = TRI_UseCollectionVocBase(_vocbase, col);
+  TRI_vocbase_col_status_e status;
+  int res = TRI_UseCollectionVocBase(_vocbase, col, status);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -703,7 +704,7 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   parameters._maximalSize = maximalSize;
   parameters._waitForSync = waitForSync;
 
-  res = TRI_UpdateCollectionInfo(_vocbase, &col->_collection->base, &parameters);
+  res = TRI_UpdateCollectionInfo(_vocbase, col->_collection, &parameters);
 
   TRI_ReleaseCollectionVocBase(_vocbase, col);
 

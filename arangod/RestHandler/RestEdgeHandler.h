@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_REST_HANDLER_REST_EDGE_HANDLER_H
 #define TRIAGENS_REST_HANDLER_REST_EDGE_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "RestHandler/RestDocumentHandler.h"
 
 // -----------------------------------------------------------------------------
@@ -117,13 +119,11 @@ namespace triagens {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
       bool createDocumentCoordinator (string const& collname,
                                       bool waitForSync,
                                       TRI_json_t* json,
                                       char const* from,
                                       char const* to);
-#endif
     };
   }
 }

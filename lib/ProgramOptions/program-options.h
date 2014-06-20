@@ -29,13 +29,9 @@
 #ifndef TRIAGENS_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
 #define TRIAGENS_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/vector.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -368,10 +364,6 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
 bool TRI_HasOptionProgramOptions (TRI_program_options_t const * options,
                                   char const * name);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

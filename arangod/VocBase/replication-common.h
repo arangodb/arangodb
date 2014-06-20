@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_VOC_BASE_REPLICATION_COMMON_H
 #define TRIAGENS_VOC_BASE_REPLICATION_COMMON_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "VocBase/voc-types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       REPLICATION 
@@ -169,10 +165,6 @@ bool TRI_ExcludeCollectionReplication (const char*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -32,8 +32,8 @@
 #include "BitIndexes/bitarray.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/index.h"
-#include "VocBase/primary-collection.h"
 
 // .............................................................................
 // forward declaration of static functions used for iterator callbacks
@@ -168,7 +168,7 @@ int BittarrayIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_
     }
 
     default : {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 
@@ -671,7 +671,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
       // ............................................................................
 
       if (relationOperator->_numFields != shapeList->_length) {
-        assert(false);
+        TRI_ASSERT(false);
       }
 
 
@@ -708,7 +708,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_NE_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -716,7 +716,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_LE_INDEX_OPERATOR: {
       // todo -- essentially (since finite number) take the union
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -724,7 +724,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_LT_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -732,7 +732,7 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_GE_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
@@ -740,13 +740,13 @@ int BitarrayIndex_findHelper(BitarrayIndex* baIndex,
     case TRI_GT_INDEX_OPERATOR: {
       // todo
       result = TRI_ERROR_INTERNAL;
-      assert(false);
+      TRI_ASSERT(false);
       break;
     }
 
     default: {
       result = TRI_ERROR_INTERNAL;
-      assert(0);
+      TRI_ASSERT(0);
     }
 
   } // end of switch statement
@@ -842,7 +842,7 @@ static bool isEqualJson(TRI_json_t const* left, TRI_json_t const* right) {
     }
 
     default: {
-      assert(false);
+      TRI_ASSERT(false);
     }
   }
 
@@ -974,7 +974,7 @@ static int BitarrayIndex_generateEqualBitMaskHelper (TRI_json_t const* valueList
 
 
 int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
-                                         const TRI_bitarray_index_key_t* element,
+                                         TRI_bitarray_index_key_t const* element,
                                          TRI_bitarray_mask_t* mask) {
   TRI_shaper_t* shaper;
   int shiftLeft;
@@ -983,11 +983,11 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // some safety checks first
   // ...........................................................................
 
-  if (baIndex == NULL || element == NULL) {
+  if (baIndex == nullptr || element == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (element->collection == NULL) {
+  if (element->collection == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -998,7 +998,7 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // we are here we wish to store this fact.
   // ...........................................................................
 
-  if (! baIndex->_supportUndef && (element->numFields == 0 || element->fields == NULL)) {
+  if (! baIndex->_supportUndef && (element->numFields == 0 || element->fields == nullptr)) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -1016,12 +1016,12 @@ int BitarrayIndex_generateInsertBitMask (BitarrayIndex* baIndex,
   // and what values the document has sent.
   // ...........................................................................
 
-  shaper      = ((TRI_primary_collection_t*)(element->collection))->_shaper;
+  shaper = ((TRI_document_collection_t*) (element->collection))->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   mask->_mask = 0;
   shiftLeft   = 0;
 
   for (size_t j = 0; j < baIndex->_values._length; ++j) {
-    uint64_t    tempMask;
+    uint64_t tempMask;
     int result;
 
     TRI_json_t* value = static_cast<TRI_json_t*>(TRI_JsonShapedJson(shaper, &(element->fields[j]))); // from shaped json to simple json
@@ -1226,7 +1226,7 @@ static int BitarrayIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* i
   if (baIndex == NULL || indexOperator == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1236,7 +1236,7 @@ static TRI_index_iterator_t* BitarrayIndex_resultMethodCall(void* theIndex, TRI_
   if (baIndex == NULL || indexOperator == NULL) {
     return NULL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return NULL;
 }
 
@@ -1245,7 +1245,7 @@ static int BitarrayIndex_freeMethodCall(void* theIndex, void* data) {
   if (baIndex == NULL) {
     return TRI_ERROR_INTERNAL;
   }
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 

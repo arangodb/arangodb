@@ -28,15 +28,13 @@
 #ifndef TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H
 #define TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
-#endif
 
 namespace triagens {
   namespace arango {
@@ -51,11 +49,6 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +56,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionNameResolver (TRI_vocbase_t* vocbase) :
-          _vocbase(vocbase), _resolvedNames(), _resolvedIds() {
+          _vocbase(vocbase), 
+          _resolvedNames(), 
+          _resolvedIds() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,18 +68,9 @@ namespace triagens {
         ~CollectionNameResolver () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -92,15 +78,15 @@ namespace triagens {
 /// @brief look up a collection id for a collection name (local case)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCollectionId (string const& name) const {
+        TRI_voc_cid_t getCollectionId (std::string const& name) const {
           if (name[0] >= '0' && name[0] <= '9') {
             // name is a numeric id
             return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
           }
 
-          const TRI_vocbase_col_t* collection = getCollectionStruct(name);
+          TRI_vocbase_col_t const* collection = getCollectionStruct(name);
 
-          if (collection != 0) {
+          if (collection != nullptr) {
             return collection->_cid;
           }
           return 0;
@@ -110,19 +96,21 @@ namespace triagens {
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_col_t* getCollectionStruct (string const& name) const {
+        const TRI_vocbase_col_t* getCollectionStruct (std::string const& name) const {
+          std::unordered_map<std::string, TRI_vocbase_col_t const*>::iterator it;
+
           if (! _resolvedNames.empty()) {
-            map<string, const TRI_vocbase_col_t*>::const_iterator it = _resolvedNames.find(name);
+            it = _resolvedNames.find(name);
 
             if (it != _resolvedNames.end()) {
               return (*it).second;
             }
           }
 
-          const TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
+          TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
-          if (collection != 0) {
-            _resolvedNames.insert(make_pair(name, collection));
+          if (collection != nullptr) {
+            _resolvedNames.insert(it, std::make_pair(name, collection));
           }
 
           return collection;
@@ -132,8 +120,7 @@ namespace triagens {
 /// @brief look up a cluster collection id for a cluster collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
-        TRI_voc_cid_t getCollectionIdCluster (string const& name) const {
+        TRI_voc_cid_t getCollectionIdCluster (std::string const& name) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionId(name);
           }
@@ -152,7 +139,6 @@ namespace triagens {
           }
           return cinfo->id();
         }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection name for a collection id, this implements
@@ -160,23 +146,18 @@ namespace triagens {
 /// translate the local collection ID into a cluster wide collection name.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getCollectionName (const TRI_voc_cid_t cid) const {
+        std::string getCollectionName (const TRI_voc_cid_t cid) const {
+          std::unordered_map<TRI_voc_cid_t, std::string>::iterator it;
+
           if (! _resolvedIds.empty()) {
-            map<TRI_voc_cid_t, string>::const_iterator it = _resolvedIds.find(cid);
+            it = _resolvedIds.find(cid);
 
             if (it != _resolvedIds.end()) {
               return (*it).second;
             }
           }
 
-          string name;
-#ifndef TRI_ENABLE_CLUSTER
-          char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (0 != n) {
-            name = n;
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-          }
-#else
+          std::string name;
           if (ServerState::instance()->isDBserver()) {
             TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
@@ -185,13 +166,13 @@ namespace triagens {
                      TRI_LookupByKeyAssociativePointer
                                    (&_vocbase->_collectionsById, &cid));
 
-            if (0 != found) {
+            if (nullptr != found) {
               name = triagens::basics::StringUtils::itoa(found->_planId);
             }
 
             TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
 
-            if (!name.empty()) {
+            if (! name.empty()) {
               shared_ptr<CollectionInfo> ci
                 = ClusterInfo::instance()->getCollection(found->_dbName, name);
               name = ci->name();
@@ -205,12 +186,11 @@ namespace triagens {
               TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
             }
           }
-#endif
           if (name.empty()) {
             name = "_unknown";
           }
 
-          _resolvedIds.insert(make_pair(cid, name));
+          _resolvedIds.insert(it, std::make_pair(cid, name));
 
           return name;
         }
@@ -220,8 +200,7 @@ namespace triagens {
 /// collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
-        string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
+        std::string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionName(cid);
           }
@@ -232,7 +211,7 @@ namespace triagens {
             shared_ptr<CollectionInfo> ci
               = ClusterInfo::instance()->getCollection(_vocbase->_name, 
                              triagens::basics::StringUtils::itoa(cid));
-            string name = ci->name();
+            std::string name = ci->name();
 
             if (name.empty()) {
               ClusterInfo::instance()->flush();
@@ -243,20 +222,10 @@ namespace triagens {
 
           return "_unknown";
         }
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -270,17 +239,13 @@ namespace triagens {
 /// @brief collection id => collection struct map
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable std::map<std::string, const TRI_vocbase_col_t*> _resolvedNames;
+        mutable std::unordered_map<std::string, TRI_vocbase_col_t const*> _resolvedNames;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection id => collection name map
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable std::map<TRI_voc_cid_t, std::string> _resolvedIds;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 
     };
   }

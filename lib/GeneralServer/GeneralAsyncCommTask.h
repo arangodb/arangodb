@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_GENERAL_ASYNC_COMM_TASK_H
 #define TRIAGENS_GENERAL_SERVER_GENERAL_ASYNC_COMM_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralCommTask.h"
 
 #include "Basics/Exceptions.h"

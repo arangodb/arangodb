@@ -28,7 +28,7 @@
 #ifndef TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H
 #define TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/skip-list.h"
 
@@ -36,16 +36,12 @@
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_doc_mptr_s;
-struct TRI_primary_collection_s;
+struct TRI_doc_mptr_t;
+struct TRI_document_collection_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        skiplistIndex public types
@@ -55,7 +51,7 @@ typedef struct {
   TRI_skiplist_t* skiplist;
   bool unique;
   bool sparse;
-  struct TRI_primary_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
   size_t _numFields;
 } 
 SkiplistIndex;
@@ -72,7 +68,7 @@ TRI_skiplist_index_key_t;
 typedef struct {
   TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the 
                                     // collection should know about
-  struct TRI_doc_mptr_s* _document; // master document pointer
+  struct TRI_doc_mptr_t* _document; // master document pointer
 } 
 TRI_skiplist_index_element_t;
 
@@ -139,7 +135,7 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-SkiplistIndex* SkiplistIndex_new (struct TRI_primary_collection_s*,
+SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool, bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, 
@@ -163,10 +159,6 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_CLUSTER_V8_CLUSTER_H
 #define TRIAGENS_CLUSTER_V8_CLUSTER_H 1
 
+#include "Basics/Common.h"
+
 #include "v8.h"
 
 // -----------------------------------------------------------------------------

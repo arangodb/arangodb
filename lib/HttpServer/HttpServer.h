@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_HTTP_SERVER_HTTP_SERVER_H
 #define TRIAGENS_HTTP_SERVER_HTTP_SERVER_H 1
 
+#include "Basics/Common.h"
+
 #include "HttpServer/GeneralHttpServer.h"
 
 #include "HttpServer/AsyncJobManager.h"

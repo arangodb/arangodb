@@ -366,7 +366,8 @@ int figuresOnCoordinator (string const& dbname,
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  
+   
+  // prefill with 0s 
   result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
   if (result == 0) {
@@ -776,10 +777,10 @@ int truncateCollectionOnCoordinator ( string const& dbname,
 
   // First determine the collection ID from the name:
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
 
   // Some stuff to prepare cluster-intern requests:
   map<string, string> headers;
@@ -859,8 +860,8 @@ int getDocumentOnCoordinator (
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard( collid, json, true, shardID,
-                                       usesDefaultShardingAttributes );
+  int error = ci->getResponsibleShard(collid, json, true, shardID,
+                                      usesDefaultShardingAttributes );
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
@@ -1399,13 +1400,9 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 /// @brief c binding for getIndexesCoordinator 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {  
-
 TRI_vector_pointer_t* TRI_GetCoordinatorIndexes (char const* databaseName, 
                                                  char const* collectionName) {
   return getIndexesCoordinator(string(databaseName), string(collectionName));
-}
-
 }
 
 // Local Variables:
