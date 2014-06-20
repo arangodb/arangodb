@@ -981,7 +981,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
         size_t to = strlen(toKey) + 1; // add NULL byte
         char const* fromKey = base + orig->_offsetFromKey;
         size_t from = strlen(fromKey) + 1; // add NULL byte
-        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_doc_edge_key_marker_t) + TRI_DF_ALIGN_BLOCK(to) + TRI_DF_ALIGN_BLOCK(from) + shapeLength);
+        TRI_voc_size_t const totalSize = static_cast<TRI_voc_size_t>(sizeof(TRI_doc_edge_key_marker_t) + TRI_DF_ALIGN_BLOCK(n) +  TRI_DF_ALIGN_BLOCK(to) +  TRI_DF_ALIGN_BLOCK(from) + shapeLength);
 
         char* dst = nextFreeMarkerPosition(document, source->_tick, TRI_DOC_MARKER_KEY_EDGE, totalSize, cache);
 
