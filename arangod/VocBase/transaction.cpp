@@ -162,9 +162,9 @@ static void FreeOperations (TRI_transaction_t* trx) {
         // the old header might point to the WAL. in this case, there'll be no stats update
       
         if (dfi != nullptr) {
-          dfi->_numberDead += (*it).second.first; 
+          dfi->_numberDead += static_cast<TRI_voc_ssize_t>((*it).second.first); 
           dfi->_sizeDead += (*it).second.second; 
-          dfi->_numberAlive -= (*it).second.first; 
+          dfi->_numberAlive -= static_cast<TRI_voc_ssize_t>((*it).second.first); 
           dfi->_sizeAlive -= (*it).second.second; 
         }
       }

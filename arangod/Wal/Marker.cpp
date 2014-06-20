@@ -377,7 +377,7 @@ void DropDatabaseMarker::dump () const {
       
 CreateCollectionMarker::CreateCollectionMarker (TRI_voc_tick_t databaseId,
                                                 TRI_voc_cid_t collectionId,
-                                                string const& properties) 
+                                                std::string const& properties) 
   : Marker(TRI_WAL_MARKER_CREATE_COLLECTION, sizeof(collection_create_marker_t) + alignedSize(properties.size() + 1)) {
 
   collection_create_marker_t* m = reinterpret_cast<collection_create_marker_t*>(begin());
@@ -485,7 +485,7 @@ void DropCollectionMarker::dump () const {
       
 RenameCollectionMarker::RenameCollectionMarker (TRI_voc_tick_t databaseId,
                                                 TRI_voc_cid_t collectionId,
-                                                string const& name)
+                                                std::string const& name)
   : Marker(TRI_WAL_MARKER_RENAME_COLLECTION, sizeof(collection_rename_marker_t) + alignedSize(name.size() + 1)) {
 
   collection_rename_marker_t* m = reinterpret_cast<collection_rename_marker_t*>(begin());
@@ -541,7 +541,7 @@ void RenameCollectionMarker::dump () const {
       
 ChangeCollectionMarker::ChangeCollectionMarker (TRI_voc_tick_t databaseId,
                                                 TRI_voc_cid_t collectionId,
-                                                string const& properties)
+                                                std::string const& properties)
   : Marker(TRI_WAL_MARKER_CHANGE_COLLECTION, sizeof(collection_change_marker_t) + alignedSize(properties.size() + 1)) {
 
   collection_change_marker_t* m = reinterpret_cast<collection_change_marker_t*>(begin());
@@ -598,7 +598,7 @@ void ChangeCollectionMarker::dump () const {
 CreateIndexMarker::CreateIndexMarker (TRI_voc_tick_t databaseId,
                                       TRI_voc_cid_t collectionId,
                                       TRI_idx_iid_t indexId,
-                                      string const& properties) 
+                                      std::string const& properties) 
   : Marker(TRI_WAL_MARKER_CREATE_INDEX, sizeof(index_create_marker_t) + alignedSize(properties.size() + 1)) {
 
   index_create_marker_t* m = reinterpret_cast<index_create_marker_t*>(begin());
