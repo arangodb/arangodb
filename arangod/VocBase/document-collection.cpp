@@ -2205,7 +2205,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   try {
     document = new TRI_document_collection_t();
   }
-  catch (std::exception& e) {
+  catch (std::exception&) {
     document = nullptr;
   }
 
@@ -2712,7 +2712,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   try {
     document = new TRI_document_collection_t();
   }
-  catch (std::exception& e) {
+  catch (std::exception&) {
     document = nullptr;
   }
 

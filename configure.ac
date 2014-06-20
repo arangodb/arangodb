@@ -123,7 +123,7 @@ dnl GO
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(internal-go,
-  AS_HELP_STRING([--enable-internal-go], [use  go binaries from 3rdParty directory (default: no)]),
+  AS_HELP_STRING([--enable-internal-go], [use go binaries from 3rdParty directory (default: no)]),
   [tr_INTERNAL_GO="${enableval:-yes}"],
   [tr_INTERNAL_GO=no]
 )

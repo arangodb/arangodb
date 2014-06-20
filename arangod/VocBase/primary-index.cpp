@@ -32,14 +32,14 @@
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial number of elements in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr uint64_t InitialSize () {
+static inline uint64_t InitialSize () {
   return 251;
 }
 

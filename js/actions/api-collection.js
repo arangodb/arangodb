@@ -935,18 +935,6 @@ function get_api_collection (req, res) {
     }
 
     // .............................................................................
-    // /_api/collection/<identifier>/parameter (DEPRECATED)
-    // .............................................................................
-
-    else if (sub === "parameter") {
-      result = collectionRepresentation(collection, true, false, false);
-      headers = { 
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/parameter") 
-      };
-      actions.resultOk(req, res, actions.HTTP_OK, result, headers);
-    }
-    
-    // .............................................................................
     // /_api/collection/<identifier>/revision
     // .............................................................................
 
