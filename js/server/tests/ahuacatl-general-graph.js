@@ -90,7 +90,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         "bla3",
         graph._edgeDefinitions(
           graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+          graph._directedRelation("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
@@ -303,7 +303,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge1",
+          graph._directedRelation("UnitTestsAhuacatlEdge1",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"]
           )
@@ -494,7 +494,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
         "bla3",
         graph._edgeDefinitions(
           graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelationDefinition("UnitTestsAhuacatlEdge2",
+          graph._directedRelation("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
@@ -662,7 +662,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
         "werKenntWen",
         graph._edgeDefinitions(
           graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelationDefinition(KenntAnderen,
+          graph._directedRelation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )
@@ -1623,7 +1623,7 @@ function ahuacatlQueryGeneralCycleSSuite() {
         "werKenntWen",
         graph._edgeDefinitions(
           graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelationDefinition(KenntAnderen,
+          graph._directedRelation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )

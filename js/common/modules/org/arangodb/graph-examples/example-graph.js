@@ -65,8 +65,8 @@
 
   var createRoutePlannerGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._directedRelationDefinition("highway", ["city"], ["city"]));
-    edgeDefinition.push(Graph._directedRelationDefinition(
+    edgeDefinition.push(Graph._directedRelation("highway", ["city"], ["city"]));
+    edgeDefinition.push(Graph._directedRelation(
       "road", ["village", "city"], ["village", "city"])
     );
     var g = Graph._create("routeplanner", edgeDefinition);

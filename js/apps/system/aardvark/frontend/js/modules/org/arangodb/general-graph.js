@@ -1356,9 +1356,9 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// Define an directed relation.
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_directedRelationDefinition
+/// @startDocuBlock JSF_general_graph_directedRelation
 ///
-/// `general-graph._directedRelationDefinition(relationName, fromVertexCollections, toVertexCollections)`
+/// `general-graph._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
 /// *Define a directed relation.*
 ///
 /// The *relationName* defines the name of this relation and references to the underlying edge collection.
@@ -1371,18 +1371,18 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
 ///   var graph = require("org/arangodb/general-graph");
-///   graph._directedRelationDefinition("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+///   graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _directedRelationDefinition = function (
+var _directedRelation = function (
   relationName, fromVertexCollections, toVertexCollections) {
 
   if (arguments.length < 3) {
-    throw "method _directedRelationDefinition expects 3 arguments";
+    throw "method _directedRelation expects 3 arguments";
   }
 
   if (typeof relationName !== "string" || relationName === "") {
@@ -1445,8 +1445,8 @@ var _list = function() {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph");
-///   directed_relation = graph._directedRelationDefinition("lives_in", "user", "city");
-///   undirected_relation = graph._directedRelationDefinition("knows", "user");
+///   directed_relation = graph._directedRelation("lives_in", "user", "city");
+///   undirected_relation = graph._directedRelation("knows", "user");
 ///   edgedefinitions = graph._edgeDefinitions(directed_relation, undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -1476,8 +1476,8 @@ var _edgeDefinitions = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
 ///   var graph = require("org/arangodb/general-graph");
-///   directed_relation = graph._directedRelationDefinition("lives_in", "user", "city");
-///   undirected_relation = graph._directedRelationDefinition("knows", "user");
+///   directed_relation = graph._directedRelation("lives_in", "user", "city");
+///   undirected_relation = graph._directedRelation("knows", "user");
 ///   edgedefinitions = graph._edgeDefinitions(directed_relation);
 ///   edgedefinitions = graph._extendEdgeDefinitions(undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2892,8 +2892,8 @@ Graph.prototype._amountCommonProperties = function(vertex1Example, vertex2Exampl
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._extendEdgeDefinitions(ed2);
 /// ~ var blub = graph._drop("myGraph", true);
@@ -3051,8 +3051,8 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph._directedRelationDefinition("myEC1", ["myVC2"], ["myVC3"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelation("myEC1", ["myVC2"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._editEdgeDefinition(ed2, true);
 /// ~ var blub = graph._drop("myGraph", true);
@@ -3123,8 +3123,8 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph._directedRelationDefinition("myEC2", ["myVC1"], ["myVC3"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var g = graph._create("myGraph", [ed1, ed2]);
 ///   g._deleteEdgeDefinition("myEC1");
 /// ~ var blub = graph._drop("myGraph", true);
@@ -3189,7 +3189,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
 /// ~ var blub = graph._drop("myGraph", true);
@@ -3243,7 +3243,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
 ///   g._orphanCollections();
@@ -3274,7 +3274,7 @@ Graph.prototype._orphanCollections = function() {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
 ///   var graph = require("org/arangodb/general-graph")
 /// ~ if (graph._exists("myGraph")){var blub = graph._drop("myGraph", true);}
-///   var ed1 = graph._directedRelationDefinition("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var g = graph._create("myGraph", [ed1]);
 ///   g._addVertexCollection("myVC3", true);
 ///   g._addVertexCollection("myVC4", true);
@@ -3338,7 +3338,7 @@ Graph.prototype._PRINT = function(context) {
 // -----------------------------------------------------------------------------
 
 exports._undirectedRelation = _undirectedRelation;
-exports._directedRelationDefinition = _directedRelationDefinition;
+exports._directedRelation = _directedRelation;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
 exports._extendEdgeDefinitions = _extendEdgeDefinitions;
