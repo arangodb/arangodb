@@ -648,6 +648,7 @@ function mountAalApp (app, mount, options) {
     author: app._manifest.author,
     mount: mount,
     active: true,
+    error: false,
     isSystem: app._manifest.isSystem || false,
     options: options
   };
@@ -899,8 +900,8 @@ function scanDirectory (path) {
             thumbnail = fs.read64(p);
           }
           catch (err2) {
-            console.errorLines(
-              "Cannot read thumbnail referenced by manifest '%s': %s", m, String(err2.stack || err2));
+            console.warnLines(
+              "Cannot read thumbnail %s referenced by manifest '%s': %s", p, m, err2);
           }
         }
 
@@ -1036,6 +1037,22 @@ exports.mount = function (appId, mount, options) {
     [ appId, mount ] );
 
   // .............................................................................
+  // mark than app has an error and cannot be mounted
+  // .............................................................................
+
+  function markAsIllegal (doc, err) {
+    if (doc !== undefined) {
+      var aal = getStorage();
+      var desc = aal.document(doc._key)._shallowCopy;
+
+      desc.error = String(err.stack || err);
+      desc.active = false;
+
+      aal.replace(doc, desc);
+    }
+  }
+
+  // .............................................................................
   // locate the application
   // .............................................................................
 
@@ -1061,16 +1078,7 @@ exports.mount = function (appId, mount, options) {
     doc = mountAalApp(app, mount, options);
   }
   catch (err) {
-    if (doc !== undefined) {
-      var aal = getStorage();
-      var desc = aal.document(doc._key)._shallowCopy;
-
-      desc.error = String(err);
-      desc.active = false;
-
-      aal.replace(doc, desc);
-    }
-
+    markAsIllegal(doc, err);
     throw err;
   }
 
@@ -1079,7 +1087,13 @@ exports.mount = function (appId, mount, options) {
   // .............................................................................
 
   if (typeof options.setup !== "undefined" && options.setup === true) {
-    exports.setup(mount);
+    try {
+      exports.setup(mount);
+    }
+    catch (err2) {
+      markAsIllegal(doc, err2);
+      throw err;
+    }
   }
 
   if (typeof options.reload === "undefined" || options.reload === true) {
@@ -1578,13 +1592,25 @@ exports.fetchFromGithub = function (url, name, version) {
   return "app:" + source.name + ":" + source.version;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all available FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
 exports.availableJson = function () {
   return utils.availableJson();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+///// @brief returns all installed FOXX applications
+////////////////////////////////////////////////////////////////////////////////
+
 exports.listJson = function () {
   return utils.listJson();
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the fishbowl collection
+////////////////////////////////////////////////////////////////////////////////
 
 exports.getFishbowlStorage = function () {
   return utils.getFishbowlStorage();
