@@ -423,7 +423,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   // TODO: what to do here?
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
