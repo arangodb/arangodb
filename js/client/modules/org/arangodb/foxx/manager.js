@@ -1060,7 +1060,7 @@ exports.availableJson = function () {
   'use strict';
 
   return utils.availableJson();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints all available FOXX applications
