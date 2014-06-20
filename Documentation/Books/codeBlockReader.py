@@ -131,10 +131,10 @@ def fetch_comments(dirpath):
             for comment in file_comments:
                 fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
-                    _text = _com.replace("///", "")
-                    if len(_text.strip()) == 0:
-                        _text = _text.replace("\n", "<br />")    
-                    _text = _text.strip()
+                    _text = re.sub(r"//(/)+\s*\n", "<br />", _com)
+                    _text = re.sub(r"/// +(\s+) + -", "  -", _text)
+                    _text = re.sub(r"///\s*", "", _text)
+                    _text = _text.strip("\n")
                     if _text:
                       if not shouldIgnoreLine:
                         if ("@startDocuBlock" in _text) or \
@@ -156,6 +156,7 @@ def fetch_comments(dirpath):
                         shouldIgnoreLine = False
 
     fh.close()
+
 
 if __name__ == "__main__":
     open("allComments.txt", "w").close()  
