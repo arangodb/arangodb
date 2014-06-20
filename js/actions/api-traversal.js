@@ -108,8 +108,8 @@ function notFound (req, res, code, message) {
 ///          populate a result, use the *result* variable by reference
 ///
 /// - *direction* (optional): direction for traversal
-///            - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
-///            - *if not set*, the *expander* attribute must be specified
+///   - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
+///   - *if not set*, the *expander* attribute must be specified
 ///
 /// - *init* (optional): body (JavaScript) code of custom result initialisation function
 ///       function signature: (config, result) -> void
