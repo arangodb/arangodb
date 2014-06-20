@@ -53,8 +53,8 @@ function GeneralGraphCreationSuite() {
   var vn4 = "UnitTestVertices4";
   var gn = "UnitTestGraph";
   var edgeDef = graph._edgeDefinitions(
-    graph._undirectedRelationDefinition(rn, vn1),
-    graph._directedRelationDefinition(rn1,
+    graph._undirectedRelation(rn, vn1),
+    graph._directedRelation(rn1,
       [vn1, vn2], [vn3, vn4]
     )
   );
@@ -109,8 +109,8 @@ function GeneralGraphCreationSuite() {
 /// @brief test: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
-    test_undirectedRelationDefinition : function () {
-      var r = graph._undirectedRelationDefinition(rn, [vn1, vn2]);
+    test_undirectedRelation : function () {
+      var r = graph._undirectedRelation(rn, [vn1, vn2]);
 
       assertEqual(r, {
         collection: rn,
@@ -120,8 +120,8 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_undirectedRelationDefinitionWithSingleCollection : function () {
-      var r = graph._undirectedRelationDefinition(rn, vn1);
+    test_undirectedRelationWithSingleCollection : function () {
+      var r = graph._undirectedRelation(rn, vn1);
 
       assertEqual(r, {
         collection: rn,
@@ -131,9 +131,9 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_undirectedRelationDefinitionWithMissingName : function () {
+    test_undirectedRelationWithMissingName : function () {
       try {
-        graph._undirectedRelationDefinition("", [vn1, vn2]);
+        graph._undirectedRelation("", [vn1, vn2]);
         fail();
       }
       catch (err) {
@@ -141,21 +141,21 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_undirectedRelationDefinitionWithTooFewArgs : function () {
+    test_undirectedRelationWithTooFewArgs : function () {
       try {
-        graph._undirectedRelationDefinition([vn1, vn2]);
+        graph._undirectedRelation([vn1, vn2]);
         fail();
       }
       catch (err) {
-        assertEqual(err, "method _undirectedRelationDefinition expects 2 arguments");
+        assertEqual(err, "method _undirectedRelation expects 2 arguments");
       }
     },
 
-    test_undirectedRelationDefinitionWithInvalidSecondArg : function () {
+    test_undirectedRelationWithInvalidSecondArg : function () {
       try {
         var param = {};
         param[vn1] = vn2;
-        graph._undirectedRelationDefinition(rn, param);
+        graph._undirectedRelation(rn, param);
         fail();
       }
       catch (err) {
@@ -163,8 +163,8 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_directedRelationDefinition : function () {
-      var r = graph._directedRelationDefinition(rn,
+    test_directedRelation : function () {
+      var r = graph._directedRelation(rn,
           [vn1, vn2], [vn3, vn4]);
 
       assertEqual(r, {
@@ -175,9 +175,9 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_directedRelationDefinitionWithMissingName : function () {
+    test_directedRelationWithMissingName : function () {
       try {
-        graph._directedRelationDefinition("",
+        graph._directedRelation("",
           [vn1, vn2], [vn3, vn4]);
         fail();
       }
@@ -186,21 +186,21 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-    test_directedRelationDefinitionWithTooFewArgs : function () {
+    test_directedRelationWithTooFewArgs : function () {
       try {
-        graph._directedRelationDefinition([vn1, vn2], [vn3, vn4]);
+        graph._directedRelation([vn1, vn2], [vn3, vn4]);
         fail();
       }
       catch (err) {
-        assertEqual(err, "method _directedRelationDefinition expects 3 arguments");
+        assertEqual(err, "method _directedRelation expects 3 arguments");
       }
     },
 
-    test_directedRelationDefinitionWithInvalidSecondArg : function () {
+    test_directedRelationWithInvalidSecondArg : function () {
       try {
         var param = {};
         param[vn1] = vn2;
-        graph._directedRelationDefinition(rn, param, vn3);
+        graph._directedRelation(rn, param, vn3);
         fail();
       }
       catch (err) {
@@ -210,11 +210,11 @@ function GeneralGraphCreationSuite() {
 
     },
 
-    test_directedRelationDefinitionWithInvalidThirdArg : function () {
+    test_directedRelationWithInvalidThirdArg : function () {
       try {
         var param = {};
         param[vn1] = vn2;
-        graph._directedRelationDefinition(rn, vn3, param);
+        graph._directedRelation(rn, vn3, param);
         fail();
       }
       catch (err) {
@@ -229,8 +229,8 @@ function GeneralGraphCreationSuite() {
 
       //with args
       assertEqual(graph._edgeDefinitions(
-        graph._undirectedRelationDefinition(rn, vn1),
-        graph._directedRelationDefinition(rn1,
+        graph._undirectedRelation(rn, vn1),
+        graph._directedRelation(rn1,
           [vn1, vn2], [vn3, vn4])
       ), [
         {
@@ -254,12 +254,12 @@ function GeneralGraphCreationSuite() {
 
       //with args
       var ed =graph._edgeDefinitions(
-        graph._undirectedRelationDefinition("relationName", "vertexC1"),
-        graph._directedRelationDefinition("relationName",
+        graph._undirectedRelation("relationName", "vertexC1"),
+        graph._directedRelation("relationName",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
       );
       graph._extendEdgeDefinitions(ed,
-        graph._undirectedRelationDefinition("relationName", "vertexC1")
+        graph._undirectedRelation("relationName", "vertexC1")
       );
       assertEqual(ed,  [
         {
@@ -289,8 +289,8 @@ function GeneralGraphCreationSuite() {
       var a = graph._create(
         gn,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(rn, vn1),
-          graph._directedRelationDefinition(rn1, [vn1, vn2], [vn3, vn4])
+          graph._undirectedRelation(rn, vn1),
+          graph._directedRelation(rn1, [vn1, vn2], [vn3, vn4])
         )
       );
       assertTrue(a.__vertexCollections.hasOwnProperty(vn1));
@@ -342,8 +342,8 @@ function GeneralGraphCreationSuite() {
         graph._create(
           "",
           graph._edgeDefinitions(
-            graph._undirectedRelationDefinition("relationName", "vertexC1"),
-            graph._directedRelationDefinition("relationName2",
+            graph._undirectedRelation("relationName", "vertexC1"),
+            graph._directedRelation("relationName2",
               ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"]
             )
           )
@@ -419,7 +419,7 @@ function GeneralGraphCreationSuite() {
       if(graph._exists(gn)) {
         graph._drop(gn, true);
       }
-      var edgeDef2 = [graph._directedRelationDefinition(rn, vn1, vn2)];
+      var edgeDef2 = [graph._directedRelation(rn, vn1, vn2)];
       var g = graph._create(gn, edgeDef2);
       var v1 = g[vn1].save({_key: "1"})._id;
       var v2 = g[vn2].save({_key: "2"})._id;
@@ -457,7 +457,7 @@ function GeneralGraphCreationSuite() {
 
 
     test_deleteEdgeDefinitionFromExistingGraph1: function() {
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
         g1 = graph._create(gN1, [dr1]);
 
       try {
@@ -473,9 +473,9 @@ function GeneralGraphCreationSuite() {
 
     test_deleteEdgeDefinitionFromExistingGraph2: function() {
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
-        dr3 = graph._directedRelationDefinition(ec3, [vc4], [vc5]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelation(ec3, [vc4], [vc5]),
         g1 = graph._create(gN1, [dr1, dr2, dr3]);
 
       assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
@@ -495,8 +495,8 @@ function GeneralGraphCreationSuite() {
       } catch(ignore) {
       }
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc2]),
-        dr2 = graph._directedRelationDefinition(ec1, [vc2], [vc3]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc2]),
+        dr2 = graph._directedRelation(ec1, [vc2], [vc3]),
         g1 = graph._create(gN1, [dr1]);
 
       try {
@@ -517,9 +517,9 @@ function GeneralGraphCreationSuite() {
 
     test_extendEdgeDefinitionFromExistingGraph2: function() {
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
-        dr2a = graph._directedRelationDefinition(ec2, [vc3], [vc4]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc3], [vc4, vc5]),
+        dr2a = graph._directedRelation(ec2, [vc3], [vc4]),
         g1 = graph._create(gN1, [dr1]),
         g2 = graph._create(gN2, [dr2]);
 
@@ -553,9 +553,9 @@ function GeneralGraphCreationSuite() {
       } catch(ignore) {
       }
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
-        dr3 = graph._directedRelationDefinition(ec3, [vc3], [vc4]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelation(ec3, [vc3], [vc4]),
         g1 = graph._create(gN1, [dr1]),
         g2 = graph._create(gN2, [dr2]);
 
@@ -571,8 +571,8 @@ function GeneralGraphCreationSuite() {
     },
 
     test_editEdgeDefinitionFromExistingGraph1: function() {
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc3], [vc4, vc5]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc3], [vc4, vc5]),
         g1 = graph._create(gN1, [dr1]);
 
       try {
@@ -588,9 +588,9 @@ function GeneralGraphCreationSuite() {
 
     test_editEdgeDefinitionFromExistingGraph2: function() {
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1, vc2], [vc3, vc4]),
-        dr2 = graph._directedRelationDefinition(ec2, [vc1], [vc4]),
-        dr3 = graph._directedRelationDefinition(ec1, [vc5], [vc5]),
+      var dr1 = graph._directedRelation(ec1, [vc1, vc2], [vc3, vc4]),
+        dr2 = graph._directedRelation(ec2, [vc1], [vc4]),
+        dr3 = graph._directedRelation(ec1, [vc5], [vc5]),
         g1 = graph._create(gN1, [dr1, dr2]),
         g2 = graph._create(gN2, [dr1]);
 
@@ -610,9 +610,9 @@ function GeneralGraphCreationSuite() {
 
     test_editEdgeDefinitionFromExistingGraph3: function() {
 
-      var dr1 = graph._directedRelationDefinition(ec1, [vc1], [vc1, vc2]),
-        dr2 = graph._directedRelationDefinition(ec1, [vc3], [vc4, vc5]),
-        dr3 = graph._directedRelationDefinition(ec2, [vc2], [vc2, vc3]),
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec1, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelation(ec2, [vc2], [vc2, vc3]),
         g1 = graph._create(gN1, [dr1, dr3]),
         g2 = graph._create(gN2, [dr1]);
 
@@ -669,10 +669,10 @@ function GeneralGraphAQLQueriesSuite() {
 
   var createInclExcl = function() {
     dropInclExcl();
-    var inc = graph._directedRelationDefinition(
+    var inc = graph._directedRelation(
       included, [v1], [v1, v2]
     );
-    var exc = graph._directedRelationDefinition(
+    var exc = graph._directedRelation(
       excluded, [v1], [v3]
     );
     var g = graph._create(graphName, [inc, exc]);
@@ -948,8 +948,8 @@ function ChainedFluentAQLResultsSuite() {
   var g;
 
   var edgeDef = [];
-  edgeDef.push(graph._undirectedRelationDefinition(isFriend, user));
-  edgeDef.push(graph._directedRelationDefinition(hasBought, user, product));
+  edgeDef.push(graph._undirectedRelation(isFriend, user));
+  edgeDef.push(graph._directedRelation(hasBought, user, product));
 
 
   var findBoughts = function(result, list) {
@@ -1819,8 +1819,8 @@ function EdgesAndVerticesSuite() {
       g = graph._create(
         unitTestGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(ec1, vc1),
-          graph._directedRelationDefinition(ec2,
+          graph._undirectedRelation(ec1, vc1),
+          graph._directedRelation(ec2,
             [vc1, vc2], [vc3, vc4]
           )
         )
@@ -1838,7 +1838,7 @@ function EdgesAndVerticesSuite() {
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+          graph._undirectedRelation(myEdgeColName, myVertexColName)
         )
       );
       graph._drop(myGraphName, true);
@@ -1854,7 +1854,7 @@ function EdgesAndVerticesSuite() {
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(myEdgeColName, myVertexColName)
+          graph._undirectedRelation(myEdgeColName, myVertexColName)
         )
       );
       graph._drop(myGraphName);
@@ -1868,7 +1868,7 @@ function EdgesAndVerticesSuite() {
       graph._create(
         myGraphName,
         graph._edgeDefinitions(
-          graph._undirectedRelationDefinition(ec1, vc1)
+          graph._undirectedRelation(ec1, vc1)
         )
       );
       assertTrue(graph._exists(myGraphName));
@@ -1884,7 +1884,7 @@ function EdgesAndVerticesSuite() {
         graph._create(
           myGraphName,
           graph._edgeDefinitions(
-            graph._undirectedRelationDefinition(ec1, vc2)
+            graph._undirectedRelation(ec1, vc2)
           )
         );
       } catch (e) {
@@ -1909,8 +1909,8 @@ function EdgesAndVerticesSuite() {
         graph._create(
           myGraphName,
           graph._edgeDefinitions(
-            graph._undirectedRelationDefinition(myED, myVD1),
-            graph._undirectedRelationDefinition(myED, myVD2)
+            graph._undirectedRelation(myED, myVD1),
+            graph._undirectedRelation(myED, myVD2)
           )
         );
       } catch (e) {
@@ -2082,7 +2082,7 @@ function EdgesAndVerticesSuite() {
       var g2 = graph._create(
         myGraphName,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(myEC02,
+          graph._directedRelation(myEC02,
             [ec1], [myVC01]
           )
         )
@@ -2157,25 +2157,25 @@ function EdgesAndVerticesSuite() {
       var g1 = graph._create(
         gN1,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(eC1, [eC4], [vC1])
+          graph._directedRelation(eC1, [eC4], [vC1])
         )
       );
       var g2 = graph._create(
         gN2,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(eC2, [eC1], [vC2])
+          graph._directedRelation(eC2, [eC1], [vC2])
         )
       );
       var g3 = graph._create(
         gN3,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(eC3, [eC2], [vC3])
+          graph._directedRelation(eC3, [eC2], [vC3])
         )
       );
       var g4 = graph._create(
         gN4,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(eC4, [eC3], [vC4])
+          graph._directedRelation(eC4, [eC3], [vC4])
         )
       );
 
@@ -2287,7 +2287,7 @@ function GeneralGraphCommonNeighborsSuite() {
       testGraph = graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(eColName,
+          graph._directedRelation(eColName,
             [v1ColName, v2ColName],
             [v1ColName, v2ColName]
           )
@@ -2485,7 +2485,7 @@ function OrphanCollectionSuite() {
       g1 = graph._create(
         gN1,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(
+          graph._directedRelation(
             eC1, [vC1], [vC1, vC2]
           )
         )
@@ -2493,7 +2493,7 @@ function OrphanCollectionSuite() {
       g2 = graph._create(
         gN2,
         graph._edgeDefinitions(
-          graph._directedRelationDefinition(
+          graph._directedRelation(
             eC2, [vC3], [vC1]
           )
         )
