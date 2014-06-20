@@ -3154,7 +3154,7 @@ Graph.prototype._closeness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3163,24 +3163,21 @@ Graph.prototype._closeness = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_betweenness
 ///
-/// `general_graph._absoluteBetweenness(options)`
-/// *The _absoluteBetweenness function returns the*
+/// `graph._absoluteBetweenness(options)`
+/// *Get the*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of all vertices in the graph.*
 ///
+/// *Parameter*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the betweenness can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the betweeness can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3227,7 +3224,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3235,22 +3232,11 @@ Graph.prototype._absoluteBetweenness = function(options) {
 /// @startDocuBlock JSF_general_graph_betweenness
 ///
 /// `general_graph._betweenness(options)`
-/// *The _betweenness function returns the*
+/// *Get the normalized*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of graphs vertices.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteBetweeness](#_absoluteBetweeness) but returns normalized values.
 ///
 /// @EXAMPLES
 ///
@@ -3258,9 +3244,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness();
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all locations.
@@ -3268,9 +3254,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness({weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness({weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all cities regarding only
@@ -3278,9 +3264,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness({direction : 'outbound', weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness({direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3297,7 +3283,7 @@ Graph.prototype._betweenness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3305,26 +3291,23 @@ Graph.prototype._betweenness = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_radius
-///
-/// `general_graph._radius(options)`
-/// *The _radius function returns the*
+/// `graph._radius(options)`
+/// *Get the*
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
 ///
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the radius can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3371,7 +3354,7 @@ Graph.prototype._radius = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3379,26 +3362,23 @@ Graph.prototype._radius = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_diameter
-///
-/// `general_graph._diameter(graphName, options)`
-/// *The _diameter function returns the*
+/// `graph._diameter(graphName, options)`
+/// *Get the*
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
 ///
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the radius can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3432,7 +3412,6 @@ Graph.prototype._radius = function(options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._diameter = function(options) {
 
@@ -3445,7 +3424,7 @@ Graph.prototype._diameter = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3454,14 +3433,17 @@ Graph.prototype._diameter = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
+/// `graph._extendEdgeDefinitions(edgeDefinition)`
+/// *Add another edge definition to the graph*
+///
 /// Extends the edge definitions of a graph. If an orphan collection is used in this
-/// edge definitino, it will be removed from the orphenage. If the edge collection of
+/// edge definition, it will be removed from the orphanage. If the edge collection of
 /// the edge definition to add is already used in the graph or used in a different
-/// graph with different from an to collections an error is thrown.
+/// graph with different *from* and/or *to* collections an error is thrown.
 ///
-/// `general-graph._extendEdgeDefinitions(edgeDefinition)`
+/// *Parameter*
 ///
-/// *edgeDefinition* - [string] : the edge definition to extend the graph
+/// * *edgeDefinition*: The relation definition to extend the graph
 ///
 /// *Examples*
 ///
@@ -3591,7 +3573,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
         }
         try {
           graphObj._removeVertexCollection(nc, false);
-        } catch (e) {
+        } catch (ignore) {
         }
       }
     }
@@ -3610,16 +3592,19 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__editEdgeDefinition
-/// Edits the edge definitions of a graph. The edge definition used as argument will
+/// `general-graph._editEdgeDefinition(edgeDefinition)`
+/// *Modify an relation definition*
+///
+/// Edits one relation definition of a graph. The edge definition used as argument will
 /// replace the existing edge definition of the graph which has the same collection.
 /// Vertex Collections of the replaced edge definition, that are not used in the new
 /// definition will transform to an orphan. Orphans that are used in this new edge
 /// definition will be deleted from the list of orphans. Other graphs with the same edge
 /// definition will be modified, too.
 ///
-/// `general-graph._editEdgeDefinition(edgeDefinition)`
+/// *Parameter*
 ///
-/// *edgeDefinition* - [string] : the edge definition to replace the existing edge
+/// * *edgeDefinition*: The edge definition to replace the existing edge
 /// definition with the same attribute *collection*.
 ///
 /// *Examples*
@@ -3685,14 +3670,16 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
-/// Deletes an edge definition defined by the edge collection of a graph. If the
+/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
+/// *Delete one relation definition*
+///
+/// Deletes a relation definition defined by the edge collection of a graph. If the
 /// collections defined in the edge definition (collection, from, to) are not used
 /// in another edge definition of the graph, they will be moved to the orphanage.
 ///
-/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
+/// *Parameter*
 ///
-/// * *edgeCollectionName*: string - name of edge collection defined in *collection* of the edge
-/// definition.
+/// * *edgeCollectionName*: Name of edge collection in the relation definition.
 ///
 /// *Examples*
 ///
@@ -3707,7 +3694,6 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
@@ -3752,13 +3738,16 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__addVertexCollection
+/// `graph._addVertexCollection(vertexCollectionName, createCollection)`
+/// *Add a vertex collection to the graph*
+///
 /// Adds a vertex collection to the set of orphan collections of the graph. If the
 /// collection does not exist, it will be created.
 ///
-/// `general-graph._addVertexCollection(vertexCollectionName, createCollection)`
+/// *Parameter*
 ///
-/// * *vertexCollectionName* - string : name of vertex collection.
-/// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+/// * *vertexCollectionName*: Name of vertex collection.
+/// * *createCollection* (optional): If true the collection will be created if it does not exist. Default: true.
 ///
 /// *Examples*
 ///
@@ -3810,9 +3799,10 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__orphanCollections
-/// Returns all vertex collections of the graph, that are not used in an edge definition.
+/// `graph._orphanCollections()`
+/// *Get all orphan collections*
 ///
-/// `general-graph._orphanCollections()`
+/// Returns all vertex collections of the graph, that are not used in any edge definition.
 ///
 /// *Examples*
 ///
@@ -3836,14 +3826,18 @@ Graph.prototype._orphanCollections = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__removeVertexCollection
-/// Removes an orphan collection from the graph. Optionally it deletes the collection,
-/// if it is not used in any graph.
+/// `graph._removeVertexCollection(vertexCollectionName, dropCollection)`
+/// *Remove a vertex collection from the graph*
 ///
-/// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
+/// Removes a vertex collection from the graph.
+/// Only collections not used in any relation definition can be removed.
+/// Optionally the collection can be deleted, if it is not used in any other graph.
 ///
-/// *vertexCollectionName*: string - name of vertex collection.
-/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is
-/// not used in any graph. Default: false.
+/// *Parameter*
+///
+/// * *vertexCollectionName*: Name of vertex collection.
+/// * *dropCollection* (optional): If true the collection will be dropped if it is
+///     not used in any other graph. Default: false.
 ///
 /// *Examples*
 ///
