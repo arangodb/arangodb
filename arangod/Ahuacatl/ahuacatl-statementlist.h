@@ -28,12 +28,8 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_STATEMENTLIST_H
 #define TRIAGENS_AHUACATL_AHUACATL_STATEMENTLIST_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/vector.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_aql_node_s;
 
@@ -142,10 +138,6 @@ bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

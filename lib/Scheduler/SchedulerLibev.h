@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_SCHEDULER_LIBEV_H
 #define TRIAGENS_SCHEDULER_SCHEDULER_LIBEV_H 1
 
+#include "Basics/Common.h"
+
 #include "Scheduler/Scheduler.h"
 
 #include "BasicsC/locks.h"

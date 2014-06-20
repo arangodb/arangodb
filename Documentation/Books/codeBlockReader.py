@@ -52,8 +52,8 @@ def example_content(filepath, fh, tag):
         if arangosh:
             if line.startswith("arangosh>") or line.startswith("........>"):
                 if lastline != None:
-                    short = short + lastline
-                    shortLines = shortLines + 1
+                    # short = short + lastline
+                    # shortLines = shortLines + 1
                     lastline = None
 
                 short = short + line
@@ -63,8 +63,8 @@ def example_content(filepath, fh, tag):
                     if lastline == None:
                         lastline = line
                     else:
-                        short = short + "~~~hidden~~~\n"
-                        shortLines = shortLines + 1
+                        # short = short + "~~~hidden~~~\n"
+                        # shortLines = shortLines + 1
                         shortable = True
                         showdots = False
                         lastline = None
@@ -72,9 +72,9 @@ def example_content(filepath, fh, tag):
         long = long + line
         longLines = longLines + 1
 
-    if lastline != None:
-        short = short + lastline
-        shortLines = shortLines + 1
+    # if lastline != None:
+    #     short = short + lastline
+    #     shortLines = shortLines + 1
 
     infile.close()
 
@@ -109,7 +109,7 @@ def example_content(filepath, fh, tag):
         fh.write("```\n")
         fh.write("%s" % short)
         fh.write("```\n")
-        fh.write("</pre>\n")
+        fh.write("</pre><div class=\"example_show_button\">show execution results</div>\n")
         fh.write("</div>\n")
 
     fh.write("</div>\n")

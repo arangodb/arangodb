@@ -28,28 +28,21 @@
 #ifndef TRIAGENS_VOC_BASE_BARRIER_H
 #define TRIAGENS_VOC_BASE_BARRIER_H 1
 
-#include "BasicsC/locks.h"
+#include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BasicsC/locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_primary_collection_s;
-struct TRI_collection_s;
+struct TRI_document_collection_t;
+struct TRI_collection_t;
 struct TRI_datafile_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief barrier element type
@@ -87,9 +80,12 @@ TRI_barrier_t;
 typedef struct TRI_barrier_blocker_s {
   TRI_barrier_t base;
 
-  void* _data;
-  size_t _line;
-  char const* _filename;
+  void*         _data;
+  size_t        _line;
+  char const*   _filename;
+
+  bool          _usedByExternal;
+  bool          _usedByTransaction;
 }
 TRI_barrier_blocker_t;
 
@@ -144,9 +140,9 @@ TRI_barrier_datafile_rename_cb_t;
 typedef struct TRI_barrier_collection_cb_s {
   TRI_barrier_t base;
 
-  struct TRI_collection_s* _collection;
+  struct TRI_collection_t* _collection;
   void* _data;
-  bool (*callback) (struct TRI_collection_s*, void*);
+  bool (*callback) (struct TRI_collection_t*, void*);
 }
 TRI_barrier_collection_cb_t;
 
@@ -155,7 +151,7 @@ TRI_barrier_collection_cb_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_barrier_list_s {
-  struct TRI_primary_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
 
   TRI_spin_t _lock;
 
@@ -166,25 +162,16 @@ typedef struct TRI_barrier_list_s {
 }
 TRI_barrier_list_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a barrier list
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitBarrierList (TRI_barrier_list_t* container, 
-                          struct TRI_primary_collection_s* collection);
+                          struct TRI_document_collection_t* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a barrier list
@@ -244,8 +231,8 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
-                                                  struct TRI_collection_s* collection,
-                                                  bool (*callback) (struct TRI_collection_s*, void*),
+                                                  struct TRI_collection_t* collection,
+                                                  bool (*callback) (struct TRI_collection_t*, void*),
                                                   void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,8 +240,8 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
-                                                struct TRI_collection_s* collection,
-                                                bool (*callback) (struct TRI_collection_s*, void*),
+                                                struct TRI_collection_t* collection,
+                                                bool (*callback) (struct TRI_collection_t*, void*),
                                                 void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,14 +249,6 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBarrier (TRI_barrier_t* element);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

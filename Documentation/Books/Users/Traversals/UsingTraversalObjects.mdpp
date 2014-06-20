@@ -8,7 +8,7 @@ We then need to setup a configuration for the traversal and determine at which v
 start the traversal:
     
     var config = {
-      datasource: traversal.collectionDatasourceFactory(db.e),
+      datasource: traversal.generalGraphDatasourceFactory("world_graph"),
       strategy: "depthfirst",
       order: "preorder",
       filter: traversal.visitAllFilter,
@@ -46,7 +46,7 @@ The full script, which includes all steps carried out so far is thus:
     var traversal = require("org/arangodb/graph/traversal");
 
     var config = {
-      datasource: traversal.collectionDatasourceFactory(db.e),
+      datasource: traversal.generalGraphDatasourceFactory("world_graph"),
       strategy: "depthfirst",
       order: "preorder",
       filter: traversal.visitAllFilter,
@@ -123,7 +123,7 @@ Still, we can use the outbound expander if we start somewhere else in the graph,
     var traversal = require("org/arangodb/graph/traversal");
 
     var config = {
-      datasource: traversal.collectionDatasourceFactory(db.e),
+      datasource: traversal.generalGraphDatasourceFactory("world_graph"),
       strategy: "depthfirst",
       order: "preorder",
       filter: traversal.visitAllFilter,
@@ -169,7 +169,7 @@ Let's remove the *maxDepth* attribute now. We'll now be getting all vertices (di
 and indirectly connected to the start vertex):
 
     var config = {
-      datasource: traversal.collectionDatasourceFactory(db.e),
+      datasource: traversal.generalGraphDatasourceFactory("world_graph"),
       strategy: "depthfirst",
       order: "preorder",
       filter: traversal.visitAllFilter,
@@ -324,7 +324,7 @@ For example, we can create a simple visitor function that only prints informatio
 the current vertex as we traverse:
 
     var config = {
-      datasource: traversal.collectionDatasourceFactory(db.e),
+      datasource: traversal.generalGraphDatasourceFactory("world_graph"),
       strategy: "depthfirst",
       order: "preorder",
       filter: traversal.visitAllFilter,
@@ -463,9 +463,10 @@ connected edges):
       ...
       expander: function (config, vertex, path) {
         var connections = [ ];
-        db.e.inEdges(vertex._id).forEach(function (edge) {
+        var datasource = config.datasource;
+        datasource.getInEdges(vertex._id).forEach(function (edge) {
           if (Math.random() >= 0.5) {
-            connections.push({ edge: edge, vertex: db._document(edge._from) });
+            connections.push({ edge: edge, vertex: (edge._from) });
           }
         });
 

@@ -30,45 +30,33 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangod
 ################################################################################
 
-if (USE_MRUBY)
-  set(ARANGOD_MRUBY_SOURCE
-      MRServer/ApplicationMR.cpp
-      MRServer/mr-actions.cpp
-  )
-
-  set(ARANGOD_MRUBY_LIBS
-      ${LIB_ARANGO_MRUBY}
-      ${MRUBY_LIBS}
-  )
-endif ()
-
 add_executable(
     ${BIN_ARANGOD}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
-    Ahuacatl/ahuacatl-access-optimiser.c
-    Ahuacatl/ahuacatl-ast-node.c
-    Ahuacatl/ahuacatl-bind-parameter.c
-    Ahuacatl/ahuacatl-codegen.c
-    Ahuacatl/ahuacatl-collections.c
-    Ahuacatl/ahuacatl-context.c
-    Ahuacatl/ahuacatl-conversions.c
-    Ahuacatl/ahuacatl-error.c
-    Ahuacatl/ahuacatl-explain.c
-    Ahuacatl/ahuacatl-functions.c
-    Ahuacatl/ahuacatl-grammar.c
-    Ahuacatl/ahuacatl-index.c
-    Ahuacatl/ahuacatl-node.c
-    Ahuacatl/ahuacatl-optimiser.c
-    Ahuacatl/ahuacatl-parser-functions.c
-    Ahuacatl/ahuacatl-parser.c
-    Ahuacatl/ahuacatl-result.c
-    Ahuacatl/ahuacatl-scope.c
-    Ahuacatl/ahuacatl-statement-dump.c
-    Ahuacatl/ahuacatl-statement-walker.c
-    Ahuacatl/ahuacatl-statementlist.c
-    Ahuacatl/ahuacatl-tokens.c
-    Ahuacatl/ahuacatl-variable.c
+    Ahuacatl/ahuacatl-access-optimiser.cpp
+    Ahuacatl/ahuacatl-ast-node.cpp
+    Ahuacatl/ahuacatl-bind-parameter.cpp
+    Ahuacatl/ahuacatl-codegen.cpp
+    Ahuacatl/ahuacatl-collections.cpp
+    Ahuacatl/ahuacatl-context.cpp
+    Ahuacatl/ahuacatl-conversions.cpp
+    Ahuacatl/ahuacatl-error.cpp
+    Ahuacatl/ahuacatl-explain.cpp
+    Ahuacatl/ahuacatl-functions.cpp
+    Ahuacatl/ahuacatl-grammar.cpp
+    Ahuacatl/ahuacatl-index.cpp
+    Ahuacatl/ahuacatl-node.cpp
+    Ahuacatl/ahuacatl-optimiser.cpp
+    Ahuacatl/ahuacatl-parser-functions.cpp
+    Ahuacatl/ahuacatl-parser.cpp
+    Ahuacatl/ahuacatl-result.cpp
+    Ahuacatl/ahuacatl-scope.cpp
+    Ahuacatl/ahuacatl-statement-dump.cpp
+    Ahuacatl/ahuacatl-statement-walker.cpp
+    Ahuacatl/ahuacatl-statementlist.cpp
+    Ahuacatl/ahuacatl-tokens.cpp
+    Ahuacatl/ahuacatl-variable.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp
@@ -111,11 +99,9 @@ add_executable(
     RestServer/VocbaseContext.cpp
     RestServer/arango.cpp
     SkipLists/skiplistIndex.cpp
-    Transaction/IdGenerator.cpp
-    Transaction/Manager.cpp
-    Transaction/Operations.cpp
-    Transaction/Transaction.cpp
     Utils/DocumentHelper.cpp
+    Utils/Exception.cpp
+    Utils/Transaction.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp
@@ -135,8 +121,6 @@ add_executable(
     VocBase/headers.cpp
     VocBase/index.cpp
     VocBase/key-generator.cpp
-    VocBase/marker.cpp
-    VocBase/primary-collection.cpp
     VocBase/primary-index.cpp
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
@@ -144,9 +128,7 @@ add_executable(
     VocBase/replication-logger.cpp
     VocBase/replication-master.cpp
     VocBase/server.cpp
-    VocBase/synchroniser.cpp
     VocBase/transaction.cpp
-    VocBase/update-policy.cpp
     VocBase/voc-shaper.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
@@ -154,11 +136,10 @@ add_executable(
     Wal/CollectorThread.cpp
     Wal/LogfileManager.cpp
     Wal/Logfile.cpp
+    Wal/Marker.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp
-    Wal/TestThread.cpp
-    ${ARANGOD_MRUBY_SOURCE}
 )
 
 target_link_libraries(
@@ -166,7 +147,6 @@ target_link_libraries(
     ${LIB_ARANGO_FE}
     ${LIB_ARANGO_V8}
     ${LIB_ARANGO}
-    ${ARANGOD_MRUBY_LIBS}
     ${LIBEV_LIBS}
     ${V8_LIBS} # need this for rest::Version
     ${ICU_LIBS}
@@ -227,7 +207,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common ${PROJECT_SOURCE_DIR}/mr/server ${PROJECT_SOURCE_DIR}/mr/actions
+  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common 
   DESTINATION share/arangodb/mr
   FILES_MATCHING PATTERN "*.rb")
 

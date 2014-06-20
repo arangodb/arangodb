@@ -35,15 +35,6 @@ var arangodb = require("org/arangodb");
 // --SECTION--                                         AQL test helper functions
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a single row result 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +100,20 @@ function getQueryExplanation (query, bindVars) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a modify-query
+////////////////////////////////////////////////////////////////////////////////
+
+function getModifyQueryResults (query, bindVars) {
+  var queryResult = internal.AQL_QUERY(query, bindVars); 
+
+  if (queryResult instanceof arangodb.ArangoCursor) {
+    return queryResult.getExtra();
+  }
+
+  return queryResult.extra;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the results of a query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -168,31 +173,17 @@ function assertQueryError (errorCode, query, bindVars) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-exports.getParseResults     = getParseResults;
-exports.assertParseError    = assertParseError;
-
-exports.getQueryExplanation = getQueryExplanation;
-
-exports.getRawQueryResults  = getRawQueryResults;
-exports.getQueryResults     = getQueryResults;
-exports.assertQueryError    = assertQueryError;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+exports.getParseResults       = getParseResults;
+exports.assertParseError      = assertParseError;
+exports.getQueryExplanation   = getQueryExplanation;
+exports.getModifyQueryResults = getModifyQueryResults;
+exports.getRawQueryResults    = getRawQueryResults;
+exports.getQueryResults       = getQueryResults;
+exports.assertQueryError      = assertQueryError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

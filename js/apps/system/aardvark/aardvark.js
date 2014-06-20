@@ -164,6 +164,22 @@ controller.del("/foxxes/purgeall/:key", function (req, res) {
 }).summary("Remove a all existing Foxx versions .")
 .notes("This function is used to remove all versions of a foxx.");
 
+/** Get info about github information of an available Foxx
+ *
+ * Returns github information of Foxx
+ */
+
+controller.get("/foxxes/gitinfo/:key", function (req, res) {
+  res.json(FoxxManager.gitinfo(req.params("key")));
+}).pathParam("key", {
+  description: "The _key attribute, where the information of this Foxx-Install is stored.",
+  type: "string",
+  required: true,
+  allowMultiple: false
+}).summary("List git information of a Foxx")
+.notes("This function is used to display all available github information of a foxx");
+
+
 /** Get info about mount points of an installed Foxx
  *
  * Returns mount points of Foxx

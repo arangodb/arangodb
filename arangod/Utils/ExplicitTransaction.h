@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_UTILS_USER_TRANSACTION_H
 #define TRIAGENS_UTILS_USER_TRANSACTION_H 1
 
+#include "Basics/Common.h"
+
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
@@ -48,25 +50,19 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExplicitTransaction (struct TRI_vocbase_s* const vocbase,
-                             triagens::arango::CollectionNameResolver const& resolver,
-                             vector<string> const& readCollections,
-                             vector<string> const& writeCollections,
+        ExplicitTransaction (struct TRI_vocbase_s* vocbase,
+                             std::vector<std::string> const& readCollections,
+                             std::vector<std::string> const& writeCollections,
                              double lockTimeout,
                              bool waitForSync,
                              bool doReplicate) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), resolver, doReplicate) {
+          Transaction<T>(vocbase, TRI_GetIdServer(), doReplicate) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
@@ -93,10 +89,6 @@ namespace triagens {
 
         ~ExplicitTransaction () {
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
 

@@ -25,24 +25,15 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H
-#define TRIAGENS_VOC_BASE_DOCUMENT_POLICY_H 1
+#ifndef TRIAGENS_VOC_BASE_UPDATE_POLICY_H
+#define TRIAGENS_VOC_BASE_UPDATE_POLICY_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update and delete policy
@@ -51,7 +42,6 @@ extern "C" {
 typedef enum {
   TRI_DOC_UPDATE_ERROR,
   TRI_DOC_UPDATE_LAST_WRITE,
-  TRI_DOC_UPDATE_CONFLICT,
   TRI_DOC_UPDATE_ILLEGAL
 }
 TRI_doc_update_policy_e;
@@ -60,34 +50,21 @@ TRI_doc_update_policy_e;
 /// @brief policy container
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_doc_update_policy_s {
-  TRI_voc_rid_t                    _expectedRid;  // the expected revision id of a document. only used if set and for update/delete
-  TRI_voc_rid_t*                   _previousRid;  // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
-  TRI_doc_update_policy_e          _policy;       // the update policy
-}
-TRI_doc_update_policy_t;
+class TRI_doc_update_policy_t {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+  public:
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+    TRI_doc_update_policy_t (TRI_doc_update_policy_e policy,
+                             TRI_voc_rid_t expectedRid,
+                             TRI_voc_rid_t* previousRid)
+      : _expectedRid(expectedRid),
+        _previousRid(previousRid),
+        _policy(policy) {
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
+    TRI_doc_update_policy_t () = delete;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a policy object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitUpdatePolicy (TRI_doc_update_policy_t* const,
-                           TRI_doc_update_policy_e,
-                           TRI_voc_rid_t,
-                           TRI_voc_rid_t*);
+  public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare revision of found document with revision specified in policy
@@ -95,17 +72,36 @@ void TRI_InitUpdatePolicy (TRI_doc_update_policy_t* const,
 /// context variable _previousRid, but only if this is not NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CheckUpdatePolicy (const TRI_doc_update_policy_t* const,
-                           const TRI_voc_rid_t);
+    int check (TRI_voc_rid_t actualRid) const {
+      // store previous revision
+      if (_previousRid != nullptr) {
+        *(_previousRid) = actualRid;
+      }
 
+      // check policy
+      switch (_policy) {
+        case TRI_DOC_UPDATE_ERROR:
+          if (_expectedRid != 0 && _expectedRid != actualRid) {
+            return TRI_ERROR_ARANGO_CONFLICT;
+          }
+          break;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        case TRI_DOC_UPDATE_ILLEGAL:
+          return TRI_ERROR_INTERNAL;
 
-#ifdef __cplusplus
-}
-#endif
+        case TRI_DOC_UPDATE_LAST_WRITE:
+          return TRI_ERROR_NO_ERROR;
+      }
+
+      return TRI_ERROR_NO_ERROR;
+    }
+
+  private:
+
+    TRI_voc_rid_t                    _expectedRid;  // the expected revision id of a document. only used if set and for update/delete
+    TRI_voc_rid_t*                   _previousRid;  // a variable that the previous revsion id found in the database will be pushed into. only used if set and for update/delete
+    TRI_doc_update_policy_e          _policy;       // the update policy
+};
 
 #endif
 

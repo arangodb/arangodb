@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_SCHEDULER_THREAD_H
 #define TRIAGENS_SCHEDULER_SCHEDULER_THREAD_H 1
 
+#include "Basics/Common.h"
+
 #include "Basics/Thread.h"
 
 #include "BasicsC/locks.h"

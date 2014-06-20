@@ -439,7 +439,7 @@ static ssize_t DecodeWrite (char *buf,
   }
 
   // THIS IS AWFUL!!! FIXME
-  assert(encoding == BINARY);
+  TRI_ASSERT(encoding == BINARY);
 
   uint16_t * twobytebuf = new uint16_t[buflen];
 
@@ -585,8 +585,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::RetainedObjectInfo* WrapperInfo (uint16_t classId, v8::Handle<v8::Value> wrapper) {
-    assert(classId == TRI_V8_BUFFER_CID);
-    assert(V8Buffer::hasInstance(wrapper));
+    TRI_ASSERT(classId == TRI_V8_BUFFER_CID);
+    TRI_ASSERT(V8Buffer::hasInstance(wrapper));
 
     V8Buffer* buffer = V8Buffer::unwrap(wrapper.As<v8::Object>());
     return new RetainedBufferInfo(buffer);
@@ -796,7 +796,7 @@ bool V8Buffer::hasInstance (v8::Handle<v8::Value> val) {
     return true;
   }
 
-  assert(! v8g->FastBufferConstructor.IsEmpty());
+  TRI_ASSERT(! v8g->FastBufferConstructor.IsEmpty());
   return obj->GetConstructor()->StrictEquals(v8g->FastBufferConstructor);
 }
 
@@ -1392,9 +1392,9 @@ static v8::Handle<v8::Value> ReadFloatGeneric (const v8::Arguments& args) {
 
   double offset_tmp = args[0]->NumberValue();
   int64_t offset = static_cast<int64_t>(offset_tmp);
-  bool doAssert = !args[1]->BooleanValue();
+  bool doTRI_ASSERT = !args[1]->BooleanValue();
 
-  if (doAssert) {
+  if (doTRI_ASSERT) {
     if (offset_tmp != offset || offset < 0) {
       TRI_V8_TYPE_ERROR(scope, "<offset> is not uint");
     }
@@ -1461,9 +1461,9 @@ template <typename T, bool ENDIANNESS>
 static v8::Handle<v8::Value> WriteFloatGeneric (const v8::Arguments& args) {
   v8::HandleScope scope;
 
-  bool doAssert = !args[2]->BooleanValue();
+  bool doTRI_ASSERT = !args[2]->BooleanValue();
 
-  if (doAssert) {
+  if (doTRI_ASSERT) {
     if (!args[0]->IsNumber()) {
       TRI_V8_TYPE_ERROR(scope, "<value> not a number");
     }
@@ -1479,7 +1479,7 @@ static v8::Handle<v8::Value> WriteFloatGeneric (const v8::Arguments& args) {
     args.This()->GetIndexedPropertiesExternalArrayData());
   char* ptr = data + offset;
 
-  if (doAssert) {
+  if (doTRI_ASSERT) {
     size_t len = static_cast<size_t>(
       args.This()->GetIndexedPropertiesExternalArrayDataLength());
 
@@ -1611,15 +1611,15 @@ void TRI_InitV8Buffer (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
 
   // sanity checks
-  assert(unbase64('/') == 63);
-  assert(unbase64('+') == 62);
-  assert(unbase64('T') == 19);
-  assert(unbase64('Z') == 25);
-  assert(unbase64('t') == 45);
-  assert(unbase64('z') == 51);
-  assert(unbase64(' ') == -2);
-  assert(unbase64('\n') == -2);
-  assert(unbase64('\r') == -2);
+  TRI_ASSERT(unbase64('/') == 63);
+  TRI_ASSERT(unbase64('+') == 62);
+  TRI_ASSERT(unbase64('T') == 19);
+  TRI_ASSERT(unbase64('Z') == 25);
+  TRI_ASSERT(unbase64('t') == 45);
+  TRI_ASSERT(unbase64('z') == 51);
+  TRI_ASSERT(unbase64(' ') == -2);
+  TRI_ASSERT(unbase64('\n') == -2);
+  TRI_ASSERT(unbase64('\r') == -2);
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();

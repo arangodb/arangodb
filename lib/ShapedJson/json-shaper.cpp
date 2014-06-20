@@ -193,7 +193,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   void const* f;
   void const* p;
 
-  assert(name != NULL);
+  TRI_ASSERT(name != NULL);
 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
@@ -243,7 +243,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev, isLocked);
+          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev);
         }
         else {
           aids[count] = shaper->lookupAttributeByName(shaper, prev);
@@ -286,10 +286,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, aids);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
-  assert(f == NULL);
+  TRI_ASSERT(f == NULL);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result, false);
-  assert(f == NULL);
+  TRI_ASSERT(f == NULL);
 
   // return pid
   TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -395,15 +395,14 @@ int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyShaper (TRI_shaper_t* shaper) {
-  size_t n = shaper->_attributePathsByName._nrAlloc;
-  size_t i;
+  size_t const n = shaper->_attributePathsByName._nrAlloc;
 
   // only free pointers in attributePathsByName
   // (attributePathsByPid contains the same pointers!)
-  for (i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     void* data = shaper->_attributePathsByName._table[i];
 
-    if (data) {
+    if (data != nullptr) {
       TRI_Free(shaper->_memoryZone, data);
     }
   }
@@ -447,7 +446,7 @@ TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
 
   LOG_ERROR("encountered an illegal shape type");
 
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_SHAPE_ILLEGAL;
 }
 
@@ -560,7 +559,7 @@ void TRI_InitialiseShaper () {
   shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
   shape->_sid = BasicShapes._sidList = 6;
 
-  assert(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
+  TRI_ASSERT(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

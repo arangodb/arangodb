@@ -28,13 +28,9 @@
 #ifndef TRIAGENS_INDEX_ITERATORS_INDEX_ITERATOR_H
 #define TRIAGENS_INDEX_ITERATORS_INDEX_ITERATOR_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -174,17 +170,9 @@ void TRI_DestroyIndexIterator (TRI_index_iterator_t*);
 
 void TRI_FreeIndexIterator (TRI_index_iterator_t*);
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

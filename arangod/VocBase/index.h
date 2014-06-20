@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_VOC_BASE_INDEX_H
 #define TRIAGENS_VOC_BASE_INDEX_H 1
 
+#include "Basics/Common.h"
+
 #include "VocBase/vocbase.h"
 
 #include "BasicsC/associative-multi.h"
@@ -42,28 +44,19 @@
 #include "SkipLists/skiplistIndex.h"
 #include "VocBase/voc-types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_collection_s;
-struct TRI_doc_mptr_s;
+struct TRI_collection_t;
+struct TRI_doc_mptr_t;
 struct TRI_shaped_json_s;
-struct TRI_document_collection_s;
+struct TRI_document_collection_t;
 struct TRI_transaction_collection_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index type
@@ -103,7 +96,7 @@ TRI_index_geo_variant_e;
 typedef struct TRI_index_s {
   TRI_idx_iid_t   _iid;
   TRI_idx_type_e  _type;
-  struct TRI_primary_collection_s* _collection;
+  struct TRI_document_collection_t* _collection;
 
   TRI_vector_string_t _fields;
   bool _unique;
@@ -111,17 +104,17 @@ typedef struct TRI_index_s {
 
   size_t (*memory) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s const*);
-  void (*removeIndex) (struct TRI_index_s*, struct TRI_primary_collection_s*);
+  void (*removeIndex) (struct TRI_index_s*, struct TRI_document_collection_t*);
   
   // .........................................................................................
   // the following functions are called for document/collection administration
   // .........................................................................................
 
-  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
-  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_s const*, const bool);
+  int (*insert) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, bool);
+  int (*remove) (struct TRI_index_s*, struct TRI_doc_mptr_t const*, bool);
 
   // NULL by default. will only be called if non-NULL
-  int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_s const*);
+  int (*postInsert) (struct TRI_transaction_collection_s*, struct TRI_index_s*, struct TRI_doc_mptr_t const*);
 
   // a garbage collection function for the index
   int (*cleanup) (struct TRI_index_s*);
@@ -250,7 +243,7 @@ TRI_bitarray_index_t;
 
 typedef struct TRI_index_result_s {
   size_t _length;
-  struct TRI_doc_mptr_s** _documents;     // simple list of elements
+  struct TRI_doc_mptr_t** _documents;     // simple list of elements
 }
 TRI_index_result_t;
 
@@ -264,10 +257,6 @@ typedef struct TRI_index_search_value_s {
 }
 TRI_index_search_value_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             INDEX
 // -----------------------------------------------------------------------------
@@ -277,32 +266,18 @@ TRI_index_search_value_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise basic index properties
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitIndex (TRI_index_t*,
                     TRI_idx_iid_t, 
                     TRI_idx_type_e, 
-                    struct TRI_primary_collection_s*,
+                    struct TRI_document_collection_t*,
                     bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not an index needs full coverage
@@ -345,14 +320,14 @@ void TRI_FreeIndex (TRI_index_t*);
 /// @brief removes an index file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RemoveIndexFile (struct TRI_primary_collection_s*, 
+bool TRI_RemoveIndexFile (struct TRI_document_collection_t*, 
                           TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveIndex (struct TRI_primary_collection_s*, 
+int TRI_SaveIndex (struct TRI_document_collection_t*, 
                    TRI_index_t*,
                    TRI_server_id_t);
 
@@ -360,7 +335,7 @@ int TRI_SaveIndex (struct TRI_primary_collection_s*,
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndex (struct TRI_primary_collection_s*, 
+TRI_index_t* TRI_LookupIndex (struct TRI_document_collection_t*, 
                               TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,24 +377,15 @@ void TRI_CopyFieldsVector (TRI_vector_string_t*,
 char const** TRI_FieldListByPathList (TRI_shaper_t const*, 
                                       TRI_vector_t const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s*);
+TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a primary index
@@ -427,24 +393,15 @@ TRI_index_t* TRI_CreatePrimaryIndex (struct TRI_primary_collection_s*);
 
 void TRI_FreePrimaryIndex (TRI_index_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EDGE INDEX
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the edge index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateEdgeIndex (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateEdgeIndex (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,10 +416,6 @@ void TRI_DestroyEdgeIndex (TRI_index_t*);
 
 void TRI_FreeEdgeIndex (TRI_index_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
 // -----------------------------------------------------------------------------
@@ -471,11 +424,6 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*, 
                                                   TRI_index_operator_t*);
 
@@ -483,7 +431,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
 /// @brief creates a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
@@ -501,10 +449,6 @@ void TRI_DestroySkiplistIndex (TRI_index_t* idx);
 
 void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    FULLTEXT INDEX
 // -----------------------------------------------------------------------------
@@ -513,19 +457,14 @@ void TRI_FreeSkiplistIndex (TRI_index_t* idx);
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_doc_mptr_s** TRI_LookupFulltextIndex (TRI_index_t*, 
+struct TRI_doc_mptr_t** TRI_LookupFulltextIndex (TRI_index_t*, 
                                                  const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateFulltextIndex (struct TRI_primary_collection_s*,
+TRI_index_t* TRI_CreateFulltextIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       const char*,
                                       const bool,
@@ -543,10 +482,6 @@ void TRI_DestroyFulltextIndex (TRI_index_t*);
 
 void TRI_FreeFulltextIndex (TRI_index_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
 // -----------------------------------------------------------------------------
@@ -554,11 +489,6 @@ void TRI_FreeFulltextIndex (TRI_index_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an iterator for a lookup query
@@ -573,7 +503,7 @@ TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
 /// @brief creates a bitarray index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_primary_collection_s*,
+  TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
@@ -599,17 +529,7 @@ void TRI_FreeBitarrayIndex (TRI_index_t*);
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool IndexComparator (TRI_json_t const* lhs, TRI_json_t const* rhs);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -570,8 +570,11 @@ static int GenerateMessage (char* buffer,
 
 static void WriteStderr (TRI_log_level_e level,
                          char const* msg) {
-  if (level == TRI_LOG_LEVEL_FATAL) {
+  if (level == TRI_LOG_LEVEL_FATAL || level == TRI_LOG_LEVEL_ERROR) {
     fprintf(stderr, TRI_SHELL_COLOR_RED "%s" TRI_SHELL_COLOR_RESET "\n", msg);
+  }
+  else if (level == TRI_LOG_LEVEL_WARNING) {
+    fprintf(stderr, TRI_SHELL_COLOR_YELLOW "%s" TRI_SHELL_COLOR_RESET "\n", msg);
   }
   else {
     fprintf(stderr, "%s\n", msg);
@@ -588,7 +591,7 @@ static void OutputMessage (TRI_log_level_e level,
                            size_t length,
                            size_t offset,
                            bool copy) {
-  assert(message != NULL);
+  TRI_ASSERT(message != NULL);
 
   if (! LoggingActive) {
     WriteStderr(level, message);
@@ -604,7 +607,7 @@ static void OutputMessage (TRI_log_level_e level,
   if (severity == TRI_LOG_SEVERITY_HUMAN) {
     // we start copying the message from the given offset to skip any irrelevant
     // or redundant message parts such as date, info etc. The offset might be 0 though.
-    assert(length >= offset);
+    TRI_ASSERT(length >= offset);
     StoreOutput(level, time(0), message + offset, (size_t) (length - offset));
   }
 
@@ -649,7 +652,7 @@ static void OutputMessage (TRI_log_level_e level,
 
       appender = Appenders._buffer[i];
 
-      assert(appender != NULL);
+      TRI_ASSERT(appender != NULL);
 
       // apply severity filter
       if (appender->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN && 
@@ -710,7 +713,7 @@ static void MessageQueueWorker (void* data) {
       size_t m;
       size_t i;
 
-      assert(buffer._length == 0);
+      TRI_ASSERT(buffer._length == 0);
 
       // move message from queue into temporary buffer
       m = LogMessageQueue._length;
@@ -730,7 +733,7 @@ static void MessageQueueWorker (void* data) {
         log_message_t* msg;
 
         msg = TRI_AtVector(&buffer, j);
-        assert(msg->_message != NULL);
+        TRI_ASSERT(msg->_message != NULL);
 
         TRI_LockSpin(&AppendersLock);
 
@@ -739,7 +742,7 @@ static void MessageQueueWorker (void* data) {
 
           appender = Appenders._buffer[i];
 
-          assert(appender != NULL);
+          TRI_ASSERT(appender != NULL);
 
           // apply severity filter
           if (appender->_severityFilter != TRI_LOG_SEVERITY_UNKNOWN && 
@@ -797,7 +800,7 @@ static void MessageQueueWorker (void* data) {
     log_message_t* msg;
 
     msg = TRI_AtVector(&LogMessageQueue, j);
-    assert(msg->_message != NULL);
+    TRI_ASSERT(msg->_message != NULL);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, msg->_message);
   }
 
@@ -1339,11 +1342,10 @@ TRI_vector_t* TRI_BufferLogging (TRI_log_level_e level, uint64_t start, bool use
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBufferLogging (TRI_vector_t* buffer) {
-  TRI_log_buffer_t* buf;
   size_t i;
 
   for (i = 0;  i < buffer->_length;  ++i) {
-    buf = TRI_AtVector(buffer, i);
+    TRI_log_buffer_t* buf = TRI_AtVector(buffer, i);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, buf->_text);
   }
@@ -1798,8 +1800,8 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
   log_appender_syslog_t* appender;
   int value;
 
-  assert(facility != NULL);
-  assert(*facility != '\0');
+  TRI_ASSERT(facility != NULL);
+  TRI_ASSERT(*facility != '\0');
 
   // no logging
   if (name == NULL || *name == '\0') {

@@ -272,7 +272,7 @@ function getIndexesSuite() {
 
       assertEqual("primary", idx.type);
       assertTrue(idx.unique);
-      assertEqual([ "_id" ], idx.fields);
+      assertEqual([ "_key" ], idx.fields);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,7 +484,7 @@ function getIndexesEdgesSuite() {
 
       assertEqual("primary", idx.type);
       assertTrue(idx.unique);
-      assertEqual([ "_id" ], idx.fields);
+      assertEqual([ "_key" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name() + "/0", idx.id);
     },

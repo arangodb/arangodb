@@ -80,7 +80,7 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
     c = (uint64_t) 8 * 1024 * 1024; // 8 mb
   }
 
-  assert(c > 0);
+  TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
 }
@@ -597,7 +597,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     batch++;
   }
   
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -779,16 +779,17 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
         TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
-        TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid);
+        TRI_vocbase_col_status_e status;
+        TRI_vocbase_col_t* col = TRI_UseCollectionByIdVocBase(_vocbase, cid, status);
 
         if (col == 0) {
           res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
         }
         else {
-          TRI_primary_collection_t* primary = col->_collection;
-          assert(primary != 0);
+          TRI_document_collection_t* document = col->_collection;
+          TRI_ASSERT(document != nullptr);
 
-          TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+          TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
           for (size_t i = 0; i < n; ++i) {
             TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
@@ -796,16 +797,16 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
             // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-            res = TRI_FromJsonIndexDocumentCollection((TRI_document_collection_t*) primary, idxDef, &idx);
+            res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
 
             if (res != TRI_ERROR_NO_ERROR) {
               errorMsg = "could not create index: " + string(TRI_errno_string(res));
               break;
             }
             else {
-              assert(idx != 0);
+              TRI_ASSERT(idx != 0);
 
-              res = TRI_SaveIndex(primary, idx, _masterInfo._serverId);
+              res = TRI_SaveIndex(document, idx, _masterInfo._serverId);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not save index: " + string(TRI_errno_string(res));
@@ -814,7 +815,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             }
           }
 
-          TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(primary);
+          TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
           TRI_ReleaseCollectionVocBase(_vocbase, col);
         }
@@ -828,7 +829,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
   
   // we won't get here
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 

@@ -12,16 +12,47 @@ fi
 
 AM_CONDITIONAL(ENABLE_MAINTAINER_MODE, test "x$USE_MAINTAINER_MODE" = xyes)
 
+
+dnl ----------------------------------------------------------------------------
+dnl --SECTION--                                                    FAILURE TESTS
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(failure-tests,
+  AS_HELP_STRING([--enable-failure-tests], [enable failure testing (default: no)]),
+  [tr_FAILURE_TESTS="$enableval"],
+  [tr_FAILURE_TESTS="no"]
+)
+
+if test "x$tr_FAILURE_TESTS" = xyes;  then
+  if test "x$USE_MAINTAINER_MODE" != "xyes";  then
+    AC_MSG_ERROR([enabling the failure tests requires activating the maintainer mode, too])
+  fi
+
+  AC_DEFINE_UNQUOTED(TRI_ENABLE_FAILURE_TESTS, 1, [true if failure testing ins enabled])
+fi
+
+AM_CONDITIONAL(ENABLE_FAILURE_TESTS, test "x$tr_FAILURE_TESTS" = xyes)
+
+
 dnl ----------------------------------------------------------------------------
 dnl check for bison
 dnl ----------------------------------------------------------------------------
+
+AC_ARG_WITH(bison,
+  AS_HELP_STRING([--with-bison=EXECUTABLE], [path of the bison executable]),
+  [BISON_PATH="$withval"]
+)
 
 if test "x$USE_MAINTAINER_MODE" = xyes;  then
   AC_MSG_NOTICE([................................................................................])
   AC_MSG_NOTICE([CHECKING BISON])
   AC_MSG_NOTICE([................................................................................])
 
-  AC_CHECK_PROG(BISON, bison, bison)
+  if test "x$BISON_PATH" = "x"; then
+    AC_CHECK_PROG(BISON, bison, bison)
+  else
+    BISON=$BISON_PATH
+  fi
 
   tr_bison_usable=no
 

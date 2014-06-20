@@ -30,8 +30,9 @@
 #define TRIAGENS_VOC_BASE_PRIMARY_INDEX_H 1
 
 #include "BasicsC/common.h"
+#include "BasicsC/locks.h"
 
-struct TRI_doc_mptr_s;
+struct TRI_doc_mptr_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -42,12 +43,10 @@ struct TRI_doc_mptr_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_primary_index_s {
-  uint32_t _nrAlloc;     // the size of the table
-  uint32_t _nrUsed;      // the number of used entries
+  uint64_t _nrAlloc;     // the size of the table
+  uint64_t _nrUsed;      // the number of used entries
 
   void** _table;         // the table itself
-
-  TRI_memory_zone_t* _memoryZone;
 }
 TRI_primary_index_t;
 
@@ -59,8 +58,7 @@ TRI_primary_index_t;
 /// @brief initialises the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitPrimaryIndex (TRI_primary_index_t*,
-                          TRI_memory_zone_t*);
+int TRI_InitPrimaryIndex (TRI_primary_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index, but does not free the pointer
@@ -85,7 +83,7 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t*, 
-                               struct TRI_doc_mptr_s const*,
+                               struct TRI_doc_mptr_t const*,
                                void const**);
 
 ////////////////////////////////////////////////////////////////////////////////

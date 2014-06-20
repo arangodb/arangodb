@@ -28,14 +28,10 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H
 #define TRIAGENS_AHUACATL_AHUACATL_ACCESS_OPTIMISER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct TRI_aql_context_s;
 struct TRI_json_s;
@@ -250,10 +246,6 @@ struct TRI_vector_pointer_s* TRI_OptimiseRangesAql (struct TRI_aql_context_s* co
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

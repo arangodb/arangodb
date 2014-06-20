@@ -28,13 +28,13 @@
 #ifndef TRIAGENS_V8SERVER_V8TIMER_TASK_H
 #define TRIAGENS_V8SERVER_V8TIMER_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "Scheduler/TimerTask.h"
 
 #include "VocBase/vocbase.h"
 
-extern "C" {
-  struct TRI_json_s;
-}
+struct TRI_json_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8TimerTask

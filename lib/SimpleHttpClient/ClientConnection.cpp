@@ -96,7 +96,7 @@ bool ClientConnection::checkSocket () {
   int so_error = -1;
   socklen_t len = sizeof so_error;
 
-  assert(TRI_isvalidsocket(_socket));
+  TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*) &so_error, &len);
 
@@ -134,7 +134,7 @@ bool ClientConnection::checkSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::connectSocket () {
-  assert(_endpoint != 0);
+  TRI_ASSERT(_endpoint != 0);
 
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
@@ -171,7 +171,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   struct timeval tv;
   fd_set fdset;
 
-  assert(TRI_isvalidsocket(_socket));
+  TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
@@ -255,7 +255,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     return false;
   }
 
-  assert(TRI_isvalidsocket(_socket));
+  TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   do {
     // reserve some memory for reading

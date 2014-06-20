@@ -32,11 +32,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll set this bit (the highest of a uint32_t) if the list is sorted
 /// if the list is not sorted, this bit is cleared
 /// This is done as a space optimisation. A big index will contain a lot of
@@ -53,18 +48,9 @@
 
 #define GROWTH_FACTOR 1.2
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two entries in a list
@@ -150,7 +136,7 @@ static inline void SetNumEntries (TRI_fulltext_list_t* const list,
 /// @brief return the number of allocated entries
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t GetNumAllocated (const TRI_fulltext_list_t* const list) {
+static inline uint32_t GetNumAllocated (TRI_fulltext_list_t const* list) {
   uint32_t* head = (uint32_t*) list;
 
   return (*head & ~SORTED_BIT);
@@ -160,7 +146,8 @@ static inline uint32_t GetNumAllocated (const TRI_fulltext_list_t* const list) {
 /// @brief initialise a new list
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitList (TRI_fulltext_list_t* const list, const uint32_t size) {
+static void InitList (TRI_fulltext_list_t* list, 
+                      uint32_t size) {
   uint32_t* head = (uint32_t*) list;
 
   *(head++) = size;
@@ -171,15 +158,14 @@ static void InitList (TRI_fulltext_list_t* const list, const uint32_t size) {
 /// @brief sort a list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SortList (TRI_fulltext_list_t* const list) {
-  uint32_t numEntries;
-
+static void SortList (TRI_fulltext_list_t* list) {
   if (IsSorted(list)) {
     // nothing to do
     return;
   }
 
-  numEntries = GetNumEntries(list);
+  uint32_t numEntries = GetNumEntries(list);
+
   if (numEntries > 1) {
     // only sort if more than one elements
     qsort(GetStart(list), numEntries, sizeof(TRI_fulltext_list_entry_t), &CompareEntries);
@@ -204,55 +190,40 @@ static inline size_t MemoryList (const uint32_t size) {
 
 static TRI_fulltext_list_t* IncreaseList (TRI_fulltext_list_t* list,
                                           const uint32_t size) {
-  TRI_fulltext_list_t* copy;
+  TRI_fulltext_list_t* copy = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, list, MemoryList(size));
 
-  copy = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, list, MemoryList(size));
-  if (copy == NULL) {
-    // out of memory
-    return NULL;
+  if (copy != nullptr) {
+    InitList(copy, size);
   }
-  
-  InitList(copy, size);
 
   return copy;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a list by copying an existing one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* const source) {
-  TRI_fulltext_list_t* list;
+TRI_fulltext_list_t* TRI_CloneListFulltextIndex (TRI_fulltext_list_t const* source) {
   uint32_t numEntries;
 
-  if (source == NULL) {
+  if (source == nullptr) {
     numEntries = 0;
   }
   else {
     numEntries = GetNumEntries(source);
   }
 
-  list = TRI_CreateListFulltextIndex(numEntries);
-  if (list == NULL) {
-    return NULL;
-  }
+  TRI_fulltext_list_t* list = TRI_CreateListFulltextIndex(numEntries);
 
-  if (numEntries > 0) {
-    memcpy(GetStart(list), GetStart(source), numEntries * sizeof(TRI_fulltext_list_entry_t));
-    SetNumEntries(list, numEntries);
+  if (list != nullptr) {
+    if (numEntries > 0) {
+      memcpy(GetStart(list), GetStart(source), numEntries * sizeof(TRI_fulltext_list_entry_t));
+      SetNumEntries(list, numEntries);
+    }
   }
 
   return list;
@@ -263,12 +234,11 @@ TRI_fulltext_list_t* TRI_CloneListFulltextIndex (const TRI_fulltext_list_t* cons
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_list_t* TRI_CreateListFulltextIndex (const uint32_t size) {
-  TRI_fulltext_list_t* list;
+  TRI_fulltext_list_t* list = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size), false);
 
-  list = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size), false);
-  if (list == NULL) {
+  if (list == nullptr) {
     // out of memory
-    return NULL;
+    return nullptr;
   }
 
   InitList(list, size);
@@ -284,27 +254,16 @@ void TRI_FreeListFulltextIndex (TRI_fulltext_list_t* list) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the memory usage of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryListFulltextIndex (const TRI_fulltext_list_t* const list) {
-  uint32_t size;
-
-  size = GetNumAllocated(list);
+size_t TRI_MemoryListFulltextIndex (TRI_fulltext_list_t const* list) {
+  uint32_t size = GetNumAllocated(list);
   return MemoryList(size);
 }
 
@@ -643,8 +602,8 @@ TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t* list,
 /// the map is provided by the routines that handle the compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const list,
-                                       const void* const data) {
+uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* list,
+                                       void const* data) {
   TRI_fulltext_list_entry_t* listEntries;
   TRI_fulltext_list_entry_t* map;
   uint32_t numEntries;
@@ -689,7 +648,7 @@ uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t* const list,
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpListFulltextIndex (const TRI_fulltext_list_t* const list) {
+void TRI_DumpListFulltextIndex (TRI_fulltext_list_t const* list) {
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numEntries;
   uint32_t i;
@@ -718,7 +677,7 @@ void TRI_DumpListFulltextIndex (const TRI_fulltext_list_t* const list) {
 /// @brief return the number of entries
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_NumEntriesListFulltextIndex (const TRI_fulltext_list_t* const list) {
+uint32_t TRI_NumEntriesListFulltextIndex (TRI_fulltext_list_t const* list) {
   return GetNumEntries(list);
 }
 
@@ -726,13 +685,9 @@ uint32_t TRI_NumEntriesListFulltextIndex (const TRI_fulltext_list_t* const list)
 /// @brief return a pointer to the first list entry
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (const TRI_fulltext_list_t* const list) {
+TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (TRI_fulltext_list_t const* list) {
   return GetStart(list);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

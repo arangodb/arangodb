@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_SCHEDULER_SCHEDULER_H
 #define TRIAGENS_SCHEDULER_SCHEDULER_H 1
 
+#include "Basics/Common.h"
+
 #include "BasicsC/socket-utils.h"
 #include "Scheduler/TaskManager.h"
 
@@ -38,9 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_json_s;
-}
+struct TRI_json_s;
 
 namespace triagens {
   namespace basics {

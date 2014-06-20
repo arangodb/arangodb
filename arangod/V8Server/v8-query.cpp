@@ -36,16 +36,13 @@
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
 #include "SkipLists/skiplistIndex.h"
-#include "Utils/Barrier.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/EmbeddableTransaction.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/transactions.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -56,25 +53,10 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for read-only transaction class type
-////////////////////////////////////////////////////////////////////////////////
-
-#define ReadTransactionType SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> >
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<ReadTransactionType>(__VA_ARGS__)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+#define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<V8ReadTransaction>(__VA_ARGS__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -83,11 +65,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo coordinate container, also containing the distance
@@ -109,18 +86,9 @@ typedef enum {
 }
 query_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an empty result set
@@ -281,7 +249,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const example,
         return TRI_RESULT_ELEMENT_NOT_FOUND;
       }
       
-      values[i] = TRI_ShapedJsonV8Object(val, shaper, false, false);
+      values[i] = TRI_ShapedJsonV8Object(val, shaper, false);
 
       if (values[i] == 0) {
         CleanupExampleObject(shaper->_memoryZone, i, pids, values);
@@ -459,8 +427,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
   if (numEq) {
     // create equality operator if one is in queue
-    assert(lastOperator == 0);
-    assert(lastNonEq == 0);
+    TRI_ASSERT(lastOperator == 0);
+    TRI_ASSERT(lastNonEq == 0);
 
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
@@ -590,7 +558,7 @@ static TRI_json_t* SetupBitarrayAttributeValuesHelper (TRI_index_t* idx, v8::Han
     // Check and ensure we have a json object defined before we store it.
     // ......................................................................
 
-    assert(json != 0);
+    TRI_ASSERT(json != 0);
 
     // ......................................................................
     // store it in an list json object -- eventually wil be stored as part
@@ -977,7 +945,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
   for (size_t i = 0;  i < n;  ++i) {
     TRI_shape_pid_t pid = * (TRI_shape_pid_t*) TRI_AtVector(paths, i);
 
-    assert(pid != 0);
+    TRI_ASSERT(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
     if (name == NULL) {
@@ -995,10 +963,10 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     if (example->HasOwnProperty(key)) {
       v8::Handle<v8::Value> val = example->Get(key);
 
-      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false, false); 
+      res = TRI_FillShapedJsonV8Object(val, &result._values[i], shaper, false); 
     }
     else {
-      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false, false); 
+      res = TRI_FillShapedJsonV8Object(v8::Null(), &result._values[i], shaper, false); 
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1054,8 +1022,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1064,8 +1031,8 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   v8::Handle<v8::Object> err;
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
   // extract skip and limit
   TRI_voc_ssize_t skip;
@@ -1087,9 +1054,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), col, argv[0], false, &err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(err));
   }
 
@@ -1122,12 +1089,14 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
   bool error = false;
-  bool usedBarrier = false;
 
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_FreeSkiplistIterator(skiplistIterator);
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   while (limit > 0) {
     TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
@@ -1139,20 +1108,9 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     ++total;
 
     if (total > skip && count < limit) {
-      if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-        if (barrier == 0) {
-          error = true;
-          break;
-        }
-      }
-
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, 
                                                    col->_cid, 
-                                                   (TRI_doc_mptr_t const*) indexElement->_document, 
-                                                   barrier, 
-                                                   usedBarrier);
-  
+                                                   (TRI_doc_mptr_t const*) indexElement->_document); 
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1181,10 +1139,6 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
 
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -1192,9 +1146,6 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a bitarray index query (by condition or by example)
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Example of a filter associated with an interator
@@ -1206,18 +1157,22 @@ static bool BitarrayFilterExample (TRI_index_iterator_t* indexIterator) {
     
   indexElement = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
-  if (indexElement == NULL) {
+  if (indexElement == nullptr) {
     return false;
   }
 
   baIndex = (TRI_bitarray_index_t*) indexIterator->_index;
 
-  if (baIndex == NULL) {
+  if (baIndex == nullptr) {
     return false;
   }
     
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a bitarray index query (by condition or by example)
+////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
                                                    std::string const& signature,
@@ -1232,7 +1187,6 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   if (argv.Length() < 2) {
     TRI_V8_EXCEPTION_USAGE(scope, signature.c_str());
   }
-
 
   // ...........................................................................
   // Check that the second parameter is an associative array (json object)
@@ -1270,8 +1224,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1279,8 +1232,8 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
   // .............................................................................
   // Create the json object result which stores documents located
@@ -1307,14 +1260,18 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // .............................................................................
 
   v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(col, argv[0], false, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), col, argv[0], false, &err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(err));
   }
 
   if (idx->_type != TRI_IDX_TYPE_BITARRAY_INDEX) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
+  }
+  
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
 
 
@@ -1341,12 +1298,11 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   // Take care of the case where the index iterator is returned as NULL -- may
   // occur when some catastrophic error occurs.
   // .............................................................................
+ 
 
-  TRI_barrier_t* barrier = 0;
   TRI_voc_ssize_t total = 0;
   TRI_voc_size_t count = 0;
   bool error = false;
-  bool usedBarrier = false;
 
   if (indexIterator != NULL) {
     while (limit > 0) {
@@ -1359,16 +1315,7 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
       ++total;
 
       if (total > skip && count < limit) {
-        if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-
-          if (barrier == 0) {
-            error = true;
-            break;
-          }
-        }
-
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, data, barrier, usedBarrier);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, data);
 
         if (doc.IsEmpty()) {
           error = true;
@@ -1402,10 +1349,6 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
   
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -1414,47 +1357,10 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts geo coordinates
-////////////////////////////////////////////////////////////////////////////////
-
-static int CompareGeoCoordinateDistance (geo_coordinate_distance_t* left,
-                                         geo_coordinate_distance_t* right) {
-  if (left->_distance < right->_distance) {
-    return -1;
-  }
-  else if (left->_distance > right->_distance) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-#define FSRT_INSTANCE SortGeo
-#define FSRT_NAME SortGeoCoordinates
-#define FSRT_NAM2 SortGeoCoordinatesTmp
-#define FSRT_TYPE geo_coordinate_distance_t
-
-#define FSRT_COMP(l,r,s) CompareGeoCoordinateDistance(l,r)
-
-uint32_t SortGeoFSRT_Rand = 0;
-
-static uint32_t SortGeoRandomGenerator (void) {
-  return (SortGeoFSRT_Rand = SortGeoFSRT_Rand * 31415 + 27818);
-}
-
-#define FSRT__RAND ((fs_b) + FSRT__UNIT * (SortGeoRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
-
-#include "BasicsC/fsrt.inc"
-
-#undef FSRT__RAND
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StoreGeoResult (ReadTransactionType& trx,
+static int StoreGeoResult (V8ReadTransaction& trx,
                            TRI_vocbase_col_t const* collection,
                            GeoCoordinates* cors,
                            v8::Handle<v8::Array>& documents,
@@ -1462,15 +1368,17 @@ static int StoreGeoResult (ReadTransactionType& trx,
   GeoCoordinate* end;
   GeoCoordinate* ptr;
   double* dtr;
-  geo_coordinate_distance_t* gnd;
   geo_coordinate_distance_t* gtr;
   geo_coordinate_distance_t* tmp;
-  size_t n;
   uint32_t i;
-  TRI_barrier_t* barrier;
-
+  
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    GeoIndex_CoordinatesFree(cors);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
   // sort the result
-  n = cors->length;
+  size_t n = cors->length;
 
   if (n == 0) {
     GeoIndex_CoordinatesFree(cors);
@@ -1478,13 +1386,14 @@ static int StoreGeoResult (ReadTransactionType& trx,
   }
 
   gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
-  if (gtr == 0) {
+
+  if (gtr == nullptr) {
     GeoIndex_CoordinatesFree(cors);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  gnd = tmp + n;
+  
+  geo_coordinate_distance_t* gnd = tmp + n;
 
   ptr = cors->coordinates;
   end = cors->coordinates + n;
@@ -1498,22 +1407,16 @@ static int StoreGeoResult (ReadTransactionType& trx,
 
   GeoIndex_CoordinatesFree(cors);
 
-  SortGeoCoordinates(tmp, gnd);
-
-  barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
-
-  if (barrier == 0) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  bool usedBarrier = false;
+  // sort result by distance
+  auto compareSort = [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    return left._distance < right._distance;
+  };
+  std::sort(tmp, gnd, compareSort);
 
   // copy the documents
   bool error = false;
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data, barrier, usedBarrier);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data);
 
     if (doc.IsEmpty()) {
       error = true;
@@ -1526,20 +1429,12 @@ static int StoreGeoResult (ReadTransactionType& trx,
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, tmp);
   
-  if (! usedBarrier) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (error) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   QUERY FUNCTIONS
@@ -1548,11 +1443,6 @@ static int StoreGeoResult (ReadTransactionType& trx,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges for given direction
@@ -1575,8 +1465,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1584,7 +1473,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
   // first and only argument schould be a list of document idenfifier
   if (argv.Length() != 1) {
@@ -1611,10 +1500,12 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
   trx.lockRead();
 
-  TRI_barrier_t* barrier = 0;
   uint32_t count = 0;
   bool error = false;
-  bool usedBarrier = false;
+
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
@@ -1622,33 +1513,25 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     const uint32_t len = vertices->Length();
 
     for (uint32_t i = 0;  i < len; ++i) {
-      TRI_vector_pointer_t edges;
+      std::vector<TRI_doc_mptr_copy_t> edges;
       TRI_voc_cid_t cid;
       TRI_voc_key_t key = 0;
 
-      res = TRI_ParseVertex(resolver, cid, key, vertices->Get(i), true);
+      res = TRI_ParseVertex(trx.resolver(), cid, key, vertices->Get(i), true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // error is just ignored
         continue;
       }
 
-      edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
+      edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
       if (key != 0) {
        TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       }
 
-      for (size_t j = 0;  j < edges._length;  ++j) {
-        if (barrier == 0) {
-          barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-          if (barrier == 0) {
-            error = true;
-            break;
-          }
-        }
-
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j], barrier, usedBarrier);
+      for (size_t j = 0;  j < edges.size();  ++j) {
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
 
         if (doc.IsEmpty()) {
           // error
@@ -1662,43 +1545,36 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
       }
 
-      TRI_DestroyVectorPointer(&edges);
-
       if (error) {
         break;
       }
     }
+    trx.finish(res);
   }
 
   // argument is a single vertex
   else {
-    TRI_vector_pointer_t edges;
+    std::vector<TRI_doc_mptr_copy_t> edges;
 
-    TRI_voc_key_t key = 0;
+    TRI_voc_key_t key = nullptr;
     TRI_voc_cid_t cid;
 
-    res = TRI_ParseVertex(resolver, cid, key, argv[0], true);
+    res = TRI_ParseVertex(trx.resolver(), cid, key, argv[0], true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
     }
 
-    edges = TRI_LookupEdgesDocumentCollection((TRI_document_collection_t*) primary, direction, cid, key);
+    edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
 
-    if (key != 0) {
+    trx.finish(res);
+
+    if (key != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
-    for (size_t j = 0;  j < edges._length;  ++j) {
-      if (barrier == 0) {
-        barrier = TRI_CreateBarrierElement(&primary->_barrierList);
-        if (barrier == 0) {
-          error = true;
-          break;
-        }
-      }
-
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, (TRI_doc_mptr_t const*) edges._buffer[j], barrier, usedBarrier);
+    for (size_t j = 0;  j < edges.size();  ++j) {
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1709,20 +1585,12 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
         ++count;
       }
     }
-
-    TRI_DestroyVectorPointer(&edges);
   }
-
-  trx.finish(res);
 
   // .............................................................................
   // outside a read transaction
   // .............................................................................
   
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -1730,18 +1598,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
   return scope.Close(documents);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all documents from a collection
@@ -1769,12 +1628,10 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 0, skip, limit);
 
-  TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
-  vector<TRI_doc_mptr_t> docs;
+  vector<TRI_doc_mptr_copy_t> docs;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1782,21 +1639,17 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.read(docs, &barrier, skip, limit, &total);
+  res = trx.read(docs, skip, limit, &total);
+
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  const size_t n = docs.size();
+  size_t const n = docs.size();
   uint32_t count = 0;
-  bool usedBarrier = false;
-  
-  if (n > 0) {
-    TRI_ASSERT_MAINTAINER(barrier != 0);
-  }
-
+ 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
   v8::Handle<v8::Array> documents = v8::Array::New((int) n);
@@ -1804,7 +1657,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier, usedBarrier);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i]);
 
     if (doc.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1817,10 +1670,6 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("total"), v8::Number::New(total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
   
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   return scope.Close(result);
 }
 
@@ -1854,12 +1703,10 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   TRI_voc_size_t limit;
   ExtractSkipAndLimit(argv, 2, skip, limit);
 
-  TRI_barrier_t* barrier = 0;
   uint32_t total = 0;
-  vector<TRI_doc_mptr_t> docs;
+  vector<TRI_doc_mptr_copy_t> docs;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1867,21 +1714,16 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.readOffset(docs, &barrier, internalSkip, batchSize, skip, &total);
+  res = trx.readOffset(docs, internalSkip, batchSize, skip, &total);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  const size_t n = docs.size();
+  size_t const n = docs.size();
   uint32_t count = 0;
-  bool usedBarrier = false;
   
-  if (n > 0) {
-    TRI_ASSERT_MAINTAINER(barrier != 0);
-  }
-
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New();
   v8::Handle<v8::Array> documents = v8::Array::New((int) n);
@@ -1889,7 +1731,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i], barrier, usedBarrier);
+    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i]);
 
     if (document.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1903,10 +1745,6 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("count"), v8::Number::New(count));
   result->Set(v8::String::New("skip"), v8::Number::New(internalSkip));
   
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   return scope.Close(result);
 }
 
@@ -1936,12 +1774,9 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  TRI_barrier_t* barrier = 0;
-  TRI_doc_mptr_t document;
-  document._data = nullptr;
+  TRI_doc_mptr_copy_t document;
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1949,33 +1784,19 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.readRandom(&document, &barrier);
+  res = trx.readRandom(&document);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
-
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  if (document._data == nullptr) {
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
-
+  if (document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     return scope.Close(v8::Null());
   }
 
-  bool usedBarrier = false;
-
-  v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &document, barrier, usedBarrier);
+  v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &document);
   
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (doc.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -2010,8 +1831,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2019,8 +1839,8 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
   v8::Handle<v8::Object> example = argv[0]->ToObject();
 
@@ -2033,6 +1853,10 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   TRI_shape_pid_t* pids;
   TRI_shaped_json_t** values = 0;
   size_t n;
+  
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   v8::Handle<v8::Object> err;
   res = SetupExampleObject(example, shaper, n, pids, values, &err);
@@ -2051,17 +1875,30 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   v8::Handle<v8::Array> documents = v8::Array::New();
   result->Set(v8::String::New("documents"), documents);
 
-  // .............................................................................
+  // ...........................................................................
   // inside a read transaction
-  // .............................................................................
+  // ...........................................................................
+    
+  vector<TRI_doc_mptr_copy_t> filtered; 
 
   trx.lockRead();
 
   // find documents by example
-  TRI_vector_t filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  try {
+    filtered = TRI_SelectByExample(trx.trxCollection(), n,  pids, values);
+  }
+  catch (std::exception& ex) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  trx.finish(res);
+
+  // ...........................................................................
+  // outside a read transaction
+  // ...........................................................................
 
   // convert to list of shaped jsons
-  size_t total = filtered._length;
+  size_t total = filtered.size();
   size_t count = 0;
   bool error = false;
   
@@ -2069,47 +1906,25 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
     size_t s;
     size_t e;
 
-    CalculateSkipLimitSlice(filtered._length, skip, limit, s, e);
+    CalculateSkipLimitSlice(filtered.size(), skip, limit, s, e);
 
     if (s < e) {
-      // only go in here if something has to be done, otherwise barrier memory might be lost
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      for (size_t j = s; j < e; ++j) {
+        TRI_doc_mptr_copy_t* mptr = &filtered[j];
 
-      if (barrier == 0) {
-        error = true;
-      }
-      else {
-        bool usedBarrier = false;
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr);
 
-        for (size_t j = s; j < e; ++j) {
-          TRI_doc_mptr_t* mptr = (TRI_doc_mptr_t*) TRI_AtVector(&filtered, j);
-
-          v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr, barrier, usedBarrier);
-
-          if (doc.IsEmpty()) {
-            error = true;
-            break;
-          }
-          else {
-            documents->Set((uint32_t) count++, doc);
-          }
-
+        if (doc.IsEmpty()) {
+          error = true;
+          break;
         }
-      
-        if (! usedBarrier && barrier != 0) {
-          TRI_FreeBarrier(barrier);
+        else {
+          documents->Set((uint32_t) count++, doc);
         }
       }
     }
   }
-
-  TRI_DestroyVector(&filtered);
-
-  trx.finish(res);
-
-  // .............................................................................
-  // outside a write transaction
-  // .............................................................................
+  
 
   result->Set(v8::String::New("total"), v8::Integer::New((int32_t) total));
   result->Set(v8::String::New("count"), v8::Integer::New((int32_t) count));
@@ -2129,7 +1944,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
                                                       TRI_vocbase_col_t const* collection,
                                                       v8::Handle<v8::Object>* err,
                                                       v8::Arguments const& argv) {
@@ -2147,6 +1962,10 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
 
   v8::Handle<v8::Object> example = argv[1]->ToObject();
 
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
   // extract skip and limit
   TRI_voc_ssize_t skip;
   TRI_voc_size_t limit;
@@ -2160,9 +1979,9 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   result->Set(v8::String::New("documents"), documents);
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2175,8 +1994,8 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
   // convert the example (index is locked by lockRead)
   TRI_index_search_value_t searchValue;
   
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  TRI_shaper_t* shaper = primary->_shaper;
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx from above
   int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, err);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2203,28 +2022,15 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (ReadTransactionType& trx,
     CalculateSkipLimitSlice(total, skip, limit, s, e);
 
     if (s < e) {
-      TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
+      for (size_t i = s;  i < e;  ++i) {
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i]);
 
-      if (barrier == 0) {
-        error = true;
-      }
-      else {
-        bool usedBarrier = false;
-
-        for (size_t i = s;  i < e;  ++i) {
-          v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i], barrier, usedBarrier);
-
-          if (doc.IsEmpty()) {
-            error = true;
-            break;
-          }
-          else {
-            documents->Set((uint32_t) count++, doc);
-          }
+        if (doc.IsEmpty()) {
+          error = true;
+          break;
         }
-  
-        if (! usedBarrier && barrier != 0) {
-          TRI_FreeBarrier(barrier);
+        else {
+          documents->Set((uint32_t) count++, doc);
         }
       }
     }
@@ -2259,8 +2065,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2327,47 +2132,64 @@ static v8::Handle<v8::Value> JS_ByConditionBitarray (v8::Arguments const& argv) 
   return ExecuteBitarrayQuery(argv, signature, QUERY_CONDITION);
 }
 
-typedef struct collection_checksum_s {
-  TRI_string_buffer_t      _buffer;
-  CollectionNameResolver*  _resolver;
-  uint32_t                 _checksum;
-}
-collection_checksum_t;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper struct used when calculting checksums
+////////////////////////////////////////////////////////////////////////////////
+
+struct collection_checksum_t {
+  collection_checksum_t (CollectionNameResolver const* resolver) 
+    : _resolver(resolver), 
+      _checksum(0) {
+  }
+
+  CollectionNameResolver const*  _resolver;
+  TRI_string_buffer_t            _buffer;
+  uint32_t                       _checksum;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for checksum calculation, WR = with _rid, WD = with data
 ////////////////////////////////////////////////////////////////////////////////
 
 template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const* mptr, 
-                                                           TRI_primary_collection_t* primary, 
+                                                           TRI_document_collection_t* document, 
                                                            void* data) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->_data);
+  // This callback is only called in TRI_DocumentIteratorDocumentCollection
+  // and there we have an ongoing transaction. Therefore all master pointer
+  // and data pointer accesses here are safe!
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
   collection_checksum_t* helper = static_cast<collection_checksum_t*>(data);
   uint32_t localCrc;
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+      marker->_type == TRI_WAL_MARKER_DOCUMENT) {
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
   }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* e = (TRI_doc_edge_key_marker_t const*) marker;
-
+  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+           marker->_type == TRI_WAL_MARKER_EDGE) {
     // must convert _rid, _fromCid, _toCid into strings for portability
-    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));
+    localCrc = TRI_Crc32HashString(TRI_EXTRACT_MARKER_KEY(mptr));  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     if (WR) {
       localCrc += TRI_Crc32HashPointer(&mptr->_rid, sizeof(TRI_voc_rid_t));
     }
-#ifndef TRI_ENABLE_CLUSTER
-    const string extra = helper->_resolver->getCollectionName(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
-                         helper->_resolver->getCollectionName(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
-#else
-    const string extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
-                         helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+
+    if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* e = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
+      string const extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                           helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
   
-#endif
-    localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+    }
+    else {
+      triagens::wal::edge_marker_t const* e = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
+      string const extra = helper->_resolver->getCollectionNameCluster(e->_toCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetToKey) +
+                           helper->_resolver->getCollectionNameCluster(e->_fromCid) + TRI_DOCUMENT_HANDLE_SEPARATOR_CHR + string(((char*) marker) + e->_offsetFromKey); 
+  
+      localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
+    }
   }
   else {
     return true;
@@ -2375,12 +2197,12 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 
   if (WD) {
     // with data
-    TRI_doc_document_key_marker_t const* d = (TRI_doc_document_key_marker_t const*) marker;
+    void const* d = static_cast<void const*>(marker);
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, d);
 
-    TRI_StringifyArrayShapedJson(primary->_shaper, &helper->_buffer, &shaped, false);
+    TRI_StringifyArrayShapedJson(document->getShaper(), &helper->_buffer, &shaped, false);  // PROTECTED by trx in calling function TRI_DocumentIteratorDocumentCollection
     localCrc += TRI_Crc32HashPointer(TRI_BeginStringBuffer(&helper->_buffer), TRI_LengthStringBuffer(&helper->_buffer));
     TRI_ResetStringBuffer(&helper->_buffer);
   }
@@ -2412,12 +2234,10 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-#endif
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
@@ -2438,8 +2258,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     withData = TRI_ObjectToBoolean(argv[1]);
   }
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2447,13 +2266,13 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
   
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
-  Barrier barrier(primary);
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  }
   
-  collection_checksum_t helper;
-  helper._checksum = 0;
-  helper._resolver = &resolver;
+  collection_checksum_t helper(trx.resolver());
     
   // .............................................................................
   // inside a read transaction
@@ -2461,26 +2280,26 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   trx.lockRead();
   // get last tick
-  const string rid = StringUtils::itoa(primary->base._info._revision);
+  const string rid = StringUtils::itoa(document->_info._revision);
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
 
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, true>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<true, true>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, true>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<false, true>);
     }
 
     TRI_DestroyStringBuffer(&helper._buffer);
   }
   else {
     if (withRevisions) {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<true, false>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<true, false>);
     }
     else {
-      TRI_DocumentIteratorPrimaryCollection(primary, &helper, &ChecksumCalculator<false, false>);
+      TRI_DocumentIteratorDocumentCollection(&trx, document, &helper, &ChecksumCalculator<false, false>);
     }
   }
 
@@ -2574,10 +2393,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
-  TRI_barrier_t* barrier = 0;
-
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  SingleCollectionReadOnlyTransaction<V8TransactionContext<true>> trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
         
@@ -2585,24 +2401,11 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  bool usedBarrier = false;
-  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
-
-  if (barrier == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  vector<TRI_doc_mptr_t const*> documents;
+  std::vector<TRI_doc_mptr_copy_t> documents;
   res = trx.readPositional(documents, 0, count);
+  trx.finish(res);
 
-  const size_t n = documents.size();
-
-  assert(barrier != 0);
-
-  if (n == 0) {
-    TRI_FreeBarrier(barrier);
-    barrier = 0;
-  }
+  size_t const n = documents.size();
 
   if (returnList) {
     v8::Handle<v8::Array> result = v8::Array::New((int) n);
@@ -2610,40 +2413,24 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     uint32_t j = 0;
 
     for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i], barrier, usedBarrier);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &documents[i]);
         
       if (doc.IsEmpty()) {
         // error
-        trx.finish(res);
-
         TRI_V8_EXCEPTION_MEMORY(scope);
       }
 
       result->Set(j++, doc);
     }
     
-    trx.finish(res);
-        
-    if (! usedBarrier && barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
-    
     return scope.Close(result);
   }
   else {
     if (n == 0) {
-      trx.finish(res);
-
       return scope.Close(v8::Null());
     }
 
-    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0], barrier, usedBarrier);
-
-    trx.finish(res);
-    
-    if (! usedBarrier && barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, &documents[0]);
 
     if (result.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2659,7 +2446,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
+static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
                                             TRI_vocbase_col_t const* collection,
                                             v8::Handle<v8::Object>* err,
                                             v8::Arguments const& argv) {
@@ -2671,9 +2458,9 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -2712,11 +2499,8 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
     TRI_V8_EXCEPTION_INTERNAL(scope, "internal error in fulltext index query");
   }
 
-  TRI_barrier_t* barrier = 0;
-  bool usedBarrier = false;
-
-  if (queryResult->_numDocuments > 0) {
-    barrier = TRI_CreateBarrierElement(&((TRI_primary_collection_t*) collection->_collection)->_barrierList);
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
 
   // setup result
@@ -2728,7 +2512,7 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
   bool error = false;
 
   for (uint32_t i = 0; i < queryResult->_numDocuments; ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i], barrier, usedBarrier);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i]);
 
     if (doc.IsEmpty()) {
       error = true;
@@ -2740,10 +2524,6 @@ static v8::Handle<v8::Value> FulltextQuery (ReadTransactionType& trx,
 
   TRI_FreeResultFulltextIndex(queryResult);
     
-  if (! usedBarrier && barrier != 0) {
-    TRI_FreeBarrier(barrier);
-  }
-
   if (error) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -2785,8 +2565,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2848,10 +2627,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  TRI_barrier_t* barrier = 0;
-
-  CollectionNameResolver resolver(col->_vocbase);
-  SingleCollectionReadOnlyTransaction<EmbeddableTransaction<V8TransactionContext> > trx(col->_vocbase, resolver, col->_cid);
+  SingleCollectionReadOnlyTransaction<V8TransactionContext<true>> trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
         
@@ -2859,24 +2635,11 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  bool usedBarrier = false;
-  barrier = TRI_CreateBarrierElement(&trx.primaryCollection()->_barrierList);
-
-  if (barrier == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  vector<TRI_doc_mptr_t const*> documents;
+  vector<TRI_doc_mptr_copy_t> documents;
   res = trx.readPositional(documents, -1, count);
+  trx.finish(res);
 
-  const size_t n = documents.size();
-
-  assert(barrier != 0);
-
-  if (n == 0) {
-    TRI_FreeBarrier(barrier);
-    barrier = 0;
-  }
+  size_t const n = documents.size();
 
   if (returnList) {
     v8::Handle<v8::Array> result = v8::Array::New((int) n);
@@ -2884,40 +2647,24 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
     uint32_t j = 0;
 
     for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i], barrier, usedBarrier);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &documents[i]);
         
       if (doc.IsEmpty()) {
         // error
-        trx.finish(res);
-
         TRI_V8_EXCEPTION_MEMORY(scope);
       }
 
       result->Set(j++, doc);
     }
     
-    trx.finish(res);
-    
-    if (! usedBarrier && barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
-    
     return scope.Close(result);
   }
   else {
     if (n == 0) {
-      trx.finish(res);
-
       return scope.Close(v8::Null());
     }
 
-    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0], barrier, usedBarrier);
-
-    trx.finish(res);
-    
-    if (! usedBarrier && barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, &documents[0]);
 
     if (result.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2933,7 +2680,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
+static v8::Handle<v8::Value> NearQuery (V8ReadTransaction& trx,
                                         TRI_vocbase_col_t const* collection,
                                         v8::Handle<v8::Object>* err,
                                         v8::Arguments const& argv) {
@@ -2945,9 +2692,9 @@ static v8::Handle<v8::Value> NearQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -3001,8 +2748,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -3057,7 +2803,7 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
+static v8::Handle<v8::Value> WithinQuery (V8ReadTransaction& trx,
                                           TRI_vocbase_col_t const* collection,
                                           v8::Handle<v8::Object>* err,
                                           v8::Arguments const& argv) {
@@ -3069,9 +2815,9 @@ static v8::Handle<v8::Value> WithinQuery (ReadTransactionType& trx,
   }
 
   // extract the index
-  TRI_index_t* idx = TRI_LookupIndexByHandle(collection, argv[0], false, err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], false, err);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     return scope.Close(v8::ThrowException(*err));
   }
 
@@ -3125,8 +2871,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  CollectionNameResolver resolver(col->_vocbase);
-  ReadTransactionType trx(col->_vocbase, resolver, col->_cid);
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -3153,10 +2898,6 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------
@@ -3164,11 +2905,6 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the query functions
@@ -3182,7 +2918,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  assert(v8g != 0);
+  TRI_ASSERT(v8g != 0);
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template
@@ -3212,10 +2948,6 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "OUTEDGES", JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

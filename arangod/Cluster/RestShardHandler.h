@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_CLUSTER_REST_SHARD_HANDLER_H
 #define TRIAGENS_CLUSTER_REST_SHARD_HANDLER_H 1
 
+#include "Basics/Common.h"
+
 #include "Admin/RestBaseHandler.h"
 
 namespace triagens {
@@ -76,7 +78,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () const;
+        std::string const& queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler
@@ -94,7 +96,7 @@ namespace triagens {
 /// @brief dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-        rest::Dispatcher* _dispatcher;
+        rest::Dispatcher* TRI_UNUSED _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
