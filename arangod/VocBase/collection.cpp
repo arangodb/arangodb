@@ -1005,7 +1005,7 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     try {
       collection = new TRI_collection_t();
     }
-    catch (std::exception& e) {
+    catch (std::exception&) {
       collection = nullptr;
     }
 
