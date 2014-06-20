@@ -1178,6 +1178,47 @@ exports.unmount = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returnes git information of a Foxx application
+///
+/// Input:
+/// * name: application name
+///
+/// Output:
+/// * name: application name
+/// * git: git information
+////////////////////////////////////////////////////////////////////////////////
+
+exports.gitinfo = function (key) {
+  'use strict';
+
+  var _ = require("underscore"), gitinfo,
+  aal = getStorage(),
+  result = aal.toArray().concat(exports.developmentMounts()),
+  path = module.appPath(),
+  foxxPath, completePath, gitfile, gitcontent;
+
+  _.each(result, function(k) {
+
+    if (k.name === key) {
+      foxxPath = k.path;
+    }
+  });
+
+  completePath = path+"/"+foxxPath;
+  gitfile = completePath + "/gitinfo.json";
+
+  if (fs.isFile(gitfile)) {
+    gitcontent = fs.read(gitfile);
+    gitinfo = {git: true, url: JSON.parse(gitcontent), name: key};
+  }
+  else {
+    gitinfo = {};
+  }
+
+  return gitinfo;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returnes mount points of a Foxx application
 ///
 /// Input:
@@ -1191,7 +1232,7 @@ exports.unmount = function (mount) {
 exports.mountinfo = function (key) {
   'use strict';
 
-  var _ = require("underscore"), mountinfo = [], tmp;
+  var _ = require("underscore"), mountinfo = [];
 
   if (key === undefined) {
     _.each(exports.appRoutes(), function(m) {
@@ -1570,6 +1611,9 @@ exports.fetchFromGithub = function (url, name, version) {
 
   fs.makeDirectoryRecursive(path);
   fs.unzipFile(realFile, path, false, true);
+
+  var gitFilename = "/gitinfo.json";
+  fs.write(path+gitFilename, JSON.stringify(url));
 
   this.scanAppDirectory();
   return "app:" + source.name + ":" + source.version;
