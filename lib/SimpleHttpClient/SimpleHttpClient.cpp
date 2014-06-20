@@ -28,10 +28,6 @@
 
 #include "SimpleHttpClient.h"
 
-#include <stdio.h>
-#include <string>
-#include <errno.h>
-
 #include "Basics/StringUtils.h"
 #include "BasicsC/logging.h"
 
@@ -58,17 +54,15 @@ namespace triagens {
       _readBuffer(TRI_UNKNOWN_MEM_ZONE),
       _requestTimeout(requestTimeout),
       _warn(warn),
-      _locationRewriter(),
+      _state(IN_CONNECT),
+      _written(0),
+      _errorMessage(""),
+      _locationRewriter({0, 0}),
       _nextChunkedSize(0),
-      _result(0), 
+      _result(nullptr), 
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {
 
-      _locationRewriter = { 0, 0 };
-      
-      _errorMessage = "";
-      _written = 0;
-      _state = IN_CONNECT;
       if (_connection->isConnected()) {
         _state = FINISHED;
       }
@@ -107,7 +101,7 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
-      assert(_result == 0);
+      TRI_ASSERT(_result == 0);
 
       _result = new SimpleHttpResult;
       _errorMessage = "";
@@ -115,7 +109,7 @@ namespace triagens {
       // set body 
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
-      assert(_state == IN_CONNECT || _state == IN_WRITE);
+      TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
 
       double endTime = now() + _requestTimeout;
@@ -390,7 +384,7 @@ namespace triagens {
         _state = IN_CONNECT;
       }
 
-      assert(_state == IN_CONNECT ||_state == IN_WRITE);
+      TRI_ASSERT(_state == IN_CONNECT ||_state == IN_WRITE);
     }
 
 
@@ -403,11 +397,11 @@ namespace triagens {
 
       while (pos) {
         // size_t is unsigned, should never get < 0
-        assert(pos >= _readBuffer.c_str());
+        TRI_ASSERT(pos >= _readBuffer.c_str());
 
         size_t len = pos - _readBuffer.c_str();
         string line(_readBuffer.c_str(), len);
-        _readBuffer.erase_front(len + 1);
+        _readBuffer.move_front(len + 1);
 
         //printf("found header line %s\n", line.c_str());
 
@@ -478,7 +472,7 @@ namespace triagens {
                                         _result->getContentLength());
         }
 
-        _readBuffer.erase_front(_result->getContentLength());
+        _readBuffer.move_front(_result->getContentLength());
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
         if (! _keepAlive) {
@@ -496,7 +490,7 @@ namespace triagens {
         // got a line
         size_t len = pos - _readBuffer.c_str();
         string line(_readBuffer.c_str(), len);
-        _readBuffer.erase_front(len + 1);
+        _readBuffer.move_front(len + 1);
 
         string trimmed = StringUtils::trim(line);
 
@@ -554,10 +548,9 @@ namespace triagens {
       }
 
       if (_readBuffer.length() >= _nextChunkedSize) {
-
         _result->getBody().appendText(_readBuffer.c_str(), 
                                       (size_t) _nextChunkedSize);
-        _readBuffer.erase_front((size_t) _nextChunkedSize);
+        _readBuffer.move_front((size_t) _nextChunkedSize);
         _state = IN_READ_CHUNKED_HEADER;
         return readChunkedHeader();
       }

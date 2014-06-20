@@ -28,15 +28,11 @@
 #ifndef TRIAGENS_VOC_BASE_DATAFILE_H
 #define TRIAGENS_VOC_BASE_DATAFILE_H 1
 
-#include "BasicsC/common.h"
-
+#include "Basics/Common.h"
 #include "BasicsC/locks.h"
+#include "ShapedJson/shaped-json.h"
 
 #include "VocBase/vocbase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page DurhamDatafiles Datafiles
@@ -98,11 +94,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,18 +111,9 @@ extern "C" {
 
 #define TRI_MARKER_MAXIMAL_SIZE (256 * 1024 * 1024)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
@@ -157,7 +139,6 @@ typedef enum {
 
   TRI_DF_MARKER_HEADER               = 1000,
   TRI_DF_MARKER_FOOTER               = 1001,
-  TRI_DF_MARKER_SKIP                 = 1002, // currently unused
   TRI_DF_MARKER_ATTRIBUTE            = 1003,
   TRI_DF_MARKER_SHAPE                = 1004,
 
@@ -176,6 +157,25 @@ typedef enum {
   TRI_DOC_MARKER_COMMIT_TRANSACTION  = 3101, 
   TRI_DOC_MARKER_ABORT_TRANSACTION   = 3102,
   TRI_DOC_MARKER_PREPARE_TRANSACTION = 3103,
+  
+  TRI_WAL_MARKER_ATTRIBUTE           = 4000,
+  TRI_WAL_MARKER_SHAPE               = 4001,
+  TRI_WAL_MARKER_DOCUMENT            = 4010,
+  TRI_WAL_MARKER_EDGE                = 4011,
+  TRI_WAL_MARKER_REMOVE              = 4012,
+  TRI_WAL_MARKER_BEGIN_TRANSACTION   = 4020,
+  TRI_WAL_MARKER_COMMIT_TRANSACTION  = 4021,
+  TRI_WAL_MARKER_ABORT_TRANSACTION   = 4022,
+  
+  TRI_WAL_MARKER_CREATE_COLLECTION   = 4030,
+  TRI_WAL_MARKER_DROP_COLLECTION     = 4031,
+  TRI_WAL_MARKER_RENAME_COLLECTION   = 4032,
+  TRI_WAL_MARKER_CHANGE_COLLECTION   = 4033,
+  TRI_WAL_MARKER_CREATE_INDEX        = 4035,
+  TRI_WAL_MARKER_DROP_INDEX          = 4036,
+
+  TRI_WAL_MARKER_CREATE_DATABASE     = 4040,
+  TRI_WAL_MARKER_DROP_DATABASE       = 4041,
 
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
@@ -415,26 +415,150 @@ typedef struct TRI_df_footer_marker_s {
 TRI_df_footer_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile document marker
+/// @brief document datafile header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_df_document_marker_s {
-  TRI_df_marker_t base;   // 24 bytes
+typedef struct TRI_col_header_marker_s {
+  TRI_df_marker_t base;                // 24 bytes
+
+  TRI_col_type_t _type;                //  4 bytes
+
+#ifdef TRI_PADDING_32
+  char _padding_col_header_marker[4];
+#endif
+
+  TRI_voc_cid_t  _cid;                 //  8 bytes
 }
-TRI_df_document_marker_t;
+TRI_col_header_marker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief datafile attribute marker
 ////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_df_attribute_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_shape_aid_t _aid;
+  TRI_shape_size_t _size;
+
+  // char name[]
+}
+TRI_df_attribute_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief datafile shape marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_df_shape_marker_s {
+  TRI_df_marker_t base;
+}
+TRI_df_shape_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile marker with key
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_document_key_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_rid_t   _rid;        // this is the tick for a create and update
+  TRI_voc_tid_t   _tid;
+
+  TRI_shape_sid_t _shape;
+
+  uint16_t        _offsetKey;
+  uint16_t        _offsetJson;
+
+#ifdef TRI_PADDING_32
+  char            _padding_df_marker[4];
+#endif
+}
+TRI_doc_document_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge datafile marker with key
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_edge_key_marker_s {
+  TRI_doc_document_key_marker_t base;
+
+  TRI_voc_cid_t   _toCid;
+  TRI_voc_cid_t   _fromCid;
+
+  uint16_t        _offsetToKey;
+  uint16_t        _offsetFromKey;
+
+#ifdef TRI_PADDING_32
+  char            _padding_df_marker[4];
+#endif
+}
+TRI_doc_edge_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document datafile deletion marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_deletion_key_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_rid_t   _rid;        // this is the tick for the deletion
+  TRI_voc_tid_t   _tid;
+
+  uint16_t        _offsetKey;
+}
+TRI_doc_deletion_key_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_begin_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+  uint32_t        _numCollections;
+#ifdef TRI_PADDING_32
+  char            _padding_begin_marker[4];
+#endif
+}
+TRI_doc_begin_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief commit transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_commit_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_commit_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_abort_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_abort_transaction_marker_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepare transaction marker
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct TRI_doc_prepare_transaction_marker_s {
+  TRI_df_marker_t base;
+
+  TRI_voc_tid_t   _tid;
+}
+TRI_doc_prepare_transaction_marker_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
@@ -490,18 +614,33 @@ void TRI_DestroyDatafile (TRI_datafile_t*);
 
 void TRI_FreeDatafile (TRI_datafile_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
+/// @brief checks if a marker is a data marker in the WAL
 ////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_IsWalDataMarkerDatafile (void const* marker) {
+  TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(marker);
+
+  return (m->_type == TRI_WAL_MARKER_DOCUMENT || m->_type == TRI_WAL_MARKER_EDGE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name for a marker
+////////////////////////////////////////////////////////////////////////////////
+
+char const* TRI_NameMarkerDatafile (TRI_df_marker_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a marker with the most basic information
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitMarkerDatafile (char*,
+                             TRI_df_marker_type_e,
+                             TRI_voc_size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the initial datafile header marker
@@ -521,26 +660,7 @@ int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t*,
 /// @brief checks whether a marker is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsValidMarkerDatafile (TRI_df_marker_t* const marker);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a CRC of a marker
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckCrcMarkerDatafile (TRI_df_marker_t const* marker);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a CRC and writes that into the header
-/// @deprecated this function is deprecated. do not use for new code.
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FillCrcKeyMarkerDatafile (TRI_datafile_t* datafile,
-                                   TRI_df_marker_t* marker,
-                                   TRI_voc_size_t markerSize,
-                                   void const* keyBody,
-                                   TRI_voc_size_t keyBodySize,
-                                   void const* body,
-                                   TRI_voc_size_t bodySize);
+bool TRI_IsValidMarkerDatafile (TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserves room for an element, advances the pointer
@@ -559,20 +679,23 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
                               void* position,
                               TRI_df_marker_t const* marker,
-                              TRI_voc_size_t markerSize,
                               bool sync) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checksums and writes a marker to the datafile
-/// this function will also assign a new tick value for the marker (so that
-/// the tick values are increasing)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
                                  void* position,
                                  TRI_df_marker_t* marker,
-                                 TRI_voc_size_t markerSize,
                                  bool sync) TRI_WARN_UNUSED_RESULT;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update tick values for a datafile
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UpdateTicksDatafile (TRI_datafile_t*,
+                              TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a datafile
@@ -580,22 +703,21 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateDatafile (TRI_datafile_t*,
-                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
-                          void* data,
-                          bool journal,
-                          bool setTicks);
+                          bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
+                          void* data);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing datafile read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_OpenDatafile (char const* filename);
+TRI_datafile_t* TRI_OpenDatafile (char const*,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing, possible corrupt datafile read-write
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename);
+TRI_datafile_t* TRI_ForcedOpenDatafile (char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a datafile and all memory regions
@@ -632,14 +754,6 @@ TRI_df_scan_t TRI_ScanDatafile (char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyDatafileScan (TRI_df_scan_t* scan);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

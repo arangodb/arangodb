@@ -28,13 +28,19 @@
 #ifndef TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H
 #define TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H 1
 
+#include "Basics/Common.h"
+
 #include <v8.h>
 
 #include "V8/v8-globals.h"
 
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
+
 namespace triagens {
   namespace arango {
 
+    template<bool EMBEDDABLE>
     class V8TransactionContext {
 
 // -----------------------------------------------------------------------------
@@ -45,110 +51,80 @@ namespace triagens {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8TransactionContext () {  
+        V8TransactionContext ()
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~V8TransactionContext () {
+        virtual ~V8TransactionContext () {
+//          unregisterTransaction();
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get parent transaction (if any)
-////////////////////////////////////////////////////////////////////////////////
-
-        static TRI_transaction_t* getParent () {
-          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-          if (v8g->_currentTransaction != 0) {
-            return (TRI_transaction_t*) v8g->_currentTransaction;
-          }
-
-          return 0;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+        inline CollectionNameResolver const* getResolver () const {
+          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool isEmbedded () {
-          return (getParent() != 0);
+        static inline bool IsEmbedded () {
+          TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+          return (v8g->_currentTransaction != nullptr);
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
 
+      protected:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
+/// @brief whether or not the transaction is embeddable
 ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+        inline bool isEmbeddable () const {
+          return EMBEDDABLE;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_t* getParentTransaction () const {
-          return getParent();
+          if (_v8g->_currentTransaction != nullptr) {
+            return static_cast<TRI_transaction_t*>(_v8g->_currentTransaction);
+          }
+
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the transaction in the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int registerTransaction (TRI_transaction_t* const trx) const {
-          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
-          v8g->_currentTransaction = trx;
+        inline int registerTransaction (TRI_transaction_t* trx) {
+          _v8g->_currentTransaction = trx;
+          _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -157,17 +133,30 @@ namespace triagens {
 /// @brief unregister the transaction from the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int unregisterTransaction () const {
-          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        inline int unregisterTransaction () {
+          _v8g->_currentTransaction = nullptr;
 
-          v8g->_currentTransaction = 0;
+          if (_v8g->_resolver != nullptr) {
+            CollectionNameResolver* resolver = static_cast<CollectionNameResolver*>(_v8g->_resolver);
+            delete resolver;
+
+            _v8g->_resolver = nullptr;
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief v8 global context
 ////////////////////////////////////////////////////////////////////////////////
+
+        TRI_v8_global_t* _v8g;
 
     };
 

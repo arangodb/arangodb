@@ -39,12 +39,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   : JSBarriers(),
     JSCollections(),
 
-#ifdef TRI_ENABLE_CLUSTER
     AgencyTempl(),
     ClusterInfoTempl(),
     ServerStateTempl(),
     ClusterCommTempl(),
-#endif
     ArangoErrorTempl(),
     SleepAndRequeueTempl(),
     SleepAndRequeueFuncTempl(),
@@ -70,15 +68,11 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     BodyFromFileKey(),
     BodyKey(),
     ClientKey(),
-#ifdef TRI_ENABLE_CLUSTER
     ClientTransactionIDKey(),
-#endif
     CodeKey(),
     CompatibilityKey(),
     ContentTypeKey(),
-#ifdef TRI_ENABLE_CLUSTER
     CoordTransactionIDKey(),
-#endif
     DatabaseKey(),
     DoCompactKey(),
     DomainKey(),
@@ -95,30 +89,23 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     LengthKey(),
     LifeTimeKey(),
     NameKey(),
-#ifdef TRI_ENABLE_CLUSTER
     OperationIDKey(),
-#endif
     ParametersKey(),
     PathKey(),
     PrefixKey(),
     PortKey(),
+    PortTypeKey(),
     ProtocolKey(),
     RequestBodyKey(),
     RequestTypeKey(),
     ResponseCodeKey(),
     SecureKey(),
     ServerKey(),
-#ifdef TRI_ENABLE_CLUSTER
     ShardIDKey(),
-#endif
     SleepKey(),
-#ifdef TRI_ENABLE_CLUSTER
     StatusKey(),
-#endif
     SuffixKey(),
-#ifdef TRI_ENABLE_CLUSTER
     TimeoutKey(),
-#endif
     TransformationsKey(),
     UrlKey(),
     UserKey(),
@@ -136,6 +123,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _currentRequest(0),
     _currentResponse(0),
     _currentTransaction(0),
+    _resolver(0),
     _server(0),
     _vocbase(0),
     _loader(0),
@@ -156,16 +144,12 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
   ClientKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("client"));
-#ifdef TRI_ENABLE_CLUSTER
   ClientTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("clientTransactionID"));
-#endif
   CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
   CompatibilityKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("compatibility"));
   ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
   CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
-#ifdef TRI_ENABLE_CLUSTER
   CoordTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("coordTransactionID"));
-#endif
   DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
   DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
   DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
@@ -182,30 +166,23 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
   LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
-#ifdef TRI_ENABLE_CLUSTER
   OperationIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("operationID"));
-#endif
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
   PortKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("port"));
+  PortTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("portType"));
   ProtocolKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("protocol"));
   RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
   RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));
   ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
   SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
   ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
-#ifdef TRI_ENABLE_CLUSTER
   ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
-#endif
   SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
-#ifdef TRI_ENABLE_CLUSTER
   StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
-#endif
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
-#ifdef TRI_ENABLE_CLUSTER
   TimeoutKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("timeout"));
-#endif
   TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
   UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
   UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));

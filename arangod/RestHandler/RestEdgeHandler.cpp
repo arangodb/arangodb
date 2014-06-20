@@ -30,16 +30,12 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/conversions.h"
 #include "BasicsC/tri-strings.h"
-#include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
-#include "Utils/Barrier.h"
-
-#ifdef TRI_ENABLE_CLUSTER
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
-#endif
+#include "Rest/HttpRequest.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -227,12 +223,10 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-#ifdef TRI_ENABLE_CLUSTER
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
     return createDocumentCoordinator(collection, waitForSync, json, from, to);
   }
-#endif
 
   if (! checkCreateCollection(collection, getCollectionType())) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -240,7 +234,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<StandaloneTransaction<RestTransactionContext>, 1> trx(_vocbase, _resolver, collection);
+  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -254,9 +248,9 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
  
-  TRI_primary_collection_t* primary = trx.primaryCollection();
+  TRI_document_collection_t* primary = trx.documentCollection();
  
-  if (primary->base._info._type != TRI_COL_TYPE_EDGE) {
+  if (primary->_info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection    
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -269,14 +263,14 @@ bool RestEdgeHandler::createDocument () {
   TRI_document_edge_t edge;
   edge._fromCid = cid;
   edge._toCid   = cid;
-  edge._fromKey = 0;
-  edge._toKey   = 0;
+  edge._fromKey = nullptr;
+  edge._toKey   = nullptr;
 
   string wrongPart;
   // Note that in a DBserver in a cluster, the following call will
   // actually parse the first part of `from` as a cluster-wide
   // collection name, exactly as it is needed here!
-  res = parseDocumentId(from, edge._fromCid, edge._fromKey);
+  res = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
 
   if (res != TRI_ERROR_NO_ERROR) {
     wrongPart = "'from'";
@@ -285,7 +279,8 @@ bool RestEdgeHandler::createDocument () {
     // Note that in a DBserver in a cluster, the following call will
     // actually parse the first part of `from` as a cluster-wide
     // collection name, exactly as it is needed here!
-    res = parseDocumentId(to, edge._toCid, edge._toKey);
+    res = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
+
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'to'";
     }
@@ -310,12 +305,9 @@ bool RestEdgeHandler::createDocument () {
   // inside write transaction
   // .............................................................................
   
-  Barrier barrier(primary);
-
   // will hold the result
-  TRI_doc_mptr_t document;
-  res = trx.createEdge(&document, json, waitForSync, &edge);
-  const bool wasSynchronous = trx.synchronous();
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.createEdge(&mptr, json, waitForSync, &edge);
   res = trx.finish(res);
   
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -331,15 +323,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  assert(document._data != nullptr);
-
-  // generate result
-  if (wasSynchronous) {
-    generateCreated(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
-  }
-  else {
-    generateAccepted(cid, (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&document), document._rid);
-  }
+  generateSaved(trx, cid, mptr);
 
   return true;
 }
@@ -348,7 +332,6 @@ bool RestEdgeHandler::createDocument () {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_CLUSTER
 bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  bool waitForSync,
                                                  TRI_json_t* json,
@@ -375,7 +358,6 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

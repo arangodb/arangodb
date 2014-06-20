@@ -29,16 +29,10 @@
 #include "Utilities/Completer.h"
 #include "Utilities/LineEditor.h"
 
-#include "V8/v8-utils.h"
-
 extern "C" {
 #include <linenoise.h>
 }
 
-#include <vector>
-#include <string>
-
-#include "BasicsC/tri-strings.h"
 #include "BasicsC/files.h"
 
 using namespace std;
@@ -54,7 +48,7 @@ namespace {
       COMPLETER->getAlternatives(text, alternatives);
       LineEditor::sortAlternatives(alternatives);
 
-      for(vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); i++) {
+      for (vector<string>::const_iterator i = alternatives.begin(); i != alternatives.end(); ++i) {
         linenoiseAddCompletion(lc, (*i).c_str());
       }
     }

@@ -28,15 +28,11 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_RESULT_H
 #define TRIAGENS_AHUACATL_AHUACATL_RESULT_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/json.h"
 
 #include "VocBase/general-cursor.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -56,10 +52,6 @@ TRI_general_cursor_result_t* TRI_CreateResultAql (TRI_json_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -28,20 +28,14 @@
 #ifndef TRIAGENS_VOC_BASE_COLLECTION_H
 #define TRIAGENS_VOC_BASE_COLLECTION_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "BasicsC/vector.h"
 
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @page DurhamCollections Collections
-///
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
 /// collection are stored in a directory. This directory contains the following
@@ -61,14 +55,6 @@ extern "C" {
 ///
 /// The structure @ref TRI_collection_t is abstract. Currently, there is one
 /// concrete sub-class @ref TRI_document_collection_t.
-///
-/// @section PrimaryCollection Document Collection
-///
-/// @copydetails TRI_primary_collection_t
-///
-/// @section DocumentCollection Simple Document Collection
-///
-/// @copydetails TRI_document_collection_t
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
@@ -95,16 +81,16 @@ struct TRI_vocbase_col_s;
 #define TRI_COL_VERSION_13      (4)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection version for ArangoDB >= 1.5
+/// @brief collection version for ArangoDB >= 2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION_15      (5)
+#define TRI_COL_VERSION_20      (5)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current collection version
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_VERSION TRI_COL_VERSION_15
+#define TRI_COL_VERSION TRI_COL_VERSION_20
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief predefined system collection name for replication
@@ -178,23 +164,6 @@ typedef enum {
 TRI_col_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document datafile header marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_col_header_marker_s {
-  TRI_df_marker_t base;                // 24 bytes
-
-  TRI_col_type_t _type;                //  4 bytes
-
-#ifdef TRI_PADDING_32
-  char _padding_col_header_marker[4];
-#endif
-
-  TRI_voc_cid_t  _cid;                 //  8 bytes
-}
-TRI_col_header_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection info block saved to disk as json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -222,10 +191,11 @@ TRI_col_info_t;
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_collection_s {
+struct TRI_collection_t {
   TRI_col_info_t       _info;
 
   TRI_vocbase_t*       _vocbase;
+  TRI_voc_tick_t       _tickMax;
 
   TRI_col_state_e      _state;       // state of the collection
   int                  _lastError;   // last (critical) error
@@ -236,8 +206,13 @@ typedef struct TRI_collection_s {
   TRI_vector_pointer_t _journals;    // all journals
   TRI_vector_pointer_t _compactors;  // all compactor files
   TRI_vector_string_t  _indexFiles;  // all index filenames
-}
-TRI_collection_t;
+
+  TRI_collection_t () {
+  }
+
+  ~TRI_collection_t () {
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -380,7 +355,7 @@ int TRI_RenameCollection (TRI_collection_t*, char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection (TRI_collection_t*,
-                            bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                            bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                             void*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,19 +395,11 @@ TRI_col_file_structure_t TRI_FileStructureCollectionDirectory (char const*);
 void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a collection to ArangoDB 1.3+ format
+/// @brief upgrade a collection to ArangoDB 2.0+ format
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpgradeCollection13 (TRI_vocbase_t*,
-                             const char* const,
-                             TRI_col_info_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a collection to ArangoDB 1.5+ format
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_UpgradeCollection15 (TRI_vocbase_t*,
-                             const char* const,
+int TRI_UpgradeCollection20 (TRI_vocbase_t*,
+                             char const*,
                              TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -443,7 +410,7 @@ int TRI_UpgradeCollection15 (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateTicksCollection (const char* const,
-                                 bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*, bool),
+                                 bool (*)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                  void*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,10 +431,6 @@ bool TRI_IsAllowedNameCollection (bool,
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* TRI_TypeNameCollection (const TRI_col_type_e);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

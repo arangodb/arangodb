@@ -37,11 +37,9 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-extern "C" {
-  struct TRI_json_s;
-  struct TRI_memory_zone_s;
-  struct TRI_server_s;
-}
+struct TRI_json_s;
+struct TRI_memory_zone_s;
+struct TRI_server_s;
 
 namespace triagens {
   namespace arango {
@@ -753,10 +751,7 @@ namespace triagens {
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
         
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = 0;
-        }
+        static void cleanup ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

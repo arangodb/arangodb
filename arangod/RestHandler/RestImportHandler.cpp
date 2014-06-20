@@ -159,7 +159,7 @@ void RestImportHandler::registerError (RestImportResult& result,
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument (ImportTransactionType& trx, 
+int RestImportHandler::handleSingleDocument (RestImportTransaction& trx, 
                                              TRI_json_t const* json,
                                              string& errorMsg,
                                              bool isEdgeCollection,
@@ -172,7 +172,7 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
   }
 
   // document ok, now import it
-  TRI_doc_mptr_t document;
+  TRI_doc_mptr_copy_t document;
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {
@@ -189,13 +189,13 @@ int RestImportHandler::handleSingleDocument (ImportTransactionType& trx,
 
     edge._fromCid = 0;
     edge._toCid   = 0;
-    edge._fromKey = 0;
-    edge._toKey   = 0;
+    edge._fromKey = nullptr;
+    edge._toKey   = nullptr;
 
     // Note that in a DBserver in a cluster the following two calls will
     // parse the first part as a cluster-wide collection name:
-    int res1 = parseDocumentId(from, edge._fromCid, edge._fromKey);
-    int res2 = parseDocumentId(to, edge._toCid, edge._toKey);
+    int res1 = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
+    int res2 = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
 
     if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
       res = trx.createEdge(&document, json, waitForSync, &edge);
@@ -602,7 +602,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 
 
   // find and load collection given by name or identifier
-  ImportTransactionType trx(_vocbase, _resolver, collection);
+  RestImportTransaction trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -615,19 +615,14 @@ bool RestImportHandler::createFromJson (string const& type) {
     return false;
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  TRI_document_collection_t* document = trx.documentCollection();
+  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
   
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
     trx.truncate(false);
-    
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
   }
 
   if (linewise) {
@@ -1059,7 +1054,7 @@ bool RestImportHandler::createFromKeyValueList () {
 
 
   // find and load collection given by name or identifier
-  ImportTransactionType trx(_vocbase, _resolver, collection);
+  RestImportTransaction trx(_vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1073,19 +1068,14 @@ bool RestImportHandler::createFromKeyValueList () {
     return false;
   }
 
-  TRI_primary_collection_t* primary = trx.primaryCollection();
-  bool const isEdgeCollection = (primary->base._info._type == TRI_COL_TYPE_EDGE);
+  TRI_document_collection_t* document = trx.documentCollection();
+  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
   if (overwrite) {
     // truncate collection first
-    TRI_barrier_t* barrier = TRI_CreateBarrierElement(&primary->_barrierList);
     trx.truncate(false);
-    
-    if (barrier != 0) {
-      TRI_FreeBarrier(barrier);
-    }
   }
 
   size_t i = (size_t) lineNumber;

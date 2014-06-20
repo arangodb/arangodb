@@ -28,6 +28,8 @@
 #ifndef TRIAGENS_V8SERVER_APPLICATION_V8_H
 #define TRIAGENS_V8SERVER_APPLICATION_V8_H 1
 
+#include "Basics/Common.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 
 #include <v8.h>
@@ -39,10 +41,8 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-extern "C" {
-  struct TRI_server_s;
-  struct TRI_vocbase_s;
-}
+struct TRI_server_s;
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace basics {

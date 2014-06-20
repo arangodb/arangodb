@@ -51,31 +51,31 @@ var Buffer = require("buffer").Buffer;
 
 (function () {
   var internal = require("internal");
-  var intervall = require('org/arangodb/statistics').STATISTICS_INTERVALL;
-  var intervall15 = require('org/arangodb/statistics').STATISTICS_HISTORY_INTERVALL;
+  var interval = require('org/arangodb/statistics').STATISTICS_INTERVAL;
+  var interval15 = require('org/arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
 
   if (internal.threadNumber === 0 && typeof internal.registerTask === "function") {
     internal.registerTask({ 
       id: "statistics-collector", 
       name: "statistics-collector",
-      offset: intervall / 10, 
-      period: intervall, 
+      offset: interval / 10, 
+      period: interval, 
       command: "require('org/arangodb/statistics').historian();"
     });
 
     internal.registerTask({ 
       id: "statistics-average-collector", 
       name: "statistics-average-collector",
-      offset: 2 * intervall, 
-      period: intervall15, 
+      offset: 2 * interval, 
+      period: interval15, 
       command: "require('org/arangodb/statistics').historianAverage();"
     });
 
     internal.registerTask({ 
       id: "statistics-gc", 
       name: "statistics-gc",
-      offset: Math.random() * intervall15 / 2, 
-      period: intervall15 / 2, 
+      offset: Math.random() * interval15 / 2, 
+      period: interval15 / 2, 
       command: "require('org/arangodb/statistics').garbageCollector();"
     });
   }

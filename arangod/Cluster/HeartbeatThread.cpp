@@ -75,7 +75,7 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _stop(0),
     _ready(0) {
 
-  assert(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != 0);
   allowAsynchronousCancelation();
 }
 
@@ -201,7 +201,7 @@ void HeartbeatThread::run () {
 
                 if (res == TRI_ERROR_NO_ERROR) {
                   // we were able to read from the _users collection
-                  assert(TRI_IsListJson(json));
+                  TRI_ASSERT(TRI_IsListJson(json));
 
                   if (json->_value._objects._length == 0) {
                     // no users found, now insert initial default user
@@ -459,7 +459,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
           if (res == TRI_ERROR_NO_ERROR) {
             // we were able to read from the _users collection
-            assert(TRI_IsListJson(json));
+            TRI_ASSERT(TRI_IsListJson(json));
 
             if (json->_value._objects._length == 0) {
               // no users found, now insert initial default user
@@ -548,7 +548,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
   // schedule a job for the change
   triagens::rest::Job* job = new ServerJob(this, _server, _applicationV8);
 
-  assert(job != 0);
+  TRI_ASSERT(job != 0);
 
   if (_dispatcher->dispatcher()->addJob(job)) {
     remotePlanVersion = currentPlanVersion;

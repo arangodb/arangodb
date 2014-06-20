@@ -35,8 +35,6 @@
 #include "BasicsC/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
 
-#include <fstream>
-
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-json.h"

@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <BasicsC/common.h>
+#include <Basics/Common.h>
 #include <BasicsC/conversions.h>
 #include <BasicsC/tri-strings.h>
 
@@ -71,6 +71,12 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
 %token T_INTO "INTO keyword"
+%token T_WITH "WITH keyword"
+
+%token T_REMOVE "REMOVE command"
+%token T_INSERT "INSERT command"
+%token T_UPDATE "UPDATE command"
+%token T_REPLACE "REPLACE command"
 
 %token T_NULL "null" 
 %token T_TRUE "true" 
@@ -124,7 +130,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %left T_OR 
 %left T_AND
 %left T_EQ T_NE 
-%left T_IN
+%left T_IN 
+%left T_INTO
 %left T_LT T_GT T_LE T_GE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
@@ -160,6 +167,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> optional_list_elements;
 %type <node> list_elements_list;
 %type <node> array;
+%type <node> query_options;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -169,6 +177,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> expansion;
 %type <node> atomic_value;
 %type <node> value_literal;
+%type <node> collection_name;
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
@@ -182,6 +191,19 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 
 query: 
     optional_statement_block_statements return_statement {
+      context->_type = TRI_AQL_QUERY_READ;
+    }
+  | optional_statement_block_statements remove_statement {
+      context->_type = TRI_AQL_QUERY_REMOVE;
+    }
+  | optional_statement_block_statements insert_statement {
+      context->_type = TRI_AQL_QUERY_INSERT;
+    }
+  | optional_statement_block_statements update_statement {
+      context->_type = TRI_AQL_QUERY_UPDATE;
+    }
+  | optional_statement_block_statements replace_statement {
+      context->_type = TRI_AQL_QUERY_REPLACE;
     }
   ;
 
@@ -275,7 +297,11 @@ collect_statement:
 
       TRI_PushStackParseAql(context, node);
     } collect_list optional_into {
-      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(context, TRI_PopStackParseAql(context), $4);
+      TRI_aql_node_t* node = TRI_CreateNodeCollectAql(
+                context, 
+                static_cast<const TRI_aql_node_t* const>
+                           (TRI_PopStackParseAql(context)), 
+                $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -325,7 +351,8 @@ sort_statement:
 
       TRI_PushStackParseAql(context, node);
     } sort_list {
-      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* list 
+          = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
       TRI_aql_node_t* node = TRI_CreateNodeSortAql(context, list);
       if (node == NULL) {
         ABORT_OOM
@@ -411,11 +438,116 @@ return_statement:
       if (! TRI_EndScopeByReturnAql(context)) {
         ABORT_OOM
       }
-      
-      // $$ = node;
     }
   ;
 
+remove_statement:
+    T_REMOVE expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeRemoveAql(context, $2, $4, $5);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+insert_statement:
+    T_INSERT expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeInsertAql(context, $2, $4, $5);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+update_statement:
+    T_UPDATE expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeUpdateAql(context, NULL, $2, $4, $5);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_UPDATE expression T_WITH expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeUpdateAql(context, $2, $4, $6, $7);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
+
+replace_statement:
+    T_REPLACE expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeReplaceAql(context, NULL, $2, $4, $5);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  | T_REPLACE expression T_WITH expression T_IN collection_name query_options {
+      TRI_aql_node_t* node;
+
+      node = TRI_CreateNodeReplaceAql(context, $2, $4, $6, $7);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_AppendStatementListAql(context->_statements, node)) {
+        ABORT_OOM
+      }
+      
+      if (! TRI_EndScopeByReturnAql(context)) {
+        ABORT_OOM
+      }
+    }
+  ;
 
 expression:
     T_OPEN expression T_CLOSE {
@@ -425,11 +557,16 @@ expression:
       if (! TRI_StartScopeAql(context, TRI_AQL_SCOPE_SUBQUERY)) {
         ABORT_OOM
       }
+
+      context->_subQueries++;
+
     } query T_CLOSE {
       TRI_aql_node_t* result;
       TRI_aql_node_t* subQuery;
       TRI_aql_node_t* nameNode;
       
+      context->_subQueries--;
+
       if (! TRI_EndScopeAql(context)) {
         ABORT_OOM
       }
@@ -541,8 +678,12 @@ function_call:
 
       TRI_PushStackParseAql(context, node);
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      TRI_aql_node_t* list = TRI_PopStackParseAql(context);
-      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, TRI_PopStackParseAql(context), list);
+      TRI_aql_node_t* list 
+        = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
+      TRI_aql_node_t* node = TRI_CreateNodeFcallAql(context, 
+                                    static_cast<char const* const>
+                                               (TRI_PopStackParseAql(context)),
+                                    list);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -743,7 +884,7 @@ list:
 
       TRI_PushStackParseAql(context, node);
     } optional_list_elements T_LIST_CLOSE {
-      $$ = TRI_PopStackParseAql(context);
+      $$ = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
     }
   ;
 
@@ -767,6 +908,24 @@ list_elements_list:
     }
   ;
 
+query_options:
+    /* empty */ {
+      $$ = NULL;
+    }
+  | T_STRING array {
+      if ($1 == NULL || $2 == NULL) {
+        ABORT_OOM
+      }
+
+      if (! TRI_CaseEqualString($1, "OPTIONS")) {
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL);
+        YYABORT;
+      }
+
+      $$ = $2;
+    }
+  ;
+
 array:
     T_DOC_OPEN {
       TRI_aql_node_t* node = TRI_CreateNodeArrayAql(context);
@@ -776,7 +935,7 @@ array:
 
       TRI_PushStackParseAql(context, node);
     } optional_array_elements T_DOC_CLOSE {
-      $$ = TRI_PopStackParseAql(context);
+      $$ = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
     }
   ;
 
@@ -833,10 +992,10 @@ reference:
       TRI_PushStackParseAql(context, node);
     } T_EXPAND expansion {
       // return from the "expansion" subrule
-      TRI_aql_node_t* expanded = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* expanded = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
       TRI_aql_node_t* expand;
       TRI_aql_node_t* nameNode;
-      char* varname = TRI_PopStackParseAql(context);
+      char* varname = static_cast<char*>(TRI_PopStackParseAql(context));
 
       // push the actual expand node into the statement list
       expand = TRI_CreateNodeExpandAql(context, varname, expanded, $4);
@@ -918,7 +1077,7 @@ single_reference:
 expansion:
     '.' T_STRING %prec REFERENCE {
       // named variable access, continuation from * expansion, e.g. [*].variable.reference
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeAttributeAccessAql(context, node, $2);
 
@@ -928,7 +1087,7 @@ expansion:
     }
   | '.' bind_parameter %prec REFERENCE {
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeBoundAttributeAccessAql(context, node, $2);
 
@@ -938,7 +1097,7 @@ expansion:
     }
   | T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
-      TRI_aql_node_t* node = TRI_PopStackParseAql(context);
+      TRI_aql_node_t* node = static_cast<TRI_aql_node_t*>(TRI_PopStackParseAql(context));
 
       $$ = TRI_CreateNodeIndexedAql(context, node, $2);
 
@@ -1042,6 +1201,57 @@ value_literal:
     }
   | T_FALSE {
       TRI_aql_node_t* node = TRI_CreateNodeValueBoolAql(context, false);
+
+      if (node == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = node;
+    }
+  ;
+
+collection_name:
+    T_STRING {
+      TRI_aql_node_t* node;
+
+      if ($1 == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeCollectionAql(context, $1);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = node;
+    }
+  | T_QUOTED_STRING {
+      TRI_aql_node_t* node;
+
+      if ($1 == NULL) {
+        ABORT_OOM
+      }
+
+      node = TRI_CreateNodeCollectionAql(context, $1);
+      if (node == NULL) {
+        ABORT_OOM
+      }
+
+      $$ = node;
+    }
+  | T_PARAMETER {
+      TRI_aql_node_t* node;
+
+      if ($1 == NULL) {
+        ABORT_OOM
+      }
+      
+      if (strlen($1) < 2 || $1[0] != '@') {
+        TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, $1);
+        YYABORT;
+      }
+
+      node = TRI_CreateNodeParameterAql(context, $1);
 
       if (node == NULL) {
         ABORT_OOM

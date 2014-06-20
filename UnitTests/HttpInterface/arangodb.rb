@@ -89,6 +89,28 @@ class ArangoDB
   end
 
 ################################################################################
+## create a single collection graph
+################################################################################
+
+  def self.create_single_collection_graph (name, edgeCollection, vertexCollection)
+  edge_definitions = {:collection => edgeCollection, :from => [vertexCollection], :to => [vertexCollection]}
+  body = JSON.dump({:name => name, :edgeDefinitions => [edge_definitions]})
+
+    doc = self.post("/_api/gharial", :body => body)
+
+    return doc
+  end
+
+################################################################################
+## drop a graph
+################################################################################
+
+  def self.drop_graph (name)
+    cmd = "/_api/gharial/#{name}?dropCollections=true"
+    self.delete(cmd)
+  end
+
+################################################################################
 ## issues a get request
 ################################################################################
 

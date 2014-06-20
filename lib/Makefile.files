@@ -18,7 +18,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/FileUtils.cpp \
 	lib/Basics/InitialiseBasics.cpp \
 	lib/Basics/JsonHelper.cpp \
-	lib/Basics/LibraryLoader.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
@@ -45,7 +44,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/fasthash.c \
 	lib/BasicsC/files.c \
 	lib/BasicsC/hashes.c \
-	lib/BasicsC/init.c \
+	lib/Basics/init.cpp \
 	lib/BasicsC/json.c \
 	lib/BasicsC/json-utilities.c \
 	lib/BasicsC/linked-list.c \
@@ -73,8 +72,8 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/voc-mimetypes.c \
 	lib/BasicsC/xxhash.c \
 	lib/BasicsC/tri-zip.c \
-	lib/JsonParser/json-parser.c \
-	lib/ProgramOptions/program-options.c \
+	lib/JsonParser/json-parser.cpp \
+	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/AnyServer.cpp \
 	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
@@ -88,6 +87,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/InitialiseRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
+	lib/ShapedJson/Legends.cpp \
 	lib/ShapedJson/json-shaper.cpp \
 	lib/ShapedJson/shape-accessor.cpp \
 	lib/ShapedJson/shaped-json.cpp \
@@ -213,8 +213,8 @@ endif
 ### @brief flex
 ################################################################################
 
-FLEX_FILES += \
-	lib/JsonParser/json-parser.c
+FLEXXX_FILES += \
+	lib/JsonParser/json-parser.cpp
 
 ################################################################################
 ### @brief flex++

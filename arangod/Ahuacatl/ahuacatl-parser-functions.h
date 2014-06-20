@@ -28,15 +28,11 @@
 #ifndef TRIAGENS_AHUACATL_AHUACATL_PARSER_FUNCTIONS_H
 #define TRIAGENS_AHUACATL_AHUACATL_PARSER_FUNCTIONS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-parser.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
@@ -69,7 +65,7 @@ int Ahuacatllex_destroy (void *);
 /// @brief forward for the context function provided by the lexer (.l)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ahuacatlset_extra (TRI_aql_context_t* const, void*);
+void Ahuacatlset_extra (TRI_aql_context_t*, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -88,7 +84,7 @@ void Ahuacatlset_extra (TRI_aql_context_t* const, void*);
 /// @brief init the lexer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InitParserAql (TRI_aql_context_t* const);
+bool TRI_InitParserAql (TRI_aql_context_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse & validate the query string
@@ -132,10 +128,6 @@ char* TRI_GetNameParseAql (TRI_aql_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

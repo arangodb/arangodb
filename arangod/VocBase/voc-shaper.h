@@ -29,46 +29,16 @@
 #ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
 #define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
+#include "Wal/Marker.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct TRI_document_collection_s;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile attribute marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_df_attribute_marker_s {
-  TRI_df_marker_t base;
-
-  TRI_shape_aid_t _aid;
-  TRI_shape_size_t _size;
-
-  // char name[]
-}
-TRI_df_attribute_marker_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile shape marker
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_df_shape_marker_s {
-  TRI_df_marker_t base;
-}
-TRI_df_shape_marker_t;
+struct TRI_document_collection_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -79,7 +49,7 @@ TRI_df_shape_marker_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*, 
-                                   struct TRI_document_collection_s*);
+                                   struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a shaper, but does not free the pointer
@@ -98,7 +68,7 @@ void TRI_FreeVocShaper (TRI_shaper_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a shaper, but does not free the pointer
+/// @brief initialises a vocshaper
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVocShaper (TRI_shaper_t*);
@@ -156,12 +126,79 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_doc_mptr_t* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* leftShaper,
-                           TRI_shaper_t* rightShaper);
+                           TRI_shaper_t* shaper);
   
-#ifdef __cplusplus
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shape identifier pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
+                   TRI_shape_sid_t& dst, 
+                   void const* src) {
+
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
+
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    dst = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
+  }
+  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    dst = static_cast<TRI_doc_edge_key_marker_t const*>(src)->base._shape;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT) {
+    dst = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    dst = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
+  }
+  else {
+    dst = 0;
+  }
 }
-#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the shaped JSON pointer from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
+                                                   void const* src) {
+  if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+      TRI_DOC_MARKER_KEY_DOCUMENT) {
+    dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+      - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src)) 
+      + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
+  }
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+           TRI_DOC_MARKER_KEY_EDGE) {
+    dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+      - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src)) 
+      + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
+  }
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+           TRI_WAL_MARKER_DOCUMENT) {
+    dst._sid = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+      - static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src))
+      + static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
+  }
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+           TRI_WAL_MARKER_EDGE) {
+    dst._sid = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+      - static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src))
+      + static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
+  }
+  else {
+    dst._sid = 0;
+    dst._data.length = 0;
+    dst._data.data = nullptr;
+  }
+}
 
 #endif
 

@@ -322,7 +322,7 @@ static int WeightShapeType (TRI_shape_type_t type) {
 
   LOG_ERROR("invalid shape type: %d\n", (int) type);
 
-  assert(false);
+  TRI_ASSERT(false);
   return 0;
 }
 
@@ -403,7 +403,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
-  dst->_value = (char*) (ptr = static_cast<TRI_shape_number_t*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+  dst->_value = (char*) (ptr = static_cast<TRI_shape_number_t*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
   if (dst->_value == NULL) {
     return false;
@@ -426,6 +426,8 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
+    // must fill with 0's because the string might be shorter, and we might use the 
+    // full length for memcmp comparisons!!
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
 
     if (dst->_value == NULL) {
@@ -443,7 +445,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
     dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
-    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
     if (dst->_value == NULL) {
       return false;
@@ -489,7 +491,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_LIST);
+  TRI_ASSERT(json->_type == TRI_JSON_LIST);
 
   // check for special case "empty list"
   n = json->_value._objects._length;
@@ -500,7 +502,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
-    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
+    dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
     if (dst->_value == NULL) {
       return false;
@@ -581,7 +583,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
-    found = shaper->findShape(shaper, &shape->base, create, isLocked);
+    found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -596,7 +598,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
-    assert(found != NULL);
+    TRI_ASSERT(found != NULL);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;
@@ -648,7 +650,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
-    found = shaper->findShape(shaper, &shape->base, create, isLocked);
+    found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == NULL) {
       for (p = values;  p < e;  ++p) {
@@ -663,7 +665,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
       return false;
     }
 
-    assert(found != NULL);
+    TRI_ASSERT(found != NULL);
 
     dst->_type = found->_type;
     dst->_sid = found->_sid;
@@ -730,7 +732,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     }
 
     // copy sub-objects into data space
-    * (TRI_shape_length_list_t*) ptr = (uint32_t) n;
+    * (TRI_shape_length_list_t*) ptr = (TRI_shape_length_list_t) n;
     ptr += sizeof(TRI_shape_length_list_t);
 
     TRI_shape_sid_t* sids = (TRI_shape_sid_t*) ptr;
@@ -795,8 +797,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  assert(json->_type == TRI_JSON_ARRAY);
-  assert(json->_value._objects._length % 2 == 0);
+  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json->_value._objects._length % 2 == 0);
 
   // number of attributes
   n = json->_value._objects._length / 2;
@@ -818,8 +820,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i));
     TRI_json_t* val = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i + 1));
 
-    assert(key != NULL);
-    assert(val != NULL);
+    TRI_ASSERT(key != NULL);
+    TRI_ASSERT(val != NULL);
 
     if (key->_value._string.data == NULL ||
         key->_value._string.length == 1 ||
@@ -830,7 +832,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     // first find an identifier for the name
-    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data, isLocked);
+    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data);
 
     // convert value
     if (p->_aid == 0) {
@@ -986,7 +988,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, values);
 
   // lookup this shape
-  found = shaper->findShape(shaper, &a->base, create, isLocked);
+  found = shaper->findShape(shaper, &a->base, create);
 
   if (found == NULL) {
     TRI_Free(shaper->_memoryZone, a);
@@ -1070,7 +1072,7 @@ static TRI_json_t* JsonShapeDataNumber (TRI_shaper_t* shaper,
                                         uint64_t size) {
   TRI_shape_number_t v;
 
-  v = * (TRI_shape_number_t const*) data;
+  v = * (TRI_shape_number_t const*) (void const*) data;
 
   return TRI_CreateNumberJson(shaper->_memoryZone, v);
 }
@@ -1559,7 +1561,7 @@ static bool StringifyJsonShapeDataNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t v;
   int res;
 
-  v = * (TRI_shape_number_t const*) data;
+  v = * (TRI_shape_number_t const*) (void const*) data;
   // check for special values
 
   // yes, this is intentional
@@ -2164,14 +2166,14 @@ TRI_shaped_json_t* TRI_CopyShapedJson (TRI_shaper_t* shaper, TRI_shaped_json_t* 
     return NULL;
   }
 
-  TRI_shaped_json_t* newShapedJson = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), true));
+  TRI_shaped_json_t* newShapedJson = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false));
 
   if (newShapedJson == NULL) {
     return NULL;
   }
 
-  newShapedJson->_sid  = oldShapedJson->_sid;
-  int res = TRI_CopyToBlob(shaper->_memoryZone, &(newShapedJson->_data), &(oldShapedJson->_data));
+  newShapedJson->_sid = oldShapedJson->_sid;
+  int res = TRI_CopyToBlob(shaper->_memoryZone, &newShapedJson->_data, &oldShapedJson->_data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(shaper->_memoryZone, newShapedJson);

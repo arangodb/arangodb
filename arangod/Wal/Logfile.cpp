@@ -44,7 +44,8 @@ Logfile::Logfile (Logfile::IdType id,
                   StatusType status)
   : _id(id),
     _df(df),
-    _status(status) {
+    _status(status),
+    _collectQueueSize(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,8 +93,9 @@ Logfile* Logfile::createNew (std::string const& filename,
 
 Logfile* Logfile::openExisting (std::string const& filename,
                                 Logfile::IdType id,
-                                bool wasCollected) {
-  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str());
+                                bool wasCollected,
+                                bool ignoreErrors) {
+  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
 
   if (df == nullptr) {
     int res = TRI_errno();
@@ -184,7 +186,7 @@ char* Logfile::reserve (size_t size) {
 TRI_df_header_marker_t Logfile::getHeaderMarker () const {
   TRI_df_header_marker_t header;
   size_t const size = sizeof(TRI_df_header_marker_t);
-  TRI_InitMarker((char*) &header, TRI_DF_MARKER_HEADER, size);
+  TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, size);
   
   header._version     = TRI_DF_VERSION;
   header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
@@ -200,7 +202,7 @@ TRI_df_header_marker_t Logfile::getHeaderMarker () const {
 TRI_df_footer_marker_t Logfile::getFooterMarker () const {
   TRI_df_footer_marker_t footer;
   size_t const size = sizeof(TRI_df_footer_marker_t);
-  TRI_InitMarker((char*) &footer, TRI_DF_MARKER_FOOTER, size);
+  TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, size);
  
   return footer; 
 }

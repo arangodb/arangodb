@@ -28,52 +28,8 @@
 #include "fulltext-wordlist.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare words, using fruitsort
-////////////////////////////////////////////////////////////////////////////////
-
-#define FSRT_INSTANCE SortFulltext
-#define FSRT_NAME SortWordlistFulltext
-#define FSRT_NAM2 SortWordlistFulltextTmp
-#define FSRT_TYPE const char*
-
-// define copy function to swap two char* values. no need to memcpy them
-#define FSRT_COPY(x, y, s)  (*(char**)(x) = *(char**)(y))
-
-#define FSRT_COMP(l, r, s) (strcmp(*l, *r))
-
-uint32_t SortFulltextFSRT_Rand = 0;
-
-static uint32_t SortFulltextRandomGenerator (void) {
-  return (SortFulltextFSRT_Rand = SortFulltextFSRT_Rand * 31415 + 27818);
-}
-
-#define FSRT__RAND ((fs_b) + FSRT__UNIT * (SortFulltextRandomGenerator() % FSRT__DIST(fs_e,fs_b,FSRT__SIZE)))
-
-#include "BasicsC/fsrt.inc"
-
-#undef FSRT__RAND
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wordlist
@@ -83,11 +39,11 @@ static uint32_t SortFulltextRandomGenerator (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
-                                                          const size_t numWords) {
+                                                          size_t numWords) {
   TRI_fulltext_wordlist_t* wordlist = static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
 
-  if (wordlist == NULL) {
-    return NULL;
+  if (wordlist == nullptr) {
+    return nullptr;
   }
 
   wordlist->_words    = words;
@@ -101,9 +57,7 @@ TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
-  uint32_t i;
-
-  for (i = 0; i < wordlist->_numWords; ++i) {
+  for (uint32_t i = 0; i < wordlist->_numWords; ++i) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_words[i]);
   }
 
@@ -119,35 +73,25 @@ void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Fulltext
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* const wordlist) {
+void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
   if (wordlist->_numWords <= 1) {
     // do not sort in this case
     return;
   }
 
-  SortWordlistFulltext((const char**) wordlist->_words, (const char**) (wordlist->_words + wordlist->_numWords));
+  auto compareSort = [] (char const* l, char const* r) {
+    return (strcmp(l, r) < 0);
+  };
+  std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords, compareSort);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

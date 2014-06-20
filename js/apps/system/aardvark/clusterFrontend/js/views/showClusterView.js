@@ -412,10 +412,10 @@
       renderLineChart: function() {
         var self = this;
 
-        var intervall = 60 * 20;
+        var interval = 60 * 20;
         var data = [];
         var hash = [];
-        var t = Math.round(new Date().getTime() / 1000) - intervall;
+        var t = Math.round(new Date().getTime() / 1000) - interval;
         var ks = self.knownServers;
         var f = function(x) {return null;};
 

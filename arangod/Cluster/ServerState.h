@@ -117,10 +117,7 @@ namespace triagens {
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
         
-        static void cleanup () {
-          delete _theinstance;
-          _theinstance = 0;
-        }
+        static void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role

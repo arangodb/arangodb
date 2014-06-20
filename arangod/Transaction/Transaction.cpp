@@ -26,10 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Transaction.h"
-#include "Transaction/Manager.h"
-#include "VocBase/vocbase.h"
 
+#include "BasicsC/logging.h"
+#include "Transaction/Manager.h"
+
+using namespace std;
 using namespace triagens::transaction;
+
+#define TRANSACTION_LOG(msg) LOG_INFO("trx #%llu: %s", (unsigned long long) _id, msg)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -40,25 +44,30 @@ using namespace triagens::transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::Transaction (Manager* manager,
-                          IdType id,
-                          TRI_vocbase_t* vocbase) 
-  : _manager(manager),
+                          TRI_voc_tid_t id,
+                          bool singleOperation,
+                          bool waitForSync) 
+  : State(),
+    _manager(manager),
     _id(id),
-    _state(StateType::STATE_UNINITIALISED),
-    _vocbase(vocbase),
-    _operations(),
+    _singleOperation(singleOperation),
+    _waitForSync(waitForSync),
     _startTime() {
+
+  TRANSACTION_LOG("creating transaction");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the transaction manager
+/// @brief destroy the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::~Transaction () {
-  if (state() != StateType::STATE_COMMITTED && 
-      state() != StateType::STATE_ABORTED) {
-    this->abort();
+  if (state() != State::StateType::COMMITTED && 
+      state() != State::StateType::ABORTED) {
+    this->rollback();
   }
+
+  TRANSACTION_LOG("destroyed transaction");
 }
 
 // -----------------------------------------------------------------------------
@@ -70,47 +79,43 @@ Transaction::~Transaction () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Transaction::begin () {
-  if (state() == StateType::STATE_UNINITIALISED &&
-      _manager->beginTransaction(this)) {
-    _state = StateType::STATE_BEGUN;
-
-    return TRI_ERROR_NO_ERROR;
+  if (state() != State::StateType::UNINITIALISED) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  TRANSACTION_LOG("beginning transaction");
+  int res = _manager->beginTransaction(this);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _startTime = TRI_microtime();
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-int Transaction::commit () {
-  if (state() == StateType::STATE_BEGUN && 
-      _manager->commitTransaction(this)) {
-    _state = StateType::STATE_COMMITTED;
-
-    return TRI_ERROR_NO_ERROR;
+int Transaction::commit (bool waitForSync) {
+  if (state() != State::StateType::BEGUN) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-  
-  this->abort();
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+
+  TRANSACTION_LOG("committing transaction");
+  return _manager->commitTransaction(this, waitForSync || _waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort a transaction
+/// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
         
-int Transaction::abort () {
-  if (state() == StateType::STATE_BEGUN &&
-      _manager->abortTransaction(this)) {
-    _state = StateType::STATE_ABORTED;
-
-    return TRI_ERROR_NO_ERROR;
+int Transaction::rollback () {
+  if (state() != State::StateType::BEGUN) {
+    return TRI_ERROR_TRANSACTION_INTERNAL;
   }
 
-  _state = StateType::STATE_ABORTED;
-  return TRI_ERROR_TRANSACTION_INTERNAL;
+  TRANSACTION_LOG("rolling back transaction");
+  return _manager->rollbackTransaction(this);
 }
 
 // Local Variables:

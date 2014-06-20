@@ -29,6 +29,8 @@
 #ifndef TRIAGENS_GENERAL_SERVER_SPECIFIC_COMM_TASK_H
 #define TRIAGENS_GENERAL_SERVER_SPECIFIC_COMM_TASK_H 1
 
+#include "Basics/Common.h"
+
 #include "GeneralServer/GeneralCommTask.h"
 
 namespace triagens {

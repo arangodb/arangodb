@@ -41,17 +41,49 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               struct SlotInfoCopy
+// -----------------------------------------------------------------------------
+    
+    struct SlotInfoCopy {
+      explicit SlotInfoCopy (Slot const* slot) 
+        : mem(slot->mem()),
+          size(slot->size()),
+          logfileId(slot->logfileId()),
+          tick(slot->tick()),
+          errorCode(TRI_ERROR_NO_ERROR) {
+      }
+
+      explicit SlotInfoCopy (int errorCode)
+        : mem(nullptr),
+          size(0),
+          logfileId(0),
+          tick(0),
+          errorCode(errorCode) {
+      }
+
+      void const*           mem;
+      uint32_t const        size;
+      Logfile::IdType const logfileId;
+      Slot::TickType const  tick;
+      int const             errorCode;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   struct SlotInfo
 // -----------------------------------------------------------------------------
 
     struct SlotInfo {
       explicit SlotInfo (int errorCode) 
         : slot(nullptr),
+          mem(nullptr),
+          size(0),
           errorCode(errorCode) {
       }
       
       explicit SlotInfo (Slot* slot) 
         : slot(slot),
+          mem(slot->mem()),
+          size(slot->size()),
           errorCode(TRI_ERROR_NO_ERROR) {
       }
 
@@ -59,8 +91,10 @@ namespace triagens {
         : SlotInfo(TRI_ERROR_NO_ERROR) {
       }
 
-      Slot* slot;
-      int   errorCode;
+      Slot*       slot;
+      void const* mem;
+      uint32_t    size;
+      int         errorCode;
     };
 
 // -----------------------------------------------------------------------------
@@ -72,6 +106,11 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+      private:
+
+        Slots (Slots const&) = delete;
+        Slots& operator= (Slots const&) = delete;
 
       public:
             
@@ -96,24 +135,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the read-only mode
+/// @brief execute a flush operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setReadOnly () {
-          _readOnly = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the last assigned tick
-////////////////////////////////////////////////////////////////////////////////
-
-        void setLastAssignedTick (Slot::TickType);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the last assigned tick
-////////////////////////////////////////////////////////////////////////////////
-
-        Slot::TickType lastAssignedTick ();
+        int flush (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the last committed tick
@@ -151,6 +176,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief close a logfile
+////////////////////////////////////////////////////////////////////////////////
+
+        int closeLogfile (Slot::TickType&,
+                          bool&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief write a header marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,6 +199,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Slot::TickType handout ();        
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait until all data has been synced up to a certain marker
+////////////////////////////////////////////////////////////////////////////////
+
+        void waitForTick (Slot::TickType);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request a new logfile which can satisfy a marker of the
+/// specified size
+////////////////////////////////////////////////////////////////////////////////
+
+        Logfile::StatusType newLogfile (uint32_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -196,7 +241,7 @@ namespace triagens {
 /// @brief all slots
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Slot*> _slots;
+        Slot* const _slots;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the total number of slots
@@ -235,22 +280,10 @@ namespace triagens {
         Logfile* _logfile;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief last assigned tick value
-////////////////////////////////////////////////////////////////////////////////
-
-        Slot::TickType _lastAssignedTick;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief last committed tick value
 ////////////////////////////////////////////////////////////////////////////////
     
         Slot::TickType _lastCommittedTick;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read-only mode
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _readOnly;
 
     };
 

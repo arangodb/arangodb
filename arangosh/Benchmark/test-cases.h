@@ -25,20 +25,19 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-using namespace std;
-using namespace triagens::httpclient;
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool DeleteCollection (SimpleHttpClient*, const string&);
+static bool DeleteCollection (SimpleHttpClient*, const std::string&);
 
-static bool CreateCollection (SimpleHttpClient*, const string&, const int);
+static bool CreateCollection (SimpleHttpClient*, const std::string&, const int);
 
-static bool CreateDocument (SimpleHttpClient*, const string&, const string&);
+static bool CreateDocument (SimpleHttpClient*, const std::string&, const std::string&);
 
-static bool CreateIndex (SimpleHttpClient*, const string&, const string&, const string&);
+static bool CreateIndex (SimpleHttpClient*, const std::string&, const std::string&, const std::string&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              benchmark test cases
@@ -63,8 +62,8 @@ struct VersionTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    static string url = "/_api/version";
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    static std::string url = "/_api/version";
 
     return url;
   }
@@ -103,17 +102,17 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -149,7 +148,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -206,17 +205,17 @@ struct ShapesTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 3;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 3);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -245,7 +244,7 @@ struct ShapesTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 3);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -297,17 +296,17 @@ struct ShapesAppendTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 2;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 2);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -331,7 +330,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 2);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -384,17 +383,17 @@ struct RandomShapesTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 3;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 3);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -423,7 +422,7 @@ struct RandomShapesTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 3);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -482,17 +481,17 @@ struct DocumentCrudTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 5;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 5);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -531,7 +530,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 5);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -588,17 +587,17 @@ struct EdgeCrudTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0) {
-      return string("/_api/edge?collection=" + Collection + "&from=" + Collection.c_str() + "%2Ftestfrom" + StringUtils::itoa(globalCounter) + "&to=" + Collection.c_str() + "%2Ftestto" + StringUtils::itoa(globalCounter));
+      return std::string("/_api/edge?collection=" + Collection + "&from=" + Collection.c_str() + "%2Ftestfrom" + StringUtils::itoa(globalCounter) + "&to=" + Collection.c_str() + "%2Ftestto" + StringUtils::itoa(globalCounter));
     }
     else {
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/edge/" + Collection + "/" + key);
+      return std::string("/_api/edge/" + Collection + "/" + key);
     }
   }
 
@@ -639,7 +638,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -697,17 +696,17 @@ struct SkiplistTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -742,7 +741,7 @@ struct SkiplistTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -791,17 +790,17 @@ struct HashTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     const size_t mod = globalCounter % 4;
 
     if (mod == 0) {
-      return string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=" + Collection);
     }
     else {
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
@@ -836,7 +835,7 @@ struct HashTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t) (globalCounter / 4);
-      const string key = "testkey" + StringUtils::itoa(keyId);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -964,7 +963,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
 
@@ -978,7 +977,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
     return (const char*) _buffer->_buffer;
   }
 
-  string _url;
+  std::string _url;
 
   TRI_string_buffer_t* _buffer;
 
@@ -1007,7 +1006,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
     return _url;
   }
 
@@ -1040,7 +1039,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
   static atomic<uint64_t> _counter;
 
-  string _url;
+  std::string _url;
 };
 
 atomic<uint64_t> CollectionCreationTest::_counter(0);
@@ -1058,9 +1057,9 @@ struct TransactionAqlTest : public BenchmarkOperation {
   }
 
   bool setUp (SimpleHttpClient* client) {
-    _c1 = string(Collection + "1");
-    _c2 = string(Collection + "2");
-    _c3 = string(Collection + "3");
+    _c1 = std::string(Collection + "1");
+    _c2 = std::string(Collection + "2");
+    _c3 = std::string(Collection + "3");
 
     return DeleteCollection(client, _c1) &&
            DeleteCollection(client, _c2) &&
@@ -1073,8 +1072,8 @@ struct TransactionAqlTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return string("/_api/cursor");
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/cursor");
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -1147,9 +1146,9 @@ struct TransactionAqlTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  string _c1;
-  string _c2;
-  string _c3;
+  std::string _c1;
+  std::string _c2;
+  std::string _c3;
 };
 
 // -----------------------------------------------------------------------------
@@ -1172,8 +1171,8 @@ struct TransactionCountTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return string("/_api/transaction");
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -1213,8 +1212,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
   }
 
   bool setUp (SimpleHttpClient* client) {
-    _c1 = string(Collection + "1");
-    _c2 = string(Collection + "2");
+    _c1 = std::string(Collection + "1");
+    _c2 = std::string(Collection + "2");
 
     return DeleteCollection(client, _c1) &&
            DeleteCollection(client, _c2) &&
@@ -1226,8 +1225,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
   void tearDown () {
   }
 
-  string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    return string("/_api/transaction");
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -1275,8 +1274,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
     return (const char*) ptr;
   }
 
-  string _c1;
-  string _c2;
+  std::string _c1;
+  std::string _c2;
 };
 
 // -----------------------------------------------------------------------------
@@ -1287,8 +1286,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
 /// @brief delete a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool DeleteCollection (SimpleHttpClient* client, const string& name) {
-  map<string, string> headerFields;
+static bool DeleteCollection (SimpleHttpClient* client, const std::string& name) {
+  std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = 0;
 
   result = client->request(HttpRequest::HTTP_REQUEST_DELETE,
@@ -1315,12 +1314,12 @@ static bool DeleteCollection (SimpleHttpClient* client, const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CreateCollection (SimpleHttpClient* client,
-                              const string& name,
+                              const std::string& name,
                               const int type) {
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = 0;
 
-  string payload = "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) + "}";
+  std::string payload = "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) + "}";
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
                            "/_api/collection",
                            payload.c_str(),
@@ -1346,13 +1345,13 @@ static bool CreateCollection (SimpleHttpClient* client,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CreateIndex (SimpleHttpClient* client,
-                         const string& name,
-                         const string& type,
-                         const string& fields) {
-  map<string, string> headerFields;
+                         const std::string& name,
+                         const std::string& type,
+                         const std::string& fields) {
+  std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = 0;
 
-  string payload = "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
+  std::string payload = "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
                            "/_api/index?collection=" + name,
                            payload.c_str(),
@@ -1377,9 +1376,9 @@ static bool CreateIndex (SimpleHttpClient* client,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CreateDocument (SimpleHttpClient* client,
-                            const string& collection,
-                            const string& payload) {
-  map<string, string> headerFields;
+                            const std::string& collection,
+                            const std::string& payload) {
+  std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = 0;
 
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
@@ -1407,7 +1406,7 @@ static bool CreateDocument (SimpleHttpClient* client,
 /// @brief return the test case for a name
 ////////////////////////////////////////////////////////////////////////////////
 
-static BenchmarkOperation* GetTestCase (const string& name) {
+static BenchmarkOperation* GetTestCase (const std::string& name) {
   if (name == "version") {
     return new VersionTest();
   }

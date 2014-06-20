@@ -134,6 +134,10 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}", cmd3)
 
         doc.code.should eq(200)
+        
+        # flush wal
+        doc = ArangoDB.put("/_admin/wal/flush");
+        doc.code.should eq(200)
 
         cmd3 = "/_api/collection/#{@cn}"
         doc = ArangoDB.log_get("#{prefix}", cmd3)
@@ -142,6 +146,7 @@ describe ArangoDB do
         while doc.parsed_response['status'] != 2
           doc = ArangoDB.get(cmd3)
           doc.code.should eq(200)
+          sleep 1
         end
 
         # check it again
@@ -266,6 +271,10 @@ describe ArangoDB do
 
         doc.code.should eq(200)
 
+        # flush wal
+        doc = ArangoDB.put("/_admin/wal/flush");
+        doc.code.should eq(200)
+
         cmd4 = "/_api/collection/#{@cn}"
         doc = ArangoDB.log_get("#{prefix}", cmd4)
         doc.code.should eq(200)
@@ -273,6 +282,7 @@ describe ArangoDB do
         while doc.parsed_response['status'] != 2
           doc = ArangoDB.get(cmd4)
           doc.code.should eq(200)
+          sleep 1
         end
 
         # check the first document again

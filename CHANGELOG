@@ -1,6 +1,13 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL TRANSLATE function
+
+  This function can be used to perform lookups from static lists, e.g.
+
+      LET countryNames = { US: "United States", UK: "United Kingdom", FR: "France" }
+      RETURN TRANSLATE("FR", countryNames) 
+
 * fixed datafile debugger
 
 * fixed check-version for empty directory

@@ -42,11 +42,6 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 
-using namespace std;
-using namespace triagens::basics;
-using namespace triagens::httpclient;
-using namespace triagens::rest;
-
 namespace triagens {
   namespace arangob {
 
@@ -77,10 +72,10 @@ namespace triagens {
                          int threadNumber,
                          const unsigned long batchSize,
                          BenchmarkCounter<unsigned long>* operationsCounter,
-                         Endpoint* endpoint,
-                         const string& databaseName,
-                         const string& username,
-                         const string& password,
+                         rest::Endpoint* endpoint,
+                         const std::string& databaseName,
+                         const std::string& username,
+                         const std::string& password,
                          double requestTimeout,
                          double connectTimeout,
                          uint32_t sslProtocol,
@@ -110,7 +105,7 @@ namespace triagens {
             _counter(0),
             _time(0.0) {
 
-          _errorHeader = StringUtils::tolower(HttpResponse::getBatchErrorHeader());
+          _errorHeader = StringUtils::tolower(rest::HttpResponse::getBatchErrorHeader());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,13 +142,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void run () {
-          _connection = GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
+          _connection = httpclient::GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
 
           if (_connection == 0) {
             LOG_FATAL_AND_EXIT("out of memory");
           }
          
-          _client = new SimpleHttpClient(_connection, _requestTimeout, true);
+          _client = new httpclient::SimpleHttpClient(_connection, _requestTimeout, true);
 
           if (_client == 0) {
             LOG_FATAL_AND_EXIT("out of memory");
@@ -165,7 +160,7 @@ namespace triagens {
           _client->setKeepAlive(_keepAlive);
 
           // test the connection
-          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET,
+          httpclient::SimpleHttpResult* result = _client->request(rest::HttpRequest::HTTP_REQUEST_GET,
                                                       "/_api/version",
                                                       0,
                                                       0,
@@ -235,7 +230,7 @@ namespace triagens {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string rewriteLocation (void* data, const string& location) {
+        static std::string rewriteLocation (void* data, const std::string& location) {
           BenchmarkThread* t = static_cast<BenchmarkThread*>(data);
 
           assert(t != 0);
@@ -246,10 +241,10 @@ namespace triagens {
           }
 
           if (location[0] == '/') {
-            return string("/_db/" + t->_databaseName + location);
+            return std::string("/_db/" + t->_databaseName + location);
           }
           else {
-            return string("/_db/" + t->_databaseName + "/" + location);
+            return std::string("/_db/" + t->_databaseName + "/" + location);
           }
         }
 
@@ -258,7 +253,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void executeBatchRequest (const unsigned long numOperations) {
-          static const string boundary = "XXXarangob-benchmarkXXX";
+          static const std::string boundary = "XXXarangob-benchmarkXXX";
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
 
@@ -267,20 +262,20 @@ namespace triagens {
             batchPayload.appendText("--" + boundary + "\r\n");
             // append content-type, this will also begin the body
             batchPayload.appendText("Content-Type: ", 14);
-            batchPayload.appendText(HttpRequest::getPartContentType());
+            batchPayload.appendText(rest::HttpRequest::getPartContentType());
             batchPayload.appendText("\r\n\r\n", 4);
 
             // everything else (i.e. part request header & body) will get into the body
             const size_t threadCounter = _counter++;
             const size_t globalCounter = _offset + threadCounter;
-            const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
+            const std::string url = _operation->url(_threadNumber, threadCounter, globalCounter);
             size_t payloadLength = 0;
             bool mustFree = false;
             const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
-            const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
+            const rest::HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
 
             // headline, e.g. POST /... HTTP/1.1
-            HttpRequest::appendMethod(type, &batchPayload);
+            rest::HttpRequest::appendMethod(type, &batchPayload);
             batchPayload.appendText(url + " HTTP/1.1\r\n");
             batchPayload.appendText("\r\n", 2);
 
@@ -297,11 +292,11 @@ namespace triagens {
           batchPayload.appendText("--" + boundary + "--\r\n");
 
           _headers.erase("Content-Type");
-          _headers["Content-Type"] = HttpRequest::getMultipartContentType() +
+          _headers["Content-Type"] = rest::HttpRequest::getMultipartContentType() +
                                      "; boundary=" + boundary;
 
           double start = TRI_microtime();
-          SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST,
+          httpclient::SimpleHttpResult* result = _client->request(rest::HttpRequest::HTTP_REQUEST_POST,
                                                       "/_api/batch",
                                                       batchPayload.c_str(),
                                                       batchPayload.length(),
@@ -332,8 +327,8 @@ namespace triagens {
             }
           }
           else {
-            const std::map<string, string>& headers = result->getHeaderFields();
-            map<string, string>::const_iterator it = headers.find(_errorHeader);
+            const std::map<std::string, std::string>& headers = result->getHeaderFields();
+            std::map<std::string, std::string>::const_iterator it = headers.find(_errorHeader);
 
             if (it != headers.end()) {
               size_t errorCount = (size_t) StringUtils::uint32((*it).second);
@@ -353,8 +348,8 @@ namespace triagens {
         void executeSingleRequest () {
           const size_t threadCounter = _counter++;
           const size_t globalCounter = _offset + threadCounter;
-          const HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
-          const string url = _operation->url(_threadNumber, threadCounter, globalCounter);
+          const rest::HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
+          const std::string url = _operation->url(_threadNumber, threadCounter, globalCounter);
           size_t payloadLength = 0;
           bool mustFree = false;
 
@@ -362,7 +357,7 @@ namespace triagens {
           const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
 
           double start = TRI_microtime();
-          SimpleHttpResult* result = _client->request(type,
+          httpclient::SimpleHttpResult* result = _client->request(type,
                                                       url,
                                                       payload,
                                                       payloadLength,
@@ -491,31 +486,31 @@ namespace triagens {
 /// @brief endpoint to use
 ////////////////////////////////////////////////////////////////////////////////
 
-        Endpoint* _endpoint;
+        rest::Endpoint* _endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extra request headers
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, string> _headers;
+        std::map<std::string, std::string> _headers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _databaseName;
+        const std::string _databaseName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP username
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _username;
+        const std::string _username;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP password
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _password;
+        const std::string _password;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request timeout (in s)
@@ -581,7 +576,7 @@ namespace triagens {
 /// @brief lower-case error header we look for
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _errorHeader;
+        std::string _errorHeader;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of warnings to be displayed per thread

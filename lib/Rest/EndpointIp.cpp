@@ -78,7 +78,7 @@ EndpointIp::EndpointIp (const Endpoint::EndpointType type,
     _host(host), 
     _port(port) {
 
-  assert(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
+  TRI_ASSERT(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +228,8 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 
   LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
-  assert(!TRI_isvalidsocket(_socket));
-  assert(!_connected);
+  TRI_ASSERT(!TRI_isvalidsocket(_socket));
+  TRI_ASSERT(!_connected);
 
   memset(&hints, 0, sizeof (struct addrinfo));
   hints.ai_family = getDomain(); // Allow IPv4 or IPv6
@@ -297,8 +297,8 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
   LOG_DEBUG("connecting to ip endpoint '%s'", _specification.c_str());
 
-  assert(!TRI_isvalidsocket(_socket));
-  assert(!_connected);
+  TRI_ASSERT(!TRI_isvalidsocket(_socket));
+  TRI_ASSERT(!_connected);
 
   memset(&hints, 0, sizeof (struct addrinfo));
   hints.ai_family = getDomain(); // Allow IPv4 or IPv6
@@ -342,7 +342,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
 void EndpointIp::disconnect () {
   if (_connected) {
-    assert(TRI_isvalidsocket(_socket));
+    TRI_ASSERT(TRI_isvalidsocket(_socket));
 
     _connected = false;
     TRI_CLOSE_SOCKET(_socket);
