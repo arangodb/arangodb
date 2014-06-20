@@ -12,6 +12,7 @@ migrations will also be detailed here.
 ## 2.2
 
 * Foxx: The usage of `controller.collection` is no longer suggested, it will be deprecated in the next version. Please use `appContext.collection` instead.
+* Foxx: The usage of `apps` in manifest files is no longer possible, please use `controllers` instead.
 
 ## 2.3
 
