@@ -113,6 +113,7 @@ def example_content(filepath, fh, tag):
         fh.write("</div>\n")
 
     fh.write("</div>\n")
+    fh.write("\n")
 
 
 def fetch_comments(dirpath):
