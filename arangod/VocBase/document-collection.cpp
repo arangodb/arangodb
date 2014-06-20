@@ -780,11 +780,11 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   operation.indexed();
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoOperation") {
+  TRI_IF_FAILURE("InsertDocumentNoOperation") {
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoOperationExcept") {
+  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -880,11 +880,11 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
         
   operation.indexed();
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoOperation") {
+  TRI_IF_FAILURE("UpdateDocumentNoOperation") {
     return TRI_ERROR_DEBUG;
   }
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoOperationExcept") {
+  TRI_IF_FAILURE("UpdateDocumentNoOperationExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -2379,7 +2379,7 @@ TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t* 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
     TRI_FreeString(TRI_CORE_MEM_ZONE, jname);
 
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("CreateJournalDocumentCollection") {
+    TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
@@ -5256,12 +5256,12 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
   {
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("ReadDocumentNoLock") {
+    TRI_IF_FAILURE("ReadDocumentNoLock") {
       // test what happens if no lock can be acquired
       return TRI_ERROR_DEBUG;
     }
     
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("ReadDocumentNoLockExcept") {
+    TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -5302,12 +5302,12 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
  
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoMarker") {
+  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoMarkerExcept") {
+  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
     // test what happens if no marker can be created
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -5321,7 +5321,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_doc_mptr_t* header;
   int res;
   {
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoLock") {
+    TRI_IF_FAILURE("RemoveDocumentNoLock") {
       // test what happens if no lock can be acquired
       return TRI_ERROR_DEBUG;
     }
@@ -5361,11 +5361,11 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     document->_headersPtr->unlink(header);  // PROTECTED by trx in trxCollection
     document->_numberDocuments--;
   
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoOperation") {
+    TRI_IF_FAILURE("RemoveDocumentNoOperation") {
       return TRI_ERROR_DEBUG;
     }
     
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("RemoveDocumentNoOperationExcept") {
+    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -5425,12 +5425,12 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   // construct a legend for the shaped json
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLegend") {
+  TRI_IF_FAILURE("InsertDocumentNoLegend") {
     // test what happens when no legend can be created
     return TRI_ERROR_DEBUG;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLegendExcept") {
+  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
     // test what happens if no legend can be created
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -5441,12 +5441,12 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     return res;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoMarker") {
+  TRI_IF_FAILURE("InsertDocumentNoMarker") {
     // test what happens when no marker can be created
     return TRI_ERROR_DEBUG;
   }
     
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoMarkerExcept") {
+  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
     // test what happens if no marker can be created
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -5482,7 +5482,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   // now insert into indexes
   {
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoLock") {
+    TRI_IF_FAILURE("InsertDocumentNoLock") {
       // test what happens if no lock can be acquired
       return TRI_ERROR_DEBUG;
     }
@@ -5491,12 +5491,12 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoHeader") {
+    TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
       return TRI_ERROR_DEBUG;
     }
     
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("InsertDocumentNoHeaderExcept") {
+    TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
       // test what happens if no header can be acquired
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -5550,12 +5550,12 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0)); 
  
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLegend") {
+  TRI_IF_FAILURE("UpdateDocumentNoLegend") {
     // test what happens when no legend can be created
     return TRI_ERROR_DEBUG;
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLegendExcept") {
+  TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
     // test what happens when no legend can be created
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -5569,7 +5569,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   }
     
   {
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoLock") {
+    TRI_IF_FAILURE("UpdateDocumentNoLock") {
       return TRI_ERROR_DEBUG;
     }
 
@@ -5583,12 +5583,12 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       return res;
     }
   
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoMarker") {
+    TRI_IF_FAILURE("UpdateDocumentNoMarker") {
       // test what happens when no marker can be created
       return TRI_ERROR_DEBUG;
     }
   
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("UpdateDocumentNoMarkerExcept") {
+    TRI_IF_FAILURE("UpdateDocumentNoMarkerExcept") {
       // test what happens when no marker can be created
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }

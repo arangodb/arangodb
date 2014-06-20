@@ -41,7 +41,7 @@ extern "C" {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief macro TRI_DEBUG_INTENTIONAL_FAIL_IF
+/// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
 /// certain locations in the C code. The points at which a failure is actually
 /// triggered can be defined at runtime using TRI_AddFailurePointDebugging().
@@ -49,11 +49,11 @@ extern "C" {
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-#define TRI_DEBUG_INTENTIONAL_FAIL_IF(what) if (TRI_ShouldFailDebugging(what))
+#define TRI_IF_FAILURE(what) if (TRI_ShouldFailDebugging(what))
 
 #else
 
-#define TRI_DEBUG_INTENTIONAL_FAIL_IF(what) if (false) 
+#define TRI_IF_FAILURE(what) if (false) 
 
 #endif
 

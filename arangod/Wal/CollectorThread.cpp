@@ -871,7 +871,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
       continue;
     }
   
-    TRI_DEBUG_INTENTIONAL_FAIL_IF("CollectorThreadTransfer") {
+    TRI_IF_FAILURE("CollectorThreadTransfer") {
       if (++numMarkers > 5) {
         // intentionally kill the server
         TRI_SegfaultDebugging("CollectorThreadTransfer");
@@ -1053,7 +1053,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
     }
   }
   
-  TRI_DEBUG_INTENTIONAL_FAIL_IF("CollectorThreadTransferFinal") {
+  TRI_IF_FAILURE("CollectorThreadTransferFinal") {
     // intentionally kill the server
     TRI_SegfaultDebugging("CollectorThreadTransferFinal");
   }
