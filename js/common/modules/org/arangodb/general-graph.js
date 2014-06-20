@@ -177,6 +177,22 @@ var wrapCollection = function(col) {
   return wrapper;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_example_description
+/// 
+/// For many of the following functions *examples* can be passed in as a parameter.
+/// *Examples* are used to filter the result set for objects that match the conditions.
+/// These *examples* can have the following values:
+///
+///   * Empty, there is no matching executed all found results are valid.
+///   * A string, only the result having this value as it's *_id* is returned.
+///   * An example object, defining a set of attributes.
+///       Only results having these attributes are matched.
+///   * A list containing example objects and/or strings.
+///       All results matching at least one of the elements in the list are returned.
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 var transformExample = function(example) {
   if (example === undefined) {
@@ -395,23 +411,16 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// Select all edges for the vertices selected before.
+/// `graph_query.edges(examples)`
+/// *Select all edges for the vertices selected before.*
 ///
-/// `graph-query.edges(examples)`
 /// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -452,22 +461,15 @@ AQLGenerator.prototype.edges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// Select all outbound edges for the vertices selected before.
+/// `graph_query.outEdges(examples)`
+/// *Select all outbound edges for the vertices selected before.*
 /// 
-/// `graph-query.outEdges(examples)`
 ///
 /// Creates an AQL statement to select all *outbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -508,22 +510,15 @@ AQLGenerator.prototype.outEdges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
-/// Select all inbound edges for the vertices selected before.
+/// `graph_query.inEdges(examples)`
+/// *Select all inbound edges for the vertices selected before.*
 /// 
-/// `graph-query.inEdges(examples)`
 ///
 /// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -594,23 +589,16 @@ AQLGenerator.prototype._vertices = function(example, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_vertices
-/// Select all vertices connected to the edges selected before.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices connected to the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select all vertices for each of the edges selected
 /// in the step before.
 /// This includes all vertices contained in *_from* as well as *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -664,23 +652,16 @@ AQLGenerator.prototype.vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// Select all vertices where the edges selected before start.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices where the edges selected before start.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before start at.
 /// This includes all vertices contained in *_from* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -732,23 +713,16 @@ AQLGenerator.prototype.fromVertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// Select all vertices targeted by the edges selected before.
+/// `graph_query.vertices(examples)`
+/// *Select all vertices targeted by the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before end in.
 /// This includes all vertices contained in *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -817,7 +791,8 @@ AQLGenerator.prototype.getLastVar = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_path
-/// The result of the query is the path to all elements.
+/// `graph_query.path()`
+/// *The result of the query is the path to all elements.*
 ///
 /// By defaut the result of the generated AQL query is the set of elements passing the last matches.
 /// So having a `vertices()` query as the last step the result will be set of vertices.
@@ -870,35 +845,25 @@ AQLGenerator.prototype.pathEdges = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
-/// Select all neighbors of the vertices selected in the step before.
+/// `graph_query.neighbors(examples, options)`
+/// *Select all neighbors of the vertices selected in the step before.*
 /// 
-/// `graph-query.neighbors(examples)`
 ///
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
 /// in the step before.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
-/// Possible options and there defaults:
-///   * String               *direction*                        : The direction of the
-///       edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * String|Object|Array  *edgeExamples*                     : A filter example
-///       for the edges to the neighbors (see below).
-///   * String|Array         *edgeCollectionRestriction*        : One or multiple
-///       edge collections that should be considered.
-///   * String|Array         *vertexCollectionRestriction* : One or multiple
-///       vertex collections that should be considered.
-///   * Number               *minDepth*                         : Defines the minimal
-///       depth a path to a neighbor must have to be returned (default is 1).
-///   * Number               *maxDepth*                         : Defines the maximal
-///       depth a path to a neighbor must have to be returned (default is 1).
+/// * *examples*: See [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+/// Possible options and their defaults:
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeExamples*: See [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
+///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 ///
 /// *Examples*
 ///
@@ -981,10 +946,10 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_restrict
-/// Restricts the last statement in the chain to return
-///   only elements of a specified set of collections
+/// `graph_query.restrict(restrictions)`
+/// *Restricts the last statement in the chain to return
+/// only elements of a specified set of collections*
 ///
-/// `graph-query.restrict(restrictions)`
 ///
 /// By default all collections in the graph are searched for matching elements
 /// whenever vertices and edges are requested.
@@ -993,12 +958,8 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
 /// 
-/// *restrictions* can have the following values:
-///
-/// * A string defining the name of one specific collection in the graph.
-///   Only elements from this collection are used for matching
-/// * A list of strings defining a set of collection names.
-///   Elements from all collections in this set are used for matching
+/// * *restrictions*: Define either one or a list of collections in the graph.
+///     Only elements from these collections are taken into account for the result.
 ///
 /// *Examples*
 ///
@@ -1062,20 +1023,13 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_filter
-/// Filter the result of the query
-///
-/// `graph-query.filter(examples)`
+/// `graph_query.filter(examples)`
+/// *Filter the result of the query*
 ///
 /// This can be used to further specfiy the expected result of the query.
 /// The result set is reduced to the set of elements that matches the given *examples*.
 /// 
-/// *examples* can have the following values:
-/// 
-///   * A string, only the elements having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only elements having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All elements matching at least one of the elements in the list are returned.
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -1159,9 +1113,9 @@ AQLGenerator.prototype.execute = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// Returns an array containing the complete result.
-///
 /// `graph-query.toArray()`
+/// *Returns an array containing the complete result.*
+///
 ///
 /// This function executes the generated query and returns the
 /// entire result as one array.
