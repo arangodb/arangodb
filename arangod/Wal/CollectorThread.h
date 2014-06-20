@@ -68,10 +68,10 @@ namespace triagens {
         TRI_ASSERT_EXPENSIVE(datafileId > 0);
       }
 
-      char const*           datafilePosition;
-      TRI_voc_size_t const  datafileMarkerSize;
-      char const*           walPosition;
-      TRI_voc_fid_t const   datafileId;
+      char const*     datafilePosition;
+      TRI_voc_size_t  datafileMarkerSize;
+      char const*     walPosition;
+      TRI_voc_fid_t   datafileId;
     };
 
 // -----------------------------------------------------------------------------
