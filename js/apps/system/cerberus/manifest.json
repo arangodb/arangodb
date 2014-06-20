@@ -2,6 +2,7 @@
   "name": "cerberus",
   "version": "0.0.1",
   "author": "gschwab",
+  "description": "ArangoDB Password Reset",
   "isSystem": true,
   "controllers": {
     "/": "cerberus.js"
