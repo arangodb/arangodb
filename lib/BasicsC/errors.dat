@@ -309,8 +309,7 @@ ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,1933,"Invalid example type. Has 
 ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be Array or Object","Invalid example type. Has to be Array or Object.",
 ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,1935,"Invalid number of arguments. Expected: ","Invalid number of arguments. Expected: ",
 ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter type.",
-ERROR_GRAPH_INVALID_EDGE,1937,"Edge is not allowed.","Edge is not allowed.",
-ERROR_GRAPH_INVALID_ID,1938,"Invalid id","Invalid id",
+ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 
 ################################################################################
 ## Session errors
