@@ -184,12 +184,12 @@ var wrapCollection = function(col) {
 /// *Examples* are used to filter the result set for objects that match the conditions.
 /// These *examples* can have the following values:
 ///
-///   * Empty, there is no matching executed all found results are valid.
-///   * A string, only the result having this value as it's *_id* is returned.
-///   * An example object, defining a set of attributes.
-///       Only results having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All results matching at least one of the elements in the list are returned.
+/// * Empty, there is no matching executed all found results are valid.
+/// * A string, only the result having this value as it's *_id* is returned.
+/// * An example object, defining a set of attributes.
+///     Only results having these attributes are matched.
+/// * A list containing example objects and/or strings.
+///     All results matching at least one of the elements in the list are returned.
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1113,7 +1113,7 @@ AQLGenerator.prototype.execute = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// `graph-query.toArray()`
+/// `graph_query.toArray()`
 /// *Returns an array containing the complete result.*
 ///
 ///
@@ -1145,9 +1145,8 @@ AQLGenerator.prototype.toArray = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_count
-/// Returns the number of returned elements if the query is executed.
-///
-/// `graph-query.count()`
+/// `graph_query.count()`
+/// *Returns the number of returned elements if the query is executed.*
 ///
 /// This function determines the amount of elements to be expected within the result of the query.
 /// It can be used at the beginning of execution of the query
@@ -1176,9 +1175,8 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// Checks if the query has further results.
-///
-/// `graph-query.neighbors(examples)`
+/// `graph_query.neighbors(examples)`
+/// *Checks if the query has further results.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *hasNext()* will
@@ -1217,9 +1215,8 @@ AQLGenerator.prototype.hasNext = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_next
-/// Request the next element in the result.
-///
-/// `graph-query.next()`
+/// `graph_query.next()`
+/// *Request the next element in the result.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *next()* will
@@ -1267,14 +1264,18 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelation
-///
-/// `general-graph._undirectedRelation(relationName, vertexCollections)`
+/// `graph_module._undirectedRelation(relationName, vertexCollections)`
 /// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
 /// list of *vertexCollections*. This relation allows the user to store
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *vertexCollections*: One or a list of collection names for which connections are allowed.
+///     Will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1319,12 +1320,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Define an directed relation.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_directedRelation
-///
-/// `general-graph._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
+/// `graph_module._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
 /// *Define a directed relation.*
 ///
 /// The *relationName* defines the name of this relation and references to the underlying edge collection.
@@ -1332,6 +1329,13 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// The *toVertexCollections* is an Array of document collections holding the target vertices.
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *fromVertexCollections*: One or a list of collection names. Source vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
+/// * *toVertexCollections*: One or a list of collection names. Target vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1371,17 +1375,13 @@ var _directedRelation = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_call
-/// `general-graph._list()`
+/// @startDocuBlock JSF_general_graph_list
+/// `general_graph._list()`
 /// *List all graphs.*
-/// @endDocuBlock
-///
-/// @startDocuBlock JSF_general_graph_list_info
+//
 /// Lists all graph names stored in this database.
 ///
 /// *Examples*
-/// @endDocuBlock
-/// @startDocuBlock JSF_general_graph_list_examples
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1400,14 +1400,19 @@ var _list = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
+/// `graph_module._edgeDefinitions(relation1, relation2, ..., relationN)`
+/// *Create a list of edge definitions to construct a graph.*
 ///
 /// The edge definitions for a graph is an array containing arbitrary many directed
 /// and/or undirected relations as defined below.
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
-/// *Examples*
+/// *Parameter*
 ///
+/// * *relationX*: An object representing a definition of one relation in the graph
+///
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1434,9 +1439,16 @@ var _edgeDefinitions = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_extend_edge_definitions
+/// `graph_module._extendEdgeDefinitions(edgeDefinitions, relation1, relation2, ..., relationN)`
+/// *Extend the list of edge definitions to construct a graph.*
 ///
 /// In order to add more edge definitions to the graph before creating
 /// this function can be used to add more definitions to the initial list.
+///
+/// *Parameter*
+///
+/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
 ///
@@ -1471,7 +1483,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create
-/// `general-graph._create(graph-name, edge-definitions, orphan-collections)`
+/// `graph_module._create(graphName, edgeDefinitions, orphanCollections)`
 /// *Create a graph*
 ///
 ///
@@ -1482,9 +1494,11 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// These collections are refered to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
-/// * *graph-name*: string - unique identifier of the graph
-/// * *edge-definitions*: array - list of edge definition objects
-/// * *orphan-collections*: array - list of additonal vertex collection names
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
+/// * *edgeDefinitions* (optional): List of relation definition objects
+/// * *orphanCollections* (optional): List of additonal vertex collection names
 ///
 /// *Examples*
 ///
@@ -1812,15 +1826,13 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
-/// Creates and saves a new vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.save(data)`
+/// *Create a new vertex in vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.save(data)`
+/// *Parameter*
 ///
-/// *data*: json - data of vertex
+/// * *data*: Json data of vertex.
 ///
 /// *Examples*
 ///
@@ -1835,13 +1847,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_replace
-/// Replaces the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Replaces the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1857,13 +1870,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_update
-/// Updates the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Updates the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1879,12 +1893,17 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_remove
+/// `graph.vertexCollectionName.remove(vertexId, options)`
 /// Removes a vertex in collection *vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
 /// (see [edge remove](#edge.remove)).
+///
+/// *Parameter*
+///
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1902,14 +1921,15 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_save
-/// Creates and saves a new edge from vertex *from* to vertex *to* in
-/// collection *edgeCollectionName*
+/// `graph.edgeCollectionName.save(from, to, data, options)`
+/// *Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.save(from, to, data)`
+/// *Parameter*
 ///
-/// *from*: string - id of outgoing vertex
-/// *to*: string -  of ingoing vertex
-/// *data*: json - data of edge
+/// * *from*: *_id* attribute of the source vertex
+/// * *to*: *_id* attribute of the target vertex
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
 ///
@@ -1933,13 +1953,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_replace
+/// `graph.edgeCollectionName.replace(edgeId, data, options)`
 /// Replaces the data of an edge in collection *edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.replace(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1955,13 +1976,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_update
-/// Updates the data of an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Updates the data of an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1977,9 +1999,13 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_remove
-/// Removes an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.remove(edgeId, options)`
+/// *Removes an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.remove(edgeId, options)`
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 ///
@@ -2018,12 +2044,14 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
-/// `general-graph._graph(graph-name)`
+/// `graph_module._graph(graphName)`
 /// *Load a graph*
 ///
 /// A graph can be loaded by its name.
 ///
-/// * *graph-name*: string - unique identifier of the graph
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
 ///
 /// *Examples*
 ///
