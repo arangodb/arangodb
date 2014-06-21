@@ -33,6 +33,7 @@ var internal = require("internal");
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+var testHelper = require("org/arangodb/test-helper").Helper;
  
   
 var compareStringIds = function (l, r) {
@@ -1005,10 +1006,9 @@ function CollectionSuite () {
       for (var i = 0; i < 1000; ++i) {
         c1.save({ _key : "test" + i, "value" : i });
       }
-      c1.unload();
-      c1 = null;
 
-      require("internal").wait(5);
+      testHelper.waitUnload(c1);
+      c1 = null;
 
       c1 = db._collection(cn);
 

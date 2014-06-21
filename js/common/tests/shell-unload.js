@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          AQL user functions tests
+// --SECTION--                                            test collection unload
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +75,10 @@ function UnloadSuite () {
       var doc1 = collection.document("test1");
       var doc2 = collection.document("test2");
 
+      // note: the collection won't be unloaded as we hold barriers
       collection.unload();
       collection.unload();
-      
+
       internal.wait(5);
 
       var doc3 = collection.document("test3");
