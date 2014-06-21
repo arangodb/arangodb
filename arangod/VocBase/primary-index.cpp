@@ -107,24 +107,22 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
 /// @brief comparison function, compares a master pointer to another
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header,
-                                      void const* element) {
+static inline bool IsDifferentKeyElement (TRI_doc_mptr_t const* header,
+                                          void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
   // only after that compare actual keys
-  return (header->_hash == e->_hash &&
-          strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (header->_hash != e->_hash || strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparison function, compares a hash/key to a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualHashElement (char const* key, uint64_t hash, void const* element) {
+static inline bool IsDifferentHashElement (char const* key, uint64_t hash, void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  return (hash == e->_hash &&
-          strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (hash != e->_hash || strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 // -----------------------------------------------------------------------------
@@ -185,9 +183,9 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -220,9 +218,9 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
 
   i = k = header->_hash % n;
 
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -256,9 +254,9 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   i = k = hash % n;
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
