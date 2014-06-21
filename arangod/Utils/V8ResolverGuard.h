@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document utility functions
+/// @brief V8 collection name resolver guard
 ///
 /// @file
 ///
@@ -24,74 +24,94 @@
 ///
 /// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_DOCUMENT_HELPER_H
-#define ARANGODB_UTILS_DOCUMENT_HELPER_H 1
+#ifndef ARANGODB_UTILS_V8RESOLVER_GUARD_H
+#define ARANGODB_UTILS_V8RESOLVER_GUARD_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "VocBase/voc-types.h"
 
-struct TRI_json_s;
+#include <v8.h>
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/vocbase.h"
+#include "V8/v8-globals.h"
 
 namespace triagens {
   namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
-// -----------------------------------------------------------------------------
-
-    class DocumentHelper {
+    class V8ResolverGuard {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
+// --SECTION--                                             class V8ResolverGuard
 // -----------------------------------------------------------------------------
 
-      private:
-
-        DocumentHelper () = delete;
-
-        ~DocumentHelper () = delete;
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a string
+/// @brief create the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string assembleDocumentId (std::string const&,
-                                               std::string const& key);
+        V8ResolverGuard (TRI_vocbase_t* vocbase)
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
+            _ownResolver(false) {
+
+          if (_v8g->_resolver == nullptr) {
+            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(vocbase));
+            _ownResolver = true;
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a char* key
+/// @brief destroy the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string assembleDocumentId (std::string const&,
-                                               const TRI_voc_key_t);
+        ~V8ResolverGuard () {
+          if (_ownResolver && _v8g->_resolver != nullptr) {
+            delete static_cast<CollectionNameResolver*>(_v8g->_resolver);
+            _v8g->_resolver = nullptr;
+          }
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
+/// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool parseDocumentId (triagens::arango::CollectionNameResolver const&,
-                                     char const*,
-                                     TRI_voc_cid_t&,
-                                     char**);
+        inline CollectionNameResolver const* getResolver () const { 
+          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
+          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the "_key" attribute from a JSON object
+/// @brief v8 global context
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int getKey (struct TRI_json_s const*,
-                           TRI_voc_key_t*);
+        TRI_v8_global_t* _v8g;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are responsible for the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ownResolver;
 
     };
+
   }
 }
 

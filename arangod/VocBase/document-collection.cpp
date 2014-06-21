@@ -4249,7 +4249,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   TRI_vector_t paths;
   int res;
 
-  idx = NULL;
+  idx = nullptr;
 
   // determine the sorted shape ids for the attributes
   res = PidNamesByAttributeNames(attributes,
@@ -4260,11 +4260,11 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -4275,12 +4275,12 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
 
-  if (idx != NULL) {
+  if (idx != nullptr) {
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("hash-index already created");
 
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
@@ -4295,11 +4295,11 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             &paths,
                             unique);
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   // release memory allocated to vector
@@ -4312,7 +4312,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeHashIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
   // store index and return
@@ -4321,10 +4321,10 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeHashIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
-  if (created != NULL) {
+  if (created != nullptr) {
     *created = true;
   }
 
@@ -4368,7 +4368,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
                                  false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return NULL;
+    return nullptr;
   }
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
@@ -4454,11 +4454,11 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -4469,12 +4469,12 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
 
-  if (idx != NULL) {
+  if (idx != nullptr) {
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("skiplist-index already created");
 
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
@@ -4484,9 +4484,9 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // Create the skiplist index
   idx = TRI_CreateSkiplistIndex(document, iid, &fields, &paths, unique);
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   // release memory allocated to vector
@@ -4500,7 +4500,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
     TRI_FreeSkiplistIndex(idx);
 
     TRI_set_errno(res);
-    return NULL;
+    return nullptr;
   }
 
   // store index and return
@@ -4509,10 +4509,10 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeSkiplistIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
-  if (created != NULL) {
+  if (created != nullptr) {
     *created = true;
   }
 
