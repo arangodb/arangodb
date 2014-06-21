@@ -1053,6 +1053,9 @@ bool TRI_SaveJson (char const* filename,
     return false;
   }
 
+  // remove a potentially existing temporary file
+  TRI_UnlinkFile(tmp);
+
   fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
