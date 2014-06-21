@@ -195,11 +195,11 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   void const* f;
   void const* p;
 
-  TRI_ASSERT(name != NULL);
+  TRI_ASSERT(name != nullptr);
 
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
-  if (p != NULL) {
+  if (p != nullptr) {
     return (TRI_shape_path_t const*) p;
   }
 
@@ -212,7 +212,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   // if the element appeared, return the pid
   p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
-  if (p != NULL) {
+  if (p != nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
     return (TRI_shape_path_t const*) p;
   }
@@ -221,19 +221,19 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   count = 0;
   aids = static_cast<TRI_shape_aid_t*>(TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false));
 
-  if (aids == NULL) {
+  if (aids == nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
     LOG_ERROR("out of memory in shaper");
-    return NULL;
+    return nullptr;
   }
 
   buffer = ptr = TRI_DuplicateString2Z(shaper->_memoryZone, name, len);
 
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
     TRI_Free(shaper->_memoryZone, aids);
     LOG_ERROR("out of memory in shaper");
-    return NULL;
+    return nullptr;
   }
 
   end = buffer + len + 1;
@@ -254,7 +254,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
             TRI_FreeString(shaper->_memoryZone, buffer);
             TRI_UnlockMutex(&shaper->_attributePathLock);
             TRI_Free(shaper->_memoryZone, aids);
-            return NULL;
+            return nullptr;
           }
 
           ++count;
@@ -271,11 +271,11 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
   result = static_cast<TRI_shape_path_t*>(TRI_Allocate(shaper->_memoryZone, total, false));
 
-  if (result == NULL) {
+  if (result == nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
     TRI_Free(shaper->_memoryZone, aids);
     LOG_ERROR("out of memory in shaper");
-    return NULL;
+    return nullptr;
   }
 
   result->_pid = shaper->_nextPid++;
@@ -288,10 +288,10 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   TRI_Free(shaper->_memoryZone, aids);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
-  TRI_ASSERT(f == NULL);
+  TRI_ASSERT(f == nullptr);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result, false);
-  TRI_ASSERT(f == NULL);
+  TRI_ASSERT(f == nullptr);
 
   // return pid
   TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -307,7 +307,7 @@ static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
                                                         bool isLocked) {
   TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked);
 
-  return path == NULL ? 0 : path->_pid;
+  return path == nullptr ? 0 : path->_pid;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +318,7 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
                                                   char const* name) {
   TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true);
 
-  return path == NULL ? 0 : path->_pid;
+  return path == nullptr ? 0 : path->_pid;
 }
 
 // -----------------------------------------------------------------------------
@@ -458,7 +458,7 @@ TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
 
 TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
   if (sid >= TRI_FirstCustomShapeIdShaper() || sid == 0) {
-    return NULL;
+    return nullptr;
   }
 
   if (sid == BasicShapes._sidNull) {
@@ -480,7 +480,7 @@ TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
     return &BasicShapes._shapeList;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,7 +507,7 @@ TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const* shape) {
     return &BasicShapes._shapeList;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
