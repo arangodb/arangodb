@@ -651,7 +651,7 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
 /// @brief sorts a json list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
+TRI_json_t* TRI_SortListJson (TRI_json_t* list) {
   size_t n;
 
   TRI_ASSERT(list);
@@ -672,7 +672,7 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
 /// @brief checks if a JSON struct has duplicate attribute names
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
+bool TRI_HasDuplicateKeyJson (TRI_json_t const* object) {
   if (object && object->_type == TRI_JSON_ARRAY) {
     const size_t n = object->_value._objects._length;
     const bool hasMultipleElements = (n > 2);
