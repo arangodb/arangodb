@@ -60,7 +60,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8TransactionContext ()
-          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())) {
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
+            _ownResolver(false) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +69,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~V8TransactionContext () {
-//          unregisterTransaction();
         }
 
 // -----------------------------------------------------------------------------
@@ -81,7 +81,8 @@ namespace triagens {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const {
+        inline CollectionNameResolver const* getResolver () const { 
+          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
           return static_cast<CollectionNameResolver*>(_v8g->_resolver);
         }
 
@@ -125,8 +126,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int registerTransaction (TRI_transaction_t* trx) {
+          TRI_ASSERT_EXPENSIVE(_v8g->_currentTransaction == nullptr);
           _v8g->_currentTransaction = trx;
-          _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
+
+          if (_v8g->_resolver == nullptr) {
+            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
+            _ownResolver = true;
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -138,7 +144,8 @@ namespace triagens {
         inline int unregisterTransaction () {
           _v8g->_currentTransaction = nullptr;
 
-          if (_v8g->_resolver != nullptr) {
+          if (_ownResolver && _v8g->_resolver != nullptr) {
+            _ownResolver = false;
             CollectionNameResolver* resolver = static_cast<CollectionNameResolver*>(_v8g->_resolver);
             delete resolver;
 
@@ -159,6 +166,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_v8_global_t* _v8g;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are responsible for the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ownResolver;
 
     };
 

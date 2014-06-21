@@ -53,6 +53,7 @@
 #include "Utils/AhuacatlTransaction.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
+#include "Utils/V8ResolverGuard.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -383,7 +384,7 @@ static inline v8::Handle<v8::Value> V8RevisionId (TRI_voc_rid_t rid) {
 
 static inline v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
                                                   string const& key) {
-  string const id = DocumentHelper::assembleDocumentId(collectionName, key);
+  string const&& id = DocumentHelper::assembleDocumentId(collectionName, key);
 
   return v8::String::New(id.c_str(), (int) id.size());
 }
@@ -454,7 +455,7 @@ static inline TRI_vocbase_t* GetContextVocBase () {
 static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
                                  string& collectionName,
                                  TRI_voc_key_t& key) {
-  TRI_ASSERT(collectionName == "");
+  TRI_ASSERT(collectionName.empty());
 
   if (! arg->IsString()) {
     return false;
@@ -541,9 +542,22 @@ static bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
     TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
+    
+    if (obj->Has(v8g->_IdKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
 
-    if (! ParseDocumentHandle(didVal, collectionName, key)) {
+      if (! ParseDocumentHandle(didVal, collectionName, key)) {
+        return false;
+      }
+    }
+    else if (obj->Has(v8g->_KeyKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(v8g->_KeyKey);
+
+      if (! ParseDocumentHandle(didVal, collectionName, key)) {
+        return false;
+      }
+    }
+    else {
       return false;
     }
 
@@ -608,7 +622,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   TRI_ASSERT(key == nullptr);
 
   // reset the collection identifier and the revision
-  string collectionName = "";
+  string collectionName;
   rid = 0;
 
   // try to extract the collection name, key, and revision from the object passed
@@ -647,26 +661,26 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   TRI_ASSERT(collectionName != "");
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     // no collection object was passed, now check the user-supplied collection name
 
-    TRI_vocbase_col_t const* col = 0;
+    TRI_vocbase_col_t const* col = nullptr;
 
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
       col = CoordinatorCollection(vocbase, *c);
 
-      if (col != 0 && col->_cid == 0) {
+      if (col != nullptr && col->_cid == 0) {
         FreeCoordinatorCollection(const_cast<TRI_vocbase_col_t*>(col));
-        col = 0;
+        col = nullptr;
       }
     }
     else {
       col = resolver->getCollectionStruct(collectionName);
     }
 
-    if (col == 0) {
+    if (col == nullptr) {
       // collection not found
       return scope.Close(TRI_CreateErrorObject(__FILE__,
                                                __LINE__,
@@ -676,7 +690,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     collection = col;
   }
 
-  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(collection != nullptr);
 
   v8::Handle<v8::Value> empty;
   return scope.Close(empty);
@@ -804,20 +818,20 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   int res = TRI_ERROR_INTERNAL;
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
 
-  if (col != 0) {
+  if (col != nullptr) {
     if (! col->_isLocal) {
       *err = TRI_CreateErrorObject(__FILE__,
                                    __LINE__,
                                    TRI_ERROR_NOT_IMPLEMENTED);
       TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
-      return 0;
+      return nullptr;
     }
 
     TRI_vocbase_col_status_e status;
     res = TRI_UseCollectionVocBase(col->_vocbase, col, status);
 
     if (res == TRI_ERROR_NO_ERROR &&
-        col->_collection != 0) {
+        col->_collection != nullptr) {
       // no error
       return col;
     }
@@ -826,7 +840,7 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
   // some error occurred
   *err = TRI_CreateErrorObject(__FILE__, __LINE__, res, "cannot use/load collection", true);
   TRI_set_errno(res);
-  return 0;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -845,12 +859,12 @@ static v8::Handle<v8::Value> IndexRep (string const& collectionName,
                                        TRI_json_t const* idx) {
   v8::HandleScope scope;
 
-  TRI_ASSERT(idx != 0);
+  TRI_ASSERT(idx != nullptr);
 
   v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
 
   string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
-  const string id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
   rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), (int) id.size()));
 
   return scope.Close(rep);
@@ -882,7 +896,7 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const obj,
 
   TRI_json_t* fieldJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (fieldJson == 0) {
+  if (fieldJson == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1887,16 +1901,16 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_USAGE(scope, "document(<document-handle>)");
   }
 
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   TRI_voc_rid_t rid;
   TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.document()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-    if (col == 0) {
+    if (col == nullptr) {
       TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
@@ -1907,12 +1921,12 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
+  V8ResolverGuard resolver(vocbase);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
   LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
@@ -1925,7 +1939,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_ASSERT(col != 0);
+  TRI_ASSERT(col != nullptr);
   TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1987,16 +2001,16 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_USAGE(scope, "exists(<document-handle>)");
   }
 
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   TRI_voc_rid_t rid;
   TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.exists()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-    if (col == 0) {
+    if (col == nullptr) {
       TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
@@ -2007,16 +2021,16 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
+  V8ResolverGuard resolver(vocbase);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
   LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == 0) {
+  if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -2041,8 +2055,8 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_ASSERT(col != 0);
-  TRI_ASSERT(key != 0);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
@@ -2100,7 +2114,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(collection != nullptr);
 
   // First get the initial data:
   string const dbname(collection->_dbName);
@@ -2185,7 +2199,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
-  if (argv.Length() < 2) {
+  uint32_t const argLength = argv.Length();
+
+  if (argLength < 2) {
     TRI_V8_EXCEPTION_USAGE(scope, "replace(<document>, <data>, {overwrite: booleanValue, waitForSync: booleanValue})");
   }
 
@@ -2208,24 +2224,24 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
       options.overwrite = TRI_ObjectToBoolean(argv[2]);
       policy = ExtractUpdatePolicy(options.overwrite);
-      if (argv.Length() > 3 ) {
+      if (argLength > 3) {
         options.waitForSync = TRI_ObjectToBoolean(argv[3]);
       }
     }
   }
 
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
 
   TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.replace()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-    if (col == 0) {
+    if (col == nullptr) {
       TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
@@ -2236,16 +2252,16 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
+  V8ResolverGuard resolver(vocbase);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
   LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == 0) {
+  if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -2295,7 +2311,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
     TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
-    if (json == 0) {
+    if (json == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
@@ -2312,7 +2328,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());  // PROTECTED by trx here
     TRI_json_t* old = TRI_JsonShapedJson(document->getShaper(), &shaped);  // PROTECTED by trx here
 
-    if (old == 0) {
+    if (old == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2331,7 +2347,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], document->getShaper(), true);  // PROTECTED by trx here
 
-  if (shaped == 0) {
+  if (shaped == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
@@ -2573,11 +2589,13 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
-  if (argv.Length() < 2 || argv.Length() > 5) {
+  uint32_t const argLength = argv.Length();
+
+  if (argLength < 2 || argLength > 5) {
     TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, {overwrite: booleanValue, keepNull: booleanValue, waitForSync: booleanValue})");
   }
 
-  if (argv.Length() > 2) {
+  if (argLength > 2) {
     if (argv[2]->IsObject()) {
       v8::Handle<v8::Object> optionsObject = argv[2].As<v8::Object>();
       if (optionsObject->Has(v8::String::New("overwrite"))) {
@@ -2594,26 +2612,26 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     else { // old variant update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)
       options.overwrite = TRI_ObjectToBoolean(argv[2]);
       policy = ExtractUpdatePolicy(options.overwrite);
-      if (argv.Length() > 3) {
+      if (argLength > 3) {
         options.keepNull = TRI_ObjectToBoolean(argv[3]);
       }
-      if (argv.Length() > 4) {
+      if (argLength > 4) {
         options.waitForSync = TRI_ObjectToBoolean(argv[4]);
       }
     }
   }
 
-  TRI_voc_key_t key = 0;
+  TRI_voc_key_t key = nullptr;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
   TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.update()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-    if (col == 0) {
+    if (col == nullptr) {
       TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
@@ -2624,16 +2642,16 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
+  V8ResolverGuard resolver(vocbase);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
   LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == 0) {
+  if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -2642,8 +2660,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_ASSERT(col != 0);
-  TRI_ASSERT(key != 0);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col,
@@ -2662,7 +2680,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
-  if (json == 0) {
+  if (json == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> is no valid JSON");
   }
@@ -2727,7 +2745,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   TRI_FreeJson(zone, old);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (patchedJson == 0) {
+  if (patchedJson == nullptr) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
@@ -2881,13 +2899,13 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
   TRI_vocbase_t* vocbase;
-  TRI_vocbase_col_t const* col = 0;
+  TRI_vocbase_col_t const* col = nullptr;
 
   if (useCollection) {
     // called as db.collection.remove()
     col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-    if (col == 0) {
+    if (col == nullptr) {
       TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
     }
 
@@ -2898,16 +2916,16 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     vocbase = GetContextVocBase();
   }
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  CollectionNameResolver resolver(vocbase);
-  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, &resolver, col, key, rid, argv[0]);
+  V8ResolverGuard resolver(vocbase);
+  v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
   LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == 0) {
+  if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -2916,8 +2934,8 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     return scope.Close(v8::ThrowException(err));
   }
 
-  TRI_ASSERT(col != 0);
-  TRI_ASSERT(key != 0);
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(key != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
@@ -7261,7 +7279,7 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -7303,7 +7321,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -7335,11 +7353,11 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  const bool forceSync = ExtractForceSync(argv, 1);
+  bool const forceSync = ExtractForceSync(argv, 1);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -9417,12 +9435,12 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   // get shaped json
   void* marker = TRI_UnwrapClass<TRI_shaped_json_t>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (marker == 0) {
+  if (marker == nullptr) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
   // convert the JavaScript string to a string
-  string const key = TRI_ObjectToString(name);
+  string const&& key = TRI_ObjectToString(name);
 
   if (key.empty()) {
     return scope.Close(v8::Handle<v8::Integer>());
@@ -9449,7 +9467,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_sid_t sid;
   TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(sid, marker);
 
-  if (sid == 0) {
+  if (sid == TRI_SHAPE_ILLEGAL) {
     // invalid shape
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_WARNING("invalid shape id '%llu' found for key '%s'", (unsigned long long) sid, key.c_str());
@@ -9476,9 +9494,7 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
   v8::HandleScope scope;
 
   char buffer[11];
-  size_t len;
-
-  len = TRI_StringUInt32InPlace(idx, (char*) &buffer);
+  size_t len = TRI_StringUInt32InPlace(idx, (char*) &buffer);
 
   v8::Local<v8::String> strVal = v8::String::New((char*) &buffer, (int) len);
 
@@ -9501,10 +9517,10 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
 
   v8::HandleScope scope;
 
-  TRI_ASSERT(key == 0);
+  TRI_ASSERT(key == nullptr);
 
   // reset everything
-  string collectionName = "";
+  string collectionName;
   TRI_voc_rid_t rid = 0;
 
   // try to extract the collection name, key, and revision from the object passed
@@ -9513,12 +9529,12 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
   }
 
   // we have at least a key, we also might have a collection name
-  TRI_ASSERT(key != 0);
+  TRI_ASSERT(key != nullptr);
 
-  if (collectionName == "") {
+  if (collectionName.empty()) {
     // we do not know the collection
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = 0;
+    key = nullptr;
 
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
@@ -9532,7 +9548,7 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
 
   if (cid == 0) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = 0;
+    key = nullptr;
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -9549,18 +9565,18 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
                                       bool ignoreNotFound,
                                       v8::Handle<v8::Object>* err) {
   // reset the collection identifier
-  string collectionName = "";
+  string collectionName;
   TRI_idx_iid_t iid = 0;
 
   // assume we are already loaded
-  TRI_ASSERT(collection != 0);
-  TRI_ASSERT(collection->_collection != 0);
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(collection->_collection != nullptr);
 
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
       *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-      return 0;
+      return nullptr;
     }
   }
 
@@ -9573,7 +9589,7 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
       *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-      return 0;
+      return nullptr;
     }
   }
 
@@ -9582,13 +9598,13 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
-      return 0;
+      return nullptr;
     }
   }
 
   TRI_index_t* idx = TRI_LookupIndex(collection->_collection, iid);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     if (! ignoreNotFound) {
       *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }

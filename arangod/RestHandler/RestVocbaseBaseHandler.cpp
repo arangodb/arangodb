@@ -159,7 +159,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
                                                                           type,
                                                                           TRI_GetIdServer());
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     generateTransactionError(name, TRI_errno());
     return false;
   }
@@ -175,8 +175,8 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
                                           string const& collectionName,
                                           TRI_voc_key_t key,
                                           TRI_voc_rid_t rid) {
-  string const handle = DocumentHelper::assembleDocumentId(collectionName, key);
-  string const rev = StringUtils::itoa(rid);
+  string const&& handle = DocumentHelper::assembleDocumentId(collectionName, key);
+  string const&& rev = StringUtils::itoa(rid);
 
   _response = createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
@@ -235,7 +235,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectionName,
                                                          TRI_voc_key_t key,
                                                          TRI_voc_rid_t rid) {
-  const string rev = StringUtils::itoa(rid);
+  string const&& rev = StringUtils::itoa(rid);
 
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
@@ -262,7 +262,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
-  string const rev = StringUtils::itoa(rid);
+  string const&& rev = StringUtils::itoa(rid);
 
   _response = createResponse(HttpResponse::NOT_MODIFIED);
   _response->setHeader("etag", 4, "\"" + rev + "\"");
@@ -281,7 +281,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   CollectionNameResolver const* resolver = trx.resolver();
 
   char const* key = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx from above
-  string const id = DocumentHelper::assembleDocumentId(resolver->getCollectionName(cid), key);
+  string const&& id = DocumentHelper::assembleDocumentId(resolver->getCollectionName(cid), key);
 
   TRI_json_t augmented;
   TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
@@ -293,7 +293,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   }
 
   // convert rid from uint64_t to string
-  string const rid = StringUtils::itoa(mptr._rid);
+  string const&& rid = StringUtils::itoa(mptr._rid);
   TRI_json_t* rev = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (rev != nullptr) {
@@ -310,16 +310,16 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    const string from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+    string const&& from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    string const&& to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
     triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    const string from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    const string to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+    string const&& from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
+    string const&& to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
 
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
@@ -483,7 +483,7 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
     return rid;
   }
 
-  if (parameter != 0) {
+  if (parameter != nullptr) {
     etag = _request->value(parameter, found);
 
     if (found) {
@@ -540,11 +540,11 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
-  char* errmsg = 0;
+  char* errmsg = nullptr;
   TRI_json_t* json = _request->toJson(&errmsg);
 
-  if (json == 0) {
-    if (errmsg == 0) {
+  if (json == nullptr) {
+    if (errmsg == nullptr) {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
@@ -557,17 +557,17 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
       TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
     }
 
-    return 0;
+    return nullptr;
   }
 
-  TRI_ASSERT(errmsg == 0);
+  TRI_ASSERT(errmsg == nullptr);
 
   if (TRI_HasDuplicateKeyJson(json)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "cannot parse json object");
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return 0;
+    return nullptr;
   }
 
   return json;
@@ -618,7 +618,7 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
                                              string const& handle,
                                              TRI_voc_cid_t& cid,
                                              TRI_voc_key_t& key) {
-  vector<string> split(StringUtils::split(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR));
+  vector<string>&& split(StringUtils::split(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR));
 
   if (split.size() != 2) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);

@@ -48,8 +48,8 @@ using namespace triagens::basics;
 /// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string DocumentHelper::assembleDocumentId (const std::string& collectionName,
-                                                const std::string& key) {
+std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
+                                                std::string const& key) {
   return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + key;
 }
 
@@ -57,7 +57,7 @@ std::string DocumentHelper::assembleDocumentId (const std::string& collectionNam
 /// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string DocumentHelper::assembleDocumentId (const std::string& collectionName,
+std::string DocumentHelper::assembleDocumentId (std::string const& collectionName,
                                                 const TRI_voc_key_t key) {
   if (key == 0) {
     return collectionName + TRI_DOCUMENT_HANDLE_SEPARATOR_STR + "_unknown";
@@ -68,74 +68,20 @@ std::string DocumentHelper::assembleDocumentId (const std::string& collectionNam
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id and document key from an id
-/// TODO: merge with RestVocBaseBaseHandler::parseDocumentId
-////////////////////////////////////////////////////////////////////////////////
-
-bool DocumentHelper::parseDocumentId (const std::string& input,
-                                      TRI_voc_cid_t& cid,
-                                      std::string& key) {
-  size_t pos = input.find(TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-
-  if (pos == string::npos) {
-    return false;
-  }
-
-  cid = StringUtils::uint64(input.c_str(), pos);
-  key = input.substr(pos + 1);
-
-  if (key.empty()) {
-    // empty key
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
-////////////////////////////////////////////////////////////////////////////////
-
-bool DocumentHelper::parseDocumentId (const char* input,
-                                      TRI_voc_cid_t& cid,
-                                      char** key) {
-
-  if (input == 0) {
-    return false;
-  }
-
-  const char* pos = strchr(input, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-
-  if (pos == 0) {
-    return false;
-  }
-
-  cid = StringUtils::uint64(input, pos - input);
-  *key = (char*) (pos + 1);
-
-  if (**key == '\0') {
-    // empty key
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
-                                      const char* input,
+                                      char const* input,
                                       TRI_voc_cid_t& cid,
                                       char** key) {
 
-  if (input == 0) {
+  if (input == nullptr) {
     return false;
   }
 
-  const char* pos = strchr(input, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+  char const* pos = strchr(input, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
 
-  if (pos == 0) {
+  if (pos == nullptr) {
     return false;
   }
 
@@ -159,14 +105,14 @@ int DocumentHelper::getKey (TRI_json_t const* json,
   *key = 0;
 
   // check type of json
-  if (json == 0 || json->_type != TRI_JSON_ARRAY) {
+  if (! TRI_IsArrayJson(json)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   // check if _key is there
-  const TRI_json_t* k = TRI_LookupArrayJson((TRI_json_t*) json, TRI_VOC_ATTRIBUTE_KEY);
+  TRI_json_t const* k = TRI_LookupArrayJson(json, TRI_VOC_ATTRIBUTE_KEY);
 
-  if (k == 0) {
+  if (k == nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
 
