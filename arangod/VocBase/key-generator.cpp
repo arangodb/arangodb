@@ -102,7 +102,9 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType (TRI_json_t const* param
 KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
   KeyGenerator::GeneratorType type;
 
-  if (TRI_IsArrayJson(options)) {
+  bool const readOptions = TRI_IsArrayJson(options);
+
+  if (readOptions) {
     type = generatorType(options);
   }
   else {
@@ -113,11 +115,14 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
     return nullptr;
   }
 
-  TRI_json_t* option = TRI_LookupArrayJson(options, "allowUserKeys");
-
   bool allowUserKeys = true;
-  if (TRI_IsBooleanJson(option)) {
-    allowUserKeys = option->_value._boolean;
+
+  if (readOptions) {
+    TRI_json_t* option = TRI_LookupArrayJson(options, "allowUserKeys");
+
+    if (TRI_IsBooleanJson(option)) {
+      allowUserKeys = option->_value._boolean;
+    }
   }
 
   if (type == TYPE_TRADITIONAL) {
@@ -128,25 +133,30 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
     uint64_t offset = 0;
     uint64_t increment = 1;
 
-    option = TRI_LookupArrayJson(options, "increment");
+    if (readOptions) {
+      TRI_json_t* option;
 
-    if (TRI_IsNumberJson(option)) {
-      increment = (uint64_t) option->_value._number;
+      option = TRI_LookupArrayJson(options, "increment");
 
-      if (increment == 0 || increment >= (1ULL << 16)) {
-        return nullptr;
+      if (TRI_IsNumberJson(option)) {
+        increment = (uint64_t) option->_value._number;
+
+        if (increment == 0 || increment >= (1ULL << 16)) {
+          return nullptr;
+        }
+      }
+    
+      option = TRI_LookupArrayJson(options, "offset");
+
+      if (TRI_IsNumberJson(option)) {
+        offset = (uint64_t) option->_value._number;
+
+        if (offset >= UINT64_MAX) {
+          return nullptr;
+        }
       }
     }
 
-    option = TRI_LookupArrayJson(options, "offset");
-
-    if (TRI_IsNumberJson(option)) {
-      offset = (uint64_t) option->_value._number;
-
-      if (offset >= UINT64_MAX) {
-        return nullptr;
-      }
-    }
     return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
   }
 
