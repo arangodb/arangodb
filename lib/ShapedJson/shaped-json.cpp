@@ -2289,7 +2289,7 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
 
   shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
-  if (shape == NULL || shape->_type != TRI_SHAPE_ARRAY) {
+  if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     return false;
   }
 
@@ -2313,11 +2313,9 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
 bool TRI_StringifyShapedJson (TRI_shaper_t* shaper,
                               TRI_string_buffer_t* buffer,
                               TRI_shaped_json_t const* shaped) {
-  TRI_shape_t const* shape;
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
-  shape = shaper->lookupShapeId(shaper, shaped->_sid);
-
-  if (shape == NULL) {
+  if (shape == nullptr) {
     return false;
   }
 

@@ -11,27 +11,27 @@ TodosRepository = Foxx.Repository.extend({
 exports.repository = TodosRepository;
 ```
 
-!SUBSUBSECTION Initialize 
+!SUBSECTION Initialize 
 
 @startDocuBlock JSF_foxx_repository_initializer
 
 !SUBSECTION Attributes of a Repository
 
-!SUBSUBSECTION Collection
+!SUBSECTION Collection
 
 @startDocuBlock JSF_foxx_repository_collection
 
-!SUBSUBSECTION ModelPrototype
+!SUBSECTION ModelPrototype
 
 @startDocuBlock JSF_foxx_repository_modelPrototype
 
-!SUBSUBSECTION Prefix
+!SUBSECTION Prefix
 
 @startDocuBlock JSF_foxx_repository_prefix
 
 !SUBSECTION Methods of a Repository
 
-!SUBSUBSECTION Adding entries to the repository
+!SUBSECTION Adding entries to the repository
 
 @startDocuBlock JSF_foxx_repository_save
 
@@ -45,7 +45,7 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_all
 
-!SUBSUBSECTION Removing entries from the repository
+!SUBSECTION Removing entries from the repository
 
 @startDocuBlock JSF_foxx_repository_remove
 
@@ -53,7 +53,7 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_removeByExample
 
-!SUBSUBSECTION Replacing entries in the repository
+!SUBSECTION Replacing entries in the repository
 
 @startDocuBlock JSF_foxx_repository_replace
 
@@ -61,12 +61,12 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_replaceByExample
 
-!SUBSUBSECTION Updating entries in the repository
+!SUBSECTION Updating entries in the repository
 
 @startDocuBlock JSF_foxx_repository_updateById
 
 @startDocuBlock JSF_foxx_repository_updateByExample
 
-!SUBSUBSECTION Counting entries in the repository
+!SUBSECTION Counting entries in the repository
 
 @startDocuBlock JSF_foxx_repository_count

@@ -45,6 +45,7 @@ Logfile::Logfile (Logfile::IdType id,
                   TRI_datafile_t* df,
                   StatusType status)
   : _id(id),
+    _users(0),
     _df(df),
     _status(status),
     _collectQueueSize(0) {

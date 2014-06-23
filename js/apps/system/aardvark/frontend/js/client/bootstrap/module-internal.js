@@ -160,10 +160,12 @@
       var i;
 
       if (typeof body !== 'string') {
-        body = JSON.stringify(body);
+        internal.startCaptureMode();
+        print(body);
+        body = internal.stopCaptureMode();
       }
 
-      curl = "unix> curl ";
+      curl = "shell> curl ";
 
       if (method === 'POST') {
         response = internal.arango.POST_RAW(url, body, headers);

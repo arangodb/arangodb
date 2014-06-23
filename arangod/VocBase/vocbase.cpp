@@ -482,16 +482,11 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // check for special system collection names
   if (TRI_IsSystemNameCollection(name)) {
     // a few system collections have special behavior
-    if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-        TRI_EqualString(name, TRI_COL_NAME_USERS) ||
+    if (TRI_EqualString(name, TRI_COL_NAME_USERS) ||
         TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       init._canDrop   = false;
       init._canRename = false;
-
-      // the replication collection cannot be unloaded manually)
-      // (this would make the server hang)
-      init._canUnload = ! TRI_EqualString(name, TRI_COL_NAME_REPLICATION);
     }
   }
 
@@ -1275,7 +1270,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_TRANSACTION);
 
   if (collection == nullptr) {
-    // collection not found, no problem
+    // collection not found, no problem - seems to be a newer ArangoDB version
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1844,8 +1839,8 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
-  if (found == NULL) {
-    name = NULL;
+  if (found == nullptr) {
+    name = nullptr;
   }
   else {
     name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);

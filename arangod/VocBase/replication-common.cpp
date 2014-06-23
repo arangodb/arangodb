@@ -62,7 +62,7 @@ void TRI_GetTimeStampReplication (char* dst,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExcludeCollectionReplication (const char* name) {
-  if (name == NULL) {
+  if (name == nullptr) {
     // name invalid
     return true;
   }

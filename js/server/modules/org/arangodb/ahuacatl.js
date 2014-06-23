@@ -5503,7 +5503,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, distance from Hambug and Cologne to Lyon:
+/// A route planner example, distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
 /// ~ var db = require("internal").db;
@@ -6204,7 +6204,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
           tmp[f._id + "|keys"].push(t._id);
           var obj = {_id : t._id};
           Object.keys(f).forEach(function (fromDoc) {
-            if (t[fromDoc] && t[fromDoc] === f[fromDoc]) {
+            if (t[fromDoc] !== undefined && t[fromDoc] === f[fromDoc]) {
               obj[fromDoc] = t[fromDoc];
             }
           });
@@ -7063,17 +7063,17 @@ exports.GEO_WITHIN = GEO_WITHIN;
 exports.FULLTEXT = FULLTEXT;
 exports.GRAPH_PATHS = GRAPH_PATHS;
 exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
-exports.GENERAL_GRAPH_SHORTEST_PATH = GENERAL_GRAPH_SHORTEST_PATH;
-exports.GENERAL_GRAPH_DISTANCE_TO = GENERAL_GRAPH_DISTANCE_TO;
 exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
 exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
+exports.GRAPH_EDGES = GRAPH_EDGES;
+exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_TRAVERSAL = GENERAL_GRAPH_TRAVERSAL;
 exports.GENERAL_GRAPH_TRAVERSAL_TREE = GENERAL_GRAPH_TRAVERSAL_TREE;
-exports.GRAPH_EDGES = GRAPH_EDGES;
 exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
 exports.GENERAL_GRAPH_VERTICES = GENERAL_GRAPH_VERTICES;
 exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
-exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
+exports.GENERAL_GRAPH_SHORTEST_PATH = GENERAL_GRAPH_SHORTEST_PATH;
+exports.GENERAL_GRAPH_DISTANCE_TO = GENERAL_GRAPH_DISTANCE_TO;
 exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;
 exports.GENERAL_GRAPH_COMMON_NEIGHBORS = GENERAL_GRAPH_COMMON_NEIGHBORS;
 exports.GENERAL_GRAPH_COMMON_PROPERTIES = GENERAL_GRAPH_COMMON_PROPERTIES;

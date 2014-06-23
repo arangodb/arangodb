@@ -164,6 +164,20 @@ function GeneralGraphCreationSuite() {
       }
     },
 
+    test_collectionSorting: function() {
+      var g = graph._create(
+        gn,
+        graph._edgeDefinitions(
+          graph._directedRelation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      assertEqual([vn1, vn2], g.__edgeDefinitions[0].from);
+      assertEqual([vn3, vn4], g.__edgeDefinitions[0].to);
+
+
+    },
+
     test_directedRelation : function () {
       var r = graph._directedRelation(rn,
           [vn1, vn2], [vn3, vn4]);
@@ -529,7 +543,7 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec2 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec2 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
 
@@ -563,11 +577,34 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
       assertEqual([vc3], g1._orphanCollections());
+      g1._extendEdgeDefinitions(dr3);
+      assertEqual([dr1, dr3], g1.__edgeDefinitions);
+      assertEqual([], g1._orphanCollections());
+      g1._extendEdgeDefinitions(dr2);
+      assertEqual([dr1, dr3, dr2], g1.__edgeDefinitions);
+
+    },
+
+    test_extendEdgeDefinitionFromExistingGraph4: function() {
+      try {
+        graph._drop(gN1, true);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2, true);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc4, vc3, vc1, vc2], [vc4, vc3, vc1, vc2]),
+        g1 = graph._create(gN1, [dr1]);
+
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      assertEqual([], g1._orphanCollections());
-      g1._extendEdgeDefinitions(dr3);
-      assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
+      var edgeDefinition = _.findWhere(g1.__edgeDefinitions, {collection: ec2});
+      assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
+      assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
+
 
     },
 
@@ -1188,7 +1225,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, plainVertexQueryStmt(0));
       assertEqual(query.bindVars.vertexExample_0, [
         {name: uaName},
-        {name: p1Name},
+        {name: p1Name}
       ]);
       assertEqual(query.bindVars.options_0, {});
     },
@@ -1219,7 +1256,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.vertexExample_0, [
         {name: uaName},
         {_id: b_id},
-        {name: ucName},
+        {name: ucName}
       ]);
       assertEqual(query.bindVars.options_0, {});
     },
@@ -1484,7 +1521,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, ubName);
     },
 
-    test_getToVertexForSelectedEdgeResultingAQL: function() {
+    test_toVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
         .toVertices();
       var stmt = query.printQuery();
@@ -1500,7 +1537,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    test_getToVertexForSelectedEdge: function() {
+    test_toVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .toVertices()
         .toArray();
@@ -1508,7 +1545,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, ubName);
     },
 
-    test_getFromVertexForSelectedEdgeResultingAQL: function() {
+    test_fromVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
         .fromVertices();
       var stmt = query.printQuery();
@@ -1524,7 +1561,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    test_getFromVertexForSelectedEdge: function() {
+    test_fromVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .fromVertices()
         .toArray();
@@ -1891,7 +1928,7 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec1 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec1 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
       assertFalse(graph._exists(myGraphName));
@@ -2206,15 +2243,15 @@ function EdgesAndVerticesSuite() {
 
     test_getInVertex : function() {
       var ids = fillCollections();
-      var result = g._getFromVertex(ids.eId11);
+      var result = g._fromVertex(ids.eId11);
       assertEqual(result._id, ids.vId11);
     },
 
     test_getOutVertex : function() {
       var ids = fillCollections();
-      var result = g._getToVertex(ids.eId11);
+      var result = g._toVertex(ids.eId11);
       assertEqual(result._id, ids.vId12);
-      result = g._getToVertex(ids.eId25);
+      result = g._toVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
     }
 
