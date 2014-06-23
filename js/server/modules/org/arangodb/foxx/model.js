@@ -218,6 +218,7 @@ _.extend(Model.prototype, {
     } else {
       this.attributes[attributeName] = value;
     }
+    this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
