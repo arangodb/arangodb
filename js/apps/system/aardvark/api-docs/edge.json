@@ -16,7 +16,7 @@
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the body does not contain a valid JSON representation of an edge, or if the collection specified is not an edge collection.  The response body contains an error document in this case. <br><br>",
+                            "reason": "is returned if the body does not contain a valid JSON representation of an edge, or if the collection specified is not an edge collection. The response body contains an error document in this case. <br><br>",
                             "code": "400"
                         },
                         {
@@ -71,7 +71,7 @@
                     "notes": "Creates a new edge document in the collection named <em>collection</em>. A JSON representation of the document must be passed as the body of the POST request. <br><br> The <em>from</em> and <em>to</em> handles are immutable once the edge has been created. <br><br> In all other respects the method works like <em>POST /document</em>, see the manual for details. <br><br>",
                     "summary": "creates an edge",
                     "httpMethod": "POST",
-                    "examples": "<br><br> Create an edge and read it back: <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2\n{\"name\":\"Emil\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"309739943\"\nlocation: /_db/_system/_api/document/edges/309739943\n\n{ \n  \"error\" : false, \n  \"_id\" : \"edges/309739943\", \n  \"_rev\" : \"309739943\", \n  \"_key\" : \"309739943\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/edge/edges/309739943\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"309739943\"\n\n{ \n  \"name\" : \"Emil\", \n  \"_id\" : \"edges/309739943\", \n  \"_rev\" : \"309739943\", \n  \"_key\" : \"309739943\", \n  \"_from\" : \"vertices/1\", \n  \"_to\" : \"vertices/2\" \n}\n\n</code></pre><br>",
+                    "examples": "<br><br> Create an edge and read it back: <br><br><br><br><pre><code class=\"json\">unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2\n{\"name\":\"Emil\"}\n\nHTTP/1.1 202 Accepted\ncontent-type: application/json; charset=utf-8\netag: \"1012986214\"\nlocation: /_db/_system/_api/document/edges/1012986214\n\n{ \n  \"error\" : false, \n  \"_id\" : \"edges/1012986214\", \n  \"_rev\" : \"1012986214\", \n  \"_key\" : \"1012986214\" \n}\n\nunix> curl --dump - http://localhost:8529/_api/edge/edges/1012986214\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\netag: \"1012986214\"\n\n{ \n  \"name\" : \"Emil\", \n  \"_id\" : \"edges/1012986214\", \n  \"_rev\" : \"1012986214\", \n  \"_key\" : \"1012986214\", \n  \"_from\" : \"vertices/1\", \n  \"_to\" : \"vertices/2\" \n}\n\n</code></pre><br>",
                     "nickname": "createsAnEdge"
                 }
             ],
@@ -86,7 +86,7 @@
                             "code": "200"
                         },
                         {
-                            "reason": "is returned if the \"If-None-Match\" header is given and the edge has  the same version <br><br>",
+                            "reason": "is returned if the \"If-None-Match\" header is given and the edge has the same version <br><br>",
                             "code": "304"
                         },
                         {
@@ -94,7 +94,7 @@
                             "code": "404"
                         },
                         {
-                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the  attributes <em>_id</em> and <em>_key</em> will be returned.",
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the attributes <em>_id</em> and <em>_key</em> will be returned.",
                             "code": "412"
                         }
                     ],
@@ -119,7 +119,7 @@
                             "description": "If the \"If-Match\" header is given, then it must contain exactly one etag. The edge is returned if it has the same revision ad the given etag. Otherwise a <em>HTTP 412</em> is returned. As an alternative you can supply the etag in an attribute <em>rev</em> in the URL. <br><br>"
                         }
                     ],
-                    "notes": "Returns the edge identified by <em>document-handle</em>. The returned edge contains a few special attributes:  <br><br>  <ul class=\"swagger-list\"><li><em>_id</em> contains the document handle  <li><em>_rev</em> contains the revision  <li><em>_from</em> and <em>to</em> contain the document handles of the connected  vertex documents",
+                    "notes": "Returns the edge identified by <em>document-handle</em>. The returned edge contains a few special attributes: <br><br>  <ul class=\"swagger-list\"><li><em>_id</em> contains the document handle  <li><em>_rev</em> contains the revision  <li><em>_from</em> and <em>to</em> contain the document handles of the connected vertex documents",
                     "summary": "reads an edge",
                     "httpMethod": "GET",
                     "examples": "",
@@ -224,7 +224,7 @@
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the body does not contain a valid JSON representation of an edge document or if applied to a non-edge collection. The response body contains an  error document in this case. <br><br>",
+                            "reason": "is returned if the body does not contain a valid JSON representation of an edge document or if applied to a non-edge collection. The response body contains an error document in this case. <br><br>",
                             "code": "400"
                         },
                         {
@@ -232,7 +232,7 @@
                             "code": "404"
                         },
                         {
-                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the  attributes <em>_id</em> and <em>_key</em> will be returned.",
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the attributes <em>_id</em> and <em>_key</em> will be returned.",
                             "code": "412"
                         }
                     ],
@@ -301,7 +301,7 @@
                             "code": "202"
                         },
                         {
-                            "reason": "is returned if the body does not contain a valid JSON representation or when applied on an non-edge collection. The response body contains an error document  in this case. <br><br>",
+                            "reason": "is returned if the body does not contain a valid JSON representation or when applied on an non-edge collection. The response body contains an error document in this case. <br><br>",
                             "code": "400"
                         },
                         {
@@ -309,7 +309,7 @@
                             "code": "404"
                         },
                         {
-                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the  attributes <em>_id</em> and <em>_key</em> will be returned.",
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the attributes <em>_id</em> and <em>_key</em> will be returned.",
                             "code": "412"
                         }
                     ],
@@ -333,7 +333,7 @@
                             "paramType": "query",
                             "required": "false",
                             "name": "keepNull",
-                            "description": "If the intention is to delete existing attributes with the patch command,  the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing edge document that are contained in the patch document with an attribute value of <em>null</em>. <br><br>"
+                            "description": "If the intention is to delete existing attributes with the patch command, the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing edge document that are contained in the patch document with an attribute value of <em>null</em>. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
@@ -363,7 +363,7 @@
                             "description": "You can conditionally patch an edge document based on a target revision id by using the <em>if-match</em> HTTP header. <br><br>"
                         }
                     ],
-                    "notes": "Partially updates the edge document identified by <em>document-handle</em>. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing edge document if they do not yet exist, and overwritten in the existing edge document if they do exist there. <br><br> Setting an attribute value to <em>null</em> in the patch document will cause a value of <em>null</em> be saved for the attribute by default.  <br><br> Note that internal attributes such as <em>_key</em>, <em>_from</em> and <em>_to</em> are immutable once set and cannot be updated. <br><br> Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the edge document update operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br> The body of the response contains a JSON object with the information about the handle and the revision. The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated edge document, the attribute <em>_rev</em> contains the new edge document revision. <br><br> If the edge document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br> You can conditionally update an edge document based on a target revision id by using either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header. To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing edge documents (see replacing documents for details). <br><br>",
+                    "notes": "Partially updates the edge document identified by <em>document-handle</em>. The body of the request must contain a JSON document with the attributes to patch (the patch document). All attributes from the patch document will be added to the existing edge document if they do not yet exist, and overwritten in the existing edge document if they do exist there. <br><br> Setting an attribute value to <em>null</em> in the patch document will cause a value of <em>null</em> be saved for the attribute by default. <br><br> Note that internal attributes such as <em>_key</em>, <em>_from</em> and <em>_to</em> are immutable once set and cannot be updated. <br><br> Optionally, the URL parameter <em>waitForSync</em> can be used to force synchronisation of the edge document update operation to disk even in case that the <em>waitForSync</em> flag had been disabled for the entire collection. Thus, the <em>waitForSync</em> URL parameter can be used to force synchronisation of just specific operations. To use this, set the <em>waitForSync</em> parameter to <em>true</em>. If the <em>waitForSync</em> parameter is not specified or set to <em>false</em>, then the collection's default <em>waitForSync</em> behavior is applied. The <em>waitForSync</em> URL parameter cannot be used to disable synchronisation for collections that have a default <em>waitForSync</em> value of <em>true</em>. <br><br> The body of the response contains a JSON object with the information about the handle and the revision. The attribute <em>_id</em> contains the known <em>document-handle</em> of the updated edge document, the attribute <em>_rev</em> contains the new edge document revision. <br><br> If the edge document does not exist, then a <em>HTTP 404</em> is returned and the body of the response contains an error document. <br><br> You can conditionally update an edge document based on a target revision id by using either the <em>rev</em> URL parameter or the <em>if-match</em> HTTP header. To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing edge documents (see replacing documents for details). <br><br>",
                     "summary": "patches an edge",
                     "httpMethod": "PATCH",
                     "examples": "",
@@ -389,7 +389,7 @@
                             "code": "404"
                         },
                         {
-                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the  attributes <em>_id</em> and <em>_key</em> will be returned.",
+                            "reason": "is returned if a \"If-Match\" header or <em>rev</em> is given and the found document has a different version. The response will also contain the found document's current revision in the <em>_rev</em> attribute. Additionally, the attributes <em>_id</em> and <em>_key</em> will be returned.",
                             "code": "412"
                         }
                     ],
@@ -399,7 +399,7 @@
                             "paramType": "path",
                             "required": "true",
                             "name": "document-handle",
-                            "description": "Deletes the edge document identified by <em>document-handle</em>.  <br><br>"
+                            "description": "Deletes the edge document identified by <em>document-handle</em>. <br><br>"
                         },
                         {
                             "dataType": "String",
