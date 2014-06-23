@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_METHODS_H
-#define TRIAGENS_CLUSTER_METHODS_H 1
+#ifndef ARANGODB_CLUSTER_CLUSTER_METHODS_H
+#define ARANGODB_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
 
@@ -100,7 +101,7 @@ namespace triagens {
 /// @brief counts number of documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int countOnCoordinator ( 
+    int countOnCoordinator (
                  std::string const& dbname,
                  std::string const& collname,
                  uint64_t& result);
@@ -109,7 +110,7 @@ namespace triagens {
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int createDocumentOnCoordinator ( 
+    int createDocumentOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  bool waitForSync,
@@ -118,12 +119,12 @@ namespace triagens {
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  map<string, string>& resultHeaders,
                  string& resultBody);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int deleteDocumentOnCoordinator ( 
+    int deleteDocumentOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  string const& key,
@@ -139,7 +140,7 @@ namespace triagens {
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getDocumentOnCoordinator ( 
+    int getDocumentOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  string const& key,
@@ -154,7 +155,7 @@ namespace triagens {
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getAllDocumentsOnCoordinator ( 
+    int getAllDocumentsOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -165,7 +166,7 @@ namespace triagens {
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int modifyDocumentOnCoordinator ( 
+    int modifyDocumentOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  string const& key,
@@ -184,7 +185,7 @@ namespace triagens {
 /// @brief creates an edge in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int createEdgeOnCoordinator ( 
+    int createEdgeOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  bool waitForSync,
@@ -201,7 +202,7 @@ namespace triagens {
 
     struct TRI_vector_pointer_s* getIndexesCoordinator (std::string const&,
                                                         std::string const&);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,7 +215,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

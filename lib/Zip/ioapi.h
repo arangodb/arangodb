@@ -217,3 +217,11 @@ void    fill_zlib_filefunc64_32_def_from_filefunc32(zlib_filefunc64_32_def* p_fi
 #endif
 
 #endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +46,7 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::ServerState () 
+ServerState::ServerState ()
   : _id(),
     _address(),
     _authentication(),
@@ -85,7 +87,7 @@ void ServerState::initialise () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::cleanup () {
   auto i = instance();
   TRI_ASSERT(i != nullptr);
@@ -99,7 +101,7 @@ void ServerState::cleanup () {
 
 std::string ServerState::roleToString (RoleEnum role) {
   switch (role) {
-    case ROLE_UNDEFINED: 
+    case ROLE_UNDEFINED:
       return "UNDEFINED";
     case ROLE_PRIMARY:
       return "PRIMARY";
@@ -116,7 +118,7 @@ std::string ServerState::roleToString (RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to a role
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 ServerState::RoleEnum ServerState::stringToRole (std::string const& value) {
   if (value == "PRIMARY") {
     return ROLE_PRIMARY;
@@ -150,7 +152,7 @@ ServerState::StateEnum ServerState::stringToState (std::string const& value) {
 
 std::string ServerState::stateToString (StateEnum state) {
   switch (state) {
-    case STATE_UNDEFINED: 
+    case STATE_UNDEFINED:
       return "UNDEFINED";
     case STATE_STARTUP:
       return "STARTUP";
@@ -163,15 +165,15 @@ std::string ServerState::stateToString (StateEnum state) {
     case STATE_STOPPED:
       return "STOPPED";
     case STATE_SYNCING:
-      return "SYNCING"; 
+      return "SYNCING";
     case STATE_INSYNC:
-      return "INSYNC"; 
+      return "INSYNC";
     case STATE_LOSTPRIMARY:
-      return "LOSTPRIMARY"; 
+      return "LOSTPRIMARY";
     case STATE_SERVING:
-      return "SERVING"; 
+      return "SERVING";
     case STATE_SHUTDOWN:
-      return "SHUTDOWN"; 
+      return "SHUTDOWN";
   }
 
   TRI_ASSERT(false);
@@ -188,7 +190,7 @@ std::string ServerState::stateToString (StateEnum state) {
 
 void ServerState::setAuthentication (std::string const& username,
                                      std::string const& password) {
-  _authentication = "Basic " + basics::StringUtils::encodeBase64(username + ":" + password);  
+  _authentication = "Basic " + basics::StringUtils::encodeBase64(username + ":" + password);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,18 +267,18 @@ ServerState::RoleEnum ServerState::getRole () {
   // role not yet set
   RoleEnum role = determineRole(id);
 
-  { 
+  {
     WRITE_LOCKER(_lock);
     _role = role;
   }
-  
+
   return role;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the server role
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setRole (RoleEnum role) {
   WRITE_LOCKER(_lock);
   _role = role;
@@ -332,7 +334,7 @@ std::string ServerState::getAddress () {
     WRITE_LOCKER(_lock);
     _address = address;
   }
-  
+
   return address;
 }
 
@@ -361,7 +363,7 @@ ServerState::StateEnum ServerState::getState () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the current state
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setState (StateEnum state) {
   bool result = false;
 
@@ -370,7 +372,7 @@ void ServerState::setState (StateEnum state) {
   if (state == _state) {
     return;
   }
-  
+
   if (_role == ROLE_PRIMARY) {
     result = checkPrimaryState(state);
   }
@@ -380,9 +382,9 @@ void ServerState::setState (StateEnum state) {
   else if (_role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);
   }
-  
+
   if (result) {
-    LOG_INFO("changing state of %s server from %s to %s", 
+    LOG_INFO("changing state of %s server from %s to %s",
              ServerState::roleToString(_role).c_str(),
              ServerState::stateToString(_state).c_str(),
              ServerState::stateToString(state).c_str());
@@ -390,7 +392,7 @@ void ServerState::setState (StateEnum state) {
     _state = state;
   }
   else {
-    LOG_ERROR("invalid state transition for %s server from %s to %s", 
+    LOG_ERROR("invalid state transition for %s server from %s to %s",
               ServerState::roleToString(_role).c_str(),
               ServerState::stateToString(_state).c_str(),
               ServerState::stateToString(state).c_str());
@@ -400,7 +402,7 @@ void ServerState::setState (StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the data path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getDataPath () {
   READ_LOCKER(_lock);
   return _dataPath;
@@ -409,7 +411,7 @@ string ServerState::getDataPath () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the data path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setDataPath (const string& value) {
   WRITE_LOCKER(_lock);
   _dataPath = value;
@@ -418,7 +420,7 @@ void ServerState::setDataPath (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the log path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getLogPath () {
   READ_LOCKER(_lock);
   return _logPath;
@@ -427,7 +429,7 @@ string ServerState::getLogPath () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the log path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setLogPath (const string& value) {
   WRITE_LOCKER(_lock);
   _logPath = value;
@@ -436,7 +438,7 @@ void ServerState::setLogPath (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the agent path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getAgentPath () {
   READ_LOCKER(_lock);
   return _agentPath;
@@ -445,7 +447,7 @@ string ServerState::getAgentPath () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the data path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setAgentPath (const string& value) {
   WRITE_LOCKER(_lock);
   _agentPath = value;
@@ -454,7 +456,7 @@ void ServerState::setAgentPath (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getArangodPath () {
   READ_LOCKER(_lock);
   return _arangodPath;
@@ -463,7 +465,7 @@ string ServerState::getArangodPath () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setArangodPath (const string& value) {
   WRITE_LOCKER(_lock);
   _arangodPath = value;
@@ -472,7 +474,7 @@ void ServerState::setArangodPath (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the JavaScript startup path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getJavaScriptPath () {
   READ_LOCKER(_lock);
   return _javaScriptStartupPath;
@@ -481,7 +483,7 @@ string ServerState::getJavaScriptPath () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setJavaScriptPath (const string& value) {
   WRITE_LOCKER(_lock);
   _javaScriptStartupPath = value;
@@ -490,7 +492,7 @@ void ServerState::setJavaScriptPath (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the DBserver config
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getDBserverConfig () {
   READ_LOCKER(_lock);
   return _dbserverConfig;
@@ -499,7 +501,7 @@ string ServerState::getDBserverConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the DBserver config
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setDBserverConfig (const string& value) {
   WRITE_LOCKER(_lock);
   _dbserverConfig = value;
@@ -508,7 +510,7 @@ void ServerState::setDBserverConfig (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the coordinator config
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 string ServerState::getCoordinatorConfig () {
   READ_LOCKER(_lock);
   return _coordinatorConfig;
@@ -517,7 +519,7 @@ string ServerState::getCoordinatorConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the coordinator config
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setCoordinatorConfig (const string& value) {
   WRITE_LOCKER(_lock);
   _coordinatorConfig = value;
@@ -526,7 +528,7 @@ void ServerState::setCoordinatorConfig (const string& value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the disable dispatcher frontend flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 bool ServerState::getDisableDispatcherFrontend () {
   READ_LOCKER(_lock);
   return _disableDispatcherFrontend;
@@ -535,7 +537,7 @@ bool ServerState::getDisableDispatcherFrontend () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the disable dispatcher frontend flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setDisableDispatcherFrontend (bool value) {
   WRITE_LOCKER(_lock);
   _disableDispatcherFrontend = value;
@@ -544,7 +546,7 @@ void ServerState::setDisableDispatcherFrontend (bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the disable dispatcher kickstarter flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 bool ServerState::getDisableDispatcherKickstarter () {
   READ_LOCKER(_lock);
   return _disableDispatcherKickstarter;
@@ -553,7 +555,7 @@ bool ServerState::getDisableDispatcherKickstarter () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the disable dispatcher kickstarter flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 void ServerState::setDisableDispatcherKickstarter (bool value) {
   WRITE_LOCKER(_lock);
   _disableDispatcherKickstarter = value;
@@ -578,7 +580,7 @@ ServerState::RoleEnum ServerState::determineRole (std::string const& id) {
 
   if (role == ServerState::ROLE_UNDEFINED) {
     // role is still unknown. check if we are a coordinator
-    role = role2; 
+    role = role2;
   }
   else {
     // we are a primary or a secondary.
@@ -685,18 +687,18 @@ bool ServerState::checkCoordinatorState (StateEnum state) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup the server role by scanning Plan/Coordinators for our id
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id) {
   // fetch value at Plan/Coordinators
   // we need to do this to determine the server's role
-  
+
   const std::string key = "Plan/Coordinators";
-  
+
   AgencyComm comm;
   AgencyCommResult result;
-  
+
   {
-    AgencyCommLocker locker("Plan", "READ"); 
+    AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
       result = comm.getValues(key, true);
@@ -708,15 +710,15 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id)
 
     LOG_TRACE("Could not fetch configuration from agency endpoints (%s): "
               "got status code %d, message: %s, key: %s",
-              endpoints.c_str(), 
+              endpoints.c_str(),
               result._statusCode,
               result.errorMessage().c_str(),
               key.c_str());
 
     return ServerState::ROLE_UNDEFINED;
   }
- 
-  if (! result.parse("Plan/Coordinators/", false)) { 
+
+  if (! result.parse("Plan/Coordinators/", false)) {
     LOG_TRACE("Got an invalid JSON response for Plan/Coordinators");
 
     return ServerState::ROLE_UNDEFINED;
@@ -736,30 +738,30 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup the server role by scanning Plan/DBServers for our id
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
   // fetch value at Plan/DBServers
   // we need to do this to determine the server's role
-  
+
   const std::string key = "Plan/DBServers";
 
   AgencyComm comm;
   AgencyCommResult result;
- 
-  { 
-    AgencyCommLocker locker("Plan", "READ"); 
+
+  {
+    AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
       result = comm.getValues(key, true);
     }
   }
-  
+
   if (! result.successful()) {
     const std::string endpoints = AgencyComm::getEndpointsString();
 
     LOG_TRACE("Could not fetch configuration from agency endpoints (%s): "
-              "got status code %d, message: %s, key: %s", 
-              endpoints.c_str(), 
+              "got status code %d, message: %s, key: %s",
+              endpoints.c_str(),
               result._statusCode,
               result.errorMessage().c_str(),
               key.c_str());
@@ -770,7 +772,7 @@ ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
 
   // check if we can find ourselves in the list returned by the agency
-  result.parse("Plan/DBServers/", false); 
+  result.parse("Plan/DBServers/", false);
   std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(id);
 
   if (it != result._values.end()) {
@@ -796,8 +798,11 @@ ServerState::RoleEnum ServerState::checkServersList (std::string const& id) {
   return role;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-

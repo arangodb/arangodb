@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_LOGFILE_H
-#define TRIAGENS_WAL_LOGFILE_H 1
+#ifndef ARANGODB_WAL_LOGFILE_H
+#define ARANGODB_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
@@ -164,6 +166,14 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update the logfile tick status
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void update (TRI_df_marker_t const* marker) {
+        TRI_UpdateTicksDatafile(df(), marker);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the logfile status
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -237,7 +247,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool canBeRemoved () const {
-        return (_status == StatusType::COLLECTED && _collectQueueSize == 0);
+        return (_status == StatusType::COLLECTED && 
+                _collectQueueSize == 0 && 
+                _users == 0);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,8 +332,8 @@ namespace triagens {
             break;
         }
 
-        LOG_TRACE("changing logfile status from %s to %s for logfile %llu", 
-                  statusText(_status).c_str(), 
+        LOG_TRACE("changing logfile status from %s to %s for logfile %llu",
+                  statusText(_status).c_str(),
                   statusText(status).c_str(),
                   (unsigned long long) id());
         _status = status;
@@ -344,11 +356,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_df_footer_marker_t getFooterMarker () const;
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the number of collect operations waiting
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       inline void increaseCollectQueueSize () {
         ++_collectQueueSize;
       }
@@ -356,9 +368,28 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decrease the number of collect operations waiting
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       inline void decreaseCollectQueueSize () {
         --_collectQueueSize;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use a logfile - while there are users, the logfile cannot be 
+/// deleted
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void use () {
+        ++_users;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a logfile - while there are users, the logfile cannot be 
+/// deleted
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void release () {
+        TRI_ASSERT_EXPENSIVE(_users > 0);
+        --_users;
       }
 
 // -----------------------------------------------------------------------------
@@ -372,6 +403,12 @@ namespace triagens {
       Logfile::IdType const _id;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the number of logfile users
+////////////////////////////////////////////////////////////////////////////////
+
+      std::atomic<int32_t> _users;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the datafile entry
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -380,7 +417,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logfile status
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       StatusType _status;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +433,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

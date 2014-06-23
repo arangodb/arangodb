@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,7 +169,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   TRI_ASSERT(lhs->_type == TRI_JSON_ARRAY);
   TRI_ASSERT(rhs->_type == TRI_JSON_ARRAY);
 
-  keys = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 
+  keys = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE,
                              lhs->_value._objects._length + rhs->_value._objects._length);
 
   if (keys == NULL) {
@@ -594,7 +596,7 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
 
   n1 = list1->_value._objects._length;
   n2 = list2->_value._objects._length;
-  
+
   // create result list
   result = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
 
@@ -649,7 +651,7 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
 /// @brief sorts a json list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
+TRI_json_t* TRI_SortListJson (TRI_json_t* list) {
   size_t n;
 
   TRI_ASSERT(list);
@@ -670,7 +672,7 @@ TRI_json_t* TRI_SortListJson (TRI_json_t* const list) {
 /// @brief checks if a JSON struct has duplicate attribute names
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_HasDuplicateKeyJson (const TRI_json_t* const object) {
+bool TRI_HasDuplicateKeyJson (TRI_json_t const* object) {
   if (object && object->_type == TRI_JSON_ARRAY) {
     const size_t n = object->_value._objects._length;
     const bool hasMultipleElements = (n > 2);
@@ -811,7 +813,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
 
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      return HashBlock(hash, 
+      return HashBlock(hash,
                        object->_value._string.data,
                        object->_value._string.length);
     }
@@ -865,7 +867,7 @@ uint64_t TRI_HashJson (TRI_json_t const* json) {
 /// that does not contain any of the specified attributes.
 /// If the flag `docComplete` is false, it is an error if the document
 /// does not contain explicit values for all attributes. An error
-/// is reported by setting *error to 
+/// is reported by setting *error to
 /// TRI_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN instead of
 /// TRI_ERROR_NO_ERROR. It is allowed to give NULL as error in which
 /// case no error is reported.
@@ -897,7 +899,11 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
   return hash;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

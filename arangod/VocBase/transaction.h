@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_TRANSACTION_H
-#define TRIAGENS_VOC_BASE_TRANSACTION_H 1
+#ifndef ARANGODB_VOC_BASE_TRANSACTION_H
+#define ARANGODB_VOC_BASE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -181,11 +183,11 @@ TRI_transaction_collection_t;
 TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
                                           TRI_server_id_t,
                                           bool,
-                                          double, 
+                                          double,
                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a transaction 
+/// @brief free a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransaction (TRI_transaction_t*);
@@ -193,6 +195,18 @@ void TRI_FreeTransaction (TRI_transaction_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction id for usage in a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tid_t TRI_MarkerIdTransaction (TRI_transaction_t const* trx) {
+  if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0) {
+    return 0;
+  }
+
+  return trx->_id;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the number of writes done for a collection
@@ -222,7 +236,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 
 int TRI_AddCollectionTransaction (TRI_transaction_t*,
                                   const TRI_voc_cid_t,
-                                  const TRI_transaction_type_e, 
+                                  const TRI_transaction_type_e,
                                   const int);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +252,7 @@ int TRI_LockCollectionTransaction (TRI_transaction_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t*,
-                                     const TRI_transaction_type_e, 
+                                     const TRI_transaction_type_e,
                                      const int);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +267,7 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t*,
 /// @brief begin a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_BeginTransaction (TRI_transaction_t*, 
+int TRI_BeginTransaction (TRI_transaction_t*,
                           TRI_transaction_hint_t,
                           int);
 
@@ -273,6 +287,11 @@ int TRI_AbortTransaction (TRI_transaction_t*,
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

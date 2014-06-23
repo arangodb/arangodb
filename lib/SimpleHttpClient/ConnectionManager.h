@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CONNECTION_MANAGER_H
-#define CONNECTION_MANAGER_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -60,14 +61,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                     constructors and destructors
 // -----------------------------------------------------------------------------
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises library
 ///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ConnectionManager ( ) { }
         ConnectionManager (ConnectionManager const&);    // not implemented
         void operator= (ConnectionManager const&);       // not implemented
@@ -75,7 +76,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       public:
 
         ~ConnectionManager ( );
@@ -83,7 +84,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                public subclasses
 // -----------------------------------------------------------------------------
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class to administrate one connection to a server
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,17 +118,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public methods
 // -----------------------------------------------------------------------------
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         static ConnectionManager* instance ( ) {
           // This does not have to be thread-safe, because we guarantee that
           // this is called very early in the startup phase when there is still
           // a single thread.
           if (0 == _theinstance) {
-            _theinstance = new ConnectionManager( );  
+            _theinstance = new ConnectionManager( );
             // this now happens exactly once
           }
           return _theinstance;
@@ -136,14 +137,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void initialise () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void cleanup () {
           delete _theinstance;
           _theinstance = 0;
@@ -178,14 +179,14 @@ namespace triagens {
 // --SECTION--                                         private methods and data
 // -----------------------------------------------------------------------------
 
-      private: 
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
 ////////////////////////////////////////////////////////////////////////////////
 
         static ConnectionManager* _theinstance;
-         
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,9 +206,11 @@ namespace triagens {
 }
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
-

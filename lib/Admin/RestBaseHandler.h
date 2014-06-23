@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_ADMIN_REST_BASE_HANDLER_H
-#define TRIAGENS_ADMIN_REST_BASE_HANDLER_H 1
+#ifndef ARANGODB_ADMIN_REST_BASE_HANDLER_H
+#define ARANGODB_ADMIN_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,11 +41,6 @@
 // --SECTION--                                             class RestBaseHandler
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 namespace triagens {
   namespace admin {
 
@@ -53,18 +50,9 @@ namespace triagens {
 
     class RestBaseHandler : public rest::HttpHandler {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -74,18 +62,9 @@ namespace triagens {
 
         RestBaseHandler (rest::HttpRequest* request);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -95,18 +74,9 @@ namespace triagens {
 
         void handleError (basics::TriagensError const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup RestServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -148,10 +118,6 @@ namespace triagens {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -160,5 +126,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

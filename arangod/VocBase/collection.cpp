@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,9 +67,9 @@ shape_iterator_t;
 /// @brief callback for shape iteration on upgrade
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UpgradeShapeIterator (TRI_df_marker_t const* marker, 
-                                  void* data, 
-                                  TRI_datafile_t* datafile) { 
+static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
+                                  void* data,
+                                  TRI_datafile_t* datafile) {
   shape_iterator_t* si = static_cast<shape_iterator_t*>(data);
   ssize_t* written     = si->_written;
 
@@ -119,7 +121,7 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two filenames, based on the numeric part contained in
-/// the filename. this is used to sort datafile filenames on startup 
+/// the filename. this is used to sort datafile filenames on startup
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FilenameComparator (const void* lhs, const void* rhs) {
@@ -187,13 +189,13 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
   regex_t re;
   uint64_t lastId;
   size_t i, n;
-  
+
   if (regcomp(&re, "^(journal|datafile|compactor)-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
     return (TRI_voc_tick_t) 1;
   }
-  
+
   files = TRI_FilesDirectory(path);
   n = files._length;
   lastId = 0;
@@ -204,7 +206,7 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
 
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
       uint64_t id = GetNumericFilenamePart(file);
-      
+
       if (lastId == 0 || (id > 0 && id < lastId)) {
         lastId = (id - 1);
       }
@@ -254,12 +256,12 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_vector_string_t files;
   regex_t re;
   size_t i, n;
-  
+
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._datafiles, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._indexes, TRI_CORE_MEM_ZONE);
-  
+
   if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)(\\.dead)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
@@ -289,7 +291,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       // .............................................................................
       // file is dead
       // .............................................................................
-    
+
       if (fourthLen > 0) {
         char* filename;
 
@@ -331,20 +333,20 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
         else if (TRI_EqualString2("datafile", first, firstLen)) {
           TRI_PushBackVectorString(&structure._datafiles, filename);
         }
-        
+
         // file is a left-over compaction file. rename it back
         else if (TRI_EqualString2("compaction", first, firstLen)) {
           char* relName;
           char* newName;
-          
+
           relName = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
           newName = TRI_Concatenate2File(path, relName);
           TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
-          
+
           if (TRI_ExistsFile(newName)) {
             // we have a compaction-xxxx and a datafile-xxxx file. we'll keep the datafile
             TRI_UnlinkFile(filename);
-          
+
             LOG_WARNING("removing left-over compaction file '%s'", filename);
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
@@ -362,10 +364,10 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
             if (res != TRI_ERROR_NO_ERROR) {
               LOG_ERROR("unable to rename compaction file '%s'", filename);
-            
+
               TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
               TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-            
+
               continue;
             }
           }
@@ -426,7 +428,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
   bool stop;
   regex_t re;
   size_t i, n;
-  
+
   if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)(\\.dead)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
@@ -455,9 +457,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
 
       char const* third = file + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
-      
+
       size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
-        
+
       // check for temporary & dead files
 
       if (fourthLen > 0 || TRI_EqualString2("temp", first, firstLen)) {
@@ -471,7 +473,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
         continue;
       }
-      
+
       // .............................................................................
       // file is an index, just store the filename
       // .............................................................................
@@ -496,7 +498,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           // found a compaction file. now rename it back
           char* relName;
           char* newName;
-         
+
           filename = TRI_Concatenate2File(collection->_directory, file);
           relName  = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
           newName  = TRI_Concatenate2File(collection->_directory, relName);
@@ -514,7 +516,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
           }
           else {
             int res;
-          
+
             res = TRI_RenameFile(filename, newName);
 
             if (res != TRI_ERROR_NO_ERROR) {
@@ -585,7 +587,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
             TRI_PushBackVectorPointer(&journals, datafile);
           }
         }
-        
+
         // file is a compactor
         else if (TRI_EqualString2("compactor", first, firstLen)) {
           // ignore
@@ -736,8 +738,8 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
 
     datafile = (TRI_datafile_t*) TRI_AtVectorPointer(files, i);
 
-    LOG_TRACE("iterating over datafile '%s', fid %llu", 
-              datafile->getName(datafile), 
+    LOG_TRACE("iterating over datafile '%s', fid %llu",
+              datafile->getName(datafile),
               (unsigned long long) datafile->_fid);
 
     result = TRI_IterateDatafile(datafile, iterator, data);
@@ -772,7 +774,7 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over a set of datafiles, identified by filenames
-/// note: the files will be opened and closed 
+/// note: the files will be opened and closed
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IterateFiles (TRI_vector_string_t* vector,
@@ -784,7 +786,7 @@ static bool IterateFiles (TRI_vector_string_t* vector,
 
     char* filename = TRI_AtVectorString(vector, i);
     LOG_DEBUG("iterating over collection journal file '%s'", filename);
-    
+
     TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
 
     if (datafile != nullptr) {
@@ -963,9 +965,9 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
 
-  filename = TRI_GetDirectoryCollection(path, 
-                                        parameter->_name, 
-                                        parameter->_type, 
+  filename = TRI_GetDirectoryCollection(path,
+                                        parameter->_name,
+                                        parameter->_type,
                                         parameter->_cid);
 
   if (filename == NULL) {
@@ -1063,11 +1065,11 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
 /// "parameter.json" file. This function does not require the collection to be
-/// loaded. 
-/// The caller must make sure that the "parameter.json" file is not modified 
+/// loaded.
+/// The caller must make sure that the "parameter.json" file is not modified
 /// while this function is called.
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
   TRI_json_t* json;
   char* filename;
@@ -1089,10 +1091,10 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
 /// @brief iterate over the index (JSON) files of a collection, using a callback
 /// function for each.
 /// This function does not require the collection to be loaded.
-/// The caller must make sure that the files are not modified while this 
+/// The caller must make sure that the files are not modified while this
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
                                           int (*filter)(TRI_vocbase_col_t*, char const*, void*),
                                           void* data) {
@@ -1110,16 +1112,16 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
   files = TRI_FilesDirectory(collection->_path);
   n = files._length;
   res = TRI_ERROR_NO_ERROR;
- 
+
   // sort by index id
   SortFilenames(&files);
- 
+
   for (i = 0;  i < n;  ++i) {
     char const* file = files._buffer[i];
-       
+
     if (regexec(&re, file, (size_t) 0, NULL, 0) == 0) {
       char* fqn = TRI_Concatenate2File(collection->_path, file);
- 
+
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
@@ -1128,7 +1130,7 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
       }
     }
   }
-  
+
   TRI_DestroyVectorString(&files);
 
   regfree(&re);
@@ -1154,7 +1156,7 @@ int TRI_SyncCollection (TRI_collection_t* collection) {
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
 
-  // get active journal  
+  // get active journal
   if (collection->_journals._length == 0) {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
@@ -1168,13 +1170,13 @@ int TRI_SyncCollection (TRI_collection_t* collection) {
 
   synced = journal->_synced;
   written = journal->_written;
-  
+
   if (synced < written) {
     if (! journal->sync(journal, synced, written)) {
       return TRI_errno();
     }
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1186,14 +1188,14 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   TRI_json_t* json;
   char* cidString;
   char* planIdString;
-   
+
   // create a json info object
   json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
   if (json == NULL) {
     return NULL;
   }
-  
+
   cidString = TRI_StringUInt64((uint64_t) info->_cid);
 
   if (cidString == NULL) {
@@ -1201,7 +1203,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
 
     return NULL;
   }
-  
+
   planIdString = TRI_StringUInt64((uint64_t) info->_planId);
 
   if (planIdString == NULL) {
@@ -1359,7 +1361,7 @@ int TRI_LoadCollectionInfo (char const* path,
   if (versionWarning && parameter->_version < TRI_COL_VERSION_20) {
     if (parameter->_name[0] != '\0') {
       // only warn if the collection version is older than expected, and if it's not a shape collection
-      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.", 
+      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.",
                   parameter->_name);
     }
   }
@@ -1374,13 +1376,13 @@ int TRI_LoadCollectionInfo (char const* path,
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveCollectionInfo (char const* path, 
-                            const TRI_col_info_t* const info, 
+int TRI_SaveCollectionInfo (char const* path,
+                            const TRI_col_info_t* const info,
                             const bool forceSync) {
   TRI_json_t* json;
   char* filename;
   bool ok;
-  
+
   filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
   json = TRI_CreateJsonCollectionInfo(info);
 
@@ -1440,7 +1442,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameCollection (TRI_collection_t* collection, 
+int TRI_RenameCollection (TRI_collection_t* collection,
                           char const* name) {
   TRI_col_info_t newInfo;
   int res;
@@ -1650,10 +1652,10 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t* info) {
 /// @brief upgrade a collection to ArangoDB 2.0+ format
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase, 
+int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
                              char const* path,
                              TRI_col_info_t* info) {
-  
+
   regex_t re;
   TRI_vector_string_t files;
   TRI_voc_tick_t datafileId;
@@ -1665,9 +1667,9 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
   size_t i, n;
   int fdout;
   int res;
-  
+
   TRI_ASSERT(info->_version < TRI_COL_VERSION_20);
- 
+
   if (regcomp(&re, "^journal|datafile-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
 
@@ -1678,11 +1680,11 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 
   if (shapes == nullptr) {
     regfree(&re);
-    
+
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // determine an artificial datafile id 
+  // determine an artificial datafile id
   datafileId = GetDatafileId(path);
   if (datafileId == 0) {
     datafileId = TRI_NewTickServer();
@@ -1698,7 +1700,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
   if (outfile == NULL) {
     TRI_Free(TRI_CORE_MEM_ZONE, shapes);
     regfree(&re);
-    
+
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1717,7 +1719,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
     if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       TRI_datafile_t* df;
       char* fqn = TRI_Concatenate2File(shapes, file);
-      
+
       if (fqn == nullptr) {
         res = TRI_ERROR_OUT_OF_MEMORY;
         break;
@@ -1747,7 +1749,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
         // datafile header
         TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
-        header._maximalSize = 0; // TODO: seems ok to set this to 0, check if this is ok 
+        header._maximalSize = 0; // TODO: seems ok to set this to 0, check if this is ok
         header._fid         = tick;
         header.base._tick   = tick;
         header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
@@ -1763,7 +1765,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 
         written += TRI_WRITE(fdout, &cm.base, cm.base._size);
       }
-      
+
       // open the datafile, and push it into a vector of datafiles
       df = TRI_OpenDatafile(fqn, true);
 
@@ -1776,9 +1778,9 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
         shape_iterator_t si;
         si._fdout = fdout;
         si._written = &written;
-        
+
         TRI_IterateDatafile(df, UpgradeShapeIterator, &si);
-        
+
         TRI_CloseDatafile(df);
         TRI_FreeDatafile(df);
       }
@@ -1786,7 +1788,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
       TRI_Free(TRI_CORE_MEM_ZONE, fqn);
     }
   }
-      
+
   if (fdout > 0) {
     if (res == TRI_ERROR_NO_ERROR) {
       // datafile footer
@@ -1798,14 +1800,14 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
       TRI_InitMarkerDatafile((char*) &footer, TRI_DF_MARKER_FOOTER, sizeof(TRI_df_footer_marker_t));
       footer.base._tick = tick;
       footer.base._crc  = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &footer.base, footer.base._size));
-          
+
       written += TRI_WRITE(fdout, &footer.base, footer.base._size);
-    
+
       TRI_CLOSE(fdout);
 
       // checkout size of written file
-      minSize = sizeof(TRI_df_header_marker_t) + 
-                sizeof(TRI_col_header_marker_t) + 
+      minSize = sizeof(TRI_df_header_marker_t) +
+                sizeof(TRI_col_header_marker_t) +
                 sizeof(TRI_df_footer_marker_t);
 
       if (written <= minSize) {
@@ -1820,7 +1822,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
       TRI_UnlinkFile(outfile);
     }
   }
-  
+
   TRI_DestroyVectorString(&files);
   TRI_Free(TRI_CORE_MEM_ZONE, outfile);
 
@@ -1829,7 +1831,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
     res = TRI_RemoveDirectory(shapes);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to remove SHAPES directory '%s': %s", 
+      LOG_ERROR("unable to remove SHAPES directory '%s': %s",
                 shapes,
                 TRI_errno_string(res));
     }
@@ -1837,13 +1839,13 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 
   TRI_Free(TRI_CORE_MEM_ZONE, shapes);
   regfree(&re);
-  
+
   if (res == TRI_ERROR_NO_ERROR) {
     // when no error occurred, we'll bump the version number in the collection parameters file.
     info->_version = TRI_COL_VERSION_20;
-    res = TRI_SaveCollectionInfo(path, info, true); 
+    res = TRI_SaveCollectionInfo(path, info, true);
   }
-  
+
   return res;
 }
 
@@ -1851,7 +1853,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 /// @brief iterate over the markers in a collection's datafiles
 ///
 /// this function may be called on server startup for all collections, in order
-/// to get the last tick value used 
+/// to get the last tick value used
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateTicksCollection (const char* const path,
@@ -1873,7 +1875,7 @@ bool TRI_IterateTicksCollection (const char* const path,
     // from other files, so their tick values will never be any higher
     result = IterateFiles(&structure._journals, iterator, data);
   }
-  
+
   TRI_DestroyFileStructureCollection(&structure);
 
   return result;
@@ -1897,7 +1899,7 @@ bool TRI_IsSystemNameCollection (char const* name) {
 /// Returns true if the name is allowed and false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsAllowedNameCollection (bool allowSystem, 
+bool TRI_IsAllowedNameCollection (bool allowSystem,
                                   char const* name) {
   bool ok;
   char const* ptr;
@@ -1953,7 +1955,11 @@ char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
   return "unknown";
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

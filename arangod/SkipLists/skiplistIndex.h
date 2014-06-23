@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. O
+/// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H
-#define TRIAGENS_SKIP_LISTS_SKIPLIST_INDEX_H 1
+#ifndef ARANGODB_SKIP_LISTS_SKIPLIST_INDEX_H
+#define ARANGODB_SKIP_LISTS_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
 
@@ -53,29 +55,29 @@ typedef struct {
   bool sparse;
   struct TRI_document_collection_t* _collection;
   size_t _numFields;
-} 
+}
 SkiplistIndex;
 
 typedef struct {
-  TRI_shaped_json_t* _fields;   // list of shaped json objects which the 
+  TRI_shaped_json_t* _fields;   // list of shaped json objects which the
                                 // collection should know about
   size_t _numFields;   // Note that the number of fields coming from
                        // a query can be smaller than the number of
                        // fields indexed
-} 
+}
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the 
+  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the
                                     // collection should know about
   struct TRI_doc_mptr_t* _document; // master document pointer
-} 
+}
 TRI_skiplist_index_element_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
-/// Intervals are open in the sense that both end points are not members 
+/// Intervals are open in the sense that both end points are not members
 /// of the interval. This means that one has to use TRI_SkipListNextNode
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
@@ -85,24 +87,24 @@ TRI_skiplist_index_element_t;
 typedef struct TRI_skiplist_iterator_interval_s {
   TRI_skiplist_node_t* _leftEndPoint;
   TRI_skiplist_node_t* _rightEndPoint;
-} 
+}
 TRI_skiplist_iterator_interval_t;
 
 typedef struct TRI_skiplist_iterator_s {
   SkiplistIndex* _index;
   TRI_vector_t _intervals;
   size_t _currentInterval; // starts with 0, current interval used
-  TRI_skiplist_node_t* _cursor; 
-                 // always holds the last node returned, initially equal to 
+  TRI_skiplist_node_t* _cursor;
+                 // always holds the last node returned, initially equal to
                  // the _leftEndPoint of the first interval, can be NULL
                  // if there are no intervals (yet), in any case, if
                  // _cursor is NULL, then there are (currently) no more
                  // documents in the iterator.
   bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
   TRI_skiplist_index_element_t* (*_next)(struct TRI_skiplist_iterator_s*);
-  TRI_skiplist_index_element_t* (*_nexts)(struct TRI_skiplist_iterator_s*, 
+  TRI_skiplist_index_element_t* (*_nexts)(struct TRI_skiplist_iterator_s*,
                                           int64_t jumpSize);
-} 
+}
 TRI_skiplist_iterator_t;
 
 // -----------------------------------------------------------------------------
@@ -138,12 +140,12 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool, bool);
 
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*, 
-                                             TRI_index_operator_t*); 
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*,
+                                             TRI_index_operator_t*);
 
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
-int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*); 
+int SkiplistIndex_remove (SkiplistIndex*, TRI_skiplist_index_element_t*);
 
 bool SkiplistIndex_update (SkiplistIndex*, const TRI_skiplist_index_element_t*,
                            const TRI_skiplist_index_element_t*);
@@ -162,8 +164,11 @@ size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-

@@ -2,9 +2,19 @@
 
 This chapter describe graph related aql functions.
 
+!SUBSECTION Short explaination of the example parameter
+
+A lot of the following functions accept a vertex (or edge) example as parameter. This can contain the following: 
+
+* {}                : Returns all possible vertices for this graph.
+* *idString*        : Returns the vertex/edge with the id *idString*.
+* {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that have both *key1* and *key2* with the corresponding attributes.
+* [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value.
+the examples.
+
 !SUBSECTION Edges and Vertices related functions.
 
-This section describes various AQL functions which can be used to recieve information about the graph's vertices, edges, neighbor relationship and shared properties.
+This section describes various AQL functions which can be used to receive information about the graph's vertices, edges, neighbor relationship and shared properties.
 
 !SUBSUBSECTION GRAPH_EDGES
 

@@ -26,7 +26,13 @@ def getTextFromSourceFile(searchText, full_path):
   match = re.search(r'@startDocuBlock\s+'+ searchText + "(?:\s+|$)" +'(.+?)@endDocuBlock', s,re.DOTALL)
   if match:
     textExtracted = match.group(1)
-    textExtracted = textExtracted.replace("<br />","\n")  
+    textExtracted = textExtracted.replace("<br />","\n")
+    textExtracted = re.sub(r"@RESTHEADER{(.*)}", r"`\g<1>`", textExtracted)
+    textExtracted = re.sub(r"@RESTRETURNCODE{(.*)}", r"`HTTP \g<1>`", textExtracted)
+    textExtracted = re.sub(r"@RESTBODYPARAM{(.*)}", r"*(\g<1>)*", textExtracted)
+    textExtracted = textExtracted.replace("@RESTDESCRIPTION","")
+    textExtracted = textExtracted.replace("@EXAMPLES","*Examples*")
+    textExtracted = textExtracted.replace("@RESTRETURNCODES","###Return Codes")
     replaceText(textExtracted, full_path, searchText)
 
 def replaceText(text, pathOfFile, searchText):

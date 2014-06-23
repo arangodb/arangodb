@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_SERVER_ARANGO_SERVER_H
-#define TRIAGENS_REST_SERVER_ARANGO_SERVER_H 1
+#ifndef ARANGODB_REST_SERVER_ARANGO_SERVER_H
+#define ARANGODB_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -264,14 +266,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable authentication for ALL client requests
 /// @startDocuBlock server_authentication
-/// `--server.disable-authentication` 
-///		
+/// `--server.disable-authentication`
+///
 /// Setting value to true will turn off authentication on the server side
 ///	so all clients can execute any action without authorization and privilege
 /// checks.
 ///
 /// The default value is *false*.
-/// @endDocuBlock		
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableAuthentication;
@@ -403,26 +405,6 @@ namespace triagens {
         bool _unusedForceSyncShapes;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disable the replication logger on server startup
-///
-/// @CMDOPT{\--server.disable-replication-logger @CA{flag}}
-///
-/// If @LIT{true} the server will start with the replication logger turned off,
-/// even if the replication logger is configured with the `autoStart` option.
-/// Using this option will not change the value of the `autoStart` option in
-/// the logger configuration, but will suppress auto-starting the replication
-/// logger just once.
-///
-/// If the option is not used, ArangoDB will read the logger configuration from
-/// the file `REPLICATION-LOGGER-CONFIG` on startup, and use the value of the
-/// `autoStart` attribute from this file.
-///
-/// The default is @LIT{false}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _disableReplicationLogger;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
 ///
 /// @CMDOPT{\--server.disable-replication-applier @CA{flag}}
@@ -547,5 +529,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

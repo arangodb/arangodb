@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,13 +114,13 @@ static bool FindEdges (TRI_edge_direction_e direction,
   TRI_vector_pointer_t found;
 
   if (direction == TRI_EDGE_OUT) {
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
-                                        &idx->_edges_from, 
+    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE,
+                                        &idx->_edges_from,
                                         entry);
   }
   else if (direction == TRI_EDGE_IN) {
-    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE, 
-                                        &idx->_edges_to, 
+    found = TRI_LookupByKeyMultiPointer(TRI_UNKNOWN_MEM_ZONE,
+                                        &idx->_edges_to,
                                         entry);
   }
   else {
@@ -149,14 +151,14 @@ static bool FindEdges (TRI_edge_direction_e direction,
       // loop edges now (we already got them in iteration 1)
 
       if (matchType > 1) {
-        
+
         // if the edge is a loop, we have already found it in iteration 1
         // we must skip it here, otherwise we would produce duplicates
         if (IsReflexive(edge)) {
           continue;
         }
       }
-      
+
       result.push_back(*edge);
 
     }
@@ -213,7 +215,11 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   return result;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

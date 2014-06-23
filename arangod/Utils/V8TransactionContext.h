@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H
-#define TRIAGENS_UTILS_V8TRANSACTION_CONTEXT_H 1
+#ifndef ARANGODB_UTILS_V8TRANSACTION_CONTEXT_H
+#define ARANGODB_UTILS_V8TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 
@@ -58,7 +60,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8TransactionContext ()
-          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())) {
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
+            _ownResolver(false) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +69,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~V8TransactionContext () {
-//          unregisterTransaction();
         }
 
 // -----------------------------------------------------------------------------
@@ -79,7 +81,8 @@ namespace triagens {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const {
+        inline CollectionNameResolver const* getResolver () const { 
+          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
           return static_cast<CollectionNameResolver*>(_v8g->_resolver);
         }
 
@@ -123,8 +126,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int registerTransaction (TRI_transaction_t* trx) {
+          TRI_ASSERT_EXPENSIVE(_v8g->_currentTransaction == nullptr);
           _v8g->_currentTransaction = trx;
-          _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
+
+          if (_v8g->_resolver == nullptr) {
+            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
+            _ownResolver = true;
+          }
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -136,7 +144,8 @@ namespace triagens {
         inline int unregisterTransaction () {
           _v8g->_currentTransaction = nullptr;
 
-          if (_v8g->_resolver != nullptr) {
+          if (_ownResolver && _v8g->_resolver != nullptr) {
+            _ownResolver = false;
             CollectionNameResolver* resolver = static_cast<CollectionNameResolver*>(_v8g->_resolver);
             delete resolver;
 
@@ -158,6 +167,12 @@ namespace triagens {
 
         TRI_v8_global_t* _v8g;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are responsible for the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ownResolver;
+
     };
 
   }
@@ -165,7 +180,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

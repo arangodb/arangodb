@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
-#define TRIAGENS_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
+#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
 
 #include "Basics/Common.h"
 
@@ -51,28 +53,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
     class HttpHandlerFactory {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -103,21 +91,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context handler
 ////////////////////////////////////////////////////////////////////////////////
-        
-        typedef bool (*context_fptr) (HttpRequest*, void*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        typedef bool (*context_fptr) (HttpRequest*, void*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -125,7 +104,7 @@ namespace triagens {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory (std::string const&, 
+        HttpHandlerFactory (std::string const&,
                             int32_t,
                             bool,
                             context_fptr,
@@ -149,18 +128,9 @@ namespace triagens {
 
         virtual ~HttpHandlerFactory ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -175,7 +145,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual HttpResponse::HttpResponseCode authenticateRequest (HttpRequest*);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,13 +157,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string const& authenticationRealm (HttpRequest*) const;
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual HttpRequest* createRequest (ConnectionInfo const&, 
-                                            char const*, 
+        virtual HttpRequest* createRequest (ConnectionInfo const&,
+                                            char const*,
                                             size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,18 +198,9 @@ namespace triagens {
 
         void addNotFoundHandler (create_fptr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -250,7 +211,7 @@ namespace triagens {
         string _authenticationRealm;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum compatibility 
+/// @brief minimum compatibility
 /// the value is an ArangoDB version number in the following format:
 /// 10000 * major + 100 * minor (e.g. 10400 for ArangoDB 1.4)
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,10 +281,6 @@ namespace triagens {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -332,5 +289,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

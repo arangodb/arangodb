@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_DOCUMENT_HELPER_H
-#define TRIAGENS_UTILS_DOCUMENT_HELPER_H 1
+#ifndef ARANGODB_UTILS_DOCUMENT_HELPER_H
+#define ARANGODB_UTILS_DOCUMENT_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -47,29 +49,15 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
       private:
 
-        DocumentHelper ();
+        DocumentHelper () = delete;
 
-        ~DocumentHelper ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+        ~DocumentHelper () = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoDB
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -77,38 +65,22 @@ namespace triagens {
 /// @brief assemble a document id from a string and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string assembleDocumentId (const std::string&,
-                                               const std::string& key);
+        static std::string assembleDocumentId (std::string const&,
+                                               std::string const& key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a char* key
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::string assembleDocumentId (const std::string&,
+        static std::string assembleDocumentId (std::string const&,
                                                const TRI_voc_key_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id and document key from an id
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool parseDocumentId (const std::string&, 
-                                     TRI_voc_cid_t&,
-                                     std::string&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool parseDocumentId (const char*,
-                                     TRI_voc_cid_t&,
-                                     char**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
-////////////////////////////////////////////////////////////////////////////////
-
         static bool parseDocumentId (triagens::arango::CollectionNameResolver const&,
-                                     const char*, 
+                                     char const*,
                                      TRI_voc_cid_t&,
                                      char**);
 
@@ -116,12 +88,8 @@ namespace triagens {
 /// @brief extract the "_key" attribute from a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int getKey (struct TRI_json_s const*, 
+        static int getKey (struct TRI_json_s const*,
                            TRI_voc_key_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
     };
   }
@@ -129,7 +97,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2004-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_REST_HTTP_REQUEST_H
-#define TRIAGENS_REST_HTTP_REQUEST_H 1
+#ifndef ARANGODB_REST_HTTP_REQUEST_H
+#define ARANGODB_REST_HTTP_REQUEST_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Dictionary.h"
@@ -106,8 +108,8 @@ namespace triagens {
 /// information, before the body can be read.
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest (ConnectionInfo const&, 
-                     char const*, 
+        HttpRequest (ConnectionInfo const&,
+                     char const*,
                      size_t,
                      int32_t,
                      bool);
@@ -187,7 +189,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         HttpVersion httpVersion () const {
           return _version;
         }
@@ -282,9 +284,9 @@ namespace triagens {
 /// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setRequestContext (RequestContext*, 
+        void setRequestContext (RequestContext*,
                                 bool);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add request context
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,10 +294,6 @@ namespace triagens {
         RequestContext* getRequestContext () const {
           return _requestContext;
         }
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public header methods
@@ -682,11 +680,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not we are the owner of the context
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool _isRequestContextOwner;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default API compatibility 
+/// @brief default API compatibility
 /// the value is an ArangoDB version number in the following format:
 /// 10000 * major + 100 * minor (e.g. 10400 for ArangoDB 1.4)
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,5 +721,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

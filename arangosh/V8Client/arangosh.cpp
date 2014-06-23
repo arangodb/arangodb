@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,13 +172,13 @@ static uint64_t GcInterval = 10;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief console object
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static V8LineEditor* Console = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief voice mode
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 static bool VoiceMode = false;
 
 // -----------------------------------------------------------------------------
@@ -443,7 +445,7 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
     ("code-page", &CodePage, "windows codepage")
   ;
 #endif
-  
+
 #ifdef __APPLE__
   description
     ("voice", "enable voice based welcome")
@@ -483,9 +485,9 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
 
   // derive other paths from `--javascript.directory`
-  StartupModules = StartupPath + TRI_DIR_SEPARATOR_STR + "client" + TRI_DIR_SEPARATOR_STR + "modules;" + 
-                   StartupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" + 
-                   StartupPath + TRI_DIR_SEPARATOR_STR + "node"; 
+  StartupModules = StartupPath + TRI_DIR_SEPARATOR_STR + "client" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                   StartupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                   StartupPath + TRI_DIR_SEPARATOR_STR + "node";
 
   if (UseCurrentModulePath) {
     StartupModules += ";" + FileUtils::currentDirectory();
@@ -596,7 +598,7 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-      << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName() 
+      << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName()
       << "', username: '" << BaseClient.username() << "'";
     BaseClient.printLine(s.str());
   }
@@ -688,7 +690,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-      << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+      << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName()
       << "', username: '" << BaseClient.username() << "'";
 
     BaseClient.printLine(s.str());
@@ -712,10 +714,10 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   }
   else {
     ostringstream s;
-    s << "Could not connect to endpoint '" << BaseClient.endpointString() << 
+    s << "Could not connect to endpoint '" << BaseClient.endpointString() <<
          "', username: '" << BaseClient.username() << "'";
     BaseClient.printErrLine(s.str());
-    
+
     string errorMsg = "could not connect";
     if (newConnection->getErrorMessage() != "") {
       errorMsg = newConnection->getErrorMessage();
@@ -1331,7 +1333,7 @@ static std::string BuildPrompt () {
       else if (c == 'u') {
         result.append(BaseClient.username());
       }
-      
+
       esc = false;
     }
     else {
@@ -1385,18 +1387,18 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 #ifdef _WIN32
   // TODO
 
-#else 
+#else
   struct sigaction sa;
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);
   sa.sa_handler = &SignalHandler;
-          
+
   int res = sigaction(SIGINT, &sa, 0);
-        
+
   if (res != 0) {
     LOG_ERROR("unable to install signal handler");
   }
-#endif 
+#endif
 
   uint64_t nrCommands = 0;
 
@@ -1415,7 +1417,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     else {
       dynamicPrompt = "-";
     }
-    
+
     string goodPrompt;
     string badPrompt;
 
@@ -1589,7 +1591,7 @@ static bool RunUnitTests (v8::Handle<v8::Context> context) {
   context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
 
   // run tests
-  char const* input = "require(\"test_runner\").runCommandLineTests();";
+  char const* input = "require(\"org/arangodb/testrunner\").runCommandLineTests();";
   v8::Local<v8::String> name(v8::String::New("(arangosh)"));
   TRI_ExecuteJavaScriptString(context, v8::String::New(input), name, true);
 
@@ -1985,7 +1987,7 @@ int main (int argc, char* argv[]) {
       if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbiInfo) != 0) {
         defaultColour = csbiInfo.wAttributes;
       }
-     
+
       // not sure about the code page. let user set code page by command-line argument if required
       if (CodePage > 0) {
         SetConsoleOutputCP((UINT) CodePage);
@@ -2080,7 +2082,7 @@ int main (int argc, char* argv[]) {
     info << ", ICU " << TRI_ICU_VERSION;
 #endif
 
-    BaseClient.printLine(info.str(), true); 
+    BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();
@@ -2089,15 +2091,15 @@ int main (int argc, char* argv[]) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
         ostringstream is;
         is << "Connected to ArangoDB '" << BaseClient.endpointString()
-           << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName() 
+           << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName()
            << "', username: '" << BaseClient.username() << "'";
 
         BaseClient.printLine(is.str(), true);
       }
       else {
         ostringstream is;
-        is << "Could not connect to endpoint '" << BaseClient.endpointString() 
-           << "', database: '" << BaseClient.databaseName() 
+        is << "Could not connect to endpoint '" << BaseClient.endpointString()
+           << "', database: '" << BaseClient.databaseName()
            << "', username: '" << BaseClient.username() << "'";
         BaseClient.printErrLine(is.str());
 
@@ -2192,7 +2194,7 @@ int main (int argc, char* argv[]) {
   for (uint32_t i = 0;  i < positionals.size();  ++i) {
     p->Set(i, v8::String::New(positionals[i].c_str(), (int) positionals[i].size()));
   }
-  
+
   TRI_AddGlobalVariableVocbase(context, "ARGUMENTS", p);
 
   // .............................................................................
@@ -2245,7 +2247,7 @@ int main (int argc, char* argv[]) {
   // .............................................................................
   // cleanup
   // .............................................................................
-      
+
   v8::V8::LowMemoryNotification();
   while (! v8::V8::IdleNotification()) {
   }
@@ -2256,7 +2258,7 @@ int main (int argc, char* argv[]) {
   isolate->Dispose();
 
   BaseClient.closeLog();
- 
+
   if (ClientConnection != 0) {
     delete ClientConnection;
   }
@@ -2274,5 +2276,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

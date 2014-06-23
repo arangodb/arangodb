@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
@@ -36,7 +37,7 @@ using namespace triagens::httpclient;
 ////////////////////////////////////////////////////////////////////////////////
 
 ConnectionOptions ConnectionManager::_globalConnectionOptions = {
-  15.0,  // connectTimeout 
+  15.0,  // connectTimeout
   3.0,   // requestTimeout
   3,     // numRetries
   5.0,   // singleRequestTimeout
@@ -90,7 +91,7 @@ ConnectionManager::ServerConnections::~ServerConnections () {
 /// @brief open or get a previously cached connection to a server
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionManager::SingleServerConnection* 
+ConnectionManager::SingleServerConnection*
 ConnectionManager::leaseConnection (std::string& endpoint) {
   map<string,ServerConnections*>::iterator i;
   ServerConnections* s;
@@ -111,7 +112,7 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
   }
 
   TRI_ASSERT(s != 0);
-  
+
   // Now get an unused one:
   {
     WRITE_LOCKER(s->lock);
@@ -121,8 +122,8 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
       return c;
     }
   }
-  
-  triagens::rest::Endpoint* e 
+
+  triagens::rest::Endpoint* e
       = triagens::rest::Endpoint::clientFactory(endpoint);
   if (0 == e) {
     return 0;
@@ -186,7 +187,7 @@ void ConnectionManager::returnConnection (SingleServerConnection* c) {
       return;
     }
   }
-  
+
   c->lastUsed = time(0);
 
   // Now mark it as unused:
@@ -218,7 +219,7 @@ void ConnectionManager::brokenConnection (SingleServerConnection* c) {
       return;
     }
   }
-  
+
   // Now find it to get rid of it:
   {
     WRITE_LOCKER(s->lock);
@@ -292,9 +293,11 @@ void ConnectionManager::closeUnusedConnections (double limit) {
 /// @brief
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
-

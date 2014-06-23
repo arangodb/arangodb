@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_OPERATING_SYSTEM_H
-#define TRIAGENS_BASICS_C_OPERATING_SYSTEM_H 1
+#ifndef ARANGODB_BASICS_C_OPERATING__SYSTEM_H
+#define ARANGODB_BASICS_C_OPERATING__SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <BasicsC/common.h>
@@ -678,7 +680,7 @@ typedef unsigned char bool;
 
 // we do not have owner read and owner write under windows; so map these to
 // global read, global write these are used when creating a file
-// 
+//
 #define S_IRUSR _S_IREAD
 #define S_IWUSR _S_IWRITE
 #define S_IRGRP _S_IREAD
@@ -764,5 +766,5 @@ typedef unsigned char bool;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

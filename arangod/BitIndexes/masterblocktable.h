@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#ifndef TRIAGENS_BIT_INDEXES_MASTERBLOCKTABLE_H
-#define TRIAGENS_BIT_INDEXES_MASTERBLOCKTABLE_H 1
+#ifndef ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H
+#define ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H 1
 
 #include "BasicsC/associative.h"
 #include "BasicsC/common.h"
@@ -40,12 +42,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                            bitarray private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private structure for the master table
@@ -496,7 +492,7 @@ int storeElementMasterTable(MasterTable_t* mt, void* results, TRI_master_table_p
   // ...........................................................................
 
   tableBlock = mt->_blocks + position->_blockNum;
-  
+
   // ...........................................................................
   // Within the block determine if the entry (array entry) is marked as free
   // if it is marked as free, then of course no reason to store the handle
@@ -608,13 +604,13 @@ static int64_t compareIndexOf(MasterTable_t* mt, size_t item, bool* equality) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +48,7 @@ using namespace triagens::transaction;
 Transaction::Transaction (Manager* manager,
                           TRI_voc_tid_t id,
                           bool singleOperation,
-                          bool waitForSync) 
+                          bool waitForSync)
   : State(),
     _manager(manager),
     _id(id),
@@ -62,7 +64,7 @@ Transaction::Transaction (Manager* manager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Transaction::~Transaction () {
-  if (state() != State::StateType::COMMITTED && 
+  if (state() != State::StateType::COMMITTED &&
       state() != State::StateType::ABORTED) {
     this->rollback();
   }
@@ -95,7 +97,7 @@ int Transaction::begin () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 int Transaction::commit (bool waitForSync) {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -108,7 +110,7 @@ int Transaction::commit (bool waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 int Transaction::rollback () {
   if (state() != State::StateType::BEGUN) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
@@ -118,7 +120,11 @@ int Transaction::rollback () {
   return _manager->rollbackTransaction(this);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

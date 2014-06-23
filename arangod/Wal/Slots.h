@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_LOG_SLOTS_H
-#define TRIAGENS_WAL_LOG_SLOTS_H 1
+#ifndef ARANGODB_WAL_SLOTS_H
+#define ARANGODB_WAL_SLOTS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -43,9 +45,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                               struct SlotInfoCopy
 // -----------------------------------------------------------------------------
-    
+
     struct SlotInfoCopy {
-      explicit SlotInfoCopy (Slot const* slot) 
+      explicit SlotInfoCopy (Slot const* slot)
         : mem(slot->mem()),
           size(slot->size()),
           logfileId(slot->logfileId()),
@@ -73,21 +75,21 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct SlotInfo {
-      explicit SlotInfo (int errorCode) 
+      explicit SlotInfo (int errorCode)
         : slot(nullptr),
           mem(nullptr),
           size(0),
           errorCode(errorCode) {
       }
-      
-      explicit SlotInfo (Slot* slot) 
+
+      explicit SlotInfo (Slot* slot)
         : slot(slot),
           mem(slot->mem()),
           size(slot->size()),
           errorCode(TRI_ERROR_NO_ERROR) {
       }
 
-      SlotInfo () 
+      SlotInfo ()
         : SlotInfo(TRI_ERROR_NO_ERROR) {
       }
 
@@ -113,14 +115,14 @@ namespace triagens {
         Slots& operator= (Slots const&) = delete;
 
       public:
-            
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the slots
 ////////////////////////////////////////////////////////////////////////////////
 
         Slots (LogfileManager*,
                size_t,
-               Slot::TickType); 
+               Slot::TickType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the slots
@@ -133,6 +135,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the statistics of the slots
+////////////////////////////////////////////////////////////////////////////////
+
+        void statistics (Slot::TickType&,
+                         Slot::TickType&,
+                         uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a flush operation
@@ -171,6 +181,24 @@ namespace triagens {
 
         void returnSyncRegion (SyncRegion const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current open region of a logfile
+/// this uses the slots lock
+////////////////////////////////////////////////////////////////////////////////
+
+        void getActiveLogfileRegion (Logfile*,
+                                     char const*&,
+                                     char const*&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current tick range of a logfile
+/// this uses the slots lock
+////////////////////////////////////////////////////////////////////////////////
+
+        void getActiveTickRange (Logfile*,
+                                 TRI_voc_tick_t&,
+                                 TRI_voc_tick_t&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -198,7 +226,7 @@ namespace triagens {
 /// @brief handout a region and advance the handout index
 ////////////////////////////////////////////////////////////////////////////////
 
-        Slot::TickType handout ();        
+        Slot::TickType handout ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until all data has been synced up to a certain marker
@@ -280,10 +308,28 @@ namespace triagens {
         Logfile* _logfile;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief last assigned tick value
+////////////////////////////////////////////////////////////////////////////////
+
+        Slot::TickType _lastAssignedTick;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief last committed tick value
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         Slot::TickType _lastCommittedTick;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief last committed data tick value
+////////////////////////////////////////////////////////////////////////////////
+
+        Slot::TickType _lastCommittedDataTick;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of log events handled
+////////////////////////////////////////////////////////////////////////////////
+
+        uint64_t _numEvents;
 
     };
 
@@ -292,7 +338,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

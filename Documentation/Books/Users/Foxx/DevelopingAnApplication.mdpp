@@ -70,8 +70,8 @@ The app directory has to be structured as follows:
         └── foxx_app_4
 ```
 
-In this case you would have four foxx apps booted, three in the `_system` database
-and one in the `my_db` database.
+In this case you would have four foxx apps booted, three in the *_system* database
+and one in the *my_db* database.
 
 !SUBSECTION Production Mode
 

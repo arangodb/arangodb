@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,33 +98,31 @@ static bool ResizePrimaryIndex (TRI_primary_index_t* idx,
   }
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
-  idx->_nrAlloc = targetSize; 
+  idx->_nrAlloc = targetSize;
 
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function, compares a master pointer to another 
+/// @brief comparison function, compares a master pointer to another
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualKeyElement (TRI_doc_mptr_t const* header, 
-                                      void const* element) {
+static inline bool IsDifferentKeyElement (TRI_doc_mptr_t const* header,
+                                          void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
   // only after that compare actual keys
-  return (header->_hash == e->_hash &&
-          strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (header->_hash != e->_hash || strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparison function, compares a hash/key to a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsEqualHashElement (char const* key, uint64_t hash, void const* element) {
+static inline bool IsDifferentHashElement (char const* key, uint64_t hash, void const* element) {
   TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
 
-  return (hash == e->_hash && 
-          strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) == 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  return (hash != e->_hash || strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 // -----------------------------------------------------------------------------
@@ -179,13 +179,13 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
   uint64_t i, k;
 
   i = k = hash % n;
-  
+
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -217,10 +217,10 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   i = k = header->_hash % n;
-  
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
+
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualKeyElement(header, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -238,7 +238,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
   idx->_table[i] = (void*) header;
   ++idx->_nrUsed;
 
-  return TRI_ERROR_NO_ERROR; 
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,9 +254,9 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   i = k = hash % n;
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && ! IsEqualHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -294,7 +294,11 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   return old;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
