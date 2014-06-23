@@ -98,7 +98,7 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
 ///   var graph = require("org/arangodb/general-graph");
 /// | if (graph._exists("myGraph")) {
-/// |    graph._drop("myGraph");
+/// |    graph._drop("myGraph", true);
 ///   }
 ///   var url = "/_api/gharial";
 ///   body = { 
@@ -110,7 +110,7 @@
 ///     }]
 ///   };
 ///
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 /// 
 ///   assert(response.code === 201);
 ///
@@ -232,7 +232,7 @@
 ///   body = { 
 ///     collection: "otherVertices"
 ///   };
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 /// 
 ///   assert(response.code === 201);
 ///
@@ -378,7 +378,7 @@
 ///     from: ["female", "male"],
 ///     to: ["city"]
 ///   };
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 /// 
 ///   assert(response.code === 201);
 ///
@@ -429,7 +429,7 @@
 ///     from: ["female", "male", "animal"],
 ///     to: ["female", "male", "animal"]
 ///   };
-///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///   var response = logCurlRequest('PUT', url, body);
 /// 
 ///   assert(response.code === 200);
 ///
@@ -538,7 +538,7 @@
 ///   body = {
 ///     name: "Francis"
 ///   }
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 /// 
 ///   assert(response.code === 201);
 ///
@@ -629,7 +629,7 @@
 ///     age: 26
 ///   }
 ///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///   var response = logCurlRequest('PUT', url, body);
 /// 
 ///   assert(response.code === 200);
 ///
@@ -685,7 +685,7 @@
 ///     age: 26
 ///   }
 ///   var url = "/_api/gharial/social/vertex/female/alice";
-///   var response = logCurlRequest('PATCH', url, JSON.stringify(body));
+///   var response = logCurlRequest('PATCH', url, body);
 /// 
 ///   assert(response.code === 200);
 ///
@@ -796,7 +796,7 @@
 ///     _from: "female/alice",
 ///     _to: "female/diana"
 ///   };
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 /// 
 ///   assert(response.code === 201);
 ///
@@ -904,7 +904,7 @@
 ///   body = {
 ///     type: "divorced"
 ///   }
-///   var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///   var response = logCurlRequest('PUT', url, body);
 /// 
 ///   assert(response.code === 200);
 ///
@@ -959,7 +959,7 @@
 ///   body = {
 ///     since: "01.01.2001"
 ///   }
-///   var response = logCurlRequest('PATCH', url, JSON.stringify(body));
+///   var response = logCurlRequest('PATCH', url, body);
 /// 
 ///   assert(response.code === 200);
 ///
