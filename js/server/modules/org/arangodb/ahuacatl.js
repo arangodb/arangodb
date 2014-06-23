@@ -5503,7 +5503,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, distance from Hambug and Cologne to Lyon:
+/// A route planner example, distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
 /// ~ var db = require("internal").db;
