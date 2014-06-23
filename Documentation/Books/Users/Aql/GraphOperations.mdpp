@@ -14,7 +14,7 @@ the examples.
 
 !SUBSECTION Edges and Vertices related functions.
 
-This section describes various AQL functions which can be used to recieve information about the graph's vertices, edges, neighbor relationship and shared properties.
+This section describes various AQL functions which can be used to receive information about the graph's vertices, edges, neighbor relationship and shared properties.
 
 !SUBSUBSECTION GRAPH_EDGES
 
