@@ -31,6 +31,7 @@ def getTextFromSourceFile(searchText, full_path):
     textExtracted = re.sub(r"@RESTRETURNCODE{(.*)}", r"`HTTP \g<1>`", textExtracted)
     textExtracted = re.sub(r"@RESTBODYPARAM{(.*)}", r"*(\g<1>)*", textExtracted)
     textExtracted = textExtracted.replace("@RESTDESCRIPTION","")
+    textExtracted = textExtracted.replace("@EXAMPLES","*Examples*")
     textExtracted = textExtracted.replace("@RESTRETURNCODES","###Return Codes")
     replaceText(textExtracted, full_path, searchText)
 
