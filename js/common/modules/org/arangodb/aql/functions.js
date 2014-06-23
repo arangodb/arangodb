@@ -160,8 +160,8 @@ var stringifyFunction = function (code, name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_unregister
 /// @brief delete an existing AQL user function
-///
-/// @FUN{aqlfunctions.unregister(@FA{name})}
+/// @startDocuBlock aqlFunctionsUnregister
+/// `{aqlfunctions.unregister(name)`
 ///
 /// Unregisters an existing AQL user function, identified by the fully qualified
 /// function name.
@@ -169,11 +169,12 @@ var stringifyFunction = function (code, name) {
 /// Trying to unregister a function that does not exist will result in an 
 /// exception.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
 var unregisterFunction = function (name) {
@@ -204,21 +205,22 @@ var unregisterFunction = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_unregister_group
 /// @brief delete a group of AQL user functions
-///
-/// @FUN{aqlfunctions.unregisterGroup(@FA{prefix})}
+/// @startDocuBlock aqlFunctionsUnregisterGroup
+/// `aqlfunctions.unregisterGroup(prefix)`
 ///
 /// Unregisters a group of AQL user function, identified by a common function 
 /// group prefix.
 ///
 /// This will return the number of functions unregistered.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
 /// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
 var unregisterFunctionsGroup = function (group) {
@@ -247,22 +249,22 @@ var unregisterFunctionsGroup = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_register
 /// @brief register an AQL user function
-///
-/// @FUN{aqlfunctions.register(@FA{name}, @FA{code}, @FA{isDeterministic})}
+/// @startDocuBlock aqlFunctionsRegister
+/// `aqlfunctions.register(name, code, isDeterministic)`
 ///
 /// Registers an AQL user function, identified by a fully qualified function 
-/// name. The function code in @FA{code} must be specified as a Javascript
+/// name. The function code in *code* must be specified as a Javascript
 /// function or a string representation of a Javascript function. 
 ///
-/// If a function identified by @FA{name} already exists, the previous function
+/// If a function identified by *name* already exists, the previous function
 /// definition will be updated.
 ///
-/// The @FA{isDeterministic} attribute can be used to specify whether the 
+/// The *isDeterministic* attribute can be used to specify whether the 
 /// function results are fully deterministic (i.e. depend solely on the input 
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimisations later.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
@@ -270,6 +272,7 @@ var unregisterFunctionsGroup = function (group) {
 ///                     return celsius * 1.8 + 32; 
 ///                   });
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
 var registerFunction = function (name, code, isDeterministic) {
@@ -339,8 +342,8 @@ var registerFunction = function (name, code, isDeterministic) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_toArray
 /// @brief list all AQL user functions
-///
-/// @FUN{aqlfunctions.toArray()}
+/// @startDocuBlock aqlFunctionsToArray
+/// `aqlfunctions.toArray()`
 ///
 /// Returns all previously registered AQL user functions, with their fully 
 /// qualified names and function code.
@@ -348,9 +351,9 @@ var registerFunction = function (name, code, isDeterministic) {
 /// The result may optionally be restricted to a specified group of functions
 /// by specifying a group prefix:
 ///
-/// @FUN{aqlfunctions.toArray(@FA{prefix})}
+/// `aqlfunctions.toArray(prefix)`
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// To list all available user functions:
 ///
@@ -358,17 +361,18 @@ var registerFunction = function (name, code, isDeterministic) {
 /// arangosh> require("org/arangodb/aql/functions").toArray();
 /// @endcode
 ///
-/// To list all available user functions in the `myfunctions` namespace:
+/// To list all available user functions in the *myfunctions* namespace:
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions");
 /// @endcode
 ///
-/// To list all available user functions in the `myfunctions::temperature` namespace:
+/// To list all available user functions in the *myfunctions::temperature* namespace:
 ///
 /// @code
 /// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
 var toArrayFunctions = function (group) {
