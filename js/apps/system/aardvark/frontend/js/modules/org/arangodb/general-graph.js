@@ -1620,7 +1620,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-              err.errorMessage = col
+              err.errorMessage = col + " "
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
@@ -2528,8 +2528,8 @@ Graph.prototype._fromVertex = function(edgeId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getToVertex
-/// `graph._getToVertex(edgeId)`
+/// @startDocuBlock JSF_general_graph_toVertex
+/// `graph._toVertex(edgeId)`
 /// *Get the target vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
@@ -2543,14 +2543,14 @@ Graph.prototype._fromVertex = function(edgeId) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getToVertex("relation/aliceAndBob")
+///   g._toVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getToVertex = function(edgeId) {
+Graph.prototype._toVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -3499,7 +3499,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
-                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+                + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
           }
