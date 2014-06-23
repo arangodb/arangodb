@@ -1619,7 +1619,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-              err.errorMessage = col
+              err.errorMessage = col + " "
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
@@ -3498,7 +3498,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
-                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+                + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
           }

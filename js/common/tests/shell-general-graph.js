@@ -529,7 +529,7 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec2 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec2 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
 
@@ -1891,7 +1891,7 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec1 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec1 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
       assertFalse(graph._exists(myGraphName));
