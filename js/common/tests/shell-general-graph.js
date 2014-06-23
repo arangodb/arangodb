@@ -1508,7 +1508,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, ubName);
     },
 
-    test_getFromVertexForSelectedEdgeResultingAQL: function() {
+    test_fromVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
         .fromVertices();
       var stmt = query.printQuery();
@@ -1524,7 +1524,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    test_getFromVertexForSelectedEdge: function() {
+    test_fromVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .fromVertices()
         .toArray();
@@ -2206,7 +2206,7 @@ function EdgesAndVerticesSuite() {
 
     test_getInVertex : function() {
       var ids = fillCollections();
-      var result = g._getFromVertex(ids.eId11);
+      var result = g._fromVertex(ids.eId11);
       assertEqual(result._id, ids.vId11);
     },
 
