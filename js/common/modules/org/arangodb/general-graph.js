@@ -1664,7 +1664,6 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-  require("internal").print("precreate");
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
@@ -1883,7 +1882,6 @@ var updateBindCollections = function(graph) {
       bindVertexCollections(graph, edgeDef.to);
     }
   );
-  require("internal").print("preVertex");
   bindVertexCollections(graph, graph.__orphanCollections);
 };
 
@@ -2114,7 +2112,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
-  require("internal").print("preBind");
   updateBindCollections(self);
 
 };
