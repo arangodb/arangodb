@@ -529,7 +529,7 @@ function GeneralGraphCreationSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec2 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec2 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
 
@@ -1484,7 +1484,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(sorted[1].name, ubName);
     },
 
-    test_getToVertexForSelectedEdgeResultingAQL: function() {
+    test_toVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
         .toVertices();
       var stmt = query.printQuery();
@@ -1500,7 +1500,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    test_getToVertexForSelectedEdge: function() {
+    test_toVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .toVertices()
         .toArray();
@@ -1508,7 +1508,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(result[0].name, ubName);
     },
 
-    test_getFromVertexForSelectedEdgeResultingAQL: function() {
+    test_fromVertexForSelectedEdgeResultingAQL: function() {
       var query = g._edges({since: ud1})
         .fromVertices();
       var stmt = query.printQuery();
@@ -1524,7 +1524,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.options_1, {});
     },
 
-    test_getFromVertexForSelectedEdge: function() {
+    test_fromVertexForSelectedEdge: function() {
       var result = g._edges({since: ud1})
         .fromVertices()
         .toArray();
@@ -1891,7 +1891,7 @@ function EdgesAndVerticesSuite() {
       } catch (e) {
         assertEqual(
           e.errorMessage,
-          ec1 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
+          ec1 + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message
         );
       }
       assertFalse(graph._exists(myGraphName));
@@ -2206,15 +2206,15 @@ function EdgesAndVerticesSuite() {
 
     test_getInVertex : function() {
       var ids = fillCollections();
-      var result = g._getFromVertex(ids.eId11);
+      var result = g._fromVertex(ids.eId11);
       assertEqual(result._id, ids.vId11);
     },
 
     test_getOutVertex : function() {
       var ids = fillCollections();
-      var result = g._getToVertex(ids.eId11);
+      var result = g._toVertex(ids.eId11);
       assertEqual(result._id, ids.vId12);
-      result = g._getToVertex(ids.eId25);
+      result = g._toVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
     }
 
