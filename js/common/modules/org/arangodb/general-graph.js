@@ -1298,6 +1298,8 @@ AQLGenerator.prototype.next = function() {
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
 ///
+/// *Parameter*
+///
 /// * *relationName*: The name of the edge collection where the edges should be stored.
 ///     Will be created if it does not yet exist.
 /// * *vertexCollections*: One or a list of collection names for which connections are allowed.
@@ -1364,6 +1366,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// The *toVertexCollections* is an Array of document collections holding the target vertices.
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
+///
+/// *Parameter*
 ///
 /// * *relationName*: The name of the edge collection where the edges should be stored.
 ///     Will be created if it does not yet exist.
@@ -2198,7 +2202,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
-/// `general-graph._drop(graphName, dropCollections)`
+/// `graph_module._drop(graphName, dropCollections)`
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
@@ -2213,13 +2217,29 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 ///
 /// *Examples*
 ///
-/// Drop a graph:
+/// Drop a graph and keep collections:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraph}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
 /// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._drop("social");
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
+/// ~ db._drop("female");
+/// ~ db._drop("male");
+/// ~ db._drop("relation");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social", true);
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
