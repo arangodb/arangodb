@@ -61,6 +61,7 @@ Slots::Slots (LogfileManager* logfileManager,
     _logfile(nullptr),
     _lastAssignedTick(0),
     _lastCommittedTick(0),
+    _lastCommittedDataTick(0),
     _numEvents(0)  {
 }
 
@@ -83,10 +84,12 @@ Slots::~Slots () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Slots::statistics (Slot::TickType& lastTick,
+                        Slot::TickType& lastDataTick,
                         uint64_t& numEvents) {
   MUTEX_LOCKER(_lock);
-  lastTick  = _lastCommittedTick;
-  numEvents = _numEvents;
+  lastTick     = _lastCommittedTick;
+  lastDataTick = _lastCommittedDataTick;
+  numEvents    = _numEvents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,6 +284,7 @@ SyncRegion Slots::getSyncRegion () {
     if (region.logfileId == 0) {
       // first member
       region.logfileId      = slot->logfileId();
+      region.logfile        = _logfileManager->getLogfile(slot->logfileId());
       region.mem            = static_cast<char*>(slot->mem());
       region.size           = slot->size();
       region.firstSlotIndex = slotIndex;
@@ -335,6 +339,17 @@ void Slots::returnSyncRegion (SyncRegion const& region) {
       TRI_ASSERT(tick >= _lastCommittedTick);
       _lastCommittedTick = tick;
 
+      // update the data tick
+      TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(slot->mem());
+      if (m->_type != TRI_DF_MARKER_HEADER && 
+          m->_type != TRI_DF_MARKER_FOOTER && 
+          m->_type != TRI_WAL_MARKER_ATTRIBUTE &&
+          m->_type != TRI_WAL_MARKER_SHAPE) {
+        _lastCommittedDataTick = tick;
+      }
+
+      region.logfile->update(m);
+
       slot->setUnused();
       ++_freeSlots;
 
@@ -359,6 +374,39 @@ void Slots::returnSyncRegion (SyncRegion const& region) {
   if (_waiting > 0 || region.waitForSync) {
     _condition.broadcast();
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current open region of a logfile
+/// this uses the slots lock
+////////////////////////////////////////////////////////////////////////////////
+
+void Slots::getActiveLogfileRegion (Logfile* logfile,
+                                    char const*& begin,
+                                    char const*& end) {
+  MUTEX_LOCKER(_lock);
+
+  TRI_datafile_t* datafile = logfile->df();
+
+  begin = datafile->_data;
+  end   = begin + datafile->_currentSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current tick range of a logfile
+/// this uses the slots lock
+////////////////////////////////////////////////////////////////////////////////
+
+void Slots::getActiveTickRange (Logfile* logfile,
+                                TRI_voc_tick_t& tickMin,
+                                TRI_voc_tick_t& tickMax) {
+
+  MUTEX_LOCKER(_lock);
+  
+  TRI_datafile_t* datafile = logfile->df();
+
+  tickMin = datafile->_tickMin;
+  tickMax = datafile->_tickMax;
 }
 
 // -----------------------------------------------------------------------------

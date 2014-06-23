@@ -256,7 +256,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   datafile->_next        = data + currentSize;
 
   datafile->_synced      = data;
-  datafile->_written     = NULL;
+  datafile->_written     = nullptr;
 
   // reset tick aggregates
   datafile->_tickMin     = 0;
@@ -1374,7 +1374,35 @@ void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker) {
   TRI_df_marker_type_e type = (TRI_df_marker_type_e) marker->_type;
   TRI_voc_tick_t tick = marker->_tick;
+  
+  if (type != TRI_DF_MARKER_HEADER && 
+      type != TRI_DF_MARKER_FOOTER &&
+      type != TRI_COL_MARKER_HEADER) {
+    // every marker but headers / footers count
+    if (datafile->_tickMin == 0) {
+      datafile->_tickMin = tick;
+    }
 
+    if (datafile->_tickMax < marker->_tick) {
+      datafile->_tickMax = tick;
+    }
+
+    if (type != TRI_DF_MARKER_ATTRIBUTE &&
+        type != TRI_DF_MARKER_SHAPE &&
+        type != TRI_WAL_MARKER_ATTRIBUTE &&
+        type != TRI_WAL_MARKER_SHAPE) {
+      if (datafile->_dataMin == 0) {
+        datafile->_dataMin = tick;
+      }
+
+      if (datafile->_dataMax < tick) {
+        datafile->_dataMax = tick;
+      }
+    }
+  }
+
+// TODO: check whether the following code can be removed safely
+/*
   if (type != TRI_DF_MARKER_HEADER &&
       type != TRI_DF_MARKER_FOOTER &&
       type != TRI_COL_MARKER_HEADER &&
@@ -1434,6 +1462,7 @@ void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
       datafile->_tickMax = tick;
     }
   }
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,15 +1493,12 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                           void* data) {
-  char* ptr;
-  char* end;
-
   LOG_TRACE("iterating over datafile '%s', fid: %llu",
             datafile->getName(datafile),
             (unsigned long long) datafile->_fid);
 
-  ptr = datafile->_data;
-  end = datafile->_data + datafile->_currentSize;
+  char const* ptr = datafile->_data;
+  char const* end = datafile->_data + datafile->_currentSize;
 
   if (datafile->_state != TRI_DF_STATE_READ && datafile->_state != TRI_DF_STATE_WRITE) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
@@ -1480,15 +1506,20 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
   }
 
   while (ptr < end) {
-    TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
     if (marker->_size == 0) {
       return true;
     }
 
-    bool result = iterator(marker, data, datafile);
+    // update the tick statistics
+    TRI_UpdateTicksDatafile(datafile, marker);
 
-    if (! result) {
-      return false;
+    if (iterator != nullptr) {
+      bool result = iterator(marker, data, datafile);
+
+      if (! result) {
+        return false;
+      }
     }
 
     size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
