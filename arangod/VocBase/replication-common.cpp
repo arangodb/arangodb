@@ -72,9 +72,7 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
     return false;
   }
 
-  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-      TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-      TRI_EqualString(name, TRI_COL_NAME_USERS) ||
+  if (TRI_EqualString(name, TRI_COL_NAME_USERS) ||
       TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
       TRI_EqualString(name, "_aal") ||
       TRI_EqualString(name, "_fishbowl") ||
