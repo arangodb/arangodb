@@ -83,25 +83,25 @@ ArangoCollection.prototype.toArray = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncates a collection
-/// @startDocuBlock collection_truncates
+/// @startDocuBlock collectionTruncate
 /// `collection.truncate()`
 ///
 /// Truncates a *collection*, removing all documents but keeping all its
 /// indexes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Truncates a collection:
 ///
-///   arango> col = db.examples;
-///   [ArangoCollection 91022, "examples" (status new born)]
-///   arango> col.save({ "Hello" : "World" });
-///   { "_id" : "91022/1532814", "_rev" : 1532814 }
-///   arango> col.count();
-///   1
-///   arango> col.truncate();
-///   arango> col.count();
-///   0
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionTruncate}
+/// ~ db._create("examples");
+///   col = db.examples;
+///   col.save({ "Hello" : "World" });
+///   col.count();
+///   col.truncate();
+///   col.count();
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -337,7 +337,7 @@ ArangoCollection.prototype.any = function () {
 /// @fn JSF_ArangoCollection_prototype_first
 /// 
 /// @brief selects the n first documents in the collection
-/// @startDocuBlock documents_collectionFirst
+/// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
 ///
 /// The *first* method returns the n first documents from the collection, in 
@@ -419,7 +419,7 @@ ArangoCollection.prototype.first = function (count) {
 /// @fn JSF_ArangoCollection_prototype_last
 ///
 /// @brief selects the n last documents in the collection
-/// @startDocuBlock documents_collectionLast
+/// @startDocuBlock documentsCollectionLast
 /// `collection.last(count)`
 ///
 /// The *last* method returns the n last documents from the collection, in 
@@ -884,18 +884,18 @@ ArangoCollection.prototype.updateByExample = function (example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureBitarray(@FA{field1}, @FA{value1}, ..., @FA{fieldn}, @FA{valuen})}
+/// @startDocuBlock collectionEnsureBitArray
+/// `collection.ensureBitarray(field*1*, value*1*, ..., field*n*, value*n*)`
 ///
 /// Creates a bitarray index on documents using attributes as paths to the
-/// fields (@FA{field1},..., @FA{fieldn}). A value (@FA{value1},...,@FA{valuen})
+/// fields (*field1*,..., *fieldn*}). A value (*value1*,...,*valuen*)
 /// consists of an array of possible values that the field can take. At least
 /// one field and one set of possible values must be given.
 ///
 /// All documents, which do not have *all* of the attribute paths are ignored
 /// (that is, are not part of the bitarray index, they are however stored within
 /// the collection). A document which contains all of the attribute paths yet
-/// has one or more values which are *not* part of the defined range of values
+/// has one or more values which are **not** part of the defined range of values
 /// will be rejected and the document will not inserted within the
 /// collection. Note that, if a bitarray index is created subsequent to
 /// any documents inserted in the given collection, then the creation of the
@@ -906,10 +906,10 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// returned.
 ///
 /// In the example below we create a bitarray index with one field and that
-/// field can have the values of either `0` or `1`. Any document which has the
-/// attribute `x` defined and does not have a value of `0` or `1` will be
+/// field can have the values of either *0* or *1*. Any document which has the
+/// attribute *x* defined and does not have a value of *0* or *1* will be
 /// rejected and therefore not inserted within the collection. Documents without
-/// the attribute `x` defined will not take part in the index.
+/// the attribute *x* defined will not take part in the index.
 ///
 /// @code
 /// arango> arangod> db.example.ensureBitarray("x", [0,1]);
@@ -924,9 +924,9 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// @endcode
 ///
 /// In the example below we create a bitarray index with one field and that
-/// field can have the values of either `0`, `1` or *other* (indicated by
-/// `[]`). Any document which has the attribute `x` defined will take part in
-/// the index. Documents without the attribute `x` defined will not take part in
+/// field can have the values of either *0*, *1* or *other* (indicated by
+/// *[]*). Any document which has the attribute *x* defined will take part in
+/// the index. Documents without the attribute *x* defined will not take part in
 /// the index.
 ///
 /// @code
@@ -941,12 +941,12 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// }
 /// @endcode
 ///
-/// In the example below we create a bitarray index with two fields. Field `x`
-/// can have the values of either `0` or `1`; while field `y` can have the values
-/// of `2` or `"a"`. A document which does not have *both* attributes `x` and `y`
+/// In the example below we create a bitarray index with two fields. Field *x*
+/// can have the values of either *0* or *1*; while field *y* can have the values
+/// of *2* or *"a"*. A document which does not have *both* attributes *x* and *y*
 /// will not take part within the index.  A document which does have both attributes
-/// `x` and `y` defined must have the values `0` or `1` for attribute `x` and
-/// `2` or `a` for attribute `y`, otherwise the document will not be inserted
+/// *x* and *y* defined must have the values *0* or *1* for attribute *x* and
+/// *2* or *1* for attribute *y*, otherwise the document will not be inserted
 /// within the collection.
 ///
 /// @code
@@ -961,12 +961,12 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// }
 /// @endcode
 ///
-/// In the example below we create a bitarray index with two fields. Field `x`
-/// can have the values of either `0` or `1`; while field `y` can have the
-/// values of `2`, `"a"` or *other* . A document which does not have *both*
-/// attributes `x` and `y` will not take part within the index.  A document
-/// which does have both attributes `x` and `y` defined must have the values `0`
-/// or `1` for attribute `x` and any value for attribute `y` will be acceptable,
+/// In the example below we create a bitarray index with two fields. Field *x*
+/// can have the values of either *0* or *1*; while field *y* can have the
+/// values of *2*, *"a"* or *other* . A document which does not have *both*
+/// attributes *x* and *y* will not take part within the index.  A document
+/// which does have both attributes *x* and *y* defined must have the values *0*
+/// or *1* for attribute *x* and any value for attribute *y* will be acceptable,
 /// otherwise the document will not be inserted within the collection.
 ///
 /// @code
@@ -980,6 +980,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///   "isNewlyCreated" : true
 /// }
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureBitarray = function () {
@@ -1000,8 +1001,8 @@ ArangoCollection.prototype.ensureBitarray = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a bitarray index exists
-///
-/// @FUN{@FA{collection}.ensureUndefBitarray(@FA{field1}, @FA{value1}, ..., @FA{fieldn}, @FA{valuen})}
+/// @startDocuBlock collectionEnsureUndefBitArray
+/// `collection.ensureUndefBitarray(field*1*, value*1*, ..., field*n*, value*n*)`
 ///
 /// Creates a bitarray index on all documents using attributes as paths to
 /// the fields. At least one attribute and one set of possible values must be given.
@@ -1012,6 +1013,7 @@ ArangoCollection.prototype.ensureBitarray = function () {
 /// is returned.
 ///
 /// @verbinclude fluent14
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUndefBitarray = function () {
@@ -1033,17 +1035,17 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
+/// @startDocuBlock collectionEnsureCapConstraint
+/// `collection.ensureCapConstraint(size, byteSize)`
 ///
-/// @FUN{@FA{collection}.ensureCapConstraint(@FA{size}, {byteSize})}
-///
-/// Creates a size restriction aka cap for the collection of @FA{size}
-/// documents and/or @FA{byteSize} data size. If the restriction is in place 
-/// and the (@FA{size} plus one) document is added to the collection, or the
-/// total active data size in the collection exceeds @FA{byteSize}, then the 
+/// Creates a size restriction aka cap for the collection of *size*
+/// documents and/or *byteSize* data size. If the restriction is in place 
+/// and the (*size* plus one) document is added to the collection, or the
+/// total active data size in the collection exceeds *byteSize*, then the 
 /// least recently created or updated documents are removed until all 
 /// constraints are satisfied.
 ///
-/// It is allowed to specify either @FA{size} or @FA{byteSize}, or both at
+/// It is allowed to specify either *size* or *byteSize*, or both at
 /// the same time. If both are specified, then the automatic document removal
 /// will be triggered by the first non-met constraint.
 ///
@@ -1055,11 +1057,12 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 /// Note that this does not imply any restriction of the number of revisions
 /// of documents.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Restrict the number of document to at most 10 documents:
 ///
 /// @verbinclude ensure-cap-constraint
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
@@ -1074,8 +1077,8 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a skiplist index exists
-///
-/// @FUN{ensureUniqueSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @startDocuBlock ensureUniqueSkiplist
+/// `ensureUniqueSkiplist(field*1*, field*2*, ...,field*n*)`
 ///
 /// Creates a skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
@@ -1086,6 +1089,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 /// is returned.
 ///
 /// @verbinclude unique-skiplist
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
@@ -1100,8 +1104,8 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a multi skiplist index exists
-///
-/// @FUN{ensureSkiplist(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
+/// @startDocuBlock ensureSkiplist
+/// `ensureSkiplist(field*1*, field*2*, ...,field*n*)`
 ///
 /// Creates a multi skiplist index on all documents using attributes as paths to
 /// the fields. At least one attribute must be given.
@@ -1112,6 +1116,7 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// is returned.
 ///
 /// @verbinclude multi-skiplist
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureSkiplist = function () {
@@ -1125,16 +1130,16 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
+/// @startDocuBlock ensureFulltextIndex
+/// `ensureFulltextIndex(field, minWordLength)`
 ///
-/// @FUN{ensureFulltextIndex(@FA{field}, @FA{minWordLength})}
-///
-/// Creates a fulltext index on all documents on attribute @FA{field}.
-/// All documents, which do not have the attribute @FA{field} or that have a
-/// non-textual value inside their @FA{field} attribute are ignored.
+/// Creates a fulltext index on all documents on attribute *field*.
+/// All documents, which do not have the attribute *field* or that have a
+/// non-textual value inside their *field* attribute are ignored.
 ///
 /// The minimum length of words that are indexed can be specified with the
-/// @FA{minWordLength} parameter. Words shorter than @FA{minWordLength}
-/// characters will not be indexed. @FA{minWordLength} has a default value of 2,
+/// @FA{minWordLength} parameter. Words shorter than *minWordLength*
+/// characters will not be indexed. *minWordLength* has a default value of 2,
 /// but this value might be changed in future versions of ArangoDB. It is thus
 /// recommended to explicitly specify this value
 ///
@@ -1142,6 +1147,7 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 /// is returned.
 ///
 /// @verbinclude fulltext
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
@@ -1160,10 +1166,10 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique constraint exists
+/// @startDocuBlock ensureUniqueConstraint
+/// `ensureUniqueConstraint(field*1*, field*2*, ...,field*n*)`
 ///
-/// @FUN{ensureUniqueConstraint(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a unique hash index on all documents using @FA{field1}, @FA{field2},
+/// Creates a unique hash index on all documents using *field1*, *field2*,
 /// ... as attribute paths. At least one attribute path must be given.
 ///
 /// When a unique constraint is in effect for a collection, then all documents
@@ -1173,7 +1179,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 /// document is ignored by the index.
 ///
 /// Note that non-existing attribute paths in a document are treated as if the
-/// value were @LIT{null}.
+/// value were *null*.
 ///
 /// In case that the index was successfully created, the index identifier is
 /// returned.
@@ -1181,6 +1187,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 /// *Examples*
 ///
 /// @verbinclude shell-index-create-unique-constraint
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
@@ -1195,14 +1202,14 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a hash index exists
+/// @startDocuBlock ensureHashIndex
+/// `ensureHashIndex(field*1*, field*2*, ...,field*n*)`
 ///
-/// @FUN{ensureHashIndex(@FA{field1}, @FA{field2}, ...,@FA{fieldn})}
-///
-/// Creates a non-unique hash index on all documents using @FA{field1}, @FA{field2},
+/// Creates a non-unique hash index on all documents using *field1*, *field2*,
 /// ... as attribute paths. At least one attribute path must be given.
 ///
 /// Note that non-existing attribute paths in a document are treated as if the
-/// value were @LIT{null}.
+/// value were *null*.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
@@ -1210,6 +1217,7 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 /// *Examples*
 ///
 /// @verbinclude shell-index-create-hash-index
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
@@ -1223,10 +1231,10 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
+/// @startDocuBlock collectionEnsureGeoIndex
+/// `collection.ensureGeoIndex(location)`
 ///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location})}
-///
-/// Creates a geo-spatial index on all documents using @FA{location} as path to
+/// Creates a geo-spatial index on all documents using *location* as path to
 /// the coordinates. The value of the attribute must be a list with at least two
 /// double values. The list must contain the latitude (first value) and the
 /// longitude (second value). All documents, which do not have the attribute
@@ -1235,25 +1243,24 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// In case that the index was successfully created, the index identifier is
 /// returned.
 ///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{location}, @LIT{true})}
+/// `collection.ensureGeoIndex(location, true)`
 ///
 /// As above which the exception, that the order within the list is longitude
 /// followed by latitude. This corresponds to the format described in
+/// [positions](http://geojson.org/geojson-spec.html)
 ///
-/// http://geojson.org/geojson-spec.html#positions
+/// `collection.ensureGeoIndex(latitude, longitude)`
 ///
-/// @FUN{@FA{collection}.ensureGeoIndex(@FA{latitude}, @FA{longitude})}
-///
-/// Creates a geo-spatial index on all documents using @FA{latitude} and
-/// @FA{longitude} as paths the latitude and the longitude. The value of the
-/// attribute @FA{latitude} and of the attribute @FA{longitude} must a
+/// Creates a geo-spatial index on all documents using *latitude* and
+/// *longitude* as paths the latitude and the longitude. The value of the
+/// attribute *latitude* and of the attribute *longitude* must a
 /// double. All documents, which do not have the attribute paths or which values
 /// are not suitable, are ignored.
 ///
 /// In case that the index was successfully created, the index identifier
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Create an geo index for a list attribute:
 ///
@@ -1262,6 +1269,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// Create an geo index for a hash array attribute:
 ///
 /// @verbinclude ensure-geo-index-array
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
@@ -1295,17 +1303,18 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo constraint exists
+/// @startDocuBlock collectionEnsureGeoConstraint
+/// `collection.ensureGeoConstraint(location, ignore-null)`
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @FA{ignore-null})}
+/// `collection.ensureGeoConstraint(location, true, ignore-null)`
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{location}, @LIT{true}, @FA{ignore-null})}
+/// `collection.ensureGeoConstraint(latitude, longitude, ignore-null)`
 ///
-/// @FUN{@FA{collection}.ensureGeoConstraint(@FA{latitude}, @FA{longitude}, @FA{ignore-null})}
-///
-/// Works like @FN{ensureGeoIndex} but requires that the documents contain
-/// a valid geo definition. If @FA{ignore-null} is true, then documents with
-/// a null in @FA{location} or at least one null in @FA{latitude} or
-/// @FA{longitude} are ignored.
+/// Works like *ensureGeoIndex* but requires that the documents contain
+/// a valid geo definition. If *ignore-null* is true, then documents with
+/// a null in *location* or at least one null in *latitude* or
+/// *longitude* are ignored.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
@@ -1404,10 +1413,11 @@ ArangoCollection.prototype.lookupSkiplist = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a fulltext index
+/// @startDocuBlock lookUpFulltextIndex
+/// `lookupFulltextIndex(field, minLength)`
 ///
-/// @FUN{lookupFulltextIndex(@FA{field}, @FA{minLength}}
-///
-/// Checks whether a fulltext index on the given attribute @FA{field} exists.
+/// Checks whether a fulltext index on the given attribute *field* exists.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {

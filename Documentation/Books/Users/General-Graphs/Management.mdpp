@@ -30,7 +30,7 @@ The edge definitions for a graph is an Array containing arbitrary many directed 
 
 Each graph can have an arbitrary amount of orphan collections. These are vertex collections (type *document*), that are not
 used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
-it will be removed from the orphan collection automatically.
+it will be removed from the set of orphan collection automatically.
 
 !SUBSUBSECTION Add
 

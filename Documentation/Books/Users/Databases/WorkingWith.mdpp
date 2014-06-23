@@ -6,34 +6,34 @@ The following methods are available to manage databases via JavaScript.
 Please note that several of these methods can be used from the _system
 database only.
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_name
+@startDocuBlock databaseName
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_id
+@startDocuBlock databaseId
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_path
+@startDocuBlock databasePath
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_isSystem
+@startDocuBlock databaseIsSystem
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_useDatabase
+@startDocuBlock databaseUseDatabase
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_listDatabase
+@startDocuBlock databaseListDatabase
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_createDatabase
+@startDocuBlock databaseCreateDatabase
 
-<!-- v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 
-@startDocuBlock database_dropDatabase
+@startDocuBlock databaseDropDatabase
