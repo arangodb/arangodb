@@ -715,9 +715,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data unittests-replication-logger
+.PHONY: unittests-replication unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data 
 	
-unittests-replication: unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data unittests-replication-logger
+unittests-replication: unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data
 
 unittests-replication-server:
 	@echo
@@ -791,20 +791,6 @@ unittests-replication-data:
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 	@rm -rf "$(VOCDIR)"
 	@rm -rf "$(SLAVEDIR)"
-	@echo
-
-unittests-replication-logger:
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION LOGGER TESTS                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-	@echo "{\"autoStart\" : true }" > "$(VOCDIR)/REPLICATION-LOGGER-CONFIG"
-	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_SERVER) || test "x$(FORCE)" == "x1"
-	@rm -rf "$(VOCDIR)"
 	@echo
 
 ################################################################################

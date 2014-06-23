@@ -1514,28 +1514,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
-
-  if (vocbase->_replicationApplier == NULL) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
-  }
-
-  if (vocbase->_replicationApplier->_configuration._autoStart) {
-    if (server->_disableReplicationAppliers) {
-      LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
-    }
-    else {
-      res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("unable to start replication applier for database '%s': %s",
-                    name,
-                    TRI_errno_string(res));
-      }
-    }
-  }
-
   // we are done
   return vocbase;
 }

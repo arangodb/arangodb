@@ -1338,7 +1338,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize());
 
     // and dump
-    res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd);
+    res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, false);
 
     if (res == TRI_ERROR_NO_ERROR) {
       bool const checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastDataTick);

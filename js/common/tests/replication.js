@@ -47,17 +47,39 @@ var replication = require("org/arangodb/replication");
 function ReplicationLoggerSuite () {
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
-
-  var getLogEntries = function () {
-    return db._collection('_replication').count();
+  
+  var waitForSync = function () {
+    internal.wait(0.5, false);
   };
   
-  var getLastLogEntry = function (count) {
-    if (count) {
-      return db._collection('_replication').last(count);
+  var getLogEntries = function (tick, type) {
+    var result = [ ];
+    waitForSync();
+
+    var entries = REPLICATION_LOGGER_LAST(tick, "999999999999999999999");
+
+    if (Array.isArray(type)) {
+      var found = false;
+      entries.forEach(function(e) {
+        if (! found) {
+          if (e.type === type[0]) {
+            found = true;
+          }
+        }
+        if (found && type.indexOf(e.type) !== -1) {
+          result.push(e);
+        }
+      });
+    }
+    else {
+      entries.forEach(function(e) {
+        if (e.type === type) {
+          result.push(e);
+        }
+      });
     }
 
-    return db._collection('_replication').last();
+    return result;
   };
 
   var compareTicks = function (l, r) {
@@ -73,6 +95,16 @@ function ReplicationLoggerSuite () {
     }
 
     return 0;
+  };
+
+  var waitForTick = function (value) {
+    while (true) {
+      var state = replication.logger.state().state;
+      if (compareTicks(state.lastLogTick, value) > 0) {
+        break;
+      }
+      internal.wait(0.1, false);
+    }  
   };
 
   return {
@@ -111,16 +143,11 @@ function ReplicationLoggerSuite () {
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 1);
+      assertTrue(state.totalEvents >= 0);
     
       // start again  
       actual = replication.logger.start();
       assertTrue(actual);
-      
-      var entry = getLastLogEntry();
-      assertEqual(1001, entry.type);
-      entry = JSON.parse(entry.data);
-      assertMatch(/^\d+$/, entry.lastTick);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,22 +165,17 @@ function ReplicationLoggerSuite () {
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 1);
+      assertTrue(state.totalEvents >= 0);
     
       // stop
       actual = replication.logger.stop();
-      assertTrue(actual);
+      assertFalse(actual);
       
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 2);
-      
-      var entry = getLastLogEntry();
-      assertEqual(1000, entry.type);
-      entry = JSON.parse(entry.data);
-      assertMatch(/^\d+$/, entry.lastTick);
+      assertTrue(state.totalEvents >= 1);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,14 +186,14 @@ function ReplicationLoggerSuite () {
       var state, tick, server, clients;
       
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
       
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
 
       assertEqual(tick, state.lastLogTick);
       assertTrue(typeof state.lastLogTick === 'string');
@@ -182,9 +204,6 @@ function ReplicationLoggerSuite () {
       assertEqual(server.version, db._version()); 
       assertNotEqual("", server.serverId); 
       assertMatch(/^\d+$/, server.serverId);
-    
-      clients = replication.logger.state().clients;
-      assertTrue(Array.isArray(clients));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,24 +211,27 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDisabledLogger : function () {
-      var state, tick;
+      var state, tick, events;
       
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
+      events = state.totalEvents;
       assertTrue(state.totalEvents >= 0);
 
       // do something that will cause logging (if it was enabled...)
       var c = db._create(cn);
       c.save({ "test" : 1 });
 
+      waitForTick(tick);
+
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
       assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 0);
-      assertEqual(tick, state.lastLogTick);
+      assertEqual(1, compareTicks(state.lastLogTick, tick));
+      assertTrue(state.totalEvents > events);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,10 +242,11 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       state = replication.logger.state().state;
-      assertFalse(state.running);
+      assertTrue(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
+      events = state.totalEvents;
       assertTrue(state.totalEvents >= 0);
 
       replication.logger.start();
@@ -231,54 +254,16 @@ function ReplicationLoggerSuite () {
       // do something that will cause logging
       var c = db._create(cn);
       c.save({ "test" : 1 });
+      
+      waitForTick(tick);
 
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 3);
+      assertTrue(state.totalEvents >= 1);
       assertNotEqual(tick, state.lastLogTick);
       assertEqual(1, compareTicks(state.lastLogTick, tick));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test logging, total events
-////////////////////////////////////////////////////////////////////////////////
-
-    testEventsLogger : function () {
-      var state;
-      
-      replication.logger.start();
-      state = replication.logger.state().state;
-      assertTrue(state.totalEvents >= 1);
-      var value = state.totalEvents;
-
-      replication.logger.stop();
-      
-      state = replication.logger.state().state;
-      assertEqual(value + 1, state.totalEvents);
-      assertTrue(state.totalEvents >= 0);
-      value = state.totalEvents;
-
-      replication.logger.start();
-      
-      state = replication.logger.state().state;
-      assertEqual(value + 1, state.totalEvents);
-      value = state.totalEvents;
-
-      // do something that will cause logging
-      var c = db._create(cn);
-      state = replication.logger.state().state;
-      assertEqual(value + 1, state.totalEvents);
-      value = state.totalEvents;
-
-      c.save({ "test" : 1 });
-      state = replication.logger.state().state;
-      assertEqual(value + 1, state.totalEvents);
-      value = state.totalEvents;
-      
-      replication.logger.stop();
-      state = replication.logger.state().state;
-      assertEqual(value + 1, state.totalEvents);
+      assertTrue(state.totalEvents > events);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,253 +279,6 @@ function ReplicationLoggerSuite () {
       assertTrue(properties.hasOwnProperty('logRemoteChanges'));
       assertTrue(properties.hasOwnProperty('maxEvents'));
       assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      var autoStart = properties.autoStart;
-      var maxEvents = properties.maxEvents;
-      var maxEventsSize = properties.maxEventsSize;
-
-      assertFalse(properties.logRemoteChanges);
-
-      properties = replication.logger.properties({
-        logRemoteChanges: true
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('autoStart'));
-      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-      assertTrue(properties.logRemoteChanges);
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(autoStart, properties.autoStart);
-      assertEqual(maxEvents, properties.maxEvents);
-      assertEqual(maxEventsSize, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        logRemoteChanges: false
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('autoStart'));
-      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(autoStart, properties.autoStart);
-      assertFalse(properties.logRemoteChanges);
-      assertEqual(maxEvents, properties.maxEvents);
-      assertEqual(maxEventsSize, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        autoStart: true
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('autoStart'));
-      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(true, properties.autoStart);
-      assertFalse(properties.logRemoteChanges);
-      assertEqual(maxEvents, properties.maxEvents);
-      assertEqual(maxEventsSize, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        autoStart: false
-      });
-      
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('autoStart'));
-      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(false, properties.autoStart);
-      assertFalse(properties.logRemoteChanges);
-      assertEqual(maxEvents, properties.maxEvents);
-      assertEqual(maxEventsSize, properties.maxEventsSize);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test event sizes
-////////////////////////////////////////////////////////////////////////////////
-
-    testEventSizesLogger : function () {
-      var properties;
-      
-      properties = replication.logger.properties();
-      assertTrue(typeof properties === 'object');
-      var maxEvents = properties.maxEvents;
-      var maxEventsSize = properties.maxEventsSize;
-
-      properties = replication.logger.properties({
-        maxEvents: 8192
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(8192, properties.maxEvents);
-      assertEqual(maxEventsSize, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        maxEventsSize: 16777216
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(8192, properties.maxEvents);
-      assertEqual(16777216, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        maxEvents: 16384,
-        maxEventsSize: 1048576
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(16384, properties.maxEvents);
-      assertEqual(1048576, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        maxEvents: 0,
-        maxEventsSize: 1048580
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(0, properties.maxEvents);
-      assertEqual(1048580, properties.maxEventsSize);
-      
-      properties = replication.logger.properties({
-        maxEvents: 16384,
-        maxEventsSize: 0
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(16384, properties.maxEvents);
-      assertEqual(0, properties.maxEventsSize);
-      
-      try {
-        properties = replication.logger.properties({
-          maxEvents: 10,
-          maxEventsSize: 0
-        });
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err1.errorNum);
-      }
-      
-      try {
-        properties = replication.logger.properties({
-          maxEvents: 0,
-          maxEventsSize: 10
-        });
-        fail();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err2.errorNum);
-      }
-      
-      try {
-        properties = replication.logger.properties({
-          maxEvents: 10,
-          maxEventsSize: 10
-        });
-        fail();
-      }
-      catch (err3) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err3.errorNum);
-      }
-      
-      try {
-        properties = replication.logger.properties({
-          maxEvents: 16384,
-          maxEventsSize: 10
-        });
-        fail();
-      }
-      catch (err4) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err4.errorNum);
-      }
-      
-      try {
-        properties = replication.logger.properties({
-          maxEvents: 10,
-          maxEventsSize: 1048576
-        });
-        fail();
-      }
-      catch (err5) {
-        assertEqual(errors.ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION.code, err5.errorNum);
-      }
-      
-      properties = replication.logger.properties({
-        maxEvents: 0,
-        maxEventsSize: 0
-      });
-
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
-      assertEqual(0, properties.maxEvents);
-      assertEqual(0, properties.maxEventsSize);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test capped logging
-////////////////////////////////////////////////////////////////////////////////
-
-    testCappedLogger : function () {
-      var state, tick;
-      
-      state = replication.logger.state().state;
-      assertFalse(state.running);
-      tick = state.lastLogTick;
-      assertTrue(typeof tick === 'string');
-
-      replication.logger.properties({ maxEvents: 5000 });
-      replication.logger.start();
-
-      // do something that will cause logging
-      var c = db._create(cn);
-
-      for (var i = 0; i < 50000; ++i) {
-        c.save({ value: i });
-      }
-
-      assertEqual(5000, db._collection('_replication').count());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test uncapped logging
-////////////////////////////////////////////////////////////////////////////////
-
-    testUncappedLogger : function () {
-      var state, tick;
-      
-      state = replication.logger.state().state;
-      assertFalse(state.running);
-      tick = state.lastLogTick;
-      assertTrue(typeof tick === 'string');
-
-      // manually flush all entries in the collection
-      db._collection('_replication').truncate();
-
-      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
-      replication.logger.start();
-
-      // do something that will cause logging
-      var c = db._create(cn);
-
-      for (var i = 0; i < 50000; ++i) {
-        c.save({ value: i });
-      }
-
-      // 50000 + transaction start + transaction commit
-      assertEqual(50000 + 2, db._collection('_replication').count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,26 +288,17 @@ function ReplicationLoggerSuite () {
     testLoggerCreateCollection : function () {
       var state, tick;
       
-      replication.logger.start();
-      
+      waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var c = db._create(cn);
+      var entry = getLogEntries(tick, 2000)[0];
 
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
       assertEqual(2000, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(2, entry.collection.type);
       assertEqual(c._id, entry.cid);
       assertEqual(c._id, entry.collection.cid);
-      assertEqual(cn, entry.cname);
       assertFalse(entry.collection.deleted);
       assertEqual(cn, entry.collection.name);
     },
@@ -582,25 +311,16 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       var c = db._create(cn);
+      waitForSync();
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
       db._drop(cn);
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2001)[0];
+
       assertEqual(2001, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -611,25 +331,16 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       var c = db._create(cn);
+      waitForSync();
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
       c.rename(cn2);
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2002)[0];
+
       assertEqual(2002, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(cn2, entry.collection.name);
     },
 
@@ -637,53 +348,21 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerPropertiesCollection1 : function () {
+    testLoggerPropertiesCollection : function () {
       var state, tick;
       
       var c = db._create(cn);
+      waitForSync();
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
-      c.properties();
-
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(0, compareTicks(state.lastLogTick, tick));
-      assertEqual(count, getLogEntries());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerPropertiesCollection2 : function () {
-      var state, tick;
-      
-      var c = db._create(cn);
-
-      replication.logger.start();
-      
-      state = replication.logger.state().state;
-      tick = state.lastLogTick;
-      var count = getLogEntries();
-
       c.properties({ waitForSync: true, journalSize: 2097152 });
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2003)[0];
+
       assertEqual(2003, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
       assertEqual(c._id, entry.collection.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(cn, entry.collection.name);
       assertEqual(2, entry.collection.type);
       assertEqual(false, entry.collection.deleted);
@@ -698,31 +377,24 @@ function ReplicationLoggerSuite () {
     testLoggerIncludedSystemCollection : function () {
       var state, tick;
       
-      replication.logger.start();
+      c = db._collection("_graphs");
       
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
-      c = db._collection("_graphs");
       var doc = c.save({ "test": 1 });
       
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
-
+      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
       c.remove(doc._key);
-      entry = getLastLogEntry();
+
+      entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
+      assertEqual(doc._key, entry.key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -734,104 +406,44 @@ function ReplicationLoggerSuite () {
       
       db._drop("_unitfoxx");
       db._drop("_unittests");
-      replication.logger.start();
       
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var c = db._create("_unittests", { isSystem : true });
 
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2000)[0];
+
       assertEqual(2000, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
+      assertEqual(c.name(), entry.collection.name);
       
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
       c.properties({ waitForSync : true });
+      
+      entry = getLogEntries(tick, 2003)[0];
+      assertEqual(2003, entry.type);
+      assertEqual(c._id, entry.cid);
+      assertEqual(true, entry.collection.waitForSync);
 
       state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 2, getLogEntries());
-      entry = getLastLogEntry();
-      assertEqual(2003, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.cname);
-
+      tick = state.lastLogTick;
       c.rename("_unitfoxx");
       
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 3, getLogEntries());
-      entry = getLastLogEntry();
+      entry = getLogEntries(tick, 2002)[0];
       assertEqual(2002, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual("_unittests", entry.cname);
+      assertEqual("_unitfoxx", entry.collection.name);
       
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
       c.rename("_unittests");
       
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 4, getLogEntries());
-      entry = getLastLogEntry();
+      entry = getLogEntries(tick, 2002)[0];
       assertEqual(2002, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual("_unitfoxx", entry.cname);
-
-      for (i = 0; i < 100; ++i) {
-        c.save({ "_key" : "test" + i });
-      }
-      
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 104, getLogEntries());
-      entry = getLastLogEntry();
-      assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual("_unittests", entry.cname);
-      
-      for (i = 0; i < 50; ++i) {
-        c.remove("test" + i);
-      }
-      
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 154, getLogEntries());
-      entry = getLastLogEntry();
-      assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual("_unittests", entry.cname);
-
-      c.truncate();
-      
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 206, getLogEntries());
-      entry = getLastLogEntry();
-      assertEqual(2201, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual("_unittests", entry.collections[0].name);
-      
-      db._drop("_unittests");
-      db._drop("_unitfoxx");
-      
-      state = replication.logger.state().state;
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 207, getLogEntries());
-      entry = getLastLogEntry();
-      assertEqual(2001, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual("_unittests", entry.cname);
+      assertEqual("_unittests", entry.collection.name);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,77 +451,33 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTruncateCollection1 : function () {
-      var state, tick;
+      var state, tick, i;
       
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
+      waitForSync();
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
       c.truncate();
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 3, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
-      c.truncate();
-      
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
-      
+      var entry = getLogEntries(tick, 2302);
+      assertEqual(1, entry.length);
+      assertNotEqual("0", entry[0].tid);
+      assertEqual(c._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
+    
       c.save({ "test": 1, "_key": "abc" });
-      var rev = c.document("abc")._rev;
       
+      waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      count = getLogEntries();
-      
       c.truncate();
 
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 3, getLogEntries());
-      
-      var entries = getLastLogEntry(3), entry;
-      // trx start
-      entry = entries.pop();
-      assertEqual(2200, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-      assertTrue(entry.tid != "");
-      var tid = entry.tid;
-
-      // remove
-      entry = entries.pop();
-      assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual("abc", entry.key);
-      assertEqual(rev, entry.oldRev);
-      assertEqual(tid, entry.tid);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-     
-      // commit 
-      entry = entries.pop();
-      assertEqual(2201, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-      assertEqual(tid, entry.tid);
+      entry = getLogEntries(tick, 2302);
+      assertNotEqual("0", entry[0].tid);
+      assertEqual(c._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -917,25 +485,39 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTruncateCollection2 : function () {
-      var state, tick;
+      var state, tick, i;
       
       var c = db._create(cn);
       for (var i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
       }
 
-      replication.logger.start();
-      
+      waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
       c.truncate();
-      
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 102, getLogEntries());
+      waitForSync();
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2302 ]);
+
+      assertEqual(102, entry.length); 
+      // trx start
+      assertEqual(2200, entry[0].type);
+      assertNotEqual("", entry[0].tid);
+      var tid = entry[0].tid;
+
+      // remove
+      var keys = { };
+      for (i = 0; i < 100; ++i) {
+        assertEqual(2302, entry[i + 1].type);
+        assertEqual(tid, entry[i + 1].tid);
+        assertEqual(c._id, entry[i + 1].cid);
+        keys[entry[i + 1].key] = true;
+      }
+      assertEqual(100, Object.keys(keys).length);
+     
+      // commit 
+      assertEqual(2201, entry[101].type);
+      assertEqual(tid, entry[101].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -947,25 +529,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureUniqueConstraint("a", "b");
       var idx = c.getIndexes()[1];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -981,25 +553,14 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureHashIndex("a");
       var idx = c.getIndexes()[1];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
-      assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
+      var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1015,25 +576,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureSkiplist("a", "b", "c");
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1049,25 +600,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureUniqueSkiplist("a");
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
-      assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
+      var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1083,25 +624,14 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
-
       c.ensureFulltextIndex("a", 5);
       var idx = c.getIndexes()[1];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("fulltext", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1118,25 +648,16 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       var count = getLogEntries();
 
       c.ensureGeoIndex("a", "b");
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1153,25 +674,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureGeoIndex("a", true);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo1", entry.index.type);
       assertEqual(false, entry.index.unique);
@@ -1188,25 +699,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureGeoConstraint("a", "b", true);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1224,25 +725,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureGeoConstraint("a", "b", false);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1260,25 +751,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureGeoConstraint("a", true);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo1", entry.index.type);
       assertEqual(true, entry.index.unique);
@@ -1295,26 +776,17 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureCapConstraint(100);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.id);
       assertEqual("cap", entry.index.type);
       assertEqual(false, entry.index.unique);
       assertEqual(100, entry.index.size);
@@ -1330,26 +802,17 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.ensureCapConstraint(null, 1048576);
       var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
       assertTrue(2100, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.id);
       assertEqual("cap", entry.index.type);
       assertEqual(false, entry.index.unique);
     },
@@ -1364,26 +827,16 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
       c.ensureUniqueConstraint("a", "b");
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       // use index at #1 (#0 is primary index)
       var idx = c.getIndexes()[1];
       c.dropIndex(idx);
+      var entry = getLogEntries(tick, 2101)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
       assertTrue(2101, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.id);
     },
 
@@ -1396,64 +849,44 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       c.save({ "test": 1, "_key": "abc" });
       var rev = c.document("abc")._rev;
+      var entry = getLogEntries(tick, 2300)[0];
 
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
       assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(rev, entry.data._rev);
       assertEqual(1, entry.data.test);
 
+      state = replication.logger.state().state;
       tick = state.lastLogTick;
-      count = getLogEntries();
       
       c.save({ "test": 2, "foo" : "bar", "_key": "12345" });
       rev = c.document("12345")._rev;
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      entry = getLastLogEntry();
+      entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
       assertEqual(rev, entry.data._rev);
       assertEqual(2, entry.data.test);
       assertEqual("bar", entry.data.foo);
 
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
       try {
         c.save({ "test": 1, "_key": "12345" });
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2300);
+      assertEqual(1, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1465,20 +898,15 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       for (var i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
       }
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 100, getLogEntries());
+      
+      var entry = getLogEntries(tick, 2300);
+      assertEqual(100, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1492,59 +920,37 @@ function ReplicationLoggerSuite () {
       c.save({ "test": 1, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
-      var rev = c.document("abc")._rev;
       c.remove("abc");
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
+      
+      var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
-      assertEqual(rev, entry.oldRev);
 
+      state = replication.logger.state().state;
       tick = state.lastLogTick;
-      count = getLogEntries();
-
-      rev = c.document("12345")._rev;
       c.remove("12345");
+      entry = getLogEntries(tick, 2302)[0];
+      
+      assertEqual(2302, entry.type);
+      assertEqual(c._id, entry.cid);
+      assertEqual("12345", entry.key);
       
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      entry = getLastLogEntry();
-      assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual(rev, entry.oldRev);
-      
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       try {
         c.remove("12345");
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2302);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1555,90 +961,61 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       var c = db._create(cn);
-      c.save({ "test": 1, "_key": "abc" });
+      c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
-      var oldRev = c.document("abc")._rev;
-
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
       c.update("abc", { "test" : 2 });
-      var rev = c.document("abc")._rev;
+      var entry = getLogEntries(tick, 2300);
+
+      assertEqual(2300, entry[0].type);
+      assertEqual(c._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
+      assertEqual("abc", entry[0].data._key);
+      assertEqual(2, entry[0].data.test);
+      
+      assertEqual(2300, entry[1].type);
+      assertEqual(c._id, entry[1].cid);
+      assertEqual("12345", entry[1].key);
+      assertEqual("12345", entry[1].data._key);
+      assertEqual(1, entry[1].data.test);
+      
 
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      var entry = getLastLogEntry();
-      assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual(oldRev, entry.oldRev);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-      
       tick = state.lastLogTick;
-      count = getLogEntries();
-
-      oldRev = rev;
       c.update("abc", { "test" : 3 });
-      rev = c.document("abc")._rev;
+      entry = getLogEntries(tick, 2300)[0];
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      
-      entry = getLastLogEntry();
       assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
       assertEqual("abc", entry.key);
-      assertEqual(oldRev, entry.oldRev);
       assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
       assertEqual(3, entry.data.test);
       
+      state = replication.logger.state().state;
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       c.update("abc", { "test" : 3 });
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
       c.update("12345", { "test" : 2 });
       c.update("abc", { "test" : 4 });
-      
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 2, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
+      entry = getLogEntries(tick, 2300);
+      assertEqual(3, entry.length);
 
+      waitForSync();      
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+       
       try {
         c.update("thefoxx", { });
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2300);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1649,75 +1026,48 @@ function ReplicationLoggerSuite () {
       var state, tick;
       
       var c = db._create(cn);
-      c.save({ "test": 1, "_key": "abc" });
+      c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
-      var oldRev = c.document("abc")._rev;
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
       c.replace("abc", { "test" : 2 });
-      var rev = c.document("abc")._rev;
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
-      assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual(oldRev, entry.oldRev);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
-      c.replace("abc", { "test" : 3 });
+      var entry = getLogEntries(tick, 2300);
+      assertEqual(2300, entry[0].type);
+      assertEqual(c._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
+      assertEqual("abc", entry[0].data._key);
+      assertEqual(2, entry[0].data.test);
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
+      assertEqual(2300, entry[1].type);
+      assertEqual(c._id, entry[1].cid);
+      assertEqual("12345", entry[1].key);
+      assertEqual("12345", entry[1].data._key);
+      assertEqual(1, entry[1].data.test);
 
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
       c.replace("abc", { "test" : 3 });
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
+      c.replace("abc", { "test" : 3 });
       c.replace("12345", { "test" : 2 });
       c.replace("abc", { "test" : 4 });
       
+      entry = getLogEntries(tick, 2300);
+      assertEqual(4, entry.length);
+      
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 2, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       try {
         c.replace("thefoxx", { });
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2300);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1727,70 +1077,48 @@ function ReplicationLoggerSuite () {
     testLoggerSaveEdge : function () {
       var state, tick;
       
-      db._create(cn);
+      var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
-      var rev = e.document("abc")._rev;
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2301)[0];
       assertEqual(2301, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
-      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
-      assertEqual(cn + "/test1", entry.data._from);
-      assertEqual(cn + "/test2", entry.data._to);
-      assertEqual(rev, entry.data._rev);
+      assertEqual(c._id + "/test1", entry.data._from);
+      assertEqual(c._id + "/test2", entry.data._to);
       assertEqual(1, entry.data.test);
 
-      tick = state.lastLogTick;
-      count = getLogEntries();
-      
-      e.save(cn + "/test3", cn + "/test4", { "test": [ 99, false ], "_key": "12345" });
-      rev = e.document("12345")._rev;
-      
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
+      tick = state.lastLogTick;
+      e.save(cn + "/test3", cn + "/test4", { "test": [ 99, false ], "_key": "12345" });
+      entry = getLogEntries(tick, 2301)[0];
       
-      entry = getLastLogEntry();
       assertEqual(2301, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
-      assertEqual(cn2, entry.cname);
       assertEqual("12345", entry.key);
       assertEqual("12345", entry.data._key);
-      assertEqual(cn + "/test3", entry.data._from);
-      assertEqual(cn + "/test4", entry.data._to);
-      assertEqual(rev, entry.data._rev);
+      assertEqual(c._id + "/test3", entry.data._from);
+      assertEqual(c._id + "/test4", entry.data._to);
       assertEqual([ 99, false ], entry.data.test);
       
+      state = replication.logger.state().state;
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       try {
         e.save();
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2301);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1806,49 +1134,31 @@ function ReplicationLoggerSuite () {
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
-      var rev = e.document("abc")._rev; 
       e.remove("abc");
-       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       
-      var entry = getLastLogEntry();
+      var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
-      entry = JSON.parse(entry.data);
       assertEqual(e._id, entry.cid);
-      assertEqual(cn2, entry.cname);
       assertEqual("abc", entry.key);
-      assertEqual(rev, entry.oldRev);
-      
-      tick = state.lastLogTick;
-      count = getLogEntries();
       
       e.remove("12345");
       
+      waitForSync();
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       try {
         e.remove("12345");
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      entry = getLogEntries(tick, 2302);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1858,75 +1168,54 @@ function ReplicationLoggerSuite () {
     testLoggerUpdateEdge : function () {
       var state, tick;
       
-      db._create(cn);
+      var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
-      e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
+      e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
       e.update("abc", { "test" : 2 });
-      var rev = e.document("abc")._rev;
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
-      assertEqual(2301, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(e._id, entry.cid);
-      assertEqual(cn2, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
-      e.update("abc", { "test" : 3 });
+      var entry = getLogEntries(tick, 2301);
+      assertEqual(2301, entry[0].type);
+      assertEqual(e._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
+      assertEqual("abc", entry[0].data._key);
+      assertEqual(2, entry[0].data.test);
+      assertEqual(c._id + "/test1", entry[0].data._from);
+      assertEqual(c._id + "/test2", entry[0].data._to);
       
+      assertEqual(2301, entry[1].type);
+      assertEqual(e._id, entry[1].cid);
+      assertEqual("12345", entry[1].key);
+      assertEqual("12345", entry[1].data._key);
+      assertEqual(1, entry[1].data.test);
+      assertEqual(c._id + "/test3", entry[1].data._from);
+      assertEqual(c._id + "/test4", entry[1].data._to);
+
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       e.update("abc", { "test" : 3 });
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
       e.update("12345", { "test" : 2 });
       e.update("abc", { "test" : 4 });
+      entry = getLogEntries(tick, 2301);
+
+      assertEqual(3, entry.length);
       
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 2, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       try {
         e.update("thefoxx", { });
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+
+      entry = getLogEntries(tick, 2301);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1936,75 +1225,55 @@ function ReplicationLoggerSuite () {
     testLoggerReplaceEdge : function () {
       var state, tick;
       
-      db._create(cn);
+      var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
-      e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
+      e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
       
       e.replace("abc", { "test" : 2 });
-      var rev = e.document("abc")._rev;
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-
-      var entry = getLastLogEntry();
-      assertEqual(2301, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(e._id, entry.cid);
-      assertEqual(cn2, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
-      e.replace("abc", { "test" : 3 });
+      var entry = getLogEntries(tick, 2301);
+      assertEqual(2301, entry[0].type);
+      assertEqual(e._id, entry[0].cid);
+      assertEqual("abc", entry[0].key);
+      assertEqual("abc", entry[0].data._key);
+      assertEqual(2, entry[0].data.test);
+      assertEqual(c._id + "/test1", entry[0].data._from);
+      assertEqual(c._id + "/test2", entry[0].data._to);
+      
+      assertEqual(2301, entry[1].type);
+      assertEqual(e._id, entry[1].cid);
+      assertEqual("12345", entry[1].key);
+      assertEqual("12345", entry[1].data._key);
+      assertEqual(1, entry[1].data.test);
+      assertEqual(c._id + "/test3", entry[1].data._from);
+      assertEqual(c._id + "/test4", entry[1].data._to);
       
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
 
       e.replace("abc", { "test" : 3 });
-
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 1, getLogEntries());
-      tick = state.lastLogTick;
-      count = getLogEntries();
-
+      e.replace("abc", { "test" : 3 });
       e.replace("12345", { "test" : 2 });
       e.replace("abc", { "test" : 4 });
       
+      entry = getLogEntries(tick, 2301);
+      assertEqual(4, entry.length);
+      
       state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 2, getLogEntries());
       tick = state.lastLogTick;
-      count = getLogEntries();
-
+      
       try {
         e.replace("thefoxx", { });
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+
+      entry = getLogEntries(tick, 2301);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2016,11 +1285,8 @@ function ReplicationLoggerSuite () {
       
       c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var actual = db._executeTransaction({
         collections: {
@@ -2030,10 +1296,9 @@ function ReplicationLoggerSuite () {
         }
       });
       assertTrue(actual);
-      
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+
+      var entry = getLogEntries(tick, 2200);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2046,11 +1311,8 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
       c.save({ "test" : 1 });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var actual = db._executeTransaction({
         collections: {
@@ -2062,9 +1324,8 @@ function ReplicationLoggerSuite () {
       });
       assertTrue(actual);
       
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      var entry = getLogEntries(tick, 2200);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2077,11 +1338,8 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
       c.save({ "test" : 1, "_key": "abc" });
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var actual = db._executeTransaction({
         collections: {
@@ -2100,9 +1358,8 @@ function ReplicationLoggerSuite () {
       });
       assertTrue(actual);
       
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2114,11 +1371,8 @@ function ReplicationLoggerSuite () {
       
       db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       try {
         actual = db._executeTransaction({
@@ -2141,9 +1395,8 @@ function ReplicationLoggerSuite () {
       catch (err) {
       }
       
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2153,13 +1406,10 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionWrite1 : function () {
       var state, tick;
       
-      db._create(cn);
+      var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var actual = db._executeTransaction({
         collections: {
@@ -2171,9 +1421,11 @@ function ReplicationLoggerSuite () {
       });
       assertTrue(actual);
       
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
+      assertEqual(2, entry.length);
+      assertEqual(2200, entry[0].type);
+      assertEqual(2201, entry[1].type);
+      assertEqual(entry[0].tid, entry[1].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2185,11 +1437,8 @@ function ReplicationLoggerSuite () {
       
       var c = db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       var actual = db._executeTransaction({
         collections: {
@@ -2207,42 +1456,19 @@ function ReplicationLoggerSuite () {
       });
       assertTrue(actual);
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 3, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(3, entry.length);
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2201, entry[2].type);
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
       
-      var rev = c.document("abc")._rev;
-      var entries = getLastLogEntry(3), entry;
-      entry = entries.pop();
-      assertEqual(2200, entry.type);
-      assertTrue(entry.tid != "");
-      var tid = entry.tid;
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-      
-      entry = entries.pop();
-      assertEqual(2201, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
+      assertEqual(c._id, entry[1].cid);
+      assertEqual("abc", entry[1].key);
+      assertEqual("abc", entry[1].data._key);
+      assertEqual(c._id, entry[1].cid);
+      assertEqual(2, entry[1].data.test);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2254,11 +1480,8 @@ function ReplicationLoggerSuite () {
       
       db._create(cn);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       try {
         db._executeTransaction({
@@ -2278,10 +1501,17 @@ function ReplicationLoggerSuite () {
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(3, entry.length);
+      
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2202, entry[2].type);
+      
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2294,11 +1524,8 @@ function ReplicationLoggerSuite () {
       db._create(cn);
       db._create(cn2);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       try {
         db._executeTransaction({
@@ -2317,10 +1544,15 @@ function ReplicationLoggerSuite () {
         fail();
       }
       catch (err) {
-        state = replication.logger.state().state;
-        assertEqual(tick, state.lastLogTick);
-        assertEqual(count, getLogEntries());
       }
+      
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(2, entry.length);
+      
+      assertEqual(2200, entry[0].type);
+      assertEqual(2202, entry[1].type);
+      
+      assertEqual(entry[0].tid, entry[1].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2333,11 +1565,8 @@ function ReplicationLoggerSuite () {
       var c1 = db._create(cn);
       db._create(cn2);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       db._executeTransaction({
         collections: {
@@ -2354,54 +1583,17 @@ function ReplicationLoggerSuite () {
         }
       });
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 4, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(4, entry.length);
       
-      var entries = getLastLogEntry(4), entry;
-      entry = entries.pop();
-      assertEqual(2200, entry.type);
-      assertTrue(entry.tid != "");
-      var tid = entry.tid;
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c1._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(2, entry.collections[0].operations);
-
-      var rev = c1.document("12345")._rev;
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c1._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual("12345", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(1, entry.data.test);
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2300, entry[2].type);
+      assertEqual(2201, entry[3].type);
       
-      rev = c1.document("abc")._rev;
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c1._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-      
-      entry = entries.pop();
-      assertEqual(2201, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c1._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(2, entry.collections[0].operations);
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
+      assertEqual(entry[2].tid, entry[3].tid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2414,11 +1606,8 @@ function ReplicationLoggerSuite () {
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
-      replication.logger.start();
-      
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       db._executeTransaction({
         collections: {
@@ -2437,75 +1626,31 @@ function ReplicationLoggerSuite () {
         }
       });
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 4, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
+      assertEqual(4, entry.length);
       
-      var entries = getLastLogEntry(4), entry;
-      entry = entries.pop();
-      assertEqual(2200, entry.type);
-      assertTrue(entry.tid != "");
-      var tid = entry.tid;
-      entry = JSON.parse(entry.data);
-      assertEqual(2, entry.collections.length);
-      assertEqual(c1._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-      assertEqual(c2._id, entry.collections[1].cid);
-      assertEqual(cn2, entry.collections[1].name);
-      assertEqual(1, entry.collections[1].operations);
-
-      var rev = c1.document("12345")._rev;
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c1._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual("12345", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(1, entry.data.test);
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2300, entry[2].type);
+      assertEqual(2201, entry[3].type);
       
-      rev = c2.document("abc")._rev;
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c2._id, entry.cid);
-      assertEqual(cn2, entry.cname);
-      assertEqual("abc", entry.key);
-      assertEqual("abc", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
-      
-      entry = entries.pop();
-      assertEqual(2201, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(2, entry.collections.length);
-      assertEqual(c1._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-      assertEqual(c2._id, entry.collections[1].cid);
-      assertEqual(cn2, entry.collections[1].name);
-      assertEqual(1, entry.collections[1].operations);
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
+      assertEqual(entry[2].tid, entry[3].tid);
+      assertEqual(c1._id, entry[1].cid);
+      assertEqual(c2._id, entry[2].cid);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection exclusion
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerTransactionExcluded1 : function () {
+    testLoggerTransactionExcluded : function () {
       var state, tick;
       var c = db._create(cn);
 
-      replication.logger.start();
-       
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      var count = getLogEntries();
 
       db._executeTransaction({
         collections: {
@@ -2524,142 +1669,16 @@ function ReplicationLoggerSuite () {
         }
       });
       
-      state = replication.logger.state().state;
-      assertNotEqual(tick, state.lastLogTick);
-      assertEqual(1, compareTicks(state.lastLogTick, tick));
-      assertEqual(count + 3, getLogEntries());
+      var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
+      assertEqual(3, entry.length);
       
-      var entries = getLastLogEntry(3), entry;
-      entry = entries.pop();
-      assertEqual(2200, entry.type);
-      assertTrue(entry.tid != "");
-      var tid = entry.tid;
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-
-      var rev = c.document("12345")._rev;
-      entry = entries.pop();
-      assertEqual(2300, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual("12345", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(2, entry.data.test);
+      assertEqual(2200, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual(2201, entry[2].type);
       
-      entry = entries.pop();
-      assertEqual(2201, entry.type);
-      assertEqual(tid, entry.tid);
-      entry = JSON.parse(entry.data);
-      assertEqual(1, entry.collections.length);
-      assertEqual(c._id, entry.collections[0].cid);
-      assertEqual(cn, entry.collections[0].name);
-      assertEqual(1, entry.collections[0].operations);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection exclusion
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerTransactionExcluded2 : function () {
-      var state, tick;
-      
-      var c = db._create(cn);
-      replication.logger.start();
-      
-      c.save({ "test" : 1, "_key": "12345" });
-      
-      state = replication.logger.state().state;
-      tick = state.lastLogTick;
-      var count = getLogEntries();
-
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.cn);
-
-          c.save({ "test" : 1, "_key" : "abc" });
-        },
-        params: {
-          cn: cn
-        },
-        replicate: false
-      });
-      
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
-      
-      var entry = getLastLogEntry();
-      var rev = c.document("12345")._rev;
-      assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual("12345", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(1, entry.data.test);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection exclusion
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerTransactionExcluded3 : function () {
-      var state, tick;
-      
-      var c = db._create(cn);
-
-      replication.logger.start();
-      c.save({ "test" : 1, "_key": "12345" });
-      
-      state = replication.logger.state().state;
-      tick = state.lastLogTick;
-      var count = getLogEntries();
-
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.cn), i;
-
-          for (i = 0; i < 100; ++i) {
-            c.save({ "test" : 1, "_key" : "abc" + i });
-          }
-
-          for (i = 0; i < 100; ++i) {
-            c.remove("abc" + i);
-          }
-        },
-        params: {
-          cn: cn
-        },
-        replicate: false
-      });
-      
-      state = replication.logger.state().state;
-      assertEqual(tick, state.lastLogTick);
-      assertEqual(count, getLogEntries());
-      
-      var entry = getLastLogEntry();
-      var rev = c.document("12345")._rev;
-      assertEqual(2300, entry.type);
-      entry = JSON.parse(entry.data);
-      assertEqual(c._id, entry.cid);
-      assertEqual(cn, entry.cname);
-      assertEqual("12345", entry.key);
-      assertEqual("12345", entry.data._key);
-      assertEqual(rev, entry.data._rev);
-      assertEqual(1, entry.data.test);
+      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(entry[1].tid, entry[2].tid);
+      assertEqual(c._id, entry[1].cid);
     }
 
   };

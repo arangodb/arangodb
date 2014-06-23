@@ -72,8 +72,13 @@ struct TRI_replication_dump_t {
       _failed(false),
       _bufferFull(false),
       _hasMore(false) {
-  
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, chunkSize);
+ 
+    if (_chunkSize == 0) {
+      // default chunk size
+      _chunkSize = 128 * 1024;
+    }
+
+    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -116,10 +121,10 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
 /// @brief dump data from the replication log
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpLogReplication (struct TRI_vocbase_s*,
-                            TRI_replication_dump_t*,
+int TRI_DumpLogReplication (TRI_replication_dump_t*,
                             TRI_voc_tick_t,
-                            TRI_voc_tick_t);
+                            TRI_voc_tick_t,
+                            bool);
 
 #endif
 

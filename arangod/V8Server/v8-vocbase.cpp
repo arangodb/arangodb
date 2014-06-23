@@ -65,6 +65,7 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/replication-applier.h"
+#include "VocBase/replication-dump.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 #include "VocBase/index.h"
@@ -4553,7 +4554,7 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -4615,13 +4616,54 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
   // the replication logger is actually non-existing in ArangoDB 2.2 and higher
   // as there is the WAL. To be downwards-compatible, we'll return dummy values
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(TRI_V8_STRING("autostart"), v8::True());
+  result->Set(TRI_V8_STRING("autoStart"), v8::True());
   result->Set(TRI_V8_STRING("logRemoteChanges"), v8::True());
   result->Set(TRI_V8_STRING("maxEvents"), v8::Number::New(0));
   result->Set(TRI_V8_STRING("maxEventsSize"), v8::Number::New(0));
 
   return scope.Close(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the last WAL entries
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+static v8::Handle<v8::Value> JS_LastLoggerReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (argv.Length() != 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+  }
+
+  TRI_replication_dump_t dump(vocbase, 0); 
+  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(argv[0], true);
+  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(argv[1], true);
+
+  int res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, dump._buffer->_buffer);
+
+  if (json == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+  return scope.Close(result);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync data from a remote master
@@ -10030,6 +10072,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_LAST", JS_LastLoggerReplication, true);
+#endif  
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);
