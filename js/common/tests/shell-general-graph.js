@@ -164,6 +164,20 @@ function GeneralGraphCreationSuite() {
       }
     },
 
+    test_collectionSorting: function() {
+      var g = graph._create(
+        gn,
+        graph._edgeDefinitions(
+          graph._directedRelation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      assertEqual([vn1, vn2], g.__edgeDefinitions[0].from);
+      assertEqual([vn3, vn4], g.__edgeDefinitions[0].to);
+
+
+    },
+
     test_directedRelation : function () {
       var r = graph._directedRelation(rn,
           [vn1, vn2], [vn3, vn4]);
@@ -563,11 +577,34 @@ function GeneralGraphCreationSuite() {
       assertEqual([dr1], g1.__edgeDefinitions);
       g1._addVertexCollection(vc3);
       assertEqual([vc3], g1._orphanCollections());
+      g1._extendEdgeDefinitions(dr3);
+      assertEqual([dr1, dr3], g1.__edgeDefinitions);
+      assertEqual([], g1._orphanCollections());
+      g1._extendEdgeDefinitions(dr2);
+      assertEqual([dr1, dr3, dr2], g1.__edgeDefinitions);
+
+    },
+
+    test_extendEdgeDefinitionFromExistingGraph4: function() {
+      try {
+        graph._drop(gN1, true);
+      } catch(ignore) {
+      }
+      try {
+        graph._drop(gN2, true);
+      } catch(ignore) {
+      }
+
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc4, vc3, vc1, vc2], [vc4, vc3, vc1, vc2]),
+        g1 = graph._create(gN1, [dr1]);
+
       g1._extendEdgeDefinitions(dr2);
       assertEqual([dr1, dr2], g1.__edgeDefinitions);
-      assertEqual([], g1._orphanCollections());
-      g1._extendEdgeDefinitions(dr3);
-      assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
+      var edgeDefinition = _.findWhere(g1.__edgeDefinitions, {collection: ec2});
+      assertEqual(edgeDefinition.from, [vc1, vc2, vc3, vc4]);
+      assertEqual(edgeDefinition.to, [vc1, vc2, vc3, vc4]);
+
 
     },
 
@@ -1188,7 +1225,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(stmt, plainVertexQueryStmt(0));
       assertEqual(query.bindVars.vertexExample_0, [
         {name: uaName},
-        {name: p1Name},
+        {name: p1Name}
       ]);
       assertEqual(query.bindVars.options_0, {});
     },
@@ -1219,7 +1256,7 @@ function ChainedFluentAQLResultsSuite() {
       assertEqual(query.bindVars.vertexExample_0, [
         {name: uaName},
         {_id: b_id},
-        {name: ucName},
+        {name: ucName}
       ]);
       assertEqual(query.bindVars.options_0, {});
     },

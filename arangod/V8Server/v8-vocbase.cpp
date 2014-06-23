@@ -5776,7 +5776,7 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 ///
 /// Drops a *collection* and all its indexes.
 ///
-/// @EEXAMPLES
+/// @EXAMPLES
 ///
 /// @verbinclude shell_collection-drop
 ////////////////////////////////////////////////////////////////////////////////
@@ -6021,7 +6021,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
-/// @startDocuBlock clollection_figures
+/// @startDocuBlock collection_figures
 /// `collection.figures()`
 ///
 /// Returns an object containing all collection figures.
