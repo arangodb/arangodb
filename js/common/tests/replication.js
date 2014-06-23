@@ -169,7 +169,7 @@ function ReplicationLoggerSuite () {
     
       // stop
       actual = replication.logger.stop();
-      assertFalse(actual);
+      assertTrue(actual);
       
       state = replication.logger.state().state;
       assertTrue(state.running);

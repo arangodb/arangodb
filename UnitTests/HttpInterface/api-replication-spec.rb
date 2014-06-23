@@ -57,7 +57,7 @@ describe ArangoDB do
         all.should have_key('clients')
 
         state = all['state']
-        state['running'].should eq(false)
+        state['running'].should eq(true)
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
@@ -120,7 +120,7 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
 
         doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(false)
+        doc.parsed_response['running'].should eq(true)
         
         # fetch state
         cmd = api + "/logger-state"
@@ -133,7 +133,7 @@ describe ArangoDB do
         all.should have_key('clients')
 
         state = all['state']
-        state['running'].should eq(false)
+        state['running'].should eq(true)
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
@@ -146,7 +146,7 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
 
         doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(false)
+        doc.parsed_response['running'].should eq(true)
 
         # start after stop
         cmd = api + "/logger-start"
@@ -161,9 +161,7 @@ describe ArangoDB do
 ################################################################################
       
       it "fetches the empty follow log" do
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-follow-empty", cmd, :body => "")
-        doc.code.should eq(200)
+        sleep 1
 
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "")
@@ -186,10 +184,8 @@ describe ArangoDB do
       
       it "fetches a create collection action from the follow log" do
         ArangoDB.drop_collection("UnitTestsReplication")
-
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-follow-create-collection", cmd, :body => "")
-        doc.code.should eq(200)
+        
+        sleep 1
 
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "")
@@ -199,11 +195,11 @@ describe ArangoDB do
 
         cid = ArangoDB.create_collection("UnitTestsReplication")
 
+        sleep 1
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
 
-        doc.headers["x-arango-replication-checkmore"].should eq("false")
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
@@ -236,10 +232,8 @@ describe ArangoDB do
 
       it "fetches some collection operations the follow log" do
         ArangoDB.drop_collection("UnitTestsReplication")
-
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-follow-collection", cmd, :body => "")
-        doc.code.should eq(200)
+        
+        sleep 1
 
         cmd = api + "/logger-state"
         doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
@@ -265,12 +259,13 @@ describe ArangoDB do
         cmd = "/_api/collection/UnitTestsReplication"
         doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd) 
         doc.code.should eq(200)
+        
+        sleep 1
 
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
 
-        doc.headers["x-arango-replication-checkmore"].should eq("false")
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
@@ -344,7 +339,6 @@ describe ArangoDB do
             document["type"].should eq(2302) 
             document["cid"].should eq(cid) 
             document["key"].should eq("test") 
-            document["oldRev"].should eq(rev)
             document["rev"].should match(/^\d+$/)
             document["rev"].should_not eq(rev)
           elsif i == 3
@@ -407,7 +401,7 @@ describe ArangoDB do
         }
         filtered.should eq([ ])
         state = all['state']
-        state['running'].should eq(false)
+        state['running'].should eq(true)
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
       end
@@ -425,7 +419,7 @@ describe ArangoDB do
         all.should have_key('state')
         
         state = all['state']
-        state['running'].should eq(false)
+        state['running'].should eq(true)
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
@@ -524,7 +518,7 @@ describe ArangoDB do
         all.should have_key('state')
         
         state = all['state']
-        state['running'].should eq(false)
+        state['running'].should eq(true)
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
@@ -632,6 +626,9 @@ describe ArangoDB do
       it "checks the dump for an empty collection" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
+
         cmd = api + "/dump?collection=UnitTestsReplication"
         doc = ArangoDB.log_get("#{prefix}-dump-empty", cmd, :body => "")
 
@@ -695,6 +692,9 @@ describe ArangoDB do
           doc.code.should eq(202)
         }
 
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
+
         cmd = api + "/dump?collection=UnitTestsReplication&chunkSize=1024"
         doc = ArangoDB.log_get("#{prefix}-dump-non-empty", cmd, :body => "", :format => :plain)
 
@@ -739,6 +739,9 @@ describe ArangoDB do
           doc = ArangoDB.post("/_api/edge?collection=UnitTestsReplication2&from=UnitTestsReplication/foo&to=UnitTestsReplication/bar", :body => body)
           doc.code.should eq(202)
         }
+
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
 
         cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=65536"
         doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
@@ -789,6 +792,9 @@ describe ArangoDB do
           doc.code.should eq(202)
         }
 
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
+
         cmd = api + "/dump?collection=UnitTestsReplication2&chunkSize=1024"
         doc = ArangoDB.log_get("#{prefix}-dump-edge", cmd, :body => "", :format => :plain)
 
@@ -831,6 +837,9 @@ describe ArangoDB do
       it "checks the dump for a collection with deleted documents" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
 
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
+
         (0...10).each{|i|
           body = "{ \"_key\" : \"test" + i.to_s + "\", \"test\" : " + i.to_s + " }"
           doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
@@ -839,6 +848,9 @@ describe ArangoDB do
           doc = ArangoDB.delete("/_api/document/UnitTestsReplication/test" + i.to_s, :body => body)
           doc.code.should eq(202)
         }
+
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
 
         cmd = api + "/dump?collection=UnitTestsReplication"
         doc = ArangoDB.log_get("#{prefix}-deleted", cmd, :body => "", :format => :plain)
@@ -860,24 +872,14 @@ describe ArangoDB do
 
           document = JSON.parse(part)
 
-          if i % 2 == 1 
-            document['type'].should eq(2302)
-            document['key'].should eq("test" + (i / 2).floor.to_s)
-            document['rev'].should match(/^\d+$/)
-          else
-            document['type'].should eq(2300)
-            document['key'].should eq("test" + (i / 2).floor.to_s)
-            document['rev'].should match(/^\d+$/)
-            document['data']['_key'].should eq("test" + (i / 2).floor.to_s)
-            document['data']['_rev'].should match(/^\d+$/)
-            document['data']['test'].should eq((i / 2).floor)
-          end
+          document['type'].should eq(2302)
+          document['key'].should eq("test" + i.floor.to_s)
 
           body = body.slice(position + 1, body.length)
           i = i + 1
         end
 
-        i.should eq(20)
+        i.should eq(10)
       end
       
       it "checks the dump for a truncated collection" do
@@ -892,6 +894,9 @@ describe ArangoDB do
         # truncate
         cmd = "/_api/collection/UnitTestsReplication/truncate"
         doc = ArangoDB.log_put("#{prefix}-truncated", cmd, :body => "", :format => :plain)
+        doc.code.should eq(200)
+
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
         doc.code.should eq(200)
 
         cmd = api + "/dump?collection=UnitTestsReplication"
@@ -914,25 +919,16 @@ describe ArangoDB do
 
           document = JSON.parse(part)
 
-          if i >= 10
-            document['type'].should eq(2302)
-            # truncate order is undefined
-            document['key'].should match(/^test\d+$/)
-            document['rev'].should match(/^\d+$/)
-          else
-            document['type'].should eq(2300)
-            document['key'].should eq("test" + i.to_s)
-            document['rev'].should match(/^\d+$/)
-            document['data']['_key'].should eq("test" + i.to_s)
-            document['data']['_rev'].should match(/^\d+$/)
-            document['data']['test'].should eq(i)
-          end
+          document['type'].should eq(2302)
+          # truncate order is undefined
+          document['key'].should match(/^test\d+$/)
+          document['rev'].should match(/^\d+$/)
 
           body = body.slice(position + 1, body.length)
           i = i + 1
         end
 
-        i.should eq(20)
+        i.should eq(10)
       end
       
       it "fetches incremental parts of a collection dump" do
@@ -943,6 +939,9 @@ describe ArangoDB do
           doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication", :body => body)
           doc.code.should eq(202)
         }
+
+        doc = ArangoDB.log_put("#{prefix}-deleted", "/_admin/wal/flush?waitForSync=true&waitForCollector=true", :body => "")
+        doc.code.should eq(200)
 
         fromTick = "0"
 
