@@ -97,6 +97,10 @@
   * [Foxx Exports](Foxx/FoxxExports.md)
   * [Foxx Job Queues](Foxx/FoxxQueues.md)
   * [Optional Functionality](Foxx/FoxxOptional.md)
+  * [Bundled Applications](FoxxBundledApps/README.md)
+    * [Session Storage](FoxxBundledApps/Sessions.md)
+    * [User Storage](FoxxBundledApps/Users.md)
+    * [Simple Authentication](FoxxBundledApps/SimpleAuth.md)
 <!-- 16 -->
 * [Foxx Manager](FoxxManager/README.md)
   * [First Steps](FoxxManager/FirstSteps.md)
@@ -115,6 +119,7 @@
   * [Example Setup](Replication/ExampleSetup.md)
   * [Replication Limitations](Replication/Limitations.md)
   * [Replication Overhead](Replication/Overhead.md)
+  * [Replication Events](Replication/Events.md)
 <!-- 19 -->
 * [Sharding](Sharding/README.md)
   * [How to try it out](Sharding/HowTo.md)
