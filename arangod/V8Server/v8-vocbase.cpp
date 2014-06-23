@@ -4995,11 +4995,11 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -5039,11 +5039,11 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -5069,11 +5069,11 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
