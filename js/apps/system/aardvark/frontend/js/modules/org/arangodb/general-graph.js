@@ -1556,7 +1556,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// * *graphName*: Unique identifier of the graph
 /// * *edgeDefinitions* (optional): List of relation definition objects
-/// * *orphanCollections* (optional): List of additonal vertex collection names
+/// * *orphanCollections* (optional): List of additional vertex collection names
 ///
 /// *Examples*
 ///
@@ -3079,7 +3079,7 @@ Graph.prototype._eccentricity = function(options) {
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// example as parameter for *vertexExample*.
 ///
 /// *Parameter*
 ///
@@ -3123,7 +3123,7 @@ Graph.prototype._eccentricity = function(options) {
 /// g._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all germanCities regarding only
+/// A route planner example, the absolute closeness of all german Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
