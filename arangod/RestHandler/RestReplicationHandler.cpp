@@ -57,7 +57,7 @@ using namespace triagens::arango;
 // --SECTION--                                       initialise static variables
 // -----------------------------------------------------------------------------
 
-const uint64_t RestReplicationHandler::defaultChunkSize = 16 * 1024;
+const uint64_t RestReplicationHandler::defaultChunkSize = 128 * 1024;
 
 const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
@@ -1305,90 +1305,94 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFollow () {
-  // determine start tick
+  // determine start and end tick
+  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
+  TRI_voc_tick_t tickEnd   = state.lastDataTick;
+
   bool found;
   char const* value;
 
   value = _request->value("from", found);
   if (found) {
-    tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
   // determine end tick for dump
   value = _request->value("to", found);
   if (found) {
-    tickEnd = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  if (tickStart > tickEnd || tickEnd == 0) {
+  if (found && (tickStart > tickEnd || tickEnd == 0)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
 
-  const uint64_t chunkSize = determineChunkSize();
+  int res = TRI_ERROR_NO_ERROR;
 
-  // initialise the dump container
-  TRI_replication_dump_t dump;
-  if (TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize) != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
+  try {
+    // initialise the dump container
+    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize());
+
+    // and dump
+    res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      bool const checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastDataTick);
+
+      // generate the result
+      size_t const length = TRI_LengthStringBuffer(dump._buffer);
+
+      if (length == 0) {
+        _response = createResponse(HttpResponse::NO_CONTENT);
+      }
+      else {
+        _response = createResponse(HttpResponse::OK);
+      }
+
+      _response->setContentType("application/x-arango-dump; charset=utf-8");
+
+      // set headers
+      _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE,
+                           strlen(TRI_REPLICATION_HEADER_CHECKMORE),
+                           checkMore ? "true" : "false");
+
+      _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                           strlen(TRI_REPLICATION_HEADER_LASTINCLUDED),
+                           StringUtils::itoa(dump._lastFoundTick));
+
+      _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK,
+                           strlen(TRI_REPLICATION_HEADER_LASTTICK),
+                           StringUtils::itoa(state.lastTick));
+
+      _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
+                           strlen(TRI_REPLICATION_HEADER_ACTIVE), 
+                           "true");
+
+      if (length > 0) {
+        // transfer ownership of the buffer contents
+        _response->body().set(dump._buffer);
+
+        // to avoid double freeing
+        TRI_StealStringBuffer(dump._buffer);
+      }
+
+      insertClient(dump._lastFoundTick);
+    }
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
-  int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
-
-  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastTick);
-
-    // generate the result
-    const size_t length = TRI_LengthStringBuffer(dump._buffer);
-
-    if (length == 0) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
-    }
-    else {
-      _response = createResponse(HttpResponse::OK);
-    }
-
-    _response->setContentType("application/x-arango-dump; charset=utf-8");
-
-    // set headers
-    _response->setHeader(TRI_REPLICATION_HEADER_CHECKMORE,
-                         strlen(TRI_REPLICATION_HEADER_CHECKMORE),
-                         checkMore ? "true" : "false");
-
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                         strlen(TRI_REPLICATION_HEADER_LASTINCLUDED),
-                         StringUtils::itoa(dump._lastFoundTick));
-
-    _response->setHeader(TRI_REPLICATION_HEADER_LASTTICK,
-                         strlen(TRI_REPLICATION_HEADER_LASTTICK),
-                         StringUtils::itoa(state.lastTick));
-
-    _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
-                         strlen(TRI_REPLICATION_HEADER_ACTIVE), 
-                         "true");
-
-    if (length > 0) {
-      // transfer ownership of the buffer contents
-      _response->body().set(dump._buffer);
-
-      // avoid double freeing
-      TRI_StealStringBuffer(dump._buffer);
-    }
-
-    insertClient(dump._lastFoundTick);
-  }
-  else {
+  if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
-
-  TRI_DestroyDumpReplication(&dump);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3177,8 +3181,6 @@ void RestReplicationHandler::handleCommandDump () {
     translateCollectionIds = StringUtils::boolean(value);
   }
 
-  uint64_t const chunkSize = determineChunkSize();
-
   TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
 
   if (c == nullptr) {
@@ -3204,17 +3206,11 @@ void RestReplicationHandler::handleCommandDump () {
     TRI_ASSERT(col != nullptr);
   
     // initialise the dump container
-    TRI_replication_dump_t dump;
-    res = TRI_InitDumpReplication(&dump, _vocbase, (size_t) defaultChunkSize);
+    TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize());
+
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  
-    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, chunkSize, withTicks, translateCollectionIds);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_DestroyDumpReplication(&dump);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -3244,8 +3240,6 @@ void RestReplicationHandler::handleCommandDump () {
 
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
-   
-    TRI_DestroyDumpReplication(&dump);
   }
   catch (triagens::arango::Exception const& ex) {
     res = ex.code();

@@ -1,6 +1,6 @@
 !CHAPTER Graph Management
 
-In order to create a graph the philosophy of handling the graph content has to introduced.
+In order to create a graph the philosophy of handling the graph content has to be introduced.
 A graph contains a set of edge definitions each referring to one edge collection and
 defining constraints on the vertex collections used as start and end points of the edges.
 Furthermore a graph can contain an arbitrary amount of vertex collections, called  orphan collections, that are not used in any edge definition but should be managed by the graph.
@@ -28,9 +28,9 @@ The edge definitions for a graph is an Array containing arbitrary many directed 
 
 !SUBSECTION Orphan Collections
 
-Each graph has an orphan collection. It consists of arbitrary many vertex collection (type *document*), that are not
+Each graph can have an arbitrary amount of orphan collections. These are vertex collections (type *document*), that are not
 used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
-it will be removed from the orphan collection automatically.
+it will be removed from the set of orphan collection automatically.
 
 !SUBSUBSECTION Add
 
@@ -49,7 +49,6 @@ it will be removed from the orphan collection automatically.
 After having introduced edge definitions and orphan collections a graph can be created.
 
 @startDocuBlock JSF_general_graph_create
-
 
 !SUBSUBSECTION Complete Example to create a graph
 

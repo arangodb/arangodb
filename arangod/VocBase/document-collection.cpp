@@ -5316,7 +5316,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
                                                                   document->_info._cid,
                                                                   rid,
-                                                                  trxCollection->_transaction->_id,
+                                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                                   std::string(key));
 
   TRI_doc_mptr_t* header;
@@ -5461,7 +5461,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
                                                document->_info._cid,
                                                rid,
-                                               trxCollection->_transaction->_id,
+                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                keyString,
                                                legend,
                                                shaped);
@@ -5471,7 +5471,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
                                            document->_info._cid,
                                            rid,
-                                           trxCollection->_transaction->_id,
+                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
                                            keyString,
                                            edge,
                                            legend,
@@ -5605,7 +5605,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                                     document->_vocbase->_id,
                                                     document->_info._cid,
                                                     rid,
-                                                    trxCollection->_transaction->_id,
+                                                    TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                     legend,
                                                     shaped);
     }
@@ -5617,7 +5617,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                                 document->_vocbase->_id,
                                                 document->_info._cid,
                                                 rid,
-                                                trxCollection->_transaction->_id,
+                                                TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                 legend,
                                                 shaped);
     }

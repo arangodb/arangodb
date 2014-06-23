@@ -40,6 +40,7 @@ namespace triagens {
     struct SyncRegion {
       SyncRegion ()
         : logfileId(0),
+          logfile(nullptr),
           mem(nullptr),
           size(0),
           firstSlotIndex(0),
@@ -51,6 +52,7 @@ namespace triagens {
       }
 
       Logfile::IdType logfileId;
+      Logfile*        logfile;
       char*           mem;
       uint32_t        size;
       size_t          firstSlotIndex;

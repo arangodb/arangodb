@@ -191,11 +191,11 @@ var wrapCollection = function(col) {
 /// *Examples* are used to filter the result set for objects that match the conditions.
 /// These *examples* can have the following values:
 ///
-/// * Empty, there is no matching executed all found results are valid.
-/// * A string, only the result having this value as it's *_id* is returned.
-/// * An example object, defining a set of attributes.
+/// * *Null*, there is no matching executed all found results are valid.
+/// * A *string*, only the result having this value as it's *_id* is returned.
+/// * An example *object*, defining a set of attributes.
 ///     Only results having these attributes are matched.
-/// * A list containing example objects and/or strings.
+/// * A *list* containing example *objects* and/or *strings*.
 ///     All results matching at least one of the elements in the list are returned.
 ///
 /// @endDocuBlock
@@ -684,7 +684,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///
 /// *Examples*
 ///
-/// To request unfiltered starting vertices:
+/// To request unfiltered source vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -693,7 +693,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   query.fromVertices().toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by a single example:
+/// To request filtered source vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -702,7 +702,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   query.fromVertices({name: "Alice"}).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by multiple examples:
+/// To request filtered source vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -747,7 +747,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///
 /// *Examples*
 ///
-/// To request unfiltered starting vertices:
+/// To request unfiltered target vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -756,22 +756,22 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   query.toVertices().toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by a single example:
+/// To request filtered target vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
-///   query.toVertices({name: "Alice"}).toArray();
+///   query.toVertices({name: "Bob"}).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by multiple examples:
+/// To request filtered target vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
-///   query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -980,6 +980,8 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
 /// 
+/// *Parameter*
+///
 /// * *restrictions*: Define either one or a list of collections in the graph.
 ///     Only elements from these collections are taken into account for the result.
 ///
@@ -1229,7 +1231,9 @@ AQLGenerator.prototype.count = function() {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
-///   while (query.hasNext()) {query.next();}
+/// | while (query.hasNext()) {
+/// |   query.next();
+///   }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 /// 
@@ -1299,6 +1303,8 @@ AQLGenerator.prototype.next = function() {
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
 ///
+/// *Parameter*
+///
 /// * *relationName*: The name of the edge collection where the edges should be stored.
 ///     Will be created if it does not yet exist.
 /// * *vertexCollections*: One or a list of collection names for which connections are allowed.
@@ -1365,6 +1371,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// The *toVertexCollections* is an Array of document collections holding the target vertices.
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
+///
+/// *Parameter*
 ///
 /// * *relationName*: The name of the edge collection where the edges should be stored.
 ///     Will be created if it does not yet exist.
@@ -1540,15 +1548,15 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// The creation of a graph requires the name of the graph and a definition of its edges.
 ///
 /// For every type of edge definition a convenience method exists that can be used to create a graph.
-/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
-/// These collections are refered to as orphan collections within this chapter.
+/// Optionally a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are referred to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
 /// *Parameter*
 ///
 /// * *graphName*: Unique identifier of the graph
 /// * *edgeDefinitions* (optional): List of relation definition objects
-/// * *orphanCollections* (optional): List of additonal vertex collection names
+/// * *orphanCollections* (optional): List of additional vertex collection names
 ///
 /// *Examples*
 ///
@@ -1620,7 +1628,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-              err.errorMessage = col
+              err.errorMessage = col + " "
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
@@ -1657,7 +1665,6 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
@@ -1880,6 +1887,15 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
 /// `graph.vertexCollectionName.save(data)`
 /// *Create a new vertex in vertexCollectionName*
@@ -1993,7 +2009,7 @@ var updateBindCollections = function(graph) {
 ///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
 /// the edge will not be stored.
 ///
 ///
@@ -2078,6 +2094,13 @@ var updateBindCollections = function(graph) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+
   if (!orphanCollections) {
     orphanCollections = [];
   }
@@ -2199,11 +2222,11 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
-/// `general-graph._drop(graphName, dropCollections)`
+/// `graph_module._drop(graphName, dropCollections)`
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
-/// This will automatically drop al collections contained in the graph as
+/// This will automatically drop all collections contained in the graph as
 /// long as they are not used within other graphs.
 /// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
@@ -2214,13 +2237,29 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 ///
 /// *Examples*
 ///
-/// Drop a graph:
+/// Drop a graph and keep collections:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraph}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
 /// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._drop("social");
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
+/// ~ db._drop("female");
+/// ~ db._drop("male");
+/// ~ db._drop("relation");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social", true);
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2495,8 +2534,8 @@ Graph.prototype._vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getFromVertex
-/// `graph._getFromVertex(edgeId)`
+/// @startDocuBlock JSF_general_graph_fromVertex
+/// `graph._fromVertex(edgeId)`
 /// *Get the source vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
@@ -2510,14 +2549,14 @@ Graph.prototype._vertices = function(example) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getFromVertex("relation/aliceAndBob")
+///   g._fromVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getFromVertex = function(edgeId) {
+Graph.prototype._fromVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2528,8 +2567,8 @@ Graph.prototype._getFromVertex = function(edgeId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getToVertex
-/// `graph._getToVertex(edgeId)`
+/// @startDocuBlock JSF_general_graph_toVertex
+/// `graph._toVertex(edgeId)`
 /// *Get the target vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
@@ -2543,14 +2582,14 @@ Graph.prototype._getFromVertex = function(edgeId) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getToVertex("relation/aliceAndBob")
+///   g._toVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getToVertex = function(edgeId) {
+Graph.prototype._toVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2712,7 +2751,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
 /// *Get the amount of common neighbors of the vertices defined by the examples.*
 ///
-/// Similar to (_commonNeighbors)[#_commonNeighbors] but returns count instead of the elements.
+/// Similar to [_commonNeighbors](#_commonNeighbors) but returns count instead of the elements.
 ///
 /// *Examples*
 ///
@@ -3040,7 +3079,7 @@ Graph.prototype._eccentricity = function(options) {
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// example as parameter for *vertexExample*.
 ///
 /// *Parameter*
 ///
@@ -3084,7 +3123,7 @@ Graph.prototype._eccentricity = function(options) {
 /// g._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all germanCities regarding only
+/// A route planner example, the absolute closeness of all german Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
@@ -3443,8 +3482,6 @@ Graph.prototype._diameter = function(options) {
 };
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
 /// `graph._extendEdgeDefinitions(edgeDefinition)`
@@ -3476,6 +3513,7 @@ Graph.prototype._diameter = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
   var err;
   //check if edgeCollection not already used
@@ -3499,7 +3537,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
-                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+                + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
           }
@@ -3542,7 +3580,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3637,7 +3674,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
-
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
   //check, if in graphs edge definition

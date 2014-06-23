@@ -102,14 +102,16 @@ Model = function (attributes) {
 
   this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
   this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+  this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
 };
 
 Model.fromClient = function (attributes) {
   'use strict';
 
-  var instance = new this();
+  var instance = new this(attributes);
   instance.attributes = whitelistProperties(attributes, this.attributes, false);
   instance.attributes = fillInDefaults(instance.attributes, this.attributes);
+  instance.whitelistedAttributes = whitelistProperties(instance.attributes, this.attributes);
   return instance;
 };
 
@@ -269,8 +271,7 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    var result = whitelistProperties(this.attributes, this.constructor.attributes);
-    return result;
+    return this.whitelistedAttributes;
   }
 });
 

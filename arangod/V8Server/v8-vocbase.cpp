@@ -267,16 +267,11 @@ static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 
   if (TRI_IsSystemNameCollection(c->_name)) {
     // a few system collections have special behavior
-    if (TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION) ||
-        TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
+    if (TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
         TRI_IsPrefixString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       c->_canDrop   = false;
       c->_canRename = false;
-
-      // the replication collection cannot be unloaded manually)
-      // (this would make the server hang)
-      c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
     }
   }
 
@@ -5499,7 +5494,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
-/// @startDocuBlock col_ensureIndex
+/// @startDocuBlock collectionEnsureIndex
 /// `collection.ensureIndex(index-description)
 ///
 /// Ensures that an index according to the *index-description* exists. A
@@ -5558,7 +5553,7 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
-/// @startDocuBlock col_count
+/// @startDocuBlock colllectionCount
 /// `collection.count()`
 ///
 /// Returns the number of living documents in the collection.
@@ -5622,7 +5617,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafiles
-/// @startDocuBlock col_datafiles
+/// @startDocuBlock collectionDatafiles
 /// `collection.datafiles()`
 ///
 /// Returns information about the datafiles. The collection must be unloaded.
@@ -5688,7 +5683,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document
-/// @startDocuBlock documents_collectionName
+/// @startDocuBlock documentsCollectionName
 /// `collection.document(document)`
 ///
 /// The *document* method finds a document given its identifier or a document
@@ -5776,14 +5771,16 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection
-/// @startDocuBlock collection_drop
+/// @startDocuBlock collectionDrop
 /// `collection.drop()`
 ///
 /// Drops a *collection* and all its indexes.
 ///
-/// @EEXAMPLES
+/// @EXAMPLES
 ///
 /// @verbinclude shell_collection-drop
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
@@ -5944,7 +5941,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a document exists
-/// @startDocuBlock documents_collectionExists
+/// @startDocuBlock documentsCollectionExists
 /// `collection.exists(document)`
 ///
 /// The *exists* method determines whether a document exists given its
@@ -6026,7 +6023,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the figures of a collection
-/// @startDocuBlock clollection_figures
+/// @startDocuBlock collectionFigures
 /// `collection.figures()`
 ///
 /// Returns an object containing all collection figures.
@@ -6075,6 +6072,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// *Examples*
 ///
 /// @verbinclude shell_collection-figures
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6211,7 +6209,7 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
-/// @startDocuBlock col_getIndexes
+/// @startDocuBlock collectionGetIndexes
 /// @FUN{getIndexes()}
 ///
 /// Returns a list of all indexes defined for the collection.
@@ -6279,7 +6277,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
-/// @startDocuBlock collection_load
+/// @startDocuBlock collectionLoad
 /// `collection.load()`
 ///
 /// Loads a collection into memory.
@@ -6380,7 +6378,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets or sets the properties of a collection
-/// @startDocuBlock collection_properties
+/// @startDocuBlock collectionProperties
 /// `collection.properties()`
 ///
 /// Returns an object containing all collection properties.
@@ -6442,6 +6440,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// Change a property
 ///
 /// @verbinclude shell_collection-properties-change
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6670,7 +6669,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
-/// @startDocuBlock documents_documentRemove
+/// @startDocuBlock documentsDocumentRemove
 /// `collection.remove(document)`
 ///
 /// Removes a document. If there is revision mismatch, then an error is thrown.
@@ -6744,7 +6743,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
-/// @startDocuBlock collection_rename
+/// @startDocuBlock collectionRename
 /// `collection.rename(new-name)`
 ///
 /// Renames a collection using the *new-name*. The *new-name* must not
@@ -6759,6 +6758,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-rename
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6816,7 +6816,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
-/// @startDocuBlock documents_collectionReplace
+/// @startDocuBlock documentsCollectionReplace
 /// `collection.replace(document, data)`
 ///
 /// Replaces an existing *document*. The *document* must be a document in
@@ -6916,7 +6916,7 @@ static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
-/// @startDocuBlock collection_load
+/// @startDocuBlock collectionLoad
 /// `collection.revision()`
 ///
 /// Returns the revision id of the collection
@@ -6961,7 +6961,7 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotates the current journal of a collection
-/// @startDocuBlock collection_rotate
+/// @startDocuBlock collectionRotate
 /// `collection.rotate()`
 ///
 /// Rotates the current journal of a collection (i.e. makes the journal a
@@ -6969,7 +6969,8 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// datafile in a following compaction run and perform earlier garbage
 /// collection.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7007,7 +7008,7 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates a document
-/// @startDocuBlock documents_collectionUpdate
+/// @startDocuBlock documentsCollectionUpdate
 /// `collection.update(document, data, overwrite, keepNull, waitForSync)` or
 /// `collection.update(document, data,
 /// overwrite: true or false, keepNull: true or false, waitForSync: true or false)`
@@ -7243,7 +7244,7 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new document
-/// @startDocuBlock documents_collectionSave
+/// @startDocuBlock documentsCollectionSave
 /// `collection.save(data)`
 ///
 /// Creates a new document in the *collection* from the given *data*. The
@@ -7427,7 +7428,7 @@ static v8::Handle<v8::Value> JS_TruncateDatafileVocbaseCol (v8::Arguments const&
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type of a collection
-/// @startDocuBlock col_type
+/// @startDocuBlock collectionType
 /// `collection.type()`
 ///
 /// Returns the type of a collection. Possible values are:
@@ -7468,7 +7469,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a collection
-/// @startDocuBlock collection_unload
+/// @startDocuBlock collectionUnload
 /// `collection.unload()`
 ///
 /// Starts unloading a collection from memory. Note that unloading is deferred
@@ -7477,6 +7478,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-unload
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7565,7 +7567,7 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a collection from the vocbase
-/// @startDocuBlock collection_databaseCollectionName
+/// @startDocuBlock collectionDatabaseCollectionName
 /// `db.collection-name`
 ///
 /// Returns the collection with the given *collection-name*. If no such
@@ -7801,7 +7803,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a single collection or null
-/// @startDocuBlock collection_databaseName
+/// @startDocuBlock collectionDatabaseName
 /// `db._collection(collection-name)`
 ///
 /// Returns the collection with the given name or null if no such collection
@@ -7877,7 +7879,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
-/// @startDocuBlock collections_databaseName
+/// @startDocuBlock collectionsDatabaseName
 /// `db._collections()`
 ///
 /// Returns all collections of the given database.
@@ -8006,7 +8008,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document or edge collection
-/// @startDocuBlock collection_databaseCreate
+/// @startDocuBlock collectionDatabaseCreate
 /// `db._create(collection-name)`
 ///
 /// Creates a new document collection named *collection-name*.
@@ -8109,7 +8111,7 @@ static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
-/// @startDocuBlock col_createDocumentaion
+/// @startDocuBlock collectionCreateDocumentaion
 /// `db._createDocumentCollection(collection-name)`
 ///
 /// `db._createDocumentCollection(collection-name, properties)`
@@ -8126,7 +8128,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new edge collection
-/// @startDocuBlock col_createEdgeCollection
+/// @startDocuBlock collectionCreateEdgeCollection
 /// `db._createEdgeCollection(collection-name)`
 ///
 /// Creates a new edge collection named *collection-name*. If the
@@ -8156,7 +8158,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
-/// @startDocuBlock documents_collectionRemove
+/// @startDocuBlock documentsCollectionRemove
 /// `db._remove(document)`
 ///
 /// Removes a document. If there is revision mismatch, then an error is thrown.
@@ -8243,7 +8245,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a document and returns it
-/// @startDocuBlock documents_documentName
+/// @startDocuBlock documentsDocumentName
 /// `db._document(document)`
 ///
 /// This method finds a document given its identifier.  It returns the document
@@ -8278,7 +8280,7 @@ static v8::Handle<v8::Value> JS_DocumentVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a document exists
-/// @startDocuBlock documents_documentExists
+/// @startDocuBlock documentsDocumentExists
 /// `db._exists(document)`
 ///
 /// This method determines whether a document exists given its identifier.
@@ -8303,7 +8305,7 @@ static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
-/// @startDocuBlock documents_documentReplace
+/// @startDocuBlock documentsDocumentReplace
 /// `db._replace(document, data)`
 ///
 /// The method returns a document with the attributes *_id*, *_rev* and
@@ -8352,7 +8354,7 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document
-/// @startDocuBlock documents_documentUpdate
+/// @startDocuBlock documentsDocumentUpdate
 /// `db._update(document, data, overwrite, keepNull, waitForSync)`
 ///
 /// Updates an existing *document*. The *document* must be a document in
@@ -8409,7 +8411,7 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the server version string
-/// @startDocuBlock
+/// @startDocuBlock databaseVersion
 /// `db._version()`
 ///
 /// Returns the server version string.
@@ -8424,7 +8426,7 @@ static v8::Handle<v8::Value> JS_VersionServer (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the path to database files
-/// @startDocuBlock database_path
+/// @startDocuBlock databasePath
 /// `db._path()`
 ///
 /// Returns the filesystem path of the current database as a string.
@@ -8445,7 +8447,7 @@ static v8::Handle<v8::Value> JS_PathDatabase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database id
-/// @startDocuBlock database_id
+/// @startDocuBlock databaseId
 /// `db._id()`
 ///
 /// Returns the id of the current database as a string.
@@ -8466,7 +8468,7 @@ static v8::Handle<v8::Value> JS_IdDatabase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database name
-/// @startDocuBlock database_name
+/// @startDocuBlock databaseName
 /// `db._name()`
 ///
 /// Returns the name of the current database as a string.
@@ -8487,7 +8489,7 @@ static v8::Handle<v8::Value> JS_NameDatabase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database type
-/// @startDocuBlock database_isSystem
+/// @startDocuBlock databaseIsSystem
 /// `db._isSystem()`
 ///
 /// Returns whether the currently used database is the *_system* database.
@@ -8512,7 +8514,7 @@ static v8::Handle<v8::Value> JS_IsSystemDatabase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change the current database
-/// @startDocuBlock database_useDatabase
+/// @startDocuBlock databaseUseDatabase
 /// `db._useDatabase(name)`
 ///
 /// Changes the current database to the database specified by *name*. Note
@@ -8655,7 +8657,7 @@ static v8::Handle<v8::Value> ListDatabasesCoordinator (v8::Arguments const& argv
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all existing databases
-/// @startDocuBlock database_listDatabase
+/// @startDocuBlock databaseListDatabase
 /// `db._listDatabases()`
 ///
 /// Returns the list of all databases. This method can only be used from within
@@ -8819,7 +8821,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
-/// @startDocuBlock database_createDatabase
+/// @startDocuBlock databaseCreateDatabase
 /// `db._createDatabase(name, options, users)`
 ///
 /// Creates a new database with the name specified by *name*.
@@ -9015,13 +9017,13 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an existing database
-/// @startDocuBlock database_dropDatabase
+/// @startDocuBlock databaseDropDatabase
 /// `db._dropDatabase(name)`
 ///
 /// Drops the database specified by *name*. The database specified by
 /// *name* must exist.
 ///
-/// Note that dropping databases is only possible from within the *_system*
+/// **Note**: Dropping databases is only possible from within the *_system*
 /// database. The *_system* database itself cannot be dropped.
 ///
 /// Databases are dropped asynchronously, and will be physically removed if

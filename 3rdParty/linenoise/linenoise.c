@@ -949,7 +949,7 @@ static int utf8_getchars(char *buf, int c)
  */
 static int get_char(struct current *current, size_t pos)
 {
-    if (pos >= 0 && pos < current->chars) {
+    if (/*pos >= 0 &&*/pos < current->chars) {
         int c;
         int i = utf8_index(current->buf, pos);
         (void)utf8_tounicode(current->buf + i, &c);
@@ -960,7 +960,7 @@ static int get_char(struct current *current, size_t pos)
 static void displayItems(const struct linenoiseCompletions * lc, struct current *current, int max_len)
 { 
   size_t wcols = current->cols; 
-  size_t cols = max_len > wcols ? 1 : wcols/(max_len+2);
+  size_t cols = (size_t)max_len > wcols ? 1 : wcols/((size_t)max_len+2);
   size_t rows = (int)ceil((float)lc->len/cols);
   size_t i, j;
   size_t idx;
@@ -981,6 +981,53 @@ static void displayItems(const struct linenoiseCompletions * lc, struct current 
   newLine(current);
 }
 
+char * update_current_buffer(struct current * current, size_t tmp_buf_len, char const * completion_buf, size_t completion_buf_size) {
+  size_t bytes_length = 0;
+  bytes_length = current->len - tmp_buf_len;
+  if(tmp_buf_len + completion_buf_size >= (size_t)current->bufmax) {
+    // at moment buffer is not modified
+    return NULL;
+  }
+  memset(current->buf + tmp_buf_len, '\0', bytes_length);
+  memcpy(current->buf + tmp_buf_len, completion_buf, completion_buf_size);
+
+  current->len = strlen(current->buf);
+  current->buf[current->bufmax - 1] = 0;
+  current->len = strlen(current->buf);
+  current->pos = current->chars = utf8_strlen(current->buf, current->len);
+  return current->buf;
+}
+/**
+ * computes the last string after a semicolon or a white space (toke separators)
+ * when the string does not contain token separators the quite string buffer
+ * of the current struct is returned
+ * @param current is the current edited buffer
+ * @param token_buf will point to the begin of the token
+ * @param token_length is optional, when the pointer is not null will contain the 
+ * length of the token
+ */ 
+void last_token(struct current const * current, char ** token_buf, size_t * token_length) {
+  char * buf = current->buf + current->len-1;
+  size_t bytes_length = 0;
+  while((buf > current->buf) && ((*buf != ';') && (*buf != ' '))) {
+    buf--;
+    bytes_length++;
+  }
+  if(buf == current->buf) {
+    bytes_length++;
+  }
+   if(token_length) {
+     *token_length = bytes_length;
+   }
+   *token_buf = buf;
+}
+
+char * update_completion_buffer(struct current * current, char const * completion_buf, size_t completion_buf_size) {
+  char * buf = current->buf + current->len-1;
+  size_t bytes_length = 0;
+  last_token(current, &buf, &bytes_length);
+  return update_current_buffer(current, current->len - bytes_length, completion_buf, completion_buf_size);
+}
 static void refreshPage(const struct linenoiseCompletions * lc, struct current *current)
 {
     size_t j;
@@ -988,7 +1035,7 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
     size_t max_len = 0;
     char * min_chars = NULL;
     for(j=0; j<lc->len; j++) {
-      size_t j_len = utf8_strlen(lc->cvec[j],  (int)strlen(lc->cvec[j]));
+      size_t j_len = utf8_strlen(lc->cvec[j], (int)strlen(lc->cvec[j]));
       if(min_chars == NULL) {
         min_chars = lc->cvec[j];
         common_min_len = j_len;
@@ -1015,12 +1062,11 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
     newLine(current);
     if(min_chars!=NULL) {
       // char * new_buf = strndup(min_chars, common_min_len);
-      char * new_buf = malloc(common_min_len + 1);
-      memcpy(new_buf, min_chars, common_min_len);
-      new_buf[common_min_len] = '\0';
-      set_current(current, new_buf); 
-      // this is posible because set_current copies the given pointer
-      free(new_buf);
+      char * updated_buf = update_completion_buffer(current, min_chars, common_min_len);
+      if(!updated_buf) {
+        printf(" Out of memory ");
+        return;
+      }
     }
     initLinenoiseLine(current);
     refreshLine(current->prompt, current);
@@ -1101,7 +1147,7 @@ static size_t new_line_numbers(size_t pos, struct current * current)
 
 static int next_allowed_x(size_t pos, int cols, int pchars)
 {
-  if (pos < cols - pchars)
+  if ((int)pos < cols - pchars)
   {
     return pos + pchars;
   }
@@ -1252,7 +1298,7 @@ static void set_current(struct current *current, const char *str)
 
 static int has_room(struct current *current, int bytes)
 {
-    return current->len + bytes < current->bufmax - 1;
+    return current->len + (size_t)bytes < (size_t)current->bufmax - 1;
 }
 
 /**
@@ -1263,7 +1309,7 @@ static int has_room(struct current *current, int bytes)
  */
 static int remove_char(struct current *current, size_t pos)
 {
-    if (pos >= 0 && pos < current->chars) {
+    if (/*pos >= 0 &&*/ pos < (size_t)current->chars) {
         int p1, p2;
         int ret = 1;
         p1 = utf8_index(current->buf, pos);
@@ -1272,7 +1318,7 @@ static int remove_char(struct current *current, size_t pos)
 #ifdef USE_TERMIOS
         /* optimise remove char in the case of removing the last char */
         if (current->pos == pos + 1 && current->pos == current->chars) {
-            if (current->buf[pos] >= ' ' && utf8_strlen(current->prompt, strlen(current->prompt)) + utf8_strlen(current->buf, current->len) < current->cols - 1) {
+            if (current->buf[pos] >= ' ' && utf8_strlen(current->prompt, strlen(current->prompt)) + utf8_strlen(current->buf, current->len) < (size_t)current->cols - 1) {
                 ret = 2;
                 fd_printf(current->fd, "\b \b");
             }
@@ -1298,12 +1344,12 @@ static int remove_char(struct current *current, size_t pos)
  * Returns 1 if the line needs to be refreshed, 2 if not
  * and 0 if nothing was inserted (no room)
  */
-static int insert_char(struct current *current, size_t pos, int ch)
+static int insert_char(struct current *current, int pos, int ch)
 {
   char buf[3] = {'\0','\0','\0'};
     int n = utf8_getchars(buf, ch);
 
-    if (has_room(current, n) && pos >= 0 && pos <= current->chars) {
+    if ((size_t)has_room(current, n) && (pos >= 0) && (size_t)pos <= current->chars) {
         int p1, p2;
         int ret = 1;
         p1 = utf8_index(current->buf, pos);
@@ -1326,7 +1372,7 @@ static int insert_char(struct current *current, size_t pos, int ch)
         current->len += n;
 
         current->chars++;
-        if (current->pos >= pos) {
+        if ((int)current->pos >= pos) {
             current->pos++;
         }
         return ret;
@@ -1339,7 +1385,7 @@ static int insert_char(struct current *current, size_t pos, int ch)
  *
  * This replaces any existing characters in the cut buffer.
  */
-static void capture_chars(struct current *current, size_t pos, size_t n)
+static void capture_chars(struct current *current, int pos, size_t n)
 {
     if (pos >= 0 && (pos + n - 1) < current->chars) {
         int p1 = utf8_index(current->buf, pos);
@@ -1411,19 +1457,24 @@ static void freeCompletions(linenoiseCompletions *lc) {
     free(lc->cvec);
 }
 
+
 static int completeLine(struct current *current) {
     linenoiseCompletions lc = { 0, NULL, 0 };
     int c = 0;
-
-    completionCallback(current->buf,&lc);
+    char * buf = NULL;
+    last_token(current, &buf, NULL);
+    if(buf && (buf != current->buf)) {
+      buf++;
+    }
+    completionCallback(buf,&lc);
     if (lc.len == 0) {
         beep();
     } else {
         size_t stop = 0, i = 0;
-        if(lc.len>1 && lc.multiLine) {
+        if(lc.len>=1 && lc.multiLine) {
            refreshPage(&lc, current);
            freeCompletions(&lc);
-            return c;
+           return c;
         }
         stop = 0, i = 0;
 
@@ -1830,8 +1881,8 @@ history_navigation:
             refreshLine(current->prompt, current);
             break;
         default:
-            /* Only tab is allowed without ^V */
-            if (c == '\t' || c >= ' ') {
+            /* Only characters greater than white space are allowed */
+            if (c >= ' ') {
               eraseEol(current);
 //                if (insert_char(current, current->pos, c) == 1) {
                 insert_char(current, current->pos, c); 
@@ -1854,7 +1905,7 @@ int linenoiseColumns(void)
 }
 char *linenoise(const char *prompt)
 {
-    size_t count;
+    int count;
     struct current current;
     char buf[LINENOISE_MAX_LINE];
 

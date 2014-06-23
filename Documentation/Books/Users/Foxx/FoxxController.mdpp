@@ -1,6 +1,6 @@
 !CHAPTER Details on FoxxController
 
-`New FoxxController(applicationContext, options)`
+`new FoxxController(applicationContext, options)`
 
 This creates a new Controller. The first argument is the controller context available in the variable applicationContext. The second one is an options array with the following attributes:
 
