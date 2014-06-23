@@ -89,16 +89,18 @@ ArangoCollection.prototype.toArray = function () {
 /// Truncates a *collection*, removing all documents but keeping all its
 /// indexes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Truncates a collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionTruncate}
+/// ~ db._create("examples");
 ///   col = db.examples;
 ///   col.save({ "Hello" : "World" });
 ///   col.count();
 ///   col.truncate();
 ///   col.count();
+/// ~ db._drop("examples");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

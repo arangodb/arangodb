@@ -2940,9 +2940,11 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_eccentricity
+/// 
+/// Get the [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+/// of the vertices defined by the examples.
+///
 /// `graph._absoluteEccentricity(vertexExample, options)`
-/// *Get the* [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
