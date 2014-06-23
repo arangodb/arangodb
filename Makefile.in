@@ -2130,7 +2130,9 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/bootstrap/module-console.js \
 	\
 	js/apps/system/aardvark/frontend/js/client/client.js \
-	js/apps/system/aardvark/frontend/js/client/bootstrap/module-internal.js
+	js/apps/system/aardvark/frontend/js/client/bootstrap/module-internal.js \
+	\
+	js/apps/system/aardvark/frontend/js/modules/underscore.js
 
 
 ################################################################################
@@ -9056,6 +9058,7 @@ examples:
 		@srcdir@/js/client \
 		@srcdir@/js/common \
 		@srcdir@/js/server \
+		@srcdir@/js/apps/system/gharial \
 		@srcdir@/Documentation/Books/Users \
 		@srcdir@/arangod/RestHandler \
 		@srcdir@/lib/Admin \
@@ -9155,6 +9158,9 @@ js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.j
 
 js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
+
+js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node_modules/underscore/underscore.js
+	(echo "module.define(\"underscore\", function(exports, module) {" && cat $< && echo "});") > $@
 
 @ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:
 @ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
