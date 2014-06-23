@@ -10,7 +10,7 @@ This chapter describes various functions on a graph.
 
 !SUBSECTION Get vertex *to* of an edge
 
-@startDocuBlock JSF_general_graph_getToVertex
+@startDocuBlock JSF_general_graph_toVertex
 
 !SECTION _neighbors
 
