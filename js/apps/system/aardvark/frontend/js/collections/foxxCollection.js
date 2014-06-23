@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
-/*global window, Backbone, $ */
+/*global window, Backbone, alert, $ */
 (function() {
   "use strict";
   window.FoxxCollection = Backbone.Collection.extend({
@@ -27,6 +27,9 @@
           result = true;
         },
         error: function(data) {
+          if (data.responseText.indexOf() !== -1) {
+            alert("Already newest app version installed.");
+          }
           result = false;
         }
       });

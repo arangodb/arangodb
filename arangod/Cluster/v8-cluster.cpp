@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1408,7 +1410,7 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
         v8::Handle<v8::Object> details = v8::Object::New();
         details->Set(v8::String::New("code"), v8::Number::New(res->result->getHttpReturnCode()));
         details->Set(v8::String::New("message"), v8::String::New(res->result->getHttpReturnMessage().c_str()));
-        details->Set(v8::String::New("body"), 
+        details->Set(v8::String::New("body"),
                      v8::String::New(res->result->getBody().c_str(),
                                      (int) res->result->getBody().length()));
 
@@ -1889,7 +1891,11 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

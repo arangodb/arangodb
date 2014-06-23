@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -42,11 +44,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,31 +60,22 @@ EndpointList::~EndpointList () {
 
   for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     Endpoint* ep = (*it).second.first;
-    
+
     delete ep;
   }
 
   _endpoints.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Rest
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add (const std::string& specification, 
+bool EndpointList::add (const std::string& specification,
                         const std::vector<std::string>& dbNames,
                         int backLogSize,
                         bool reuseAddress,
@@ -131,7 +119,7 @@ bool EndpointList::add (const std::string& specification,
 bool EndpointList::remove (const std::string& specification,
                            Endpoint** dst) {
   const string key = Endpoint::getUnifiedForm(specification);
-  
+
   if (key.empty()) {
     return false;
   }
@@ -150,7 +138,7 @@ bool EndpointList::remove (const std::string& specification,
 
   *dst = (*it).second.first;
   _endpoints.erase(key);
-  
+
   return true;
 }
 
@@ -166,7 +154,7 @@ std::vector<std::string> EndpointList::getMapping (const std::string& endpoint) 
   if (it != _endpoints.end()) {
     result = (*it).second.second;
   }
-  
+
   return result;
 }
 
@@ -177,11 +165,11 @@ std::vector<std::string> EndpointList::getMapping (const std::string& endpoint) 
 std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
   map<string, vector<string> > result;
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
-  
+
   for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     result[(*it).first] = (*it).second.second;
   }
-  
+
   return result;
 }
 
@@ -192,7 +180,7 @@ std::map<std::string, std::vector<std::string> > EndpointList::getAll () const {
 std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& prefix) const {
   map<string, Endpoint*> result;
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
-  
+
   for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     const string& key = (*it).first;
 
@@ -200,7 +188,7 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& p
       result[key] = (*it).second.first;
     }
   }
-  
+
   return result;
 }
 
@@ -211,7 +199,7 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const std::string& p
 std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::EncryptionType encryption) const {
   map<string, Endpoint*> result;
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
-  
+
   for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     const string& key = (*it).first;
 
@@ -226,7 +214,7 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::Encr
       }
     }
   }
-  
+
   return result;
 }
 
@@ -236,7 +224,7 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix (const Endpoint::Encr
 
 bool EndpointList::has (const Endpoint::EncryptionType encryption) const {
   map<string, pair<Endpoint*, vector<string> > >::const_iterator it;
-  
+
   for (it = _endpoints.begin(); it != _endpoints.end(); ++it) {
     const string& key = (*it).first;
 
@@ -251,7 +239,7 @@ bool EndpointList::has (const Endpoint::EncryptionType encryption) const {
       }
     }
   }
-  
+
   return false;
 }
 
@@ -272,7 +260,7 @@ void EndpointList::dump () const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 std::string EndpointList::getEncryptionName (const Endpoint::EncryptionType encryption) {
   switch (encryption) {
     case Endpoint::ENCRYPTION_SSL:
@@ -283,11 +271,11 @@ std::string EndpointList::getEncryptionName (const Endpoint::EncryptionType encr
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

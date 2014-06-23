@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,15 +48,15 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator 
+/// @brief create the key enerator
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::KeyGenerator (bool allowUserKeys)
   : _allowUserKeys(allowUserKeys) {
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator 
+/// @brief destroy the key enerator
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::~KeyGenerator () {
@@ -100,7 +102,9 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType (TRI_json_t const* param
 KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
   KeyGenerator::GeneratorType type;
 
-  if (TRI_IsArrayJson(options)) {
+  bool const readOptions = TRI_IsArrayJson(options);
+
+  if (readOptions) {
     type = generatorType(options);
   }
   else {
@@ -110,12 +114,15 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
   if (type == TYPE_UNKNOWN) {
     return nullptr;
   }
-  
-  TRI_json_t* option = TRI_LookupArrayJson(options, "allowUserKeys");
 
   bool allowUserKeys = true;
-  if (TRI_IsBooleanJson(option)) {
-    allowUserKeys = option->_value._boolean;
+
+  if (readOptions) {
+    TRI_json_t* option = TRI_LookupArrayJson(options, "allowUserKeys");
+
+    if (TRI_IsBooleanJson(option)) {
+      allowUserKeys = option->_value._boolean;
+    }
   }
 
   if (type == TYPE_TRADITIONAL) {
@@ -126,25 +133,30 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
     uint64_t offset = 0;
     uint64_t increment = 1;
 
-    option = TRI_LookupArrayJson(options, "increment");
+    if (readOptions) {
+      TRI_json_t* option;
 
-    if (TRI_IsNumberJson(option)) {
-      increment = (uint64_t) option->_value._number;
+      option = TRI_LookupArrayJson(options, "increment");
 
-      if (increment == 0 || increment >= (1ULL << 16)) {
-        return nullptr;
+      if (TRI_IsNumberJson(option)) {
+        increment = (uint64_t) option->_value._number;
+
+        if (increment == 0 || increment >= (1ULL << 16)) {
+          return nullptr;
+        }
+      }
+    
+      option = TRI_LookupArrayJson(options, "offset");
+
+      if (TRI_IsNumberJson(option)) {
+        offset = (uint64_t) option->_value._number;
+
+        if (offset >= UINT64_MAX) {
+          return nullptr;
+        }
       }
     }
 
-    option = TRI_LookupArrayJson(options, "offset");
-
-    if (TRI_IsNumberJson(option)) {
-      offset = (uint64_t) option->_value._number;
-
-      if (offset >= UINT64_MAX) {
-        return nullptr;
-      }
-    }
     return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
   }
 
@@ -166,7 +178,7 @@ int KeyGenerator::globalCheck (std::string const& key,
     // we do not allow user-generated keys
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
   }
-  
+
   if (key.empty()) {
     // user key is empty
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
@@ -189,7 +201,7 @@ int KeyGenerator::globalCheck (std::string const& key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator 
+/// @brief create the key enerator
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::TraditionalKeyGenerator (bool allowUserKeys)
@@ -197,7 +209,7 @@ TraditionalKeyGenerator::TraditionalKeyGenerator (bool allowUserKeys)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator 
+/// @brief destroy the key enerator
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::~TraditionalKeyGenerator () {
@@ -218,15 +230,15 @@ bool TraditionalKeyGenerator::validateKey (char const* key) {
     char c = *p;
 
     if (c == '\0') {
-      return ((p - key) > 0) && 
+      return ((p - key) > 0) &&
              ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
     }
-    
-    if ((c >= 'a' && c <= 'z') || 
-        (c >= 'A' && c <= 'Z') || 
-        (c >= '0' && c <= '9') || 
-         c == '_' || 
-         c == ':' || 
+
+    if ((c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') ||
+         c == '_' ||
+         c == ':' ||
          c == '-') {
       ++p;
       continue;
@@ -239,7 +251,7 @@ bool TraditionalKeyGenerator::validateKey (char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 std::string TraditionalKeyGenerator::generate (TRI_voc_tick_t tick) {
   return triagens::basics::StringUtils::itoa(tick);
 }
@@ -247,7 +259,7 @@ std::string TraditionalKeyGenerator::generate (TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 int TraditionalKeyGenerator::validate (std::string const& key,
                                        bool isRestore) {
   int res = globalCheck(key, isRestore);
@@ -303,7 +315,7 @@ AutoIncrementKeyGenerator::AutoIncrementKeyGenerator (bool allowUserKeys,
                                                       uint64_t increment)
   : KeyGenerator(allowUserKeys),
     _lastValue(0),
-    _offset(offset), 
+    _offset(offset),
     _increment(increment) {
 }
 
@@ -329,10 +341,10 @@ bool AutoIncrementKeyGenerator::validateKey (char const* key) {
     char c = *p;
 
     if (c == '\0') {
-      return ((p - key) > 0) && 
+      return ((p - key) > 0) &&
              ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
     }
-    
+
     if (c >= '0' && c <= '9') {
       ++p;
       continue;
@@ -345,13 +357,13 @@ bool AutoIncrementKeyGenerator::validateKey (char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
   uint64_t keyValue;
-   
+
   {
-    MUTEX_LOCKER(_lock); 
-   
+    MUTEX_LOCKER(_lock);
+
     // user has not specified a key, generate one based on algorithm
     if (_lastValue < _offset) {
       keyValue = _offset;
@@ -383,7 +395,7 @@ std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 int AutoIncrementKeyGenerator::validate (std::string const& key,
                                          bool isRestore) {
   int res = globalCheck(key, isRestore);
@@ -400,7 +412,7 @@ int AutoIncrementKeyGenerator::validate (std::string const& key,
   uint64_t intValue = triagens::basics::StringUtils::uint64(key);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(_lock); 
+    MUTEX_LOCKER(_lock);
     // update our last value
     _lastValue = intValue;
   }
@@ -415,7 +427,7 @@ int AutoIncrementKeyGenerator::validate (std::string const& key,
 void AutoIncrementKeyGenerator::track (TRI_voc_key_t key) {
   // check the numeric key part
   uint64_t value = TRI_UInt64String(key);
-  
+
   if (value > _lastValue) {
     // and update our last value
     _lastValue = value;
@@ -477,13 +489,16 @@ bool TRI_ValidateDocumentIdKeyGenerator (char const* key,
   // store split position
   *split = p - key;
   ++p;
- 
+
   // validate document key
   return TraditionalKeyGenerator::validateKey(p);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-

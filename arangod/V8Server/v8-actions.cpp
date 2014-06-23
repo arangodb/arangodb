@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -522,7 +524,7 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
 ////////////////////////////////////////////////////////////////////////////////
 
 static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
-                                      v8::Handle<v8::Object> const res, 
+                                      v8::Handle<v8::Object> const res,
                                       uint32_t compatibility) {
   HttpResponse::HttpResponseCode code = HttpResponse::OK;
 
@@ -1162,7 +1164,7 @@ static string GetTaskId (v8::Handle<v8::Value> arg) {
 
 static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  
+
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
@@ -1170,7 +1172,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   if (argv.Length() != 1 || ! argv[0]->IsObject()) {
     TRI_V8_EXCEPTION_USAGE(scope, "register(<task>)");
   }
-  
+
   v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
 
   // job id
@@ -1184,7 +1186,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
     // auto-generated id
     uint64_t tick = TRI_NewTickServer();
     id = StringUtils::itoa(tick);
-  } 
+  }
 
   // job name
   string name;
@@ -1195,7 +1197,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   else {
     name = "user-defined task";
   }
-  
+
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
@@ -1208,7 +1210,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
     period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
-    
+
     if (period <= 0.0) {
       TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
     }
@@ -1313,10 +1315,10 @@ static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
   if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
-   
+
   int res = GlobalScheduler->unregisterUserTask(id);
 
-  if (res != TRI_ERROR_NO_ERROR) { 
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
@@ -1413,5 +1415,5 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

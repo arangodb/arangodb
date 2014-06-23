@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_PROCESS_UTILS_H
-#define TRIAGENS_BASICS_C_PROCESS_UTILS_H 1
+#ifndef ARANGODB_BASICS_C_PROCESS__UTILS_H
+#define ARANGODB_BASICS_C_PROCESS__UTILS_H 1
 
 #include "BasicsC/common.h"
 
@@ -194,7 +196,7 @@ void TRI_CreateExternalProcess (const char* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid, 
+TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                                                 bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,5 +237,5 @@ void TRI_ShutdownProcess (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -66,11 +68,6 @@ or_element_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the type name for a field access type
@@ -440,32 +437,23 @@ bool IsSameReference (const TRI_aql_field_access_t* const lhs,
   if (lhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE &&
       rhs->_value._reference._type == TRI_AQL_REFERENCE_VARIABLE) {
 
-    return TRI_EqualString(lhs->_value._reference._ref._name, 
+    return TRI_EqualString(lhs->_value._reference._ref._name,
                            rhs->_value._reference._ref._name);
   }
 
   if (lhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS &&
       rhs->_value._reference._type == TRI_AQL_REFERENCE_ATTRIBUTE_ACCESS) {
 
-    return TRI_EqualString(lhs->_fullName, 
+    return TRI_EqualString(lhs->_fullName,
                            rhs->_fullName);
   }
 
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                  attribute access merge functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two access structures using a logical AND
@@ -1179,7 +1167,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
     TRI_aql_node_type_e rhsType = rhs->_value._reference._operator;
     bool isSameAttribute = IsSameReference(lhs, rhs);
     bool possible;
-    
+
     if (! isSameAttribute) {
       // different attribute names are referred to. we can return either
       TRI_FreeAccessAql(rhs);
@@ -1197,14 +1185,14 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       return lhs;
     }
 
-    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
+    if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT &&
         rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
       // < && <=, merge to <
       TRI_FreeAccessAql(rhs);
 
       return lhs;
     }
-    if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT && 
+    if (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT &&
         lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE) {
       // <= && <, merge to <
       TRI_FreeAccessAql(lhs);
@@ -1227,7 +1215,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       possible = false;
     }
     else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT &&
-        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE || 
+        (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GE ||
          rhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT)) {
       // lhs < ref && (lhs >= ref || lhs > ref) => impossible
       possible = false;
@@ -1238,7 +1226,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       possible = false;
     }
     else if (lhsType == TRI_AQL_NODE_OPERATOR_BINARY_GT &&
-             (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE || 
+             (rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LE ||
               rhsType == TRI_AQL_NODE_OPERATOR_BINARY_LT)) {
       // lhs > ref && (lhs <= ref || lhs < ref) => impossible
       possible = false;
@@ -1248,7 +1236,7 @@ static TRI_aql_field_access_t* MergeAndReference (TRI_aql_context_t* const conte
       // lhs >= ref && lhs < ref => impossible
       possible = false;
     }
-    
+
     if (! possible) {
       // return the impossible range
       TRI_FreeAccessAql(rhs);
@@ -1829,18 +1817,9 @@ static TRI_aql_field_access_t* MergeAttributeAccessOr (TRI_aql_context_t* const 
   return NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                 attribute access vector functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vector_pointer_t* CreateEmptyVector (TRI_aql_context_t* const context) {
   TRI_vector_pointer_t* result;
@@ -1991,7 +1970,7 @@ static void InsertVector (TRI_aql_context_t* const context,
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(source, i);
     TRI_aql_field_access_t* copy;
-    
+
     TRI_ASSERT(fieldAccess != NULL);
     TRI_ASSERT(fieldAccess->_fullName != NULL);
 
@@ -2140,18 +2119,9 @@ static TRI_vector_pointer_t* MergeVectors (TRI_aql_context_t* const context,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         node processing functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an access structure for the given node and operator
@@ -2394,7 +2364,7 @@ static TRI_aql_attribute_name_t* GetAttributeName (TRI_aql_context_t* const cont
 /// @brief check if two attribute access nodes refer to the same base variable
 /// e.g. FILTER a.x == a.y
 ////////////////////////////////////////////////////////////////////////////////
-     
+
 static bool IsSameAttributeAccess (const TRI_aql_node_t* const lhs,
                                    const TRI_aql_node_t* const rhs) {
   TRI_ASSERT(lhs != NULL);
@@ -2406,7 +2376,7 @@ static bool IsSameAttributeAccess (const TRI_aql_node_t* const lhs,
     TRI_aql_node_t* lNode = TRI_AQL_NODE_MEMBER(lhs, 0);
     TRI_aql_node_t* rNode = TRI_AQL_NODE_MEMBER(rhs, 0);
 
-    if (lNode->_type == TRI_AQL_NODE_REFERENCE && 
+    if (lNode->_type == TRI_AQL_NODE_REFERENCE &&
         rNode->_type == TRI_AQL_NODE_REFERENCE &&
         TRI_EqualString(TRI_AQL_NODE_STRING(lNode), TRI_AQL_NODE_STRING(rNode))) {
       return true;
@@ -2472,7 +2442,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
 
     return result;
   }
-  
+
   if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
       node->_type == TRI_AQL_NODE_OPERATOR_BINARY_NE ||
       node->_type == TRI_AQL_NODE_OPERATOR_BINARY_LT ||
@@ -2488,7 +2458,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     TRI_aql_node_t* node2;
     TRI_aql_node_type_e oper;
     bool useBoth;
-  
+
 /*
     if (node->_type == TRI_AQL_NODE_OPERATOR_BINARY_IN && rhs->_type != TRI_AQL_NODE_LIST) {
       // in operator is special. if right operand is not a list, we must abort here
@@ -2521,13 +2491,13 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
       node1 = rhs;
       node2 = lhs;
       oper = TRI_ReverseOperatorRelationalAql(node->_type);
-      
+
       if (IsSameAttributeAccess(lhs, rhs)) {
         // we must not optimise something like FILTER a.x == a.x
         return NULL;
       }
-      
-    
+
+
       TRI_ASSERT(oper != TRI_AQL_NODE_NOP);
 
       if (lhs->_type == TRI_AQL_NODE_REFERENCE || lhs->_type == TRI_AQL_NODE_ATTRIBUTE_ACCESS || lhs->_type == TRI_AQL_NODE_FCALL) {
@@ -2538,7 +2508,7 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
     else {
       return NULL;
     }
-  
+
     if (node2->_type != TRI_AQL_NODE_VALUE &&
         node2->_type != TRI_AQL_NODE_LIST &&
         node2->_type != TRI_AQL_NODE_ARRAY &&
@@ -2607,18 +2577,9 @@ again:
   return NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump an AQL access type
@@ -2831,7 +2792,7 @@ void TRI_FreeAccessesAql (TRI_vector_pointer_t* const fieldAccesses) {
   n = fieldAccesses->_length;
   for (i = 0; i < n; ++i) {
     TRI_aql_field_access_t* fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(fieldAccesses, i);
-  
+
     TRI_FreeAccessAql(fieldAccess);
   }
 
@@ -2980,11 +2941,11 @@ TRI_vector_pointer_t* TRI_OptimiseRangesAql (TRI_aql_context_t* const context,
   return ProcessNode(context, node, changed, inheritedRestrictions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -36,6 +36,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -191,8 +192,7 @@ function indexSuite() {
     testGetIndexUnloaded : function () {
       var idx = collection.ensureHashIndex("test");
 
-      collection.unload();
-      internal.wait(4);
+      testHelper.waitUnload(collection);
 
       assertEqual(idx.id, collection.index(idx.id).id);
       assertEqual(idx.id, collection.getIndexes()[1].id);

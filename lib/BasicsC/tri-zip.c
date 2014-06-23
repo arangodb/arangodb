@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,11 +42,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the current file
@@ -70,7 +67,7 @@ static int ExtractCurrentFile (unzFile uf,
   }
 
   // adjust file name
-  p = filenameInZip; 
+  p = filenameInZip;
   while (*p != '\0') {
 #ifdef WIN32
     if (*p == '/') {
@@ -94,7 +91,7 @@ static int ExtractCurrentFile (unzFile uf,
 
     p++;
   }
-  
+
   // found a directory
   if (*filenameWithoutPath == '\0') {
     if (! skipPaths) {
@@ -121,7 +118,7 @@ static int ExtractCurrentFile (unzFile uf,
 
     // prefix the name from the zip file with the path specified
     fullPath = TRI_Concatenate2File(outPath, writeFilename);
-    
+
     if (! overwrite && TRI_ExistsFile(fullPath)) {
       return TRI_ERROR_CANNOT_OVERWRITE_FILE;
     }
@@ -146,7 +143,7 @@ static int ExtractCurrentFile (unzFile uf,
       // try again
       fout = fopen(fullPath, "wb");
     }
-    
+
     TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
 
     if (fout == NULL) {
@@ -179,7 +176,7 @@ static int ExtractCurrentFile (unzFile uf,
   }
 
   unzCloseCurrentFile(uf);
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -190,7 +187,7 @@ static int ExtractCurrentFile (unzFile uf,
 static int UnzipFile (unzFile uf,
                       void* buffer,
                       const size_t bufferSize,
-                      const char* outPath, 
+                      const char* outPath,
                       const bool skipPaths,
                       const bool overwrite,
                       const char* password) {
@@ -201,7 +198,7 @@ static int UnzipFile (unzFile uf,
   if (unzGetGlobalInfo64(uf, &gi) != UNZ_OK) {
     return TRI_ERROR_INTERNAL;
   }
-    
+
   for (i = 0; i < gi.number_entry; i++) {
     res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password);
 
@@ -220,24 +217,15 @@ static int UnzipFile (unzFile uf,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Files
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile (const char* filename, 
+int TRI_ZipFile (const char* filename,
                  const char* dir,
                  TRI_vector_string_t const* files,
                  const char* password) {
@@ -305,7 +293,7 @@ int TRI_ZipFile (const char* filename,
     }
 
     isLarge = (TRI_SizeFile(file) > 0xFFFFFFFFLL);
-              
+
     saveName = file;
 
     while (*saveName == '\\' || *saveName == '/') {
@@ -323,11 +311,11 @@ int TRI_ZipFile (const char* filename,
                                 Z_DEFLATED,
                                 Z_DEFAULT_COMPRESSION,
                                 0,
-                                -MAX_WBITS, 
-                                DEF_MEM_LEVEL, 
+                                -MAX_WBITS,
+                                DEF_MEM_LEVEL,
                                 Z_DEFAULT_STRATEGY,
                                 password,
-                                (unsigned long) crc, 
+                                (unsigned long) crc,
                                 isLarge) != ZIP_OK) {
       // TODO FIXME
       res = TRI_ERROR_INTERNAL;
@@ -365,7 +353,7 @@ int TRI_ZipFile (const char* filename,
     }
 
     fclose(fin);
-    
+
     zipCloseFileInZip(zf);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -374,7 +362,7 @@ int TRI_ZipFile (const char* filename,
   }
 
   zipClose(zf, NULL);
-  
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
   return res;
@@ -385,7 +373,7 @@ int TRI_ZipFile (const char* filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnzipFile (const char* filename,
-                   const char* outPath, 
+                   const char* outPath,
                    const bool skipPaths,
                    const bool overwrite,
                    const char* password) {
@@ -396,7 +384,7 @@ int TRI_UnzipFile (const char* filename,
   void* buffer;
   size_t bufferSize;
   int res;
-  
+
   bufferSize = 16384;
   buffer = (void*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
 
@@ -421,15 +409,11 @@ int TRI_UnzipFile (const char* filename,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

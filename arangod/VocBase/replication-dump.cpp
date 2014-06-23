@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +101,7 @@ using namespace triagens;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a datafile descriptor
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 typedef struct df_entry_s {
   TRI_datafile_t* _data;
   TRI_voc_tick_t  _dataMin;
@@ -122,12 +124,12 @@ resolved_name_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKeyCid (TRI_associative_pointer_t* array, 
+static uint64_t HashKeyCid (TRI_associative_pointer_t* array,
                             void const* key) {
   TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
 
@@ -138,7 +140,7 @@ static uint64_t HashKeyCid (TRI_associative_pointer_t* array,
 /// @brief hashes a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementCid (TRI_associative_pointer_t* array, 
+static uint64_t HashElementCid (TRI_associative_pointer_t* array,
                                 void const* element) {
   resolved_name_t const* e = static_cast<resolved_name_t const*>(element);
 
@@ -149,15 +151,15 @@ static uint64_t HashElementCid (TRI_associative_pointer_t* array,
 /// @brief compares a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElementCid (TRI_associative_pointer_t* array, 
-                                  void const* key, 
+static bool IsEqualKeyElementCid (TRI_associative_pointer_t* array,
+                                  void const* key,
                                   void const* element) {
   TRI_voc_cid_t const* k = static_cast<TRI_voc_cid_t const*>(key);
   resolved_name_t const* e = static_cast<resolved_name_t const*>(element);
 
   return *k == e->_cid;
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a collection name
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +169,7 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
                                   char** result) {
 
   TRI_ASSERT(cid > 0);
-  
+
   resolved_name_t* found = static_cast<resolved_name_t*>(TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid));
 
   if (found == NULL) {
@@ -179,15 +181,15 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
     }
 
     found->_cid = cid;
-    // name can be NULL if collection is not found. 
+    // name can be NULL if collection is not found.
     // but we will still cache a NULL result!
     found->_name = TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid);
-    
-    TRI_InsertKeyAssociativePointer(&dump->_collectionNames, &found->_cid, found, false); 
+
+    TRI_InsertKeyAssociativePointer(&dump->_collectionNames, &found->_cid, found, false);
   }
 
   *result = found->_name;
-  
+
   return true;
 }
 
@@ -211,7 +213,7 @@ static bool AppendCollection (TRI_replication_dump_t* dump,
         return true;
       }
     }
-    
+
     APPEND_STRING(dump->_buffer, "_unknown");
   }
   else {
@@ -231,7 +233,7 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
                              TRI_voc_tick_t dataMin,
                              TRI_voc_tick_t dataMax,
                              bool isJournal) {
-  
+
   int res = TRI_ERROR_NO_ERROR;
 
   size_t const n = datafiles->_length;
@@ -239,20 +241,20 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
   for (size_t i = 0; i < n; ++i) {
     TRI_datafile_t* df = static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(datafiles, i));
 
-    df_entry_t entry = { 
+    df_entry_t entry = {
       df,
       df->_dataMin,
       df->_dataMax,
       df->_tickMax,
       isJournal
     };
-    
-    LOG_TRACE("checking datafile %llu with data range %llu - %llu, tick max: %llu", 
+
+    LOG_TRACE("checking datafile %llu with data range %llu - %llu, tick max: %llu",
               (unsigned long long) df->_fid,
-              (unsigned long long) df->_dataMin, 
+              (unsigned long long) df->_dataMin,
               (unsigned long long) df->_dataMax,
               (unsigned long long) df->_tickMax);
-    
+
     if (df->_dataMin == 0 || df->_dataMax == 0) {
       // datafile doesn't have any data
       continue;
@@ -270,7 +272,7 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       // datafile is older than requested range
       continue;
     }
-     
+
     res = TRI_PushBackVector(result, &entry);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -290,8 +292,8 @@ static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
                                        TRI_voc_tick_t dataMax) {
   TRI_vector_t datafiles;
 
-  LOG_TRACE("getting datafiles in data range %llu - %llu", 
-            (unsigned long long) dataMin, 
+  LOG_TRACE("getting datafiles in data range %llu - %llu",
+            (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
   // determine the datafiles of the collection
@@ -301,7 +303,7 @@ static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
 
   IterateDatafiles(&document->_datafiles, &datafiles, dataMin, dataMax, false);
   IterateDatafiles(&document->_journals, &datafiles, dataMin, dataMax, true);
-  
+
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
   return datafiles;
@@ -328,7 +330,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
   bool haveData = true;
   bool isWal = false;
 
-  buffer = dump->_buffer; 
+  buffer = dump->_buffer;
 
   if (buffer == NULL) {
     return false;
@@ -392,27 +394,27 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       return false;
     }
   }
-  
+
   if (withTicks) {
     APPEND_STRING(buffer, "{\"tick\":\"");
     APPEND_UINT64(buffer, (uint64_t) marker->_tick);
-    APPEND_STRING(buffer, "\",\"type\":"); 
+    APPEND_STRING(buffer, "\",\"type\":");
   }
   else {
     APPEND_STRING(buffer, "{\"type\":");
   }
 
-  APPEND_UINT64(buffer, (uint64_t) type); 
-  APPEND_STRING(buffer, ",\"key\":\""); 
+  APPEND_UINT64(buffer, (uint64_t) type);
+  APPEND_STRING(buffer, ",\"key\":\"");
   // key is user-defined, but does not need escaping
-  APPEND_STRING(buffer, key); 
-  APPEND_STRING(buffer, "\",\"rev\":\""); 
-  APPEND_UINT64(buffer, (uint64_t) rid); 
+  APPEND_STRING(buffer, key);
+  APPEND_STRING(buffer, "\",\"rev\":\"");
+  APPEND_UINT64(buffer, (uint64_t) rid);
 
   // document
   if (haveData) {
     APPEND_STRING(buffer, "\",\"data\":{");
-    
+
     // common document meta-data
     APPEND_STRING(buffer, "\"" TRI_VOC_ATTRIBUTE_KEY "\":\"");
     APPEND_STRING(buffer, key);
@@ -508,13 +510,13 @@ static bool IterateShape (TRI_shaper_t* shaper,
     TRI_replication_dump_t* dump;
     TRI_string_buffer_t* buffer;
     int res;
-  
+
     dump   = (TRI_replication_dump_t*) ptr;
     buffer = dump->_buffer;
 
     // append ,
     res = TRI_AppendCharStringBuffer(buffer, ',');
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       dump->_failed = true;
       return false;
@@ -549,7 +551,7 @@ static bool IterateShape (TRI_shaper_t* shaper,
         size_t length;
 
         res = TRI_AppendCharStringBuffer(buffer, '"');
-      
+
         if (res != TRI_ERROR_NO_ERROR) {
           dump->_failed = true;
           return false;
@@ -565,7 +567,7 @@ static bool IterateShape (TRI_shaper_t* shaper,
             return false;
           }
         }
-    
+
         res = TRI_AppendCharStringBuffer(buffer, '"');
       }
     }
@@ -600,10 +602,10 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
                                 TRI_document_collection_t* document,
                                 TRI_df_marker_t const* marker) {
 
-  TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker; 
+  TRI_doc_document_key_marker_t const* m = (TRI_doc_document_key_marker_t const*) marker;
   TRI_shaper_t* shaper;
   TRI_shaped_json_t shaped;
-  
+
   TRI_ASSERT(marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT);
   shaper = document->getShaper();  // ONLY IN DUMP, PROTECTED by a fake trx from above
 
@@ -620,17 +622,17 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
     else {
       shape            = dump->_lastShape;
     }
-  
+
     APPEND_STRING(dump->_buffer, "{\"tick\":\"");
     APPEND_UINT64(dump->_buffer, (uint64_t) marker->_tick);
     APPEND_CHAR(dump->_buffer, '"');
-    TRI_IterateShapeDataArray(shaper, shape, shaped._data.data, &IterateShape, dump); 
+    TRI_IterateShapeDataArray(shaper, shape, shaped._data.data, &IterateShape, dump);
     APPEND_STRING(dump->_buffer, "}\n");
   }
   else {
     return false;
   }
-  
+
   return true;
 }
 
@@ -638,7 +640,7 @@ static bool StringifyMarkerLog (TRI_replication_dump_t* dump,
 /// @brief dump data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DumpCollection (TRI_replication_dump_t* dump, 
+static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_document_collection_t* document,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
@@ -649,21 +651,21 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
-  size_t i, n; 
+  size_t i, n;
   int res;
   bool hasMore;
   bool bufferFull;
   bool ignoreMarkers;
-    
+
   // The following fake transaction allows us to access data pointers
   // and shapers, essentially disabling the runtime checks. This is OK,
-  // since the dump only considers data files (and not WAL files), so 
+  // since the dump only considers data files (and not WAL files), so
   // the collector has no trouble. Also, the data files of the collection
   // are protected from the compactor by a barrier and the dump only goes
   // until a certain tick.
   triagens::arango::TransactionBase trx(true);
 
-  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
+  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu",
             (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
@@ -671,7 +673,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
   buffer         = dump->_buffer;
   datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
- 
+
   // setup some iteration state
   lastFoundTick  = 0;
   lastTid        = 0;
@@ -696,10 +698,10 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     else {
       TRI_ASSERT(datafile->_isSealed);
     }
-    
+
     ptr = datafile->_data;
 
-    if (res == TRI_ERROR_NO_ERROR) { 
+    if (res == TRI_ERROR_NO_ERROR) {
       // no error so far. start iterating
       end = ptr + datafile->_currentSize;
     }
@@ -717,19 +719,19 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         // end of datafile
         break;
       }
-      
+
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
-      
+
       if (marker->_type == TRI_DF_MARKER_ATTRIBUTE ||
           marker->_type == TRI_DF_MARKER_SHAPE) {
         // fully ignore these marker types. they don't need to be replicated,
         // but we also cannot stop iteration if we find one of these
         continue;
       }
-          
+
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
-      
+
       if (foundTick <= dataMin) {
         // marker too old
         continue;
@@ -748,7 +750,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
         // found a non-data marker...
 
         // check if we can abort searching
-        if (foundTick >= dataMax || 
+        if (foundTick >= dataMax ||
             (foundTick >= e->_tickMax && i == (n - 1))) {
           // fetched the last available marker
           hasMore = false;
@@ -784,7 +786,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
           }
 
           lastTid = tid;
-        } 
+        }
 
         if (ignoreMarkers) {
           continue;
@@ -797,8 +799,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
         goto NEXT_DF;
       }
-      
-      if (foundTick >= dataMax || 
+
+      if (foundTick >= dataMax ||
           (foundTick >= e->_tickMax && i == (n - 1))) {
         // fetched the last available marker
         hasMore = false;
@@ -823,7 +825,7 @@ NEXT_DF:
       break;
     }
   }
-  
+
   TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -848,7 +850,7 @@ NEXT_DF:
 /// @brief dump data from the replication log
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DumpLog (TRI_replication_dump_t* dump, 
+static int DumpLog (TRI_replication_dump_t* dump,
                     TRI_document_collection_t* document,
                     TRI_voc_tick_t dataMin,
                     TRI_voc_tick_t dataMax,
@@ -856,12 +858,12 @@ static int DumpLog (TRI_replication_dump_t* dump,
   TRI_vector_t datafiles;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
-  size_t i, n; 
+  size_t i, n;
   int res;
   bool hasMore;
   bool bufferFull;
-    
-  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu", 
+
+  LOG_TRACE("dumping collection %llu, tick range %llu - %llu, chunk size %llu",
             (unsigned long long) document->_info._cid,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax,
@@ -869,7 +871,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
 
   buffer         = dump->_buffer;
   datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
- 
+
   // setup some iteration state
   lastFoundTick  = 0;
   res            = TRI_ERROR_NO_ERROR;
@@ -892,7 +894,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
     else {
       TRI_ASSERT(datafile->_isSealed);
     }
-    
+
     ptr = datafile->_data;
     end = ptr + datafile->_currentSize;
 
@@ -904,23 +906,23 @@ static int DumpLog (TRI_replication_dump_t* dump,
         // end of datafile
         break;
       }
-      
+
       ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
-      
+
       // get the marker's tick and check whether we should include it
       foundTick = marker->_tick;
-      
+
       if (foundTick <= dataMin) {
         // marker too old
         continue;
       }
-      
+
       if (foundTick > dataMax) {
         // marker too new
         hasMore = false;
         goto NEXT_DF;
       }
-          
+
       if (marker->_type != TRI_DOC_MARKER_KEY_DOCUMENT) {
         // we're only interested in document markers here
         // the replication collection does not contain any edge markers
@@ -928,7 +930,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
         // will not be replicated
 
         // check if we can abort searching
-        if (foundTick >= dataMax || 
+        if (foundTick >= dataMax ||
             (foundTick >= e->_tickMax && i == (n - 1))) {
           // fetched the last available marker
           hasMore = false;
@@ -947,7 +949,7 @@ static int DumpLog (TRI_replication_dump_t* dump,
         goto NEXT_DF;
       }
 
-      if (foundTick >= dataMax || 
+      if (foundTick >= dataMax ||
           (foundTick >= e->_dataMax && i == (n - 1))) {
         // fetched the last available marker
         hasMore = false;
@@ -972,7 +974,7 @@ NEXT_DF:
       break;
     }
   }
-  
+
   TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1022,12 +1024,12 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   // block compaction
   TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
   res = DumpCollection(dump, document, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
-  
+
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
@@ -1047,7 +1049,7 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   TRI_vocbase_col_t* col;
   TRI_barrier_t* b;
   int res;
- 
+
   TRI_vocbase_col_status_e status;
   col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION, status);
 
@@ -1065,16 +1067,16 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   // block compaction
   TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
   res = DumpLog(dump, document, dataMin, dataMax, chunkSize);
-  
+
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   TRI_FreeBarrier(b);
-  
+
   TRI_ReleaseCollectionVocBase(vocbase, col);
 
   return res;
@@ -1111,7 +1113,7 @@ int TRI_InitDumpReplication (TRI_replication_dump_t* dump,
                                    HashElementCid,
                                    IsEqualKeyElementCid,
                                    NULL);
- 
+
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump->_buffer);
   }
@@ -1140,7 +1142,11 @@ void TRI_DestroyDumpReplication (TRI_replication_dump_t* dump) {
   TRI_FreeStringBuffer(TRI_CORE_MEM_ZONE, dump->_buffer);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

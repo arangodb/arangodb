@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -34,11 +36,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocBase
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply default settings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,8 +45,8 @@ void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
   vocbase->_settings.removeOnDrop                     = defaults->removeOnDrop;
   vocbase->_settings.defaultWaitForSync               = defaults->defaultWaitForSync;
   vocbase->_settings.forceSyncProperties              = defaults->forceSyncProperties;
-  vocbase->_settings.requireAuthentication            = defaults->requireAuthentication;    
-  vocbase->_settings.requireAuthenticationUnixSockets = defaults->requireAuthenticationUnixSockets;    
+  vocbase->_settings.requireAuthentication            = defaults->requireAuthentication;
+  vocbase->_settings.requireAuthenticationUnixSockets = defaults->requireAuthenticationUnixSockets;
   vocbase->_settings.authenticateSystemOnly           = defaults->authenticateSystemOnly;
 }
 
@@ -95,19 +92,19 @@ void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->removeOnDrop = optionJson->_value._boolean;
   }
-  
+
   optionJson = TRI_LookupArrayJson(json, "waitForSync");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->defaultWaitForSync = optionJson->_value._boolean;
   }
-  
+
   optionJson = TRI_LookupArrayJson(json, "forceSyncProperties");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->forceSyncProperties = optionJson->_value._boolean;
   }
-  
+
   optionJson = TRI_LookupArrayJson(json, "requireAuthentication");
 
   if (TRI_IsBooleanJson(optionJson)) {
@@ -125,7 +122,7 @@ void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->authenticateSystemOnly = optionJson->_value._boolean;
   }
-  
+
   optionJson = TRI_LookupArrayJson(json, "defaultMaximalSize");
 
   if (TRI_IsNumberJson(optionJson)) {
@@ -133,11 +130,11 @@ void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

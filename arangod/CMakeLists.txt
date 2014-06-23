@@ -82,7 +82,6 @@ add_executable(
     HashIndex/hash-index.cpp
     IndexIterators/index-iterator.cpp
     IndexOperators/index-operator.cpp
-    Replication/replication-static.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
@@ -125,7 +124,6 @@ add_executable(
     VocBase/replication-applier.cpp
     VocBase/replication-common.cpp
     VocBase/replication-dump.cpp
-    VocBase/replication-logger.cpp
     VocBase/replication-master.cpp
     VocBase/server.cpp
     VocBase/transaction.cpp

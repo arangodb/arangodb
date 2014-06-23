@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_ASSOCIATIVE_H
-#define TRIAGENS_BASICS_C_ASSOCIATIVE_H 1
+#ifndef ARANGODB_BASICS_C_ASSOCIATIVE_H
+#define ARANGODB_BASICS_C_ASSOCIATIVE_H 1
 
 #include "BasicsC/common.h"
 
@@ -44,11 +46,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -88,18 +85,9 @@ typedef struct TRI_associative_array_s {
 }
 TRI_associative_array_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -127,18 +115,9 @@ void TRI_DestroyAssociativeArray (TRI_associative_array_t*);
 
 void TRI_FreeAssociativeArray (TRI_memory_zone_t*, TRI_associative_array_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -194,10 +173,6 @@ bool TRI_RemoveKeyAssociativeArray (TRI_associative_array_t*, void* key, void* o
 
 size_t TRI_GetLengthAssociativeArray (const TRI_associative_array_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              ASSOCIATIVE POINTERS
 // -----------------------------------------------------------------------------
@@ -205,11 +180,6 @@ size_t TRI_GetLengthAssociativeArray (const TRI_associative_array_t* const);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers
@@ -243,18 +213,9 @@ typedef struct TRI_associative_pointer_s {
 }
 TRI_associative_pointer_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -279,18 +240,9 @@ void TRI_DestroyAssociativePointer (TRI_associative_pointer_t*);
 
 void TRI_FreeAssociativePointer (TRI_memory_zone_t*, TRI_associative_pointer_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a pointer
@@ -310,8 +262,8 @@ uint64_t TRI_HashStringKeyAssociativePointer (TRI_associative_pointer_t*,
 /// @brief General function to determine equality of two string values
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*, 
-                                           void const*, 
+bool TRI_EqualStringKeyAssociativePointer (TRI_associative_pointer_t*,
+                                           void const*,
                                            void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,31 +277,31 @@ bool TRI_ReserveAssociativePointer (TRI_associative_pointer_t*,
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*, 
+void* TRI_LookupByKeyAssociativePointer (TRI_associative_pointer_t*,
                                          void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*, 
+void* TRI_LookupByElementAssociativePointer (TRI_associative_pointer_t*,
                                              void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t*, 
-                                           void* element, 
+void* TRI_InsertElementAssociativePointer (TRI_associative_pointer_t*,
+                                           void* element,
                                            bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*, 
-                                       void const* key, 
-                                       void* element, 
+void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*,
+                                       void const* key,
+                                       void* element,
                                        bool overwrite);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,23 +309,23 @@ void* TRI_InsertKeyAssociativePointer (TRI_associative_pointer_t*,
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t*, 
-                                      void const*, 
-                                      void*, 
+int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t*,
+                                      void const*,
+                                      void*,
                                       void const**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t*, 
+void* TRI_RemoveElementAssociativePointer (TRI_associative_pointer_t*,
                                            void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*, 
+void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*,
                                        void const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,10 +334,6 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t*,
 
 size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ASSOCIATIVE SYNCED
 // -----------------------------------------------------------------------------
@@ -393,11 +341,6 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of synced pointers
@@ -423,18 +366,9 @@ typedef struct TRI_associative_synced_s {
 }
 TRI_associative_synced_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -459,18 +393,9 @@ void TRI_DestroyAssociativeSynced (TRI_associative_synced_t*);
 
 void TRI_FreeAssociativeSynced (TRI_memory_zone_t*, TRI_associative_synced_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
@@ -482,38 +407,38 @@ void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t*, void co
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t*, 
+void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t*,
                                                   void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t*, 
-                                          void*, 
+void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t*,
+                                          void*,
                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t*, 
-                                      void const*, 
-                                      void*, 
+void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t*,
+                                      void const*,
+                                      void*,
                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t*, 
+void* TRI_RemoveElementAssociativeSynced (TRI_associative_synced_t*,
                                           void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*, 
+void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*,
                                       void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,17 +447,17 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*,
 
 size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

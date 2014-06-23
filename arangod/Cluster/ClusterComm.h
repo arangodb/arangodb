@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_COMM_H
-#define TRIAGENS_CLUSTER_COMM_H 1
+#ifndef ARANGODB_CLUSTER_CLUSTER_COMM_H
+#define ARANGODB_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -115,7 +117,7 @@ namespace triagens {
       rest::HttpRequest* answer;
       rest::HttpResponse::HttpResponseCode answer_code;
 
-      ClusterCommResult () 
+      ClusterCommResult ()
         : _deleteOnDestruction(true), dropped(false), result(0), answer(0),
           answer_code( rest::HttpResponse::OK ) {}
       void doNotDeleteOnDestruction () {
@@ -135,13 +137,13 @@ namespace triagens {
 /// @brief type for a callback for a cluster operation
 ///
 /// The idea is that one inherits from this class and implements
-/// the callback. Note however that the callback is called whilst 
-/// holding the lock for the receiving (or indeed also the sending) 
+/// the callback. Note however that the callback is called whilst
+/// holding the lock for the receiving (or indeed also the sending)
 /// queue! Therefore the operation should be quick.
 ////////////////////////////////////////////////////////////////////////////////
 
     struct ClusterCommCallback {
-      
+
       ClusterCommCallback () {}
       virtual ~ClusterCommCallback () {};
 
@@ -208,20 +210,20 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 
     class ClusterComm {
-      
+
       friend class ClusterCommThread;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     constructors and destructors
 // -----------------------------------------------------------------------------
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises library
 ///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         ClusterComm ( );
         ClusterComm (ClusterComm const&);    // not implemented
         void operator= (ClusterComm const&); // not implemented
@@ -229,7 +231,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down library
 ////////////////////////////////////////////////////////////////////////////////
-      
+
       public:
 
         ~ClusterComm ( );
@@ -237,23 +239,23 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   public methods
 // -----------------------------------------------------------------------------
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         static ClusterComm* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void initialise ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         static void cleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +273,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not connection errors are logged as errors
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool logConnectionErrors () const {
           return _logConnectionErrors;
         }
@@ -339,24 +341,24 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
                    ShardID const&             shardID);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process an answer coming in on the HTTP socket 
+/// @brief process an answer coming in on the HTTP socket
 ////////////////////////////////////////////////////////////////////////////////
-                
+
         string processAnswer(string& coordinatorHeader,
                              rest::HttpRequest* answer);
-                 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send an answer HTTP request to a coordinator
 ////////////////////////////////////////////////////////////////////////////////
-                
+
         void asyncAnswer (string& coordinatorHeader,
                           rest::HttpResponse* responseToSend);
-                     
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          private methods and data
 // -----------------------------------------------------------------------------
 
-      private: 
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
@@ -367,7 +369,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces an operation ID which is unique in this process
 ////////////////////////////////////////////////////////////////////////////////
-      
+
         static OperationID getOperationID ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,9 +436,9 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not connection errors should be logged as errors
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool _logConnectionErrors;
-         
+
     };  // end of class ClusterComm
 
 // -----------------------------------------------------------------------------
@@ -452,7 +454,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-      
+
       private:
         ClusterCommThread (ClusterCommThread const&);
         ClusterCommThread& operator= (ClusterCommThread const&);
@@ -474,7 +476,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-      
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,7 +493,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
           if (_stop > 0) {
             return;
           }
-          
+
           LOG_TRACE("stopping ClusterCommThread");
 
           _stop = 1;
@@ -517,7 +519,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-      
+
       private:
 
 // -----------------------------------------------------------------------------
@@ -541,7 +543,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop flag
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         volatile sig_atomic_t _stop;
 
     };
@@ -550,9 +552,11 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
-
-

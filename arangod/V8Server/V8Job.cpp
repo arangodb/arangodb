@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
@@ -100,23 +101,23 @@ Job::status_t V8Job::work () {
   // now execute the function within this context
   {
     v8::HandleScope scope;
-    
+
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
-    
+
     // Invoke Function constructor to create function with the given body and no arguments
     v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), (int) _command.size()) };
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
-  
+
     if (action.IsEmpty()) {
       _v8Dealer->exitContext(context);
       // TODO: adjust exit code??
       return status_t(JOB_DONE);
     }
- 
+
     v8::Handle<v8::Value> fArgs;
     if (_parameters != 0) {
       fArgs = TRI_ObjectJson(_parameters);
@@ -124,11 +125,11 @@ Job::status_t V8Job::work () {
     else {
       fArgs = v8::Undefined();
     }
-    
-    // call the function  
+
+    // call the function
     v8::TryCatch tryCatch;
     action->Call(current, 1, &fArgs);
-      
+
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
         TRI_LogV8Exception(&tryCatch);
@@ -185,5 +186,5 @@ void V8Job::handleError (TriagensError const& ex) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

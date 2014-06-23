@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,11 +59,6 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -76,7 +73,7 @@ triagens::httpclient::GeneralClientConnection* Connection = 0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
-      
+
 triagens::httpclient::SimpleHttpClient* Client = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +95,7 @@ static vector<string> Collections;
 static bool IncludeSystemCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input directory 
+/// @brief input directory
 ////////////////////////////////////////////////////////////////////////////////
 
 static string InputDirectory;
@@ -153,21 +150,12 @@ static struct {
   uint64_t _totalBatches;
   uint64_t _totalCollections;
   uint64_t _totalRead;
-} 
+}
 Stats;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -203,18 +191,9 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -286,7 +265,7 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
   const StringBuffer& body = result->getBody();
   string details;
@@ -303,12 +282,12 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   }
-      
-  return "got error from server: HTTP " + 
-         StringUtils::itoa(result->getHttpReturnCode()) + 
+
+  return "got error from server: HTTP " +
+         StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" +
          details;
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the version from the server
@@ -317,11 +296,11 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 static string GetArangoVersion () {
   map<string, string> headers;
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
-                                               0, 
-                                               0,  
-                                               headers); 
+                                               0,
+                                               0,
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -332,11 +311,11 @@ static string GetArangoVersion () {
   }
 
   string version;
-    
+
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // default value
     version = "arango";
-  
+
     // convert response body to json
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
@@ -373,11 +352,11 @@ static string GetArangoVersion () {
 
 static bool GetArangoIsCluster () {
   map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
                                         0,
-                                        headers); 
+                                        headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -388,10 +367,10 @@ static bool GetArangoIsCluster () {
   }
 
   string role = "UNDEFINED";
-    
+
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
     if (json != 0) {
@@ -418,22 +397,22 @@ static bool GetArangoIsCluster () {
 /// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreCollection (TRI_json_t const* json, 
+static int SendRestoreCollection (TRI_json_t const* json,
                                   string& errorMsg) {
   map<string, string> headers;
 
   const string url = "/_api/replication/restore-collection"
                      "?overwrite=" + string(Overwrite ? "true" : "false") +
-                     "&recycleIds=" + string(RecycleIds ? "true" : "false") + 
+                     "&recycleIds=" + string(RecycleIds ? "true" : "false") +
                      "&force=" + string(Force ? "true" : "false");
 
   const string body = JsonHelper::toString(json);
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
-                                               body.c_str(), 
-                                               body.size(),  
-                                               headers); 
+                                               body.c_str(),
+                                               body.size(),
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -451,7 +430,7 @@ static int SendRestoreCollection (TRI_json_t const* json,
 
     return TRI_ERROR_INTERNAL;
   }
-  
+
   delete response;
 
   return TRI_ERROR_NO_ERROR;
@@ -461,18 +440,18 @@ static int SendRestoreCollection (TRI_json_t const* json,
 /// @brief send the request to re-create indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreIndexes (TRI_json_t const* json, 
+static int SendRestoreIndexes (TRI_json_t const* json,
                                string& errorMsg) {
   map<string, string> headers;
 
   const string url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
   const string body = JsonHelper::toString(json);
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
-                                               body.c_str(), 
-                                               body.size(),  
-                                               headers); 
+                                               body.c_str(),
+                                               body.size(),
+                                               headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
@@ -490,7 +469,7 @@ static int SendRestoreIndexes (TRI_json_t const* json,
 
     return TRI_ERROR_INTERNAL;
   }
-  
+
   delete response;
 
   return TRI_ERROR_NO_ERROR;
@@ -506,16 +485,16 @@ static int SendRestoreData (string const& cname,
                             string& errorMsg) {
   map<string, string> headers;
 
-  const string url = "/_api/replication/restore-data?collection=" + 
+  const string url = "/_api/replication/restore-data?collection=" +
                      StringUtils::urlEncode(cname) +
-                     "&recycleIds=" + (RecycleIds ? "true" : "false") + 
+                     "&recycleIds=" + (RecycleIds ? "true" : "false") +
                      "&force=" + (Force ? "true" : "false");
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
-                                               buffer, 
-                                               bufferSize,  
-                                               headers); 
+                                               buffer,
+                                               bufferSize,
+                                               headers);
 
 
   if (response == 0 || ! response->isComplete()) {
@@ -534,7 +513,7 @@ static int SendRestoreData (string const& cname,
 
     return TRI_ERROR_INTERNAL;
   }
-    
+
   delete response;
 
   return TRI_ERROR_NO_ERROR;
@@ -543,17 +522,17 @@ static int SendRestoreData (string const& cname,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
 /// sort order is by collection type first (vertices before edges, this is
-/// because edges depend on vertices being there), then name 
+/// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SortCollections (const void* l, 
+static int SortCollections (const void* l,
                             const void* r) {
   TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
   TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", 0);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", 0);
-  
+
   if (leftType != rightType) {
     return leftType - rightType;
   }
@@ -604,11 +583,11 @@ static int ProcessInputDirectory (string& errorMsg) {
       // found a structure.json file
 
       const string name = files[i].substr(0, files[i].size() - suffix.size());
-    
+
       if (name[0] == '_' && ! IncludeSystemCollections) {
         continue;
       }
-    
+
       if (restrictList.size() > 0 &&
           restrictList.find(name) == restrictList.end()) {
         // collection name not in list
@@ -672,7 +651,7 @@ static int ProcessInputDirectory (string& errorMsg) {
 
   // sort collections according to type (documents before edges)
   qsort(collections->_value._objects._buffer, collections->_value._objects._length, sizeof(TRI_json_t), &SortCollections);
-  
+
   StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
   // step2: run the actual import
@@ -719,13 +698,13 @@ static int ProcessInputDirectory (string& errorMsg) {
 
         if (TRI_ExistsFile(datafile.c_str())) {
           // found a datafile
-      
+
           if (Progress) {
             cout << "Loading data into collection '" << cname << "'..." << endl;
           }
 
           int fd = TRI_OPEN(datafile.c_str(), O_RDONLY);
-          
+
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
@@ -740,7 +719,7 @@ static int ProcessInputDirectory (string& errorMsg) {
               TRI_CLOSE(fd);
               errorMsg = "out of memory";
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-            
+
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
@@ -752,7 +731,7 @@ static int ProcessInputDirectory (string& errorMsg) {
               TRI_CLOSE(fd);
               errorMsg = string(TRI_errno_string(res));
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-            
+
               return res;
             }
 
@@ -771,7 +750,7 @@ static int ProcessInputDirectory (string& errorMsg) {
               // look for the last \n in the buffer
               char* found = (char*) memrchr((const void*) buffer.begin(), '\n', buffer.length());
               size_t length;
- 
+
               if (found == 0) {
                 // no \n found...
                 if (numRead == 0) {
@@ -825,10 +804,10 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
       }
 
-      
+
       if (ImportStructure) {
         // re-create indexes
-        
+
         if (TRI_LengthVector(&indexes->_value._objects) > 0) {
           // we actually have indexes
           if (Progress) {
@@ -905,7 +884,7 @@ int main (int argc, char* argv[]) {
   if (ChunkSize < 1024 * 128) {
     ChunkSize = 1024 * 128;
   }
-  
+
   // .............................................................................
   // check input directory
   // .............................................................................
@@ -936,12 +915,12 @@ int main (int argc, char* argv[]) {
                                                 BaseClient.connectTimeout(),
                                                 ArangoClient::DEFAULT_RETRIES,
                                                 BaseClient.sslProtocol());
-  
+
   if (Connection == 0) {
     cerr << "out of memory" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
-  
+
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
 
   if (Client == 0) {
@@ -963,7 +942,7 @@ int main (int argc, char* argv[]) {
   // successfully connected
   cout << "Server version: " << versionString << endl;
 
-  // validate server version 
+  // validate server version
   int major = 0;
   int minor = 0;
 
@@ -972,7 +951,7 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
 
-  if (major < 1 || 
+  if (major < 1 ||
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
@@ -990,16 +969,16 @@ int main (int argc, char* argv[]) {
   if (Progress) {
     cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
   }
-  
+
   memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
   int res = ProcessInputDirectory(errorMsg);
-  
+
   if (Progress) {
     if (ImportData) {
-      cout << "Processed " << Stats._totalCollections << " collection(s), " << 
-              "read " << Stats._totalRead << " byte(s) from datafiles, " << 
+      cout << "Processed " << Stats._totalCollections << " collection(s), " <<
+              "read " << Stats._totalRead << " byte(s) from datafiles, " <<
               "sent " << Stats._totalBatches << " batch(es)" << endl;
     }
     else if (ImportStructure) {
@@ -1012,7 +991,7 @@ int main (int argc, char* argv[]) {
     cerr << errorMsg << endl;
     ret = EXIT_FAILURE;
   }
-  
+
   if (Client != 0) {
     delete Client;
   }
@@ -1024,15 +1003,11 @@ int main (int argc, char* argv[]) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

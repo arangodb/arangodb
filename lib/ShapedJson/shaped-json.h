@@ -6,7 +6,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHAPED_JSON_SHAPED_JSON_H
-#define TRIAGENS_SHAPED_JSON_SHAPED_JSON_H 1
+#ifndef ARANGODB_SHAPED_JSON_SHAPED__JSON_H
+#define ARANGODB_SHAPED_JSON_SHAPED__JSON_H 1
 
 #include "Basics/Common.h"
 
@@ -173,11 +175,6 @@ struct TRI_string_buffer_s;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief size of short strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -189,10 +186,6 @@ struct TRI_string_buffer_s;
 
 #define TRI_SHAPE_SIZE_VARIABLE ((TRI_shape_size_t) -1)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        JSON SHAPE
 // -----------------------------------------------------------------------------
@@ -200,11 +193,6 @@ struct TRI_string_buffer_s;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of a shape identifier
@@ -886,10 +874,6 @@ typedef struct TRI_shaped_sub_s {
 }
 TRI_shaped_sub_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ATTRIBUTE PATH
 // -----------------------------------------------------------------------------
@@ -897,11 +881,6 @@ TRI_shaped_sub_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of an attribute path
@@ -922,18 +901,9 @@ typedef struct TRI_shape_path_s {
 }
 TRI_shape_path_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a deep copy of a shaped json object
@@ -952,34 +922,25 @@ void TRI_DestroyShapedJson (struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapedJson (struct TRI_memory_zone_s*, 
+void TRI_FreeShapedJson (struct TRI_memory_zone_s*,
                          TRI_shaped_json_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortShapeValues (TRI_shape_value_t* values, 
+void TRI_SortShapeValues (TRI_shape_value_t* values,
                           size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json object into a shaped json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*, 
+TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
                                        TRI_json_t const*,
                                        bool,
                                        bool);
@@ -988,9 +949,9 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
 /// @brief converts a shaped json object into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*, 
+TRI_json_t* TRI_JsonShapedJson (struct TRI_shaper_s*,
                                 TRI_shaped_json_t const*);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json to a string buffer, without the outer braces
 /// this can only be used to stringify shapes of type array
@@ -1066,25 +1027,16 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
                                            size_t position,
                                            TRI_shaped_json_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShape (struct TRI_shaper_s* shaper,    
-                     TRI_shape_t const* shape, 
+void TRI_PrintShape (struct TRI_shaper_s* shaper,
+                     TRI_shape_t const* shape,
                      int indent);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1125,13 +1077,13 @@ void TRI_IterateShapeDataArray (struct TRI_shaper_s*,
 void TRI_PrintShapeValues (TRI_shape_value_t*,
                            size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

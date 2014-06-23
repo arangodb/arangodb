@@ -83,18 +83,7 @@ alternative call:
 
 !SUBSECTION List available graphs
 
-@startDocuBlock JSF_general_graph_list_call
-`general-graph._list()` *List all graphs.*
-<br />
-<br />
-
-@startDocuBlock JSF_general_graph_list_info
-
-<br />
-@EXAMPLES
-<br />
-
-@startDocuBlock JSF_general_graph_list_examples
+@startDocuBlock JSF_general_graph_list
 
 !SUBSECTION Load a graph
 

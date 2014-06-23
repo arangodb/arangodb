@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -283,7 +285,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
     _unusedForceSyncShapes(false),
-    _disableReplicationLogger(false),
     _disableReplicationApplier(false),
     _removeOnDrop(true),
     _server(nullptr) {
@@ -366,7 +367,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // dispatcher
   // .............................................................................
-  
+
   _applicationDispatcher = new ApplicationDispatcher();
 
   if (_applicationDispatcher == nullptr) {
@@ -415,6 +416,7 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
+    ("server.disable-replication-logger", &ignoreOpt, "start with replication logger turned off")
   ;
 
   // .............................................................................
@@ -439,8 +441,8 @@ void ArangoServer::buildApplicationServer () {
     ("upgrade", "perform a database upgrade")
     ("check-version", "checks the versions of the database and exit")
   ;
- 
-  // other options 
+
+  // other options
   additional[ApplicationServer::OPTIONS_SERVER]
     ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
@@ -537,7 +539,6 @@ void ArangoServer::buildApplicationServer () {
 #ifdef TRI_HAVE_LINUX_SOCKETS
     ("server.disable-authentication-unix-sockets", &_disableAuthenticationUnixSockets, "disable authentication for requests via UNIX domain sockets")
 #endif
-    ("server.disable-replication-logger", &_disableReplicationLogger, "start with replication logger turned off")
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
   ;
@@ -673,7 +674,7 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
   // now run arangod
   // .............................................................................
-  
+
   // dump version details
   LOG_INFO("%s", rest::Version::getVerboseVersionString().c_str());
 
@@ -727,7 +728,7 @@ int ArangoServer::startupServer () {
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
   }
-  
+
   // check version
   bool checkVersion = false;
 
@@ -771,7 +772,7 @@ int ArangoServer::startupServer () {
   bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
 
   openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
-      
+
   if (! wal::LogfileManager::instance()->open()) {
     LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
   }
@@ -834,7 +835,7 @@ int ArangoServer::startupServer () {
   }
 
   _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
-  
+
   // finally flush the write-ahead log so all data in the WAL goes into the collections
   wal::LogfileManager::instance()->flush(true, true, true);
 
@@ -1090,7 +1091,7 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
 /// @brief opens all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::openDatabases (bool checkVersion, 
+void ArangoServer::openDatabases (bool checkVersion,
                                   bool performUpgrade,
                                   bool iterateMarkersOnOpen) {
   TRI_vocbase_defaults_t defaults;
@@ -1112,7 +1113,6 @@ void ArangoServer::openDatabases (bool checkVersion,
                            _applicationV8->appPath().c_str(),
                            _applicationV8->devAppPath().c_str(),
                            &defaults,
-                           _disableReplicationLogger,
                            _disableReplicationApplier,
                            iterateMarkersOnOpen);
 
@@ -1142,7 +1142,7 @@ void ArangoServer::closeDatabases () {
 
   TRI_CleanupActions();
 
-  // enfore logfile manager shutdown so we are sure no one else will 
+  // enfore logfile manager shutdown so we are sure no one else will
   // write to the logs
   wal::LogfileManager::instance()->stop();
 
@@ -1157,5 +1157,5 @@ void ArangoServer::closeDatabases () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

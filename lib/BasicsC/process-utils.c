@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -235,13 +237,13 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
       return;
     }
   }
-  
+
   processPid = fork();
-   
+
   // child process
   if (processPid == 0) {
-     
-    // set stdin and stdout of child process 
+
+    // set stdin and stdout of child process
     if (usePipes) {
       dup2(pipe_server_to_child[0], 0);
       dup2(pipe_child_to_server[1], 1);
@@ -249,7 +251,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
       fcntl(0, F_SETFD, 0);
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
- 
+
       // close pipes
       close(pipe_server_to_child[0]);
       close(pipe_server_to_child[1]);
@@ -261,19 +263,19 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
     }
- 
+
     // ignore signals in worker process
     signal(SIGINT,  SIG_IGN);
     signal(SIGTERM, SIG_IGN);
     signal(SIGHUP,  SIG_IGN);
     signal(SIGUSR1, SIG_IGN);
-      
+
     // execute worker
     execvp(external->_executable, external->_arguments);
 
     _exit(1);
   }
-   
+
   // parent
   if (processPid == -1) {
     LOG_ERROR("fork failed");
@@ -288,13 +290,13 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     external->_status = TRI_EXT_FORK_FAILED;
     return;
   }
- 
+
   LOG_DEBUG("fork succeeded %d", processPid);
 
   if (usePipes) {
     close(pipe_server_to_child[0]);
     close(pipe_child_to_server[1]);
- 
+
     external->_writePipe = pipe_server_to_child[1];
     external->_readPipe = pipe_child_to_server[0];
   }
@@ -311,18 +313,18 @@ static bool createPipes (HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
                          HANDLE* hChildStdoutRd, HANDLE* hChildStdoutWr) {
 
   // set the bInheritHandle flag so pipe handles are inherited
-  SECURITY_ATTRIBUTES saAttr; 
+  SECURITY_ATTRIBUTES saAttr;
 
-  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-  saAttr.bInheritHandle = TRUE; 
-  saAttr.lpSecurityDescriptor = NULL; 
- 
+  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+  saAttr.bInheritHandle = TRUE;
+  saAttr.lpSecurityDescriptor = NULL;
+
   // create a pipe for the child process's STDOUT
   if (! CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
     LOG_ERROR("%s", "stdout pipe creation failed");
     return false;
   }
- 
+
   // create a pipe for the child process's STDIN
   if (! CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
     CloseHandle(hChildStdoutRd);
@@ -330,7 +332,7 @@ static bool createPipes (HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     LOG_ERROR("stdin pipe creation failed");
     return false;
   }
-    
+
   return true;
 }
 
@@ -344,7 +346,7 @@ static bool createPipes (HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
 
 static int appendQuotedArg (TRI_string_buffer_t* buf, char const* p) {
   int err;
-  
+
   appendChar(buf, '"');
 
   while (*p != 0) {
@@ -419,10 +421,10 @@ static char* makeWindowsArgs (TRI_external_t* external) {
 
 static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
   char* args;
-  PROCESS_INFORMATION piProcInfo; 
+  PROCESS_INFORMATION piProcInfo;
   STARTUPINFO siStartInfo;
-  BOOL bFuncRetn = FALSE; 
- 
+  BOOL bFuncRetn = FALSE;
+
   args = makeWindowsArgs(external);
   if (args == NULL) {
     LOG_ERROR("execute of '%s' failed making args", external->_executable);
@@ -431,10 +433,10 @@ static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
 
   // set up members of the PROCESS_INFORMATION structure
   ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
- 
+
   // set up members of the STARTUPINFO structure
   ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-  siStartInfo.cb = sizeof(STARTUPINFO); 
+  siStartInfo.cb = sizeof(STARTUPINFO);
 
   siStartInfo.dwFlags = STARTF_USESTDHANDLES;
   siStartInfo.hStdInput = rd ? rd : GetStdHandle(STD_INPUT_HANDLE);
@@ -442,17 +444,17 @@ static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
   siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
   // create the child process
-  bFuncRetn = CreateProcess(NULL, 
-                            args,                        // command line 
-                            NULL,                        // process security attributes 
-                            NULL,                        // primary thread security attributes 
-                            TRUE,                        // handles are inherited 
-                            CREATE_NEW_PROCESS_GROUP,    // creation flags 
-                            NULL,                        // use parent's environment 
-                            NULL,                        // use parent's current directory 
-                            &siStartInfo,                // STARTUPINFO pointer 
-                            &piProcInfo);                // receives PROCESS_INFORMATION 
-   
+  bFuncRetn = CreateProcess(NULL,
+                            args,                        // command line
+                            NULL,                        // process security attributes
+                            NULL,                        // primary thread security attributes
+                            TRUE,                        // handles are inherited
+                            CREATE_NEW_PROCESS_GROUP,    // creation flags
+                            NULL,                        // use parent's environment
+                            NULL,                        // use parent's current directory
+                            &siStartInfo,                // STARTUPINFO pointer
+                            &piProcInfo);                // receives PROCESS_INFORMATION
+
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
 
   if (bFuncRetn == FALSE) {
@@ -470,16 +472,16 @@ static bool startProcess (TRI_external_t * external, HANDLE rd, HANDLE wr) {
 static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
     HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
-    bool fSuccess; 
+    bool fSuccess;
     if(usePipes) {
-      fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, 
+      fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr,
                              &hChildStdoutRd, &hChildStdoutWr);
 
       if (! fSuccess) {
         external->_status = TRI_EXT_PIPE_FAILED;
         return;
       }
-    } 
+    }
 
     // now create the child process.
     fSuccess = startProcess(external, hChildStdinRd, hChildStdoutWr);
@@ -501,7 +503,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
 
       return;
     }
- 
+
     CloseHandle(hChildStdinRd);
     CloseHandle(hChildStdoutWr);
 
@@ -565,7 +567,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     result._userTime = TRI_MicrosecondsTv(&used.ru_utime);
 
     // ru_maxrss is the resident set size in kilobytes. need to multiply with 1024 to get the number of bytes
-    result._residentSize = used.ru_maxrss * TRI_GETRUSAGE_MAXRSS_UNIT; 
+    result._residentSize = used.ru_maxrss * TRI_GETRUSAGE_MAXRSS_UNIT;
   }
 
 #ifdef TRI_HAVE_MACH
@@ -657,7 +659,7 @@ static uint64_t _TimeAmount(FILETIME *ft) {
   help = ft->dwHighDateTime;
   help = help << 32;
   ts |= help;
-  /// at moment without transformation
+/// at moment without transformation
   return ts;
 }
 
@@ -667,7 +669,7 @@ static time_t _FileTime_to_POSIX(FILETIME * ft) {
   help = ft->dwHighDateTime;
   help = help << 32;
   ts |= help;
-  
+
   return (ts - 116444736000000000) / 10000000;
 }
 
@@ -686,17 +688,17 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
 
     // from MSDN:
     // "The working set is the amount of memory physically mapped to the process context at a given time.
-    // Memory in the paged pool is system memory that can be transferred to the paging file on disk(paged) when 
-    // it is not being used. Memory in the nonpaged pool is system memory that cannot be paged to disk as long as 
-    // the corresponding objects are allocated. The pagefile usage represents how much memory is set aside for the 
-    // process in the system paging file. When memory usage is too high, the virtual memory manager pages selected 
-    // memory to disk. When a thread needs a page that is not in memory, the memory manager reloads it from the 
+    // Memory in the paged pool is system memory that can be transferred to the paging file on disk(paged) when
+    // it is not being used. Memory in the nonpaged pool is system memory that cannot be paged to disk as long as
+    // the corresponding objects are allocated. The pagefile usage represents how much memory is set aside for the
+    // process in the system paging file. When memory usage is too high, the virtual memory manager pages selected
+    // memory to disk. When a thread needs a page that is not in memory, the memory manager reloads it from the
     // paging file."
 
     result._residentSize = pmc.WorkingSetSize;
     result._virtualSize = pmc.PrivateUsage;
   }
-  /// computing times
+/// computing times
   FILETIME creationTime, exitTime, kernelTime, userTime;
   if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     // see remarks in http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
@@ -707,7 +709,7 @@ TRI_process_info_t TRI_ProcessInfoSelf () {
     // for computing  the timestamps of creation and exit time
     // the function '_FileTime_to_POSIX' should be called
   }
-  /// computing number of threads
+/// computing number of threads
   DWORD myPID = GetCurrentProcessId();
   HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
 
@@ -771,7 +773,7 @@ TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid) {
     result._systemTime = st.stime;
     result._numberThreads = st.num_threads;
     // st.rss is measured in number of pages, we need to multiply by page size to get the actual amount
-    result._residentSize = st.rss * getpagesize();  
+    result._residentSize = st.rss * getpagesize();
     result._virtualSize = st.vsize;
     result._scClkTck = sysconf(_SC_CLK_TCK);
   }
@@ -913,7 +915,7 @@ void TRI_CreateExternalProcess (const char* executable,
                                 bool usePipes,
                                 TRI_external_id_t* pid) {
   TRI_external_t* external;
-  
+
   size_t i;
 
   // create the external structure
@@ -979,7 +981,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     return status;
   }
 
-  if (external->_status == TRI_EXT_RUNNING || 
+  if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
     TRI_pid_t res;
@@ -1019,7 +1021,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     }
     DWORD exitCode = STILL_ACTIVE;
     if (!GetExitCodeProcess(external->_process , &exitCode)) {
-      LOG_WARNING("exit status could not be determined for PID '%ud'", 
+      LOG_WARNING("exit status could not be determined for PID '%ud'",
                   external->_pid);
     }
     else {
@@ -1036,9 +1038,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 
   status._status = external->_status;
   status._exitStatus = external->_exitStatus;
- 
+
   // Do we have to free our data?
-  if (external->_status != TRI_EXT_RUNNING && 
+  if (external->_status != TRI_EXT_RUNNING &&
       external->_status != TRI_EXT_STOPPED) {
     TRI_RemoveVectorPointer(&ExternalProcesses, i);
     FreeExternal(external);
@@ -1158,7 +1160,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 #endif
   }
 
-  if (external->_status == TRI_EXT_RUNNING || 
+  if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
     ok = ourKillProcess(external);
   }
@@ -1225,5 +1227,5 @@ void TRI_ShutdownProcess () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

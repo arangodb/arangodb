@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,11 +37,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hex values for all characters
@@ -90,18 +87,9 @@ static uint8_t const HexDecodeLookup[256] = {
   0,0,0,0,0,0,0,0,0
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F
@@ -377,18 +365,9 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to lower case
@@ -677,9 +656,9 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
 /// @brief concatenate two strings, with known lengths
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_ConcatenateSized2String (char const* a, 
-                                   size_t na, 
-                                   char const* b, 
+char* TRI_ConcatenateSized2String (char const* a,
+                                   size_t na,
+                                   char const* b,
                                    size_t nb) {
   return TRI_ConcatenateSized2StringZ(TRI_CORE_MEM_ZONE, a, na, b, nb);
 }
@@ -688,10 +667,10 @@ char* TRI_ConcatenateSized2String (char const* a,
 /// @brief concatenate two strings, with known lengths, using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t* zone, 
-                                    char const* a, 
-                                    size_t na, 
-                                    char const* b, 
+char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t* zone,
+                                    char const* a,
+                                    size_t na,
+                                    char const* b,
                                     size_t nb) {
   char* result;
 
@@ -961,18 +940,9 @@ void TRI_FreeString (TRI_memory_zone_t* zone, char* value) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public escape functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation
@@ -1148,8 +1118,8 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_EscapeControlsCString (TRI_memory_zone_t* zone,
-                                 char const* in, 
-                                 size_t inLength, 
+                                 char const* in,
+                                 size_t inLength,
                                  size_t* outLength,
                                  bool appendNewline) {
   char * buffer;
@@ -1222,10 +1192,10 @@ char* TRI_EscapeControlsCString (TRI_memory_zone_t* zone,
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in, 
-                            size_t inLength, 
-                            bool escapeSlash, 
-                            size_t* outLength, 
+char* TRI_EscapeUtf8String (char const* in,
+                            size_t inLength,
+                            bool escapeSlash,
+                            size_t* outLength,
                             bool compactResult) {
   return TRI_EscapeUtf8StringZ(TRI_CORE_MEM_ZONE, in, inLength, escapeSlash, outLength, compactResult);
 }
@@ -1390,7 +1360,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
   }
 
   TRI_Free(zone, buffer);
-    
+
   return qtr;
 }
 
@@ -1604,11 +1574,11 @@ char* TRI_PrefixUtf8String (const char* in, const uint32_t maximumLength) {
   return (char*) p;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,7 +167,7 @@ static void TRI_GlobalExitFunction(int exitCode, void* data) {
 static void InstallServiceCommand (string command) {
   string friendlyServiceName = "ArangoDB - the multi-purpose database";
 
-  cout << "INFO: adding service '" << friendlyServiceName 
+  cout << "INFO: adding service '" << friendlyServiceName
        << "' (internal '" << ServiceName << "')"
        << endl;
 
@@ -176,7 +178,7 @@ static void InstallServiceCommand (string command) {
     exit(EXIT_FAILURE);
   }
 
-  SC_HANDLE schService = CreateServiceA( 
+  SC_HANDLE schService = CreateServiceA(
     schSCManager,                // SCManager database
     ServiceName.c_str(),         // name of service
     friendlyServiceName.c_str(), // service name to display
@@ -203,7 +205,7 @@ static void InstallServiceCommand (string command) {
 
   cout << "INFO: added service with command line '" << command << "'" << endl;
 
-  CloseServiceHandle(schService); 
+  CloseServiceHandle(schService);
 }
 
 #endif
@@ -243,7 +245,7 @@ static void InstallService (int argc, char* argv[]) {
 
 #ifdef _WIN32
 
-static void DeleteService (int argc, char* argv[]) { 
+static void DeleteService (int argc, char* argv[]) {
   cout << "INFO: removing service '" << ServiceName << "'" << endl;
 
   SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
@@ -260,7 +262,7 @@ static void DeleteService (int argc, char* argv[]) {
 
   CloseServiceHandle(schSCManager);
 
-  if (schService == 0) { 
+  if (schService == 0) {
     cout << "FATAL: OpenServiceA failed with " << GetLastError() << endl;
     exit(EXIT_FAILURE);
   }
@@ -284,7 +286,7 @@ static void DeleteService (int argc, char* argv[]) {
 static void SetServiceStatus (DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwCheckPoint, DWORD dwWaitHint) {
 
   // disable control requests until the service is started
-  SERVICE_STATUS ss; 
+  SERVICE_STATUS ss;
 
   if (dwCurrentState == SERVICE_START_PENDING || dwCurrentState == SERVICE_STOP_PENDING) {
     ss.dwControlsAccepted = 0;
@@ -430,7 +432,7 @@ int main (int argc, char* argv[]) {
 
   if (startAsService) {
     SERVICE_TABLE_ENTRY ste[] = {
-      { TEXT(""), (LPSERVICE_MAIN_FUNCTION) ServiceMain }, 
+      { TEXT(""), (LPSERVICE_MAIN_FUNCTION) ServiceMain },
       { NULL, NULL }
     };
 
@@ -472,5 +474,5 @@ int main (int argc, char* argv[]) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
