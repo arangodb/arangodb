@@ -1,8 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
-  REPLICATION_LOGGER_START, REPLICATION_LOGGER_STOP, REPLICATION_LOGGER_STATE,
-  REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
+  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
   REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
   REPLICATION_SYNCHRONISE, REPLICATION_SERVER_ID, CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
@@ -263,24 +262,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startReplicationLogger
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_LOGGER_START !== "undefined") {
-    exports.startReplicationLogger = REPLICATION_LOGGER_START;
-    delete REPLICATION_LOGGER_START;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopReplicationLogger
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_LOGGER_STOP !== "undefined") {
-    exports.stopReplicationLogger = REPLICATION_LOGGER_STOP;
-    delete REPLICATION_LOGGER_STOP;
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getStateReplicationLogger

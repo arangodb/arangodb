@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -167,7 +169,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -262,7 +264,7 @@ struct ShapesTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -348,7 +350,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -445,7 +447,7 @@ struct RandomShapesTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -549,7 +551,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -657,7 +659,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -751,7 +753,7 @@ struct SkiplistTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -845,7 +847,7 @@ struct HashTest : public BenchmarkOperation {
 
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
-      char* ptr = TRI_StealStringBuffer(buffer); 
+      char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
       return (const char*) ptr;
@@ -987,7 +989,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 // -----------------------------------------------------------------------------
 // --SECTION--                                           collection creation test
 // -----------------------------------------------------------------------------
-  
+
 struct CollectionCreationTest : public BenchmarkOperation {
   CollectionCreationTest ()
     : BenchmarkOperation (),
@@ -1030,7 +1032,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
 
     // this will free the string buffer frame, but not the string
-    data = TRI_StealStringBuffer(buffer); 
+    data = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     *mustFree = true;
@@ -1185,7 +1187,7 @@ struct TransactionCountTest : public BenchmarkOperation {
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\" }, \"action\": \"function () { var c = require(\\\"internal\\\").db._collection(\\\""); 
+    TRI_AppendStringStringBuffer(buffer, "\" }, \"action\": \"function () { var c = require(\\\"internal\\\").db._collection(\\\"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
     TRI_AppendStringStringBuffer(buffer, "\\\"); var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \\\"error\\\"; } c.save({ }); } }\" }");
 
@@ -1218,7 +1220,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
     return DeleteCollection(client, _c1) &&
            DeleteCollection(client, _c2) &&
            CreateCollection(client, _c1, 2) &&
-           CreateCollection(client, _c2, 2) && 
+           CreateCollection(client, _c2, 2) &&
            CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
   }
 
@@ -1239,7 +1241,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
-    
+
     if (mod == 0) {
       TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
     }
@@ -1256,14 +1258,14 @@ struct TransactionMultiTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\\\"); var c2 = require(\\\"internal\\\").db._collection(\\\"");
     TRI_AppendStringStringBuffer(buffer, _c2.c_str());
     TRI_AppendStringStringBuffer(buffer, "\\\"); ");
-  
+
     if (mod == 0) {
       TRI_AppendStringStringBuffer(buffer, "var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\\\"sum\\\"); c2.update(d, { count: d.count + n });");
     }
     else {
       TRI_AppendStringStringBuffer(buffer, "var r1 = 0; c1.toArray().forEach(function (d) { r1 += d.count }); var r2 = c2.document(\\\"sum\\\").count; if (r1 !== r2) { throw \\\"error\\\"; }");
     }
-    
+
     TRI_AppendStringStringBuffer(buffer, " }\" }");
 
     *length = TRI_LengthStringBuffer(buffer);
@@ -1390,8 +1392,8 @@ static bool CreateDocument (SimpleHttpClient* client,
   bool failed = true;
 
   if (result != 0) {
-    if (result->getHttpReturnCode() == 200 || 
-        result->getHttpReturnCode() == 201 || 
+    if (result->getHttpReturnCode() == 200 ||
+        result->getHttpReturnCode() == 201 ||
         result->getHttpReturnCode() == 202) {
       failed = false;
     }
@@ -1462,5 +1464,5 @@ static BenchmarkOperation* GetTestCase (const std::string& name) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

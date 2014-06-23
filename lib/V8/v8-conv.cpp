@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +86,7 @@ shape_cache_t;
 /// @brief converts a null into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueNull (TRI_shaper_t* shaper, 
+static int FillShapeValueNull (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst) {
   dst->_type = TRI_SHAPE_NULL;
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
@@ -99,8 +101,8 @@ static int FillShapeValueNull (TRI_shaper_t* shaper,
 /// @brief converts a boolean into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueBoolean (TRI_shaper_t* shaper,  
-                                  TRI_shape_value_t* dst, 
+static int FillShapeValueBoolean (TRI_shaper_t* shaper,
+                                  TRI_shape_value_t* dst,
                                   v8::Handle<v8::Boolean> const json) {
   TRI_shape_boolean_t* ptr;
 
@@ -123,8 +125,8 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
 /// @brief converts a boolean into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueBoolean (TRI_shaper_t* shaper, 
-                                  TRI_shape_value_t* dst, 
+static int FillShapeValueBoolean (TRI_shaper_t* shaper,
+                                  TRI_shape_value_t* dst,
                                   v8::Handle<v8::BooleanObject> const json) {
   TRI_shape_boolean_t* ptr;
 
@@ -147,8 +149,8 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
 /// @brief converts a number into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueNumber (TRI_shaper_t* shaper, 
-                                 TRI_shape_value_t* dst, 
+static int FillShapeValueNumber (TRI_shaper_t* shaper,
+                                 TRI_shape_value_t* dst,
                                  v8::Handle<v8::Number> const json) {
   TRI_shape_number_t* ptr;
 
@@ -171,8 +173,8 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
 /// @brief converts a number into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueNumber (TRI_shaper_t* shaper, 
-                                 TRI_shape_value_t* dst, 
+static int FillShapeValueNumber (TRI_shaper_t* shaper,
+                                 TRI_shape_value_t* dst,
                                  v8::Handle<v8::NumberObject> const json) {
   TRI_shape_number_t* ptr;
 
@@ -195,8 +197,8 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
 /// @brief converts a string into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueString (TRI_shaper_t* shaper, 
-                                 TRI_shape_value_t* dst, 
+static int FillShapeValueString (TRI_shaper_t* shaper,
+                                 TRI_shape_value_t* dst,
                                  v8::Handle<v8::String> const json) {
   char* ptr;
 
@@ -455,7 +457,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
           TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
-      
+
       LOG_TRACE("shaper failed to find shape %d", (int) shape->base._type);
 
       TRI_Free(shaper->_memoryZone, values);
@@ -613,7 +615,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
   total = 0;
   f = 0;
   v = 0;
-  
+
   for (uint32_t i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> key = names->Get(i);
     v8::Handle<v8::Value> val = json->Get(key);
@@ -880,8 +882,8 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
   else if (json->IsArray()) {
     return FillShapeValueList(shaper, dst, v8::Handle<v8::Array>::Cast(json), seenHashes, seenObjects, create);
   }
-   
-  else if (json->IsObject()) { 
+
+  else if (json->IsObject()) {
     int res = FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects, create);
     seenObjects.pop_back();
     return res;
@@ -1047,7 +1049,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
@@ -1079,7 +1081,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
-    
+
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
@@ -1118,7 +1120,7 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
   if (l == 0) {
     return v8::Array::New(l);
   }
- 
+
   shapeCache._sid   = 0;
   shapeCache._shape = 0;
   list = v8::Array::New(l);
@@ -1128,7 +1130,7 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
 
   ptr += l * sizeof(TRI_shape_sid_t);
   offsets = (TRI_shape_size_t const*) ptr;
-  
+
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid = *sids;
 
@@ -1179,14 +1181,14 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   ptr += sizeof(TRI_shape_length_list_t);
   offsets = (TRI_shape_size_t const*) ptr;
-  
+
   subshape = shaper->lookupShapeId(shaper, sid);
 
   if (subshape == 0) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
     return v8::Array::New();
   }
-  
+
   list = v8::Array::New(l);
 
   for (i = 0;  i < l;  ++i, ++offsets) {
@@ -1224,10 +1226,10 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
   if (l == 0) {
     return v8::Array::New();
   }
-  
+
   sid    = s->_sidEntry;
   length = s->_sizeEntry;
-  
+
   subshape = shaper->lookupShapeId(shaper, sid);
 
   if (subshape == 0) {
@@ -1254,7 +1256,7 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
                                             char const* data,
                                             size_t size) {
-  if (shape == 0) {
+  if (shape == nullptr) {
     return v8::Null();
   }
 
@@ -1294,7 +1296,7 @@ static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
 /// @brief converts a TRI_json_t NULL into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
+static inline v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
   return v8::Null();
 }
 
@@ -1302,7 +1304,7 @@ static v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t BOOLEAN into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
+static inline v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
   return v8::Boolean::New(json->_value._boolean);
 }
 
@@ -1310,7 +1312,7 @@ static v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
+static inline v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
   return v8::Number::New(json->_value._number);
 }
 
@@ -1318,7 +1320,7 @@ static v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
+static inline v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
   return v8::String::New(json->_value._string.data, json->_value._string.length - 1);
 }
 
@@ -1329,16 +1331,16 @@ static v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
 static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
   v8::Handle<v8::Object> object = v8::Object::New();
 
-  const size_t n = json->_value._objects._length;
+  size_t const n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
-    TRI_json_t const* key = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
     if (! TRI_IsStringJson(key)) {
       continue;
     }
 
-    TRI_json_t const* j = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+    TRI_json_t const* j = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
     object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), val);
@@ -1353,11 +1355,11 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
 
 static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   uint32_t const n = (uint32_t) json->_value._objects._length;
-  
+
   v8::Handle<v8::Array> object = v8::Array::New((int) n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
-    TRI_json_t const* j = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+    TRI_json_t const* j = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
     v8::Handle<v8::Value> val = TRI_ObjectJson(j);
 
     object->Set(i, val);
@@ -1401,7 +1403,7 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t con
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
   v8::HandleScope scope;
 
-  if (json == 0) {
+  if (json == nullptr) {
     return scope.Close(v8::Undefined());
   }
 
@@ -1447,7 +1449,7 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
 /// @brief converts a V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object, 
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                            TRI_shaper_t* shaper,
                                            bool create) {
   TRI_shape_value_t dst;
@@ -1466,7 +1468,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
     return nullptr;
   }
 
-  TRI_shaped_json_t* shaped = (TRI_shaped_json_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false);
+  TRI_shaped_json_t* shaped = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false));
 
   if (shaped == nullptr) {
     return nullptr;
@@ -1536,7 +1538,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
       TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
       // this passes ownership for the utf8 string to the JSON object
       str.steal();
-    
+
       // the Utf8ValueNFC dtor won't free the string now
       return j;
     }
@@ -1594,7 +1596,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
         v8::Handle<v8::Value> key  = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
-    
+
         if (result != 0) {
           TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
 
@@ -1609,7 +1611,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
         }
       }
     }
-    
+
     seenObjects.pop_back();
 
     return arrayJson;
@@ -1778,5 +1780,5 @@ void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

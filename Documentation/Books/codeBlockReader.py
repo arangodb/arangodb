@@ -31,15 +31,20 @@ def example_content(filepath, fh, tag):
     """ Fetches an example file and inserts it using code
     """
 
-    first = True
     arangosh = False
-    showdots = True
+    curl = False
+    first = True
     lastline = None
-    short = ""
-    shortLines = 0
     long = ""
     longLines = 0
+    short = ""
+    shortLines = 0
     shortable = False
+    showdots = True
+
+    CURL_STATE_CMD = 1
+    CURL_STATE_HEADER = 2
+    CURL_STATE_BODY = 3
 
     # read in the context, split into long and short
     infile = open(filepath, 'r')
@@ -47,6 +52,7 @@ def example_content(filepath, fh, tag):
     for line in infile:
         if first:
             arangosh = line.startswith("arangosh>")
+            curl = line.startswith("shell> curl")
             first = False
 
         if arangosh:
@@ -57,11 +63,15 @@ def example_content(filepath, fh, tag):
                     lastline = None
 
                 short = short + line
+                shortLines = shortLines + 1
                 showdots = True
             else:
                 if showdots:
                     if lastline == None:
-                        lastline = line
+                        # lastline = line
+                        shortable = True
+                        showdots = False
+                        lastline = None
                     else:
                         # short = short + "~~~hidden~~~\n"
                         # shortLines = shortLines + 1
@@ -69,12 +79,26 @@ def example_content(filepath, fh, tag):
                         showdots = False
                         lastline = None
 
+        if curl:
+            if line.startswith("shell> curl"):
+                curlState = CURL_STATE_CMD
+            elif curlState == CURL_STATE_CMD and line.startswith("HTTP/1.1 "):
+                curlState = CURL_STATE_HEADER
+            elif curlState == CURL_STATE_HEADER and line.startswith("{"):
+                curlState = CURL_STATE_BODY
+
+            if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
+                short = short + line
+                shortLines = shortLines + 1
+            else:
+                shortable = True
+
         long = long + line
         longLines = longLines + 1
 
-    # if lastline != None:
-    #     short = short + lastline
-    #     shortLines = shortLines + 1
+    if lastline != None:
+        short = short + lastline
+        shortLines = shortLines + 1
 
     infile.close()
 
@@ -109,7 +133,14 @@ def example_content(filepath, fh, tag):
         fh.write("```\n")
         fh.write("%s" % short)
         fh.write("```\n")
-        fh.write("</pre><div class=\"example_show_button\">show execution results</div>\n")
+
+        if arangosh:
+            fh.write("</pre><div class=\"example_show_button\">show execution results</div>\n")
+        elif curl:
+            fh.write("</pre><div class=\"example_show_button\">show response body</div>\n")
+        else:
+            fh.write("</pre><div class=\"example_show_button\">show</div>\n")
+            
         fh.write("</div>\n")
 
     fh.write("</div>\n")
@@ -132,8 +163,7 @@ def fetch_comments(dirpath):
                 fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
                     _text = re.sub(r"//(/)+\s*\n", "<br />", _com)
-                    _text = re.sub(r"///+(\s+) + -", "  -", _text)
-                    _text = re.sub(r"///+(\s+) + \*", "  *", _text)
+                    _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
                     _text = re.sub(r"///\s*", "", _text)
                     _text = _text.strip("\n")
                     if _text:

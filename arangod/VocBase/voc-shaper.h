@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_VOC_SHAPER_H
-#define TRIAGENS_VOC_BASE_VOC_SHAPER_H 1
+#ifndef ARANGODB_VOC_BASE_VOC__SHAPER_H
+#define ARANGODB_VOC_BASE_VOC__SHAPER_H 1
 
 #include "Basics/Common.h"
 
@@ -48,7 +50,7 @@ struct TRI_document_collection_t;
 /// @brief creates a shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*, 
+TRI_shaper_t* TRI_CreateVocShaper (TRI_vocbase_t*,
                                    struct TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +79,7 @@ int TRI_InitVocShaper (TRI_shaper_t*);
 /// @brief move a shape marker, called during compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MoveMarkerVocShaper (TRI_shaper_t*, 
+int TRI_MoveMarkerVocShaper (TRI_shaper_t*,
                              TRI_df_marker_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,13 +129,13 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
                            TRI_shaper_t* shaper);
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shape identifier pointer from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
-                   TRI_shape_sid_t& dst, 
+                   TRI_shape_sid_t& dst,
                    void const* src) {
 
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
@@ -161,34 +163,34 @@ static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
 
 static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
                                                    void const* src) {
-  if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+  if (static_cast<TRI_df_marker_t const*>(src)->_type ==
       TRI_DOC_MARKER_KEY_DOCUMENT) {
     dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
-    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
-    dst._data.data = const_cast<char*>(static_cast<char const*>(src)) 
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
            TRI_DOC_MARKER_KEY_EDGE) {
     dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
-    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
-    dst._data.data = const_cast<char*>(static_cast<char const*>(src)) 
+    dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
            TRI_WAL_MARKER_DOCUMENT) {
     dst._sid = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
-    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
     dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type == 
+  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
            TRI_WAL_MARKER_EDGE) {
     dst._sid = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
-    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size 
+    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
     dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
@@ -208,5 +210,5 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

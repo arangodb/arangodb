@@ -6,6 +6,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +21,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
 /// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SHAPED_JSON_LEGENDS_H
-#define TRIAGENS_SHAPED_JSON_LEGENDS_H 1
+#ifndef ARANGODB_SHAPED_JSON_LEGENDS_H
+#define ARANGODB_SHAPED_JSON_LEGENDS_H 1
 
 #include "Basics/Common.h"
 
@@ -39,7 +40,7 @@
 
 namespace triagens {
   namespace basics {
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief one entry in the table of attribute IDs
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +88,7 @@ namespace triagens {
 /// @brief constructor, taking a shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        JsonLegend (TRI_shaper_t* shaper) 
+        JsonLegend (TRI_shaper_t* shaper)
           : _shaper(shaper), _att_data(TRI_UNKNOWN_MEM_ZONE),
             _shape_data(TRI_UNKNOWN_MEM_ZONE) {
         }
@@ -247,10 +248,10 @@ namespace triagens {
       return 0;
     }
 
-    static char const* lookupAttributeIdFunction (TRI_shaper_t* s, 
+    static char const* lookupAttributeIdFunction (TRI_shaper_t* s,
                                                   TRI_shape_aid_t a);
 
-    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s, 
+    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s,
                                                      TRI_shape_sid_t x);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,12 +313,12 @@ namespace triagens {
             if (_aids[mid].aid < aid) {
               low = mid+1;
             }
-            else {  // Note: aids[mid].aid == aid possible, 
+            else {  // Note: aids[mid].aid == aid possible,
                     //       thus ind == high possible as well
               high = mid;
             }
           }
-          if (low == high && high < _numberAttributes && 
+          if (low == high && high < _numberAttributes &&
               _aids[low].aid == aid) {
             return _legend + _aids[low].offset;
           }
@@ -348,12 +349,12 @@ namespace triagens {
             if (_shapes[mid].sid < sid) {
               low = mid+1;
             }
-            else {  // Note: _shapes[mid].sid == sid possible, 
+            else {  // Note: _shapes[mid].sid == sid possible,
                     //       thus ind == high possible as well
               high = mid;
             }
           }
-          if (low == high && high < _numberShapes && 
+          if (low == high && high < _numberShapes &&
               _shapes[low].sid == sid) {
             return reinterpret_cast<TRI_shape_t const*>
                                    (_legend + _shapes[low].offset);
@@ -362,16 +363,16 @@ namespace triagens {
             return nullptr;
           }
         }
-        
+
     };
 
-    static char const* lookupAttributeIdFunction (TRI_shaper_t* s, 
+    static char const* lookupAttributeIdFunction (TRI_shaper_t* s,
                                                          TRI_shape_aid_t a) {
       LegendReader* me = static_cast<LegendReader*>(s);
       return me->lookupAttributeIdMethod(a);
     }
 
-    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s, 
+    static TRI_shape_t const* lookupShapeIdFunction (TRI_shaper_t* s,
                                                      TRI_shape_sid_t x) {
       LegendReader* me = static_cast<LegendReader*>(s);
       return me->lookupShapeIdMethod(x);
@@ -382,7 +383,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

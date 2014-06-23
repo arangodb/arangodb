@@ -64,7 +64,6 @@ function ahuacatlSkiplistTestSuite () {
     tearDown : function () {
       internal.db._drop("UnitTestsAhuacatlSkiplist");
       skiplist = null;
-      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,11 +53,6 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -74,7 +71,7 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   _batchTtl(180),
   _chunkSize(),
   _verbose(verbose) {
-  
+
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
     c = (uint64_t) 8 * 1024 * 1024; // 8 mb
@@ -95,18 +92,9 @@ InitialSyncer::~InitialSyncer () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs a full synchronisation
@@ -142,11 +130,11 @@ int InitialSyncer::run (string& errorMsg) {
   const string progress = "fetching master inventory from " + url;
   setProgress(progress.c_str());
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
-                                                0, 
-                                                0,  
-                                                headers); 
+                                                0,
+                                                0,
+                                                headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -163,13 +151,13 @@ int InitialSyncer::run (string& errorMsg) {
 
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
     if (JsonHelper::isArray(json)) {
@@ -180,52 +168,43 @@ int InitialSyncer::run (string& errorMsg) {
     else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
         ": invalid JSON";
     }
   }
 
   delete response;
-  
+
   sendFinishBatch();
 
   return res;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Replication
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "start batch" command
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int InitialSyncer::sendStartBatch (string& errorMsg) {
   _batchId = 0;
 
   const map<string, string> headers;
 
   const string url = BaseUrl + "/batch";
-  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}"; 
+  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
   const string progress = "send batch start command to url " + url;
   setProgress(progress.c_str());
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_POST, 
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_POST,
                                                 url,
-                                                body.c_str(), 
-                                                body.size(),  
-                                                headers); 
+                                                body.c_str(),
+                                                body.size(),
+                                                headers);
 
   if (response == 0 || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -239,17 +218,17 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
   }
 
   int res = TRI_ERROR_NO_ERROR;
-  
+
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, 
+    TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE,
                                       response->getBody().c_str());
 
     if (json == 0) {
@@ -278,7 +257,7 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send an "extend batch" command
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int InitialSyncer::sendExtendBatch () {
   if (_batchId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -294,17 +273,17 @@ int InitialSyncer::sendExtendBatch () {
   const map<string, string> headers;
 
   const string url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
-  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}"; 
+  const string body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
   const string progress = "send batch start command to url " + url;
   setProgress(progress.c_str());
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT, 
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                 url,
-                                                body.c_str(), 
-                                                body.size(),  
-                                                headers); 
+                                                body.c_str(),
+                                                body.size(),
+                                                headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -315,7 +294,7 @@ int InitialSyncer::sendExtendBatch () {
   }
 
   int res = TRI_ERROR_NO_ERROR;
-  
+
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
@@ -331,7 +310,7 @@ int InitialSyncer::sendExtendBatch () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "finish batch" command
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int InitialSyncer::sendFinishBatch () {
   if (_batchId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -344,11 +323,11 @@ int InitialSyncer::sendFinishBatch () {
   const string progress = "send batch finish command to url " + url;
   setProgress(progress.c_str());
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_DELETE, 
+  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                 url,
-                                                0, 
                                                 0,
-                                                headers); 
+                                                0,
+                                                headers);
 
   if (response == 0 || ! response->isComplete()) {
     if (response != 0) {
@@ -359,7 +338,7 @@ int InitialSyncer::sendFinishBatch () {
   }
 
   int res = TRI_ERROR_NO_ERROR;
-  
+
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
@@ -391,8 +370,8 @@ static inline void mylocalgetline(char const*& p, string& line, char delim) {
 int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
                                         SimpleHttpResult* response,
                                         string& errorMsg) {
-  
-  const string invalidMsg = "received invalid JSON data for collection " + 
+
+  const string invalidMsg = "received invalid JSON data for collection " +
                             StringUtils::itoa(trxCollection->_cid);
 
   StringBuffer& data = response->getBody();
@@ -400,14 +379,14 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 
   while (true) {
     string line;
-    
+
     mylocalgetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done
       return TRI_ERROR_NO_ERROR;
     }
-      
+
     TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
 
     if (! JsonHelper::isArray(json)) {
@@ -416,7 +395,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
       }
 
       errorMsg = invalidMsg;
-      
+
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
@@ -433,7 +412,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
       if (! JsonHelper::isString(element)) {
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
-      
+
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
@@ -451,7 +430,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
           key = value->_value._string.data;
         }
       }
-      
+
       else if (TRI_EqualString(attributeName, "rev")) {
         if (JsonHelper::isString(value)) {
           rid = StringUtils::uint64(value->_value._string.data, value->_value._string.length - 1);
@@ -469,12 +448,12 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
     if (key == 0) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       errorMsg = invalidMsg;
-      
+
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
- 
+
     int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
-      
+
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -486,7 +465,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollection,
                                          const string& collectionName,
                                          TRI_voc_tick_t maxTick,
@@ -494,7 +473,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
 
   const string cid = StringUtils::itoa(trxCollection->_cid);
 
-  const string baseUrl = BaseUrl + 
+  const string baseUrl = BaseUrl +
                          "/dump?collection=" + cid +
                          "&chunkSize=" + _chunkSize;
 
@@ -513,18 +492,18 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     }
 
     url += "&serverId=" + _localServerIdString;
-    
+
     // send request
-    const string progress = "fetching master collection dump for collection '" + collectionName + 
+    const string progress = "fetching master collection dump for collection '" + collectionName +
                             "', id " + cid + ", batch " + StringUtils::itoa(batch);
 
     setProgress(progress.c_str());
 
-    SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET, 
+    SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                   url,
-                                                  0, 
-                                                  0,  
-                                                  headers); 
+                                                  0,
+                                                  0,
+                                                  headers);
 
     if (response == 0 || ! response->isComplete()) {
       errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -538,10 +517,10 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     }
 
     if (response->wasHttpError()) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
-                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + 
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                 ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                  ": " + response->getHttpReturnMessage();
-      
+
       delete response;
 
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
@@ -556,8 +535,8 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     if (found) {
       checkMore = StringUtils::boolean(header);
       res = TRI_ERROR_NO_ERROR;
-   
-      if (checkMore) { 
+
+      if (checkMore) {
         header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
         if (found) {
           tick = StringUtils::uint64(header);
@@ -574,11 +553,11 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
     }
 
     if (! found) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) + 
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                  ": required header is missing";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-      
+
     if (res == TRI_ERROR_NO_ERROR) {
       res = applyCollectionDump(trxCollection, response, errorMsg);
     }
@@ -596,7 +575,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
 
     batch++;
   }
-  
+
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
@@ -620,16 +599,16 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (TRI_ExcludeCollectionReplication(masterName.c_str())) { 
+  if (TRI_ExcludeCollectionReplication(masterName.c_str())) {
     // we're not interested in this collection
     return TRI_ERROR_NO_ERROR;
   }
-  
-  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {  
+
+  if (JsonHelper::getBooleanValue(parameters, "deleted", false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_json_t const* masterId = JsonHelper::getArrayElement(parameters, "cid");
 
   if (! JsonHelper::isString(masterId)) {
@@ -637,11 +616,11 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  
+
   TRI_voc_cid_t cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
-  const string collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid); 
- 
- 
+  const string collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid);
+
+
   if (! _restrictType.empty()) {
     map<string, bool>::const_iterator it = _restrictCollections.find(masterName);
 
@@ -655,7 +634,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
+
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
@@ -664,11 +643,11 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   // drop collections locally
   // -------------------------------------------------------------------------------------
 
-  if (phase == PHASE_DROP) { 
+  if (phase == PHASE_DROP) {
     // first look up the collection by the cid
     TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -682,7 +661,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       setProgress(progress.c_str());
 
       int res = TRI_DropCollectionVocBase(_vocbase, col, _masterInfo._serverId);
- 
+
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
 
@@ -692,13 +671,13 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   // re-create collections locally
   // -------------------------------------------------------------------------------------
 
   else if (phase == PHASE_CREATE) {
     TRI_vocbase_col_t* col = 0;
-      
+
     const string progress = "creating " + collectionMsg;
     setProgress(progress.c_str());
 
@@ -709,23 +688,23 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       return res;
     }
-  
+
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   // sync collection data
   // -------------------------------------------------------------------------------------
 
   else if (phase == PHASE_DUMP) {
     int res;
-    
+
     const string progress = "syncing data for " + collectionMsg;
     setProgress(progress.c_str());
-  
+
     TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
                                                    _masterInfo._serverId,
-                                                   false, 
-                                                   0.0, 
+                                                   false,
+                                                   0.0,
                                                    false);
 
     if (trx == 0) {
@@ -742,16 +721,16 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       return res;
     }
-    
+
     res = TRI_BeginTransaction(trx, getHint(1), TRI_TRANSACTION_TOP_LEVEL);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_FreeTransaction(trx);
       errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
-    
+
       return TRI_ERROR_INTERNAL;
     }
-  
+
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
 
     if (trxCollection == NULL) {
@@ -759,16 +738,16 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
     }
     else {
-      res = handleCollectionDump(trxCollection, masterName, _masterInfo._state._lastLogTick, errorMsg);
+      res = handleCollectionDump(trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
       TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
     }
-      
+
     TRI_FreeTransaction(trx);
-   
-    
+
+
     if (res == TRI_ERROR_NO_ERROR) {
       // now create indexes
       const size_t n = indexes->_value._objects._length;
@@ -827,7 +806,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return res;
   }
 
-  
+
   // we won't get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
@@ -837,7 +816,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 /// @brief handle the inventory response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleInventoryResponse (TRI_json_t const* json, 
+int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
                                             string& errorMsg) {
   TRI_json_t* collections = JsonHelper::getArrayElement(json, "collections");
 
@@ -846,15 +825,15 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  
+
   int res;
-  
+
   // STEP 1: validate collection declarations from master
   // ----------------------------------------------------------------------------------
 
   // iterate over all collections from the master...
   res = iterateCollections(collections, errorMsg, PHASE_VALIDATE);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -882,7 +861,7 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
 
   // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
-  
+
   res = iterateCollections(collections, errorMsg, PHASE_DUMP);
 
   return res;
@@ -891,7 +870,7 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all collections from a list and apply an action
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 int InitialSyncer::iterateCollections (TRI_json_t const* collections,
                                        string& errorMsg,
                                        sync_phase_e phase) {
@@ -933,11 +912,11 @@ int InitialSyncer::iterateCollections (TRI_json_t const* collections,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -45,8 +47,8 @@ namespace triagens {
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection, 
-                                        double requestTimeout, 
+    SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection,
+                                        double requestTimeout,
                                         bool warn) :
       _connection(connection),
       _keepConnectionOnDestruction(false),
@@ -59,7 +61,7 @@ namespace triagens {
       _errorMessage(""),
       _locationRewriter({0, 0}),
       _nextChunkedSize(0),
-      _result(nullptr), 
+      _result(nullptr),
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {
 
@@ -106,7 +108,7 @@ namespace triagens {
       _result = new SimpleHttpResult;
       _errorMessage = "";
 
-      // set body 
+      // set body
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
@@ -166,8 +168,8 @@ namespace triagens {
               }
             }
             else {
-              if (! _result->hasContentLength() && 
-                  ! _connection->isConnected() && 
+              if (! _result->hasContentLength() &&
+                  ! _connection->isConnected() &&
                   _state == IN_READ_BODY) {
                 // no content-length header in response, now set the length
                 _result->setContentLength(_readBuffer.length());
@@ -317,7 +319,7 @@ namespace triagens {
       _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
       _writeBuffer.appendText("X-Arango-Version: 2.0\r\n");
       _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
-      
+
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
         string foundPrefix;
@@ -468,7 +470,7 @@ namespace triagens {
         }
         else {
           // body is not compressed
-          _result->getBody().appendText(_readBuffer.c_str(), 
+          _result->getBody().appendText(_readBuffer.c_str(),
                                         _result->getContentLength());
         }
 
@@ -548,7 +550,7 @@ namespace triagens {
       }
 
       if (_readBuffer.length() >= _nextChunkedSize) {
-        _result->getBody().appendText(_readBuffer.c_str(), 
+        _result->getBody().appendText(_readBuffer.c_str(),
                                       (size_t) _nextChunkedSize);
         _readBuffer.move_front((size_t) _nextChunkedSize);
         _state = IN_READ_CHUNKED_HEADER;
@@ -561,3 +563,11 @@ namespace triagens {
   }
 
 }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

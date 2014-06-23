@@ -31,7 +31,7 @@
 var Model,
   _ = require("underscore"),
   is = require("org/arangodb/is"),
-  backbone_helpers = require("backbone"),
+  extend = require('org/arangodb/extend').extend,
   metadataKeys = ['_id', '_key', '_rev'],
   parseAttributes,
   parseRequiredAttributes;
@@ -102,14 +102,16 @@ Model = function (attributes) {
 
   this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
   this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+  this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
 };
 
 Model.fromClient = function (attributes) {
   'use strict';
 
-  var instance = new this();
+  var instance = new this(attributes);
   instance.attributes = whitelistProperties(attributes, this.attributes, false);
   instance.attributes = fillInDefaults(instance.attributes, this.attributes);
+  instance.whitelistedAttributes = whitelistProperties(instance.attributes, this.attributes);
   return instance;
 };
 
@@ -269,8 +271,7 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    var result = whitelistProperties(this.attributes, this.constructor.attributes);
-    return result;
+    return this.whitelistedAttributes;
   }
 });
 
@@ -285,7 +286,7 @@ _.extend(Model.prototype, {
 /// the second object those to be defined on the prototype.
 ////////////////////////////////////////////////////////////////////////////////
 
-Model.extend = backbone_helpers.extend;
+Model.extend = extend;
 
 exports.Model = Model;
 

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_HEADERS_H
-#define TRIAGENS_VOC_BASE_HEADERS_H 1
+#ifndef ARANGODB_VOC_BASE_HEADERS_H
+#define ARANGODB_VOC_BASE_HEADERS_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/vector.h"
@@ -52,7 +54,7 @@ class TRI_headers_t {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the headers
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     TRI_headers_t ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +88,7 @@ class TRI_headers_t {
     void move (struct TRI_doc_mptr_t*, struct TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief relink an existing header into the linked list, at its original 
+/// @brief relink an existing header into the linked list, at its original
 /// position
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -105,7 +107,7 @@ class TRI_headers_t {
     void release (struct TRI_doc_mptr_t*, bool unlink);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adjust the total size (called by the collector when changing WAL 
+/// @brief adjust the total size (called by the collector when changing WAL
 /// markers into datafile markers)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,7 +128,7 @@ class TRI_headers_t {
 ///
 /// note: the element returned might be nullptr
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     inline struct TRI_doc_mptr_t* back () const {
       return _end;
     }
@@ -166,7 +168,11 @@ class TRI_headers_t {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -35,6 +35,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -69,7 +70,7 @@ function CapConstraintSuite() {
 
   setUp : function () {
     internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
+    collection = internal.db._create(cn);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,9 +300,7 @@ function CapConstraintSuite() {
       collection.truncate();
       assertEqual(0, collection.count());
 
-      internal.wait(0);
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
@@ -391,9 +390,7 @@ function CapConstraintSuite() {
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
 
-      internal.wait(0);
-      collection.unload();
-      internal.wait(4);
+      testHelper.waitUnload(collection);
       
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
@@ -429,9 +426,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
 
-      internal.wait(0);
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
@@ -444,9 +439,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
       
-      internal.wait(0);
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
@@ -474,8 +467,7 @@ function CapConstraintSuite() {
 
       assertEqual(0, collection.count());
 
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(0, collection.count());
 
@@ -483,15 +475,12 @@ function CapConstraintSuite() {
         collection.save({ n : i });
       }
       
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
       
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
       
-      internal.wait(0);
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
       
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
@@ -668,8 +657,7 @@ function CapConstraintSuite() {
 
       collection.truncate();
       doc = null;
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(0, collection.count()); 
     },
@@ -700,8 +688,7 @@ function CapConstraintSuite() {
       }
 
       doc = null;
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
 
       assertEqual(2, collection.count());
       assertEqual(1, collection.document("test").a);
@@ -746,8 +733,8 @@ function CapConstraintSuite() {
       assertEqual(1, collection.count());
       
       doc = null;
-      collection.unload();
-      internal.wait(5);
+      testHelper.waitUnload(collection);
+      
       assertEqual(collection.toArray()[0].a9, 9);
       assertEqual(1, collection.count());
 

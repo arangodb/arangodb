@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_GENERAL_SERVER_ENDPOINT_SERVER_H
-#define TRIAGENS_GENERAL_SERVER_ENDPOINT_SERVER_H 1
+#ifndef ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H
+#define ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -35,11 +37,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class EndpointServer
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
   namespace rest {
@@ -55,18 +52,9 @@ namespace triagens {
         EndpointServer (EndpointServer const&);
         EndpointServer const& operator= (EndpointServer const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -86,18 +74,9 @@ namespace triagens {
         virtual ~EndpointServer () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -118,13 +97,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add another endpoint at runtime
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         virtual bool addEndpoint (Endpoint*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove an endpoint at runtime
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         virtual bool removeEndpoint (Endpoint*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +111,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void startListening () = 0;
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down handlers
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,18 +130,9 @@ namespace triagens {
 
         virtual void stop () = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup GeneralServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -176,10 +146,6 @@ namespace triagens {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -188,5 +154,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define TRIAGENS_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
 #include "Basics/Common.h"
 
@@ -86,14 +88,14 @@ namespace triagens {
 /// @brief close connection
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool close (); 
+      bool close ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief leave connection open on destruction
 ////////////////////////////////////////////////////////////////////////////////
 
       void keepConnectionOnDestruction (bool b) {
-        _keepConnectionOnDestruction = b; 
+        _keepConnectionOnDestruction = b;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +125,7 @@ namespace triagens {
 /// @brief allows rewriting locations
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setLocationRewriter (void* data, 
+      void setLocationRewriter (void* data,
                                 std::string (*func)(void*, const std::string&)) {
         _locationRewriter.data = data;
         _locationRewriter.func = func;
@@ -149,7 +151,7 @@ namespace triagens {
 /// @brief register and dump an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message, 
+      void setErrorMessage (const string& message,
                             bool forceWarn = false) {
         _errorMessage = message;
 
@@ -162,7 +164,7 @@ namespace triagens {
 /// @brief register an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message, 
+      void setErrorMessage (const string& message,
                             int error) {
         if (error != 0) {
           _errorMessage = message + ": " + strerror(error);
@@ -171,7 +173,7 @@ namespace triagens {
           setErrorMessage(message);
         }
       }
-    
+
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,7 +314,7 @@ namespace triagens {
         std::string (*func)(void*, const std::string&);
       }
       _locationRewriter;
-    
+
       uint32_t _nextChunkedSize;
 
       SimpleHttpResult* _result;
@@ -322,7 +324,7 @@ namespace triagens {
       const size_t _maxPacketSize;
 
       bool _keepAlive;
-      
+
       rest::HttpRequest::HttpRequestType _method;
 
     };
@@ -330,3 +332,11 @@ namespace triagens {
 }
 
 #endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

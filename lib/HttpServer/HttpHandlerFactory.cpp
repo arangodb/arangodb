@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,11 +49,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,7 +58,7 @@ HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
                                         context_fptr setContext,
                                         void* setContextData)
   : _authenticationRealm(authenticationRealm),
-    _minCompatibility(minCompatibility), 
+    _minCompatibility(minCompatibility),
     _allowMethodOverride(allowMethodOverride),
     _setContext(setContext),
     _setContextData(setContextData),
@@ -111,18 +108,9 @@ HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& tha
 HttpHandlerFactory::~HttpHandlerFactory () {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns header and body size restrictions
@@ -132,7 +120,7 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
   // size restrictions:
   // - header: 1 MB
   // - body: 512 MB
-  return make_pair(1 * 1024 * 1024, 
+  return make_pair(1 * 1024 * 1024,
                    512 * 1024 * 1024);
 }
 
@@ -148,7 +136,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
-   
+
     rc = request->getRequestContext();
   }
 
@@ -177,8 +165,8 @@ string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info, 
-                                                char const* ptr, 
+HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
+                                                char const* ptr,
                                                 size_t length) {
 #if 0
   READ_LOCKER(_maintenanceLock);
@@ -193,7 +181,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
   if (request != 0) {
     setRequestContext(request);
   }
-  
+
   return request;
 }
 
@@ -402,15 +390,11 @@ void HttpHandlerFactory::addNotFoundHandler (create_fptr func) {
   _notFound = func;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

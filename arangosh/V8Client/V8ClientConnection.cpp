@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +106,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       _version = "arango";
 
       // convert response body to json
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                         result->getBody().c_str());
 
       if (json) {
@@ -480,7 +482,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
 
       // return body as string
       //
-      v8::Handle<v8::String> result = v8::String::New(sb.c_str(), 
+      v8::Handle<v8::String> result = v8::String::New(sb.c_str(),
                                                       (int) sb.length());
 
       return result;
@@ -623,5 +625,5 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw (HttpRequest::HttpReque
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

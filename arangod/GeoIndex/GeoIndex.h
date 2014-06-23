@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,17 +20,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author R. A. Parker
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
 /* Version 2.1   8.1.2012   R. A. Parker             */
 
-#ifndef TRIAGENS_GEO_INDEX_GEOINDEX_H
-#define TRIAGENS_GEO_INDEX_GEOINDEX_H 1
+#ifndef ARANGODB_GEO_INDEX_GEO_INDEX_H
+#define ARANGODB_GEO_INDEX_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "IndexIterators/index-iterator.h"
@@ -83,7 +85,7 @@ typedef struct {
   double latitude;
   double longitude;
   void * data;
-} 
+}
 GeoCoordinate;
 
 typedef struct {
@@ -123,3 +125,11 @@ int  GeoIndex_INDEXVALID(GeoIndex * gi);
 #endif
 
 /* end of GeoIndex.h  */
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

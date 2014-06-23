@@ -6,7 +6,7 @@
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
   * [Upgrading in general](Installing/Upgrading.md)
-  * [Set up Cluster](Installing/Cluster.md)	
+  * [Set up Cluster](Installing/Cluster.md)
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)
   * [Getting Familiar](FirstSteps/GettingFamiliar.md)
@@ -18,36 +18,36 @@
   * [Collections](FirstSteps/CollectionsAndDocuments.md)
 <!-- 3 -->
 * [ArangoDB Web Interface](WebInterface/README.md)
-	* [Some Features](WebInterface/Features.md)
+  * [Some Features](WebInterface/Features.md)
 <!-- 4 -->
 * [Handling Databases](Databases/README.md)
-	* [Working with Databases](Databases/WorkingWith.md)
-	* [Notes about Databases](Databases/Notes.md)	
+  * [Working with Databases](Databases/WorkingWith.md)
+  * [Notes about Databases](Databases/Notes.md)
 <!-- 5 -->
 * [Handling Collections](Collections/README.md)
-	* [Collection Methods](Collections/CollectionMethods.md)
-	* [Database Methods](Collections/DatabaseMethods.md)
+  * [Collection Methods](Collections/CollectionMethods.md)
+  * [Database Methods](Collections/DatabaseMethods.md)
 <!-- 6 -->
 * [Handling Documents](Documents/README.md)
-	* [Address and ETag](Documents/DocumentAddress.md)
-	* [Collection Methods](Documents/DocumentMethods.md)
-	* [Database Methods](Documents/DatabaseMethods.md)
+  * [Address and ETag](Documents/DocumentAddress.md)
+  * [Collection Methods](Documents/DocumentMethods.md)
+  * [Database Methods](Documents/DatabaseMethods.md)
 <!-- 7 -->
 * [Handling Edges](Edges/README.md)
 <!-- 8 -->
 * [Simple Queries](SimpleQueries/README.md)
-	* [Geo Queries](SimpleQueries/GeoQueries.md)
-	* [Fulltext Queries](SimpleQueries/FulltextQueries.md)
-	* [Pagination](SimpleQueries/Pagination.md)
-	* [Sequential Access](SimpleQueries/Access.md)
-	* [Modification Queries](SimpleQueries/ModificationQueries.md)
+  * [Geo Queries](SimpleQueries/GeoQueries.md)
+  * [Fulltext Queries](SimpleQueries/FulltextQueries.md)
+  * [Pagination](SimpleQueries/Pagination.md)
+  * [Sequential Access](SimpleQueries/Access.md)
+  * [Modification Queries](SimpleQueries/ModificationQueries.md)
 <!-- 9 -->
 * [Transactions](Transactions/README.md)
-	* [Transaction invocation](Transactions/TransactionInvocation.md)
-	* [Passing parameters](Transactions/Passing.md)
-	* [Locking and isolation](Transactions/LockingAndIsolation.md)
-	* [Durability](Transactions/Durability.md)
-	* [Limitations](Transactions/Limitations.md)
+  * [Transaction invocation](Transactions/TransactionInvocation.md)
+  * [Passing parameters](Transactions/Passing.md)
+  * [Locking and isolation](Transactions/LockingAndIsolation.md)
+  * [Durability](Transactions/Durability.md)
+  * [Limitations](Transactions/Limitations.md)
 <!-- 10 -->
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
@@ -59,68 +59,67 @@
   * [Advanced Features](Aql/Advanced.md)
 <!-- 11 -->
 * [Extending AQL](AqlExtending/README.md)
-	* [Conventions](AqlExtending/Conventions.md)
-	* [Registering Functions](AqlExtending/Functions.md)
+  * [Conventions](AqlExtending/Conventions.md)
+  * [Registering Functions](AqlExtending/Functions.md)
 <!-- 12 -->
 * [AQL Examples](AqlExamples/README.md)
-	* [Examples](AqlExamples/Examples.md)
-	* [Collection based queries](AqlExamples/CollectionQueries.md)
-	* [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
-	* [Joins](AqlExamples/Join.md)
-	* [Grouping](AqlExamples/Grouping.md)
+  * [Examples](AqlExamples/Examples.md)
+  * [Collection based queries](AqlExamples/CollectionQueries.md)
+  * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
+  * [Joins](AqlExamples/Join.md)
+  * [Grouping](AqlExamples/Grouping.md)
 <!-- 13 -->
 * [General Graphs](General-Graphs/README.md)
   * [Graph Management](General-Graphs/Management.md)
   * [Graph Functions](General-Graphs/Functions.md)
-  * [Fluent Query Interface](General-Graphs/FluentAQLInterface.md)   
+  * [Fluent Query Interface](General-Graphs/FluentAQLInterface.md)
 <!-- 14 -->
-* [Blueprint Graphs](Blueprint-Graphs/README.md)
-	* [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
-	* [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
-	* [Edge Methods](Blueprint-Graphs/EdgeMethods.md)  
+* [(Deprecated) Blueprint Graphs](Blueprint-Graphs/README.md)
+  * [Graph Constructor](Blueprint-Graphs/GraphConstructor.md)
+  * [Vertex Methods](Blueprint-Graphs/VertexMethods.md)
+  * [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
-	* [Starting from Scratch](Traversals/StartingFromScratch.md)	
-	* [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
-	* [Example Data](Traversals/ExampleData.md)
-<!-- 17 -->
+  * [Starting from Scratch](Traversals/StartingFromScratch.md)
+  * [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
+  * [Example Data](Traversals/ExampleData.md)
+<!-- 16 -->
 * [Foxx](Foxx/README.md)
-	* [Handling Request](Foxx/HandlingRequest.md)
+  * [Handling Request](Foxx/HandlingRequest.md)
   * [Manifest](Foxx/FoxxManifest.md)
-	* [FoxxController](Foxx/FoxxController.md)
-	* [FoxxModel](Foxx/FoxxModel.md)
-	* [FoxxRepository](Foxx/FoxxRepository.md)
-	* [Developing Applications](Foxx/DevelopingAnApplication.md)
-	* [Deploying Applications](Foxx/DeployingAnApplication.md)
-  * [Optional Functionlity](Foxx/FoxxOptional.md)
-<!-- 18 -->
+  * [FoxxController](Foxx/FoxxController.md)
+  * [FoxxModel](Foxx/FoxxModel.md)
+  * [FoxxRepository](Foxx/FoxxRepository.md)
+  * [Developing Applications](Foxx/DevelopingAnApplication.md)
+  * [Optional Functionality](Foxx/FoxxOptional.md)
+<!-- 17 -->
 * [Foxx Manager](FoxxManager/README.md)
-	* [First Steps](FoxxManager/FirstSteps.md)
-	* [Behind the scenes](FoxxManager/BehindTheScenes.md)
-	* [Multiple Databases](FoxxManager/MultipleDatabases.md)
-	* [Foxx Applications](FoxxManager/ApplicationsAndReplications.md)
-	* [Manager Commands](FoxxManager/ManagerCommands.md)
-	* [Frequently Used Options](FoxxManager/FrequentlyUsedOptions.md)
-<!-- 19 -->
+  * [First Steps](FoxxManager/FirstSteps.md)
+  * [Behind the scenes](FoxxManager/BehindTheScenes.md)
+  * [Multiple Databases](FoxxManager/MultipleDatabases.md)
+  * [Foxx Applications](FoxxManager/ApplicationsAndReplications.md)
+  * [Manager Commands](FoxxManager/ManagerCommands.md)
+  * [Frequently Used Options](FoxxManager/FrequentlyUsedOptions.md)
+<!-- 18 -->
 * [ArangoDB's Actions](ArangoActions/README.md)
-<!-- 20 -->
+<!-- 19 -->
 * [Replication](Replication/README.md)
   * [Components](Replication/Components.md)
   * [Example Setup](Replication/ExampleSetup.md)
   * [Replication Limitations](Replication/Limitations.md)
   * [Replication Overhead](Replication/Overhead.md)
   * [Replication Events](Replication/Events.md)
-<!-- 21 -->
+<!-- 20 -->
 * [Sharding](Sharding/README.md)
-	* [How to try it out](Sharding/HowTo.md)
-	* [Implementation](Sharding/StatusOfImplementation.md)
-	* [Authentication](Sharding/Authentication.md)
-	* [Firewall setup](Sharding/FirewallSetup.md)
-<!-- 22 -->
+  * [How to try it out](Sharding/HowTo.md)
+  * [Implementation](Sharding/StatusOfImplementation.md)
+  * [Authentication](Sharding/Authentication.md)
+  * [Firewall setup](Sharding/FirewallSetup.md)
+<!-- 21 -->
 * [Configure ArangoDB](ConfigureArango/README.md)
   * [General options](ConfigureArango/GeneralOptions.md)
   * [Arangod options](ConfigureArango/Arangod.md)
-  * [Endpoints options](ConfigureArango/Endpoint.md)  
+  * [Endpoints options](ConfigureArango/Endpoint.md)
   * [Development options](ConfigureArango/Development.md)
   * [Cluster options](ConfigureArango/Cluster.md)
   * [Logging options](ConfigureArango/Logging.md)
@@ -128,19 +127,19 @@
   * [Random numbers](ConfigureArango/RandomNumbers.md)
   * [Authentication](ConfigureArango/Authentication.md)
   * [Emergency Console](ConfigureArango/EmergencyConsole.md)
-<!-- 23 -->
+<!-- 22 -->
 * [Arangoimp](Arangoimp/README.md)
-<!-- 24 -->
+<!-- 23 -->
 * [Arangodump](Arangodump/README.md)
+<!-- 24 -->
+* [Arangorestore](Arangorestore/README.md)
 <!-- 25 -->
-* [Arangorestore](Arangorestore/README.md)	
-<!-- 26 -->
 * [HTTP API](HttpApi/README.md)
   * [Databases](HttpDatabase/README.md)
     * [To-Endpoint](HttpDatabase/DatabaseEndpoint.md)
     * [Management](HttpDatabase/DatabaseManagement.md)
     * [Managing (http)](HttpDatabase/ManagingDatabasesUsingHttp.md)
-    * [Note on Databases](HttpDatabase/NotesOnDatabases.md)			
+    * [Note on Databases](HttpDatabase/NotesOnDatabases.md)
   * [Documents](HttpDocument/README.md)
     * [Address and ETag](HttpDocument/AddressAndEtag.md)
     * [Working with](HttpDocument/WorkingWithDocuments.md)
@@ -162,16 +161,16 @@
     * [Address of an Index](HttpIndexes/Address.md)
     * [Working with Indexes](HttpIndexes/WorkingWith.md)
     * [Cap Constraints](HttpIndexes/Cap.md)
-    * [Hash](HttpIndexes/Hash.md) 
-    * [Skiplist](HttpIndexes/Skiplist.md) 
-    * [Geo](HttpIndexes/Geo.md) 
-    * [Fulltext](HttpIndexes/Fulltext.md) 
+    * [Hash](HttpIndexes/Hash.md)
+    * [Skiplist](HttpIndexes/Skiplist.md)
+    * [Geo](HttpIndexes/Geo.md)
+    * [Fulltext](HttpIndexes/Fulltext.md)
   * [Transactions](HttpTransaction/README.md)
   * [General Graph](HttpGharial/README.md)
     * [Management](HttpGharial/Management.md)
     * [Vertices](HttpGharial/Vertices.md)
     * [Edges](HttpGharial/Edges.md)
-  * [Graphs](HttpGraphs/README.md)
+  * [(Deprecated) Graphs](HttpGraphs/README.md)
     * [Vertex](HttpGraphs/Vertex.md)
     * [Edges](HttpGraphs/Edge.md)
   * [Traversals](HttpTraversal/README.md)
@@ -193,7 +192,7 @@
   * [Sharding](HttpShardingInterface/README.md)
   * [Miscellaneous functions](HttpMiscellaneousFunctions/README.md)
   * [General Handling](GeneralHttp/README.md)
-<!-- 27 -->
+<!-- 26 -->
 * [Javascript Modules](ModuleJavaScript/README.md)
   * [Common JSModules](ModuleJavaScript/JSModules.md)
     * [Path](ModuleJavaScript/ModulesPath.md)
@@ -207,9 +206,9 @@
   * ["planner"](ModulePlanner/README.md)
   * [Task Management](ModuleTasks/README.md)
   * [Using jsUnity](UsingJsUnity/README.md)
-<!-- 28 -->
+<!-- 27 -->
 * [Administrating ArangoDB](AdministratingArango/README.md)
-<!-- 29 -->
+<!-- 28 -->
 * [Handling Indexes](IndexHandling/README.md)
   * [Cap Constraint](IndexHandling/Cap.md)
   * [Geo Indexes](IndexHandling/Geo.md)
@@ -217,13 +216,13 @@
   * [Hash Indexes](IndexHandling/Hash.md)
   * [Skip-Lists](IndexHandling/Skiplist.md)
   * [BitArray Indexes](IndexHandling/BitArray.md)
-<!-- 30 -->
+<!-- 29 -->
 * [Datafile Debugger](DatafileDebugger/README.md)
-<!-- 31 -->
+<!-- 30 -->
 * [Naming Conventions](NamingConventions/README.md)
-	* [Database Names](NamingConventions/DatabaseNames.md)
-	* [Collection Names](NamingConventions/CollectionNames.md)
-	* [Document Keys](NamingConventions/DocumentKeys.md)
-	* [Attribute Names](NamingConventions/AttributeNames.md)
-<!-- 32 -->
+  * [Database Names](NamingConventions/DatabaseNames.md)
+  * [Collection Names](NamingConventions/CollectionNames.md)
+  * [Document Keys](NamingConventions/DocumentKeys.md)
+  * [Attribute Names](NamingConventions/AttributeNames.md)
+<!-- 31 -->
 * [Error codes and meanings](ErrorCodes/README.md)

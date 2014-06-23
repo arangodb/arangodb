@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -129,9 +131,9 @@ void TRI_FreeErrorAql (TRI_aql_error_t* const error) {
 /// @brief get a formatted query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetContextErrorAql (const char* const query, 
-                              const size_t queryLength, 
-                              const size_t line, 
+char* TRI_GetContextErrorAql (const char* const query,
+                              const size_t queryLength,
+                              const size_t line,
                               const size_t column) {
   const char* p;
   char* q;
@@ -179,14 +181,14 @@ char* TRI_GetContextErrorAql (const char* const query,
     return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, queryLength - offset);
   }
 
-  q = result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
+  q = result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                        SNIPPET_LENGTH + strlen(SNIPPET_SUFFIX) + 1, false));
 
   if (result == NULL) {
     // out of memory
     return NULL;
   }
-  
+
   // copy query part
   memcpy(q, query + offset, SNIPPET_LENGTH);
   q += SNIPPET_LENGTH;
@@ -194,7 +196,7 @@ char* TRI_GetContextErrorAql (const char* const query,
   // copy ...
   memcpy(q, SNIPPET_SUFFIX, strlen(SNIPPET_SUFFIX));
   q += strlen(SNIPPET_SUFFIX);
-  
+
   *q = '\0';
 
   return result;
@@ -206,5 +208,5 @@ char* TRI_GetContextErrorAql (const char* const query,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

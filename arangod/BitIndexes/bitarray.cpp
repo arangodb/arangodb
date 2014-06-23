@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,11 +81,6 @@ static void debugPrintMask        (TRI_bitarray_t*, uint64_t);
 */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a sequence of bit arrays and their associated master table
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -94,7 +91,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   MasterTable_t* mt;
   size_t j;
   bool ok;
-    
+
   // ...........................................................................
   // The memory for the bitArray is allocated here. We expect a NULL pointer to
   // be passed here.
@@ -102,8 +99,8 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
 
   if (*bitArray != NULL) {
     return TRI_ERROR_INTERNAL;
-  }  
-  
+  }
+
   // ...........................................................................
   // Allocate the necessary memory to store the bitArray structure.
   // ...........................................................................
@@ -113,7 +110,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   if (*bitArray == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   // ...........................................................................
   // For now each set of bit arrays will create and use its own MasteTable.
   // ...........................................................................
@@ -159,7 +156,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
   // ...........................................................................
 
   (*bitArray)->_numColumns   = numArrays;
-  
+
   // ...........................................................................
   // Attempt to allocate memory to create the column structures
   // ...........................................................................
@@ -172,7 +169,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     *bitArray = NULL;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   // ...........................................................................
   // Create the bitarrays (the columns which will contain the bits)
   // For each column we allocated the initialise size.
@@ -190,9 +187,9 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
       break;
     }
   }
-  
-  if (! ok) { 
-  
+
+  if (! ok) {
+
     // ...........................................................................
     // Oops -- memory failure. Return all allocated memory and make a quick escape.
     // ...........................................................................
@@ -210,7 +207,7 @@ int TRI_InitBitarray(TRI_bitarray_t** bitArray,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  (*bitArray)->_numBlocksInColumn = BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE;  
+  (*bitArray)->_numBlocksInColumn = BITARRAY_INITIAL_NUMBER_OF_COLUMN_BLOCKS_SIZE;
   //(*bitArray)->_usedBitLength     = 0;
   (*bitArray)->_lastBlockUsed = 0;
 
@@ -312,13 +309,13 @@ int TRI_InsertBitMaskElementBitarray (TRI_bitarray_t* ba,
   // ...........................................................................
 
   if (position._blockNum >= ba->_numBlocksInColumn) {
-    result = extendColumns(ba, position._blockNum + 1);  
+    result = extendColumns(ba, position._blockNum + 1);
 
     if (result != TRI_ERROR_NO_ERROR) {
       return result;
     }
   }
-  
+
   // ...........................................................................
   // Use the mask to set the bits in each column to 0 or 1
   // ...........................................................................
@@ -490,12 +487,12 @@ int TRI_LookupBitMaskSetBitarray (TRI_bitarray_t* ba,
         // .......................................................................
 
         column = (BitColumn_t*)(ba->_columns + (sizeof(BitColumn_t) * k_colNum));
-      
+
         // .......................................................................
         // Obtain the integer representation of this block
         // .......................................................................
-        
-        bitInteger  = *(column->_column + i_blockNum);      
+
+        bitInteger  = *(column->_column + i_blockNum);
         tempInteger = (uint64_t)((bitInteger >> j_bitNum) & (1)) << k_colNum;
         bitValues  = bitValues | tempInteger;
       }
@@ -556,16 +553,16 @@ int TRI_RemoveElementBitarray (TRI_bitarray_t* ba, TRI_doc_mptr_t* element) {
   position = (TRI_master_table_position_t*)(TRI_FindByKeyAssociativeArray(&(mt->_tablePosition),element));
 
   if (position == NULL) {
-    return TRI_ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING; 
-  }  
-  
+    return TRI_ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING;
+  }
+
   // ..........................................................................
   // Observe that we are NOT removing any entries from the actual bit arrays.
   // All we are 'removing' are entries in the master block table.
   // ..........................................................................
 
-  result = removeElementMasterTable(mt, position);  
-  
+  result = removeElementMasterTable(mt, position);
+
   // ...........................................................................
   // It may happen that the block is completely free, moreover it may happen
   // that we are fortunate and it is the last used block.
@@ -602,16 +599,6 @@ int TRI_RemoveElementBitarray (TRI_bitarray_t* ba, TRI_doc_mptr_t* element) {
   // debugPrintBitarray(ba);
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup bitarray
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // IMPLEMENTATION OF STATIC FORWARD DECLARED FUNCTIONS
@@ -828,12 +815,11 @@ void debugPrintBitarray(TRI_bitarray_t* ba) {
 
 */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +39,7 @@ using namespace triagens::transaction;
 /// @brief append a document key
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Helper::appendKey (Bson& document, 
+bool Helper::appendKey (Bson& document,
                         string const& key) {
   return document.appendUtf8(string(TRI_VOC_ATTRIBUTE_KEY), key);
 }
@@ -56,7 +58,7 @@ string Helper::documentKey (Bson const& document) {
     // no _key attribute
     return "";
   }
-      
+
   // document has _key attribute
   if (iter.getType() != BSON_TYPE_UTF8) {
     // _key has an invalid type
@@ -86,10 +88,10 @@ Bson Helper::documentFromJson (string const& data) {
 /// @brief creates a BSON document from the string
 ////////////////////////////////////////////////////////////////////////////////
 
-Bson Helper::documentFromJson (char const* data, 
+Bson Helper::documentFromJson (char const* data,
                                size_t length) {
   Bson document;
-  
+
   if (! document.fromJson(data)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
@@ -97,7 +99,11 @@ Bson Helper::documentFromJson (char const* data,
   return document;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

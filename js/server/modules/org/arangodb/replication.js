@@ -38,32 +38,33 @@ var internal = require("internal");
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 var logger  = { };
 var applier = { };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the replication logger
+/// @brief starts the replication logger - this is a no-op in ArangoDB 2.2 and
+/// higher
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.start = function () {
   'use strict';
 
-  return internal.startReplicationLogger();
+  // the logger in ArangoDB 2.2 is now the WAL...
+  // so the logger cannot be started but is always running
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the replication logger
+/// @brief stops the replication logger - this is a no-op in ArangoDB 2.2 and
+/// higher
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.stop = function () {
   'use strict';
-
-  return internal.stopReplicationLogger();
+ 
+  // the logger in ArangoDB 2.2 is now the WAL...
+  // so the logger cannot be stopped
+  return false; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,14 +81,10 @@ logger.state = function () {
 /// @brief returns the configuration of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
  
-logger.properties = function (config) {
+logger.properties = function () {
   'use strict';
 
-  if (config === undefined) {
-    return internal.configureReplicationLogger();
-  }
-  
-  return internal.configureReplicationLogger(config);
+  return internal.configureReplicationLogger();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,18 +145,9 @@ applier.properties = function (config) {
   return internal.configureReplicationApplier(config);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   other functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronisation with a remote endpoint
@@ -181,27 +169,14 @@ var serverId = function () {
   return internal.serverId();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-  
 exports.logger   = logger; 
 exports.applier  = applier; 
 exports.sync     = sync; 
 exports.serverId = serverId; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -1,3 +1,4 @@
+module.define("org/arangodb/general-graph", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports, Graph, arguments */
 
@@ -107,7 +108,7 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
 
 var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
   var vertexCollections = {},
-    edgeCollections = {};
+  edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
     e.from.concat(e.to).forEach(function (v) {
       findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
@@ -183,6 +184,22 @@ var wrapCollection = function(col) {
   return wrapper;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_example_description
+/// 
+/// For many of the following functions *examples* can be passed in as a parameter.
+/// *Examples* are used to filter the result set for objects that match the conditions.
+/// These *examples* can have the following values:
+///
+/// * *Null*, there is no matching executed all found results are valid.
+/// * A *string*, only the result having this value as it's *_id* is returned.
+/// * An example *object*, defining a set of attributes.
+///     Only results having these attributes are matched.
+/// * A *list* containing example *objects* and/or *strings*.
+///     All results matching at least one of the elements in the list are returned.
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
 
 var transformExample = function(example) {
   if (example === undefined) {
@@ -219,8 +236,8 @@ var checkAllowsRestriction = function(colList, rest, msg) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
     err.errorMessage = msg + ": "
-      + unknown.join(" and ")
-      + " are not known to the graph";
+    + unknown.join(" and ")
+    + " are not known to the graph";
     throw err;
   }
   return true;
@@ -273,7 +290,7 @@ AQLStatement.prototype.isNeighborQuery = function() {
 AQLStatement.prototype.allowsRestrict = function() {
   return this.isEdgeQuery()
     || this.isVertexQuery()
-    || this.isNeighborQuery();
+    || this.isNeighborQuery(); 
 };
 
 // -----------------------------------------------------------------------------
@@ -404,23 +421,18 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_edges
-/// Select all edges for the vertices selected before.
+/// `graph_query.edges(examples)`
+/// *Select all edges for the vertices selected before.*
 ///
-/// `graph-query.edges(examples)`
 /// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -461,22 +473,17 @@ AQLGenerator.prototype.edges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_outEdges
-/// Select all outbound edges for the vertices selected before.
+/// `graph_query.outEdges(examples)`
+/// *Select all outbound edges for the vertices selected before.*
 /// 
-/// `graph-query.outEdges(examples)`
 ///
 /// Creates an AQL statement to select all *outbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -517,22 +524,17 @@ AQLGenerator.prototype.outEdges = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_inEdges
-/// Select all inbound edges for the vertices selected before.
+/// `graph_query.inEdges(examples)`
+/// *Select all inbound edges for the vertices selected before.*
 /// 
-/// `graph-query.inEdges(examples)`
 ///
 /// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 /// in the step before.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -603,23 +605,17 @@ AQLGenerator.prototype._vertices = function(example, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_vertices
-/// Select all vertices connected to the edges selected before.
-/// 
-/// `graph-query.vertices(examples)`
+/// `graph_query.vertices(examples)`
+/// *Select all vertices connected to the edges selected before.*
 ///
 /// Creates an AQL statement to select all vertices for each of the edges selected
 /// in the step before.
 /// This includes all vertices contained in *_from* as well as *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -673,27 +669,22 @@ AQLGenerator.prototype.vertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_fromVertices
-/// Select all vertices where the edges selected before start.
+/// `graph_query.fromVertices(examples)`
+/// *Select all source vertices of the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before start at.
 /// This includes all vertices contained in *_from* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
-/// To request unfiltered starting vertices:
+/// To request unfiltered source vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -702,7 +693,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   query.fromVertices().toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by a single example:
+/// To request filtered source vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -711,7 +702,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///   query.fromVertices({name: "Alice"}).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by multiple examples:
+/// To request filtered source vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -741,27 +732,22 @@ AQLGenerator.prototype.fromVertices = function(example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
-/// Select all vertices targeted by the edges selected before.
+/// `graph_query.toVertices(examples)`
+/// *Select all vertices targeted by the edges selected before.*
 /// 
-/// `graph-query.vertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
 /// in the step before end in.
 /// This includes all vertices contained in *_to* attribute of the edges.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
-/// To request unfiltered starting vertices:
+/// To request unfiltered target vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -770,22 +756,22 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///   query.toVertices().toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by a single example:
+/// To request filtered target vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
-///   query.toVertices({name: "Alice"}).toArray();
+///   query.toVertices({name: "Bob"}).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// To request filtered starting vertices by multiple examples:
+/// To request filtered target vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._edges({type: "married"});
-///   query.toVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -826,7 +812,8 @@ AQLGenerator.prototype.getLastVar = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_path
-/// The result of the query is the path to all elements.
+/// `graph_query.path()`
+/// *The result of the query is the path to all elements.*
 ///
 /// By defaut the result of the generated AQL query is the set of elements passing the last matches.
 /// So having a `vertices()` query as the last step the result will be set of vertices.
@@ -879,35 +866,26 @@ AQLGenerator.prototype.pathEdges = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
-/// Select all neighbors of the vertices selected in the step before.
+/// `graph_query.neighbors(examples, options)`
+/// *Select all neighbors of the vertices selected in the step before.*
 /// 
-/// `graph-query.neighbors(examples)`
 ///
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
 /// in the step before.
 /// The resulting set of vertices can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
-/// Possible options and there defaults:
-///   * String               *direction*                        : The direction of the
-///       edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * String|Object|Array  *edgeExamples*                     : A filter example
-///       for the edges to the neighbors (see below).
-///   * String|Array         *edgeCollectionRestriction*        : One or multiple
-///       edge collections that should be considered.
-///   * String|Array         *vertexCollectionRestriction* : One or multiple
-///       vertex collections that should be considered.
-///   * Number               *minDepth*                         : Defines the minimal
-///       depth a path to a neighbor must have to be returned (default is 1).
-///   * Number               *maxDepth*                         : Defines the maximal
-///       depth a path to a neighbor must have to be returned (default is 1).
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
+///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 ///
 /// *Examples*
 ///
@@ -990,10 +968,10 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_restrict
-/// Restricts the last statement in the chain to return
-///   only elements of a specified set of collections
+/// `graph_query.restrict(restrictions)`
+/// *Restricts the last statement in the chain to return
+/// only elements of a specified set of collections*
 ///
-/// `graph-query.restrict(restrictions)`
 ///
 /// By default all collections in the graph are searched for matching elements
 /// whenever vertices and edges are requested.
@@ -1002,12 +980,10 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
 /// 
-/// *restrictions* can have the following values:
+/// *Parameter*
 ///
-/// * A string defining the name of one specific collection in the graph.
-///   Only elements from this collection are used for matching
-/// * A list of strings defining a set of collection names.
-///   Elements from all collections in this set are used for matching
+/// * *restrictions*: Define either one or a list of collections in the graph.
+///     Only elements from these collections are taken into account for the result.
 ///
 /// *Examples*
 ///
@@ -1071,20 +1047,15 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_filter
-/// Filter the result of the query
-///
-/// `graph-query.filter(examples)`
+/// `graph_query.filter(examples)`
+/// *Filter the result of the query*
 ///
 /// This can be used to further specfiy the expected result of the query.
 /// The result set is reduced to the set of elements that matches the given *examples*.
 /// 
-/// *examples* can have the following values:
-/// 
-///   * A string, only the elements having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only elements having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All elements matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -1171,9 +1142,9 @@ AQLGenerator.prototype.execute = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toArray
-/// Returns an array containing the complete result.
+/// `graph_query.toArray()`
+/// *Returns an array containing the complete result.*
 ///
-/// `graph-query.toArray()`
 ///
 /// This function executes the generated query and returns the
 /// entire result as one array.
@@ -1203,9 +1174,8 @@ AQLGenerator.prototype.toArray = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_count
-/// Returns the number of returned elements if the query is executed.
-///
-/// `graph-query.count()`
+/// `graph_query.count()`
+/// *Returns the number of returned elements if the query is executed.*
 ///
 /// This function determines the amount of elements to be expected within the result of the query.
 /// It can be used at the beginning of execution of the query
@@ -1234,9 +1204,8 @@ AQLGenerator.prototype.count = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_hasNext
-/// Checks if the query has further results.
-///
-/// `graph-query.neighbors(examples)`
+/// `graph_query.hasNext()`
+/// *Checks if the query has further results.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *hasNext()* will
@@ -1262,7 +1231,9 @@ AQLGenerator.prototype.count = function() {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   var query = g._vertices();
-///   while (query.hasNext()) {query.next();}
+/// | while (query.hasNext()) {
+/// |   query.next();
+///   }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 /// 
@@ -1275,9 +1246,8 @@ AQLGenerator.prototype.hasNext = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_next
-/// Request the next element in the result.
-///
-/// `graph-query.next()`
+/// `graph_query.next()`
+/// *Request the next element in the result.*
 ///
 /// The generated statement maintains a cursor for you.
 /// If this cursor is already present *next()* will
@@ -1325,14 +1295,20 @@ AQLGenerator.prototype.next = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelation
-///
-/// `general-graph._undirectedRelation(relationName, vertexCollections)`
+/// `graph_module._undirectedRelation(relationName, vertexCollections)`
 /// *Define an undirected relation.*
 ///
 /// Defines an undirected relation with the name *relationName* using the
 /// list of *vertexCollections*. This relation allows the user to store
 /// edges in any direction between any pair of vertices within the
 /// *vertexCollections*.
+///
+/// *Parameter*
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *vertexCollections*: One or a list of collection names for which connections are allowed.
+///     Will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1386,12 +1362,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Define an directed relation.
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_directedRelation
-///
-/// `general-graph._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
+/// `graph_module._directedRelation(relationName, fromVertexCollections, toVertexCollections)`
 /// *Define a directed relation.*
 ///
 /// The *relationName* defines the name of this relation and references to the underlying edge collection.
@@ -1399,6 +1371,15 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// The *toVertexCollections* is an Array of document collections holding the target vertices.
 /// Relations are only allowed in the direction from any collection in *fromVertexCollections*
 /// to any collection in *toVertexCollections*.
+///
+/// *Parameter*
+///
+/// * *relationName*: The name of the edge collection where the edges should be stored.
+///     Will be created if it does not yet exist.
+/// * *fromVertexCollections*: One or a list of collection names. Source vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
+/// * *toVertexCollections*: One or a list of collection names. Target vertices for the edges
+///     have to be stored in these collections. Collections will be created if they do not exist.
 ///
 /// *Examples*
 ///
@@ -1452,17 +1433,13 @@ var _directedRelation = function (
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_list_call
-/// `general-graph._list()`
+/// @startDocuBlock JSF_general_graph_list
+/// `general_graph._list()`
 /// *List all graphs.*
-/// @endDocuBlock
 ///
-/// @startDocuBlock JSF_general_graph_list_info
 /// Lists all graph names stored in this database.
 ///
 /// *Examples*
-/// @endDocuBlock
-/// @startDocuBlock JSF_general_graph_list_examples
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1481,14 +1458,19 @@ var _list = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
+/// `graph_module._edgeDefinitions(relation1, relation2, ..., relationN)`
+/// *Create a list of edge definitions to construct a graph.*
 ///
 /// The edge definitions for a graph is an array containing arbitrary many directed
 /// and/or undirected relations as defined below.
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
-/// *Examples*
+/// *Parameter*
 ///
+/// * *relationX*: An object representing a definition of one relation in the graph
+///
+/// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph = require("org/arangodb/general-graph");
@@ -1505,7 +1487,7 @@ var _edgeDefinitions = function () {
 
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
-    res.push(args[x]);
+   res.push(args[x]);
   });
 
   return res;
@@ -1515,9 +1497,16 @@ var _edgeDefinitions = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_extend_edge_definitions
+/// `graph_module._extendEdgeDefinitions(edgeDefinitions, relation1, relation2, ..., relationN)`
+/// *Extend the list of edge definitions to construct a graph.*
 ///
 /// In order to add more edge definitions to the graph before creating
 /// this function can be used to add more definitions to the initial list.
+///
+/// *Parameter*
+///
+/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
 ///
@@ -1552,20 +1541,22 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create
-/// `general-graph._create(graph-name, edge-definitions, orphan-collections)`
+/// `graph_module._create(graphName, edgeDefinitions, orphanCollections)`
 /// *Create a graph*
 ///
 ///
 /// The creation of a graph requires the name of the graph and a definition of its edges.
 ///
 /// For every type of edge definition a convenience method exists that can be used to create a graph.
-/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
-/// These collections are refered to as orphan collections within this chapter.
+/// Optionally a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are referred to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
-/// * *graph-name*: string - unique identifier of the graph
-/// * *edge-definitions*: array - list of edge definition objects
-/// * *orphan-collections*: array - list of additonal vertex collection names
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
+/// * *edgeDefinitions* (optional): List of relation definition objects
+/// * *orphanCollections* (optional): List of additonal vertex collection names
 ///
 /// *Examples*
 ///
@@ -1637,7 +1628,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-              err.errorMessage = col
+              err.errorMessage = col + " "
                 + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
@@ -1674,7 +1665,6 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
@@ -1897,15 +1887,22 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor.
+/// internal helper to sort a graph's edge definitions
 ////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
-/// Creates and saves a new vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.save(data)`
+/// *Create a new vertex in vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.save(data)`
+/// *Parameter*
 ///
-/// *data*: json - data of vertex
+/// * *data*: Json data of vertex.
 ///
 /// *Examples*
 ///
@@ -1920,13 +1917,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_replace
-/// Replaces the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Replaces the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.replace(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1942,13 +1940,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_update
-/// Updates the data of a vertex in collection *vertexCollectionName*
+/// `graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Updates the data of a vertex in collection vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.update(vertexId, data, options)`
+/// *Parameter*
 ///
-/// *vertexId*: string - id of the vertex
-/// *data*: json - data of vertex
-/// *options*: json - (optional) - see collection documentation
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *data*: Json data of vertex.
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1964,12 +1963,17 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_remove
+/// `graph.vertexCollectionName.remove(vertexId, options)`
 /// Removes a vertex in collection *vertexCollectionName*
 ///
-/// `general-graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
 /// (see [edge remove](#edge.remove)).
+///
+/// *Parameter*
+///
+/// * *vertexId*: *_id* attribute of the vertex
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -1987,14 +1991,15 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_save
-/// Creates and saves a new edge from vertex *from* to vertex *to* in
-/// collection *edgeCollectionName*
+/// `graph.edgeCollectionName.save(from, to, data, options)`
+/// *Creates an edge from vertex *from* to vertex *to* in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.save(from, to, data)`
+/// *Parameter*
 ///
-/// *from*: string - id of outgoing vertex
-/// *to*: string -  of ingoing vertex
-/// *data*: json - data of edge
+/// * *from*: *_id* attribute of the source vertex
+/// * *to*: *_id* attribute of the target vertex
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
 ///
@@ -2004,7 +2009,7 @@ var updateBindCollections = function(graph) {
 ///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
 /// the edge will not be stored.
 ///
 ///
@@ -2018,13 +2023,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_replace
-/// Replaces the data of an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.replace(edgeId, data, options)`
+/// *Replaces the data of an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.replace(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -2040,13 +2046,14 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_update
-/// Updates the data of an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Updates the data of an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.update(edgeId, data, options)`
+/// *Parameter*
 ///
-/// *edgeId*: string - id of the edge
-/// *data*: json - data of edge
-/// *options*: json - (optional) - see collection documentation
+/// * *edgeId*: *_id* attribute of the edge
+/// * *data*: Json data of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
 ///
@@ -2062,9 +2069,13 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_collection_remove
-/// Removes an edge in collection *edgeCollectionName*
+/// `graph.edgeCollectionName.remove(edgeId, options)`
+/// *Removes an edge in collection edgeCollectionName*
 ///
-/// `general-graph.edgeCollectionName.remove(edgeId, options)`
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
+/// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// If this edge is used as a vertex by another edge, the other edge will be removed (recursively).
 ///
@@ -2083,6 +2094,13 @@ var updateBindCollections = function(graph) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+
   if (!orphanCollections) {
     orphanCollections = [];
   }
@@ -2103,12 +2121,14 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
-/// `general-graph._graph(graph-name)`
+/// `graph_module._graph(graphName)`
 /// *Load a graph*
 ///
 /// A graph can be loaded by its name.
 ///
-/// * *graph-name*: string - unique identifier of the graph
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
 ///
 /// *Examples*
 ///
@@ -2132,7 +2152,7 @@ var _graph = function(graphName) {
 
   try {
     g = gdb.document(graphName);
-  }
+  } 
   catch (e) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
@@ -2202,26 +2222,44 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
-/// `general-graph._drop(graphName, dropCollections)`
+/// `graph_module._drop(graphName, dropCollections)`
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
-/// This will automatically drop al collections contained in the graph as
+/// This will automatically drop all collections contained in the graph as
 /// long as they are not used within other graphs.
 /// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
-/// * *graphName*: string - unique identifier of the graph
-/// * *dropCollections*: boolean (optional) - define if collections should be dropped (default: false)
+/// *Parameter*
+///
+/// * *graphName*: Unique identifier of the graph
+/// * *dropCollections* (optional): Define if collections should be dropped (default: false)
 ///
 /// *Examples*
 ///
-/// Drop a graph:
+/// Drop a graph and keep collections:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraph}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
 /// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
 ///   var graph = require("org/arangodb/general-graph");
 ///   graph._drop("social");
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
+/// ~ db._drop("female");
+/// ~ db._drop("male");
+/// ~ db._drop("relation");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
+/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var g1 = examples.loadGraph("social");
+///   var graph = require("org/arangodb/general-graph");
+///   graph._drop("social", true);
+///   db._collection("female");
+///   db._collection("male");
+///   db._collection("relation");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2278,7 +2316,7 @@ var _drop = function(graphId, dropCollections) {
         if (checkIfMayBeDropped(oC, graph._key, graphs)) {
           try {
             db._drop(oC);
-          } catch (e) {}
+          } catch (ignore) {}
         }
       }
     );
@@ -2407,9 +2445,8 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edges
-/// Select some edges from the graph.
-///
-/// `graph.edges(examples)`
+/// `graph._edges(examples)`
+/// *Select some edges from the graph.*
 ///
 /// Creates an AQL statement to select a subset of the edges stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
@@ -2417,14 +2454,9 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 /// functions described below.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all edges are valid.
-///   * A string, only the edge having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only edges having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All edges matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -2459,9 +2491,8 @@ Graph.prototype._edges = function(edgeExample) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertices
-/// Select some vertices from the graph.
-///
-/// `graph.vertices(examples)`
+/// `graph._vertices(examples)`
+/// *Select some vertices from the graph.*
 ///
 /// Creates an AQL statement to select a subset of the vertices stored in the graph.
 /// This is one of the entry points for the fluent AQL interface.
@@ -2469,14 +2500,9 @@ Graph.prototype._edges = function(edgeExample) {
 /// functions described below.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
 ///
-/// *examples* can have the following values:
-/// 
-///   * Empty, there is no matching executed all vertices are valid.
-///   * A string, only the vertex having this value as it's id is returned.
-///   * An example object, defining a set of attributes.
-///       Only vertices having these attributes are matched.
-///   * A list containing example objects and/or strings.
-///       All vertices matching at least one of the elements in the list are returned.
+/// *Parameter*
+///
+/// * *examples*: See [Definition of examples](#definition_of_examples)
 ///
 /// *Examples*
 ///
@@ -2508,26 +2534,29 @@ Graph.prototype._vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getFromVertex
-/// Get the vertex of an edge defined as *_from*
-///
-/// `general-graph._getFromVertex(edgeId)`
+/// @startDocuBlock JSF_general_graph_fromVertex
+/// `graph._fromVertex(edgeId)`
+/// *Get the source vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
+///
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
 ///
 /// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getFromVertex("relation/aliceAndBob")
+///   g._fromVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getFromVertex = function(edgeId) {
+Graph.prototype._fromVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2538,26 +2567,29 @@ Graph.prototype._getFromVertex = function(edgeId) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getToVertex
-/// Get the vertex of an edge defined as *_to*
-///
-/// `general-graph._getToVertex(edgeId)`
+/// @startDocuBlock JSF_general_graph_toVertex
+/// `graph._toVertex(edgeId)`
+/// *Get the target vertex of an edge*
 ///
 /// Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as its *_id*.
+///
+/// *Parameter*
+///
+/// * *edgeId*: *_id* attribute of the edge
 ///
 /// *Examples*
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getToVertex("relation/aliceAndBob")
+///   g._toVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getToVertex = function(edgeId) {
+Graph.prototype._toVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2599,40 +2631,25 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_neighbors
-///
-/// `general_graph._neighbors(vertexExample, options)`
-/// *The general_graph._neighbors function returns all neighbors
-/// of the vertices defined by the example.*
+/// `graph._neighbors(vertexExample, options)`
+/// *Get all neighbors of the vertices defined by the example*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: See [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
+///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *minDepth*: Defines the minimal number of intermediate steps to neighbors (default is 1).
+///   * *maxDepth*: Defines the maximal number of intermediate steps to neighbors (default is 1).
 ///
 /// *Examples*
 ///
@@ -2640,18 +2657,18 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._neighbors({isCapital : true});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._neighbors({isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all outbound neighbors of Hamburg.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2671,25 +2688,12 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_common_neighbors
-///
-/// `general_graph._commonNeighbors(vertex1Example, vertex2Examples,
-/// optionsVertex1, optionsVertex2)`
-/// *The general_graph._commonNeighbors function returns all common neighbors
-/// of the vertices defined by the examples.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
+/// `graph._commonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// *Get all common neighbors of the vertices defined by the examples.*
 ///
 /// This function returns the intersection of *general_graph._neighbors(vertex1Example, optionsVertex1)*
 /// and *general_graph._neighbors(vertex2Example, optionsVertex2)*.
-/// For parameter documentation read the documentation *general_graph._neighbors*.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// For parameter documentation see [_neighbors](#_neighbors).
 ///
 /// *Examples*
 ///
@@ -2717,7 +2721,6 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2745,44 +2748,10 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_count_common_neighbors
+/// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
+/// *Get the amount of common neighbors of the vertices defined by the examples.*
 ///
-/// `general_graph._countCommonNeighbors(vertex1Example, vertex2Examples,
-/// optionsVertex1, optionsVertex2)`
-/// *The general_graph._countCommonNeighbors function returns the amount of
-/// common neighbors of the vertices defined by the examples.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *optionsVertex1*     : Optional options, see below:
-/// * Object               *optionsVertex2*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the
-/// edges. Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Object|Array  *edgeExamples*                     : A filter example
-///  for the edges to the neighbors (see below).
-/// * String|Object|Array  *neighborExamples*                 : An example for
-///  the desired neighbors (see below).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple
-///  edge collections that should be considered.
-// * String|Array         *vertexCollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-// / * Number               *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-/// * Number               *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// Similar to [_commonNeighbors](#_commonNeighbors) but returns count instead of the elements.
 ///
 /// *Examples*
 ///
@@ -2790,9 +2759,9 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._countCommonNeighbors({isCapital : true}, {isCapital : true});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._countCommonNeighbors({isCapital : true}, {isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all common outbound neighbors of Hamburg with any other location
@@ -2800,14 +2769,13 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
-/// {direction : 'outbound', maxDepth : 2});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
+///   {direction : 'outbound', maxDepth : 2});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
@@ -2850,35 +2818,22 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_common_properties
-///
-/// `general_graph._commonProperties(vertex1Example, vertex2Examples,
-/// options)`
-/// *The general_graph._commonProperties function returns the vertices of
-/// the graph that share common properties.*
+/// `graph._commonProperties(vertex1Example, vertex2Examples, options)`
+/// *Get the vertices of the graph that share common properties.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertex1Example and vertex2Example.
 ///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *vertex2CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *ignoreProperties* : One or multiple
-///  attributes of a document that should be ignored.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertex1Examples*: Filter the set of source vertices, see [Definition of examples](#definition_of_examples)
+/// * *vertex2Examples*: Filter the set of vertices compared to, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
+///       searched for source vertices.
+///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
+///       searched for compare vertices.
+///   * *ignoreProperties* : One or a list of attribute names of a document that should be ignored.
 ///
 /// *Examples*
 ///
@@ -2886,18 +2841,18 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._commonProperties({}, {});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._commonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._commonProperties({}, {}, {ignoreProperties: 'population'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._commonProperties({}, {}, {ignoreProperties: 'population'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -2927,35 +2882,11 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_count_common_properties
+/// `graph._countCommonProperties(vertex1Example, vertex2Examples, options)`
+/// *Get the amount of vertices of the graph that share common properties.*
 ///
-/// `general_graph._countCommonProperties(vertex1Example, vertex2Examples,
-/// options)`
-/// *The general_graph._countCommonProperties function returns the amount of vertices of
-/// the graph that share common properties.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
-/// * String|Object|Array  *vertex1Example*     : An example for the desired
-/// vertices (see below).
-/// * String|Object|Array  *vertex2Example*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-// * String|Array         *vertex1CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *vertex2CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-/// * String|Array         *ignoreProperties* : One or multiple
-///  attributes of a document that should be ignored.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// Similar to [_commonProperties](#_commonProperties) but returns count instead of
+/// the objects.
 ///
 /// *Examples*
 ///
@@ -3010,46 +2941,33 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_eccentricity
-///
-/// `general_graph._absoluteEccentricity(vertexExample, options)`
-/// *The _absoluteEccentricity function returns the*
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+/// `graph._absoluteEccentricity(vertexExample, options)`
+/// *Get the* [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
-/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
-/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
-/// * String|Object|Array  *edgeExamples*                     : A filter example for the
-/// edges in the shortest paths (see below).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for source vertices.
+///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for target vertices.
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the eccentricity can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3057,11 +2975,11 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-/// |+"'routeplanner', {})"
-/// ).toArray();
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
+/// | + "'routeplanner', {})"
+///   ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all locations.
@@ -3069,9 +2987,9 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._absoluteEccentricity({}, {weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._absoluteEccentricity({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the absolute eccentricity of all cities regarding only
@@ -3079,14 +2997,13 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// |g._absoluteEccentricity({}, {startVertexCollectionRestriction : 'city',
-/// direction : 'outbound', weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._absoluteEccentricity({}, {startVertexCollectionRestriction : 'city',
+///   direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
   var ex1 = transformExample(vertexExample);
@@ -3101,33 +3018,19 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
     "options": options,
     "ex1": ex1
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_eccentricity
-///
-/// `general_graph._eccentricity(vertexExample, options)`
-/// *The _eccentricity function returns the normalized*
+/// `graph._eccentricity(vertexExample, options)`
+/// *Get the normalized*
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// *of the vertices defined by the examples.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteEccentricity](#_absoluteEccentricity) but returns a normalized result.
 ///
 /// @EXAMPLES
 ///
@@ -3162,7 +3065,7 @@ Graph.prototype._eccentricity = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3170,46 +3073,34 @@ Graph.prototype._eccentricity = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_closeness
-///
-/// `general_graph._absoluteCloseness(vertexExample, options)`
-/// *The _absoluteCloseness function returns the*
+/// `graph._absoluteCloseness(vertexExample, options)`
+/// *Get the*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
-/// * String|Object|Array  *vertexExample*     : An example for the desired
-/// vertices (see below).
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String|Array         *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
-/// * String|Array         *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
-/// * String|Array         *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
-/// * String|Object|Array  *edgeExamples*                     : A filter example for the
-/// edges in the shortest paths (see below).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// Examples for vertexExample:
-/// * {}                : Returns all possible vertices for this graph.
-/// * *idString*        : Returns the vertex with the id *idString*.
-/// * {*key* : *value*} : Returns the vertices that match this example.
-/// * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices that
-/// match one of the examples.
+/// * *vertexExample*: Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *startVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for source vertices.
+///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered for target vertices.
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the closeness can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3265,26 +3156,12 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_closeness
-///
-/// `general_graph._closeness(options)`
-/// *The _closeness function returns the normalized*
+/// `graph._closeness(options)`
+/// *Get the normalized*
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// *of graphs vertices.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteCloseness](#_absoluteCloseness) but returns a normalized value.
 ///
 /// @EXAMPLES
 ///
@@ -3330,7 +3207,7 @@ Graph.prototype._closeness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3339,24 +3216,21 @@ Graph.prototype._closeness = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_betweenness
 ///
-/// `general_graph._absoluteBetweenness(options)`
-/// *The _absoluteBetweenness function returns the*
+/// `graph._absoluteBetweenness(options)`
+/// *Get the*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of all vertices in the graph.*
 ///
+/// *Parameter*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the betweenness can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the betweeness can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3403,7 +3277,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3411,22 +3285,11 @@ Graph.prototype._absoluteBetweenness = function(options) {
 /// @startDocuBlock JSF_general_graph_betweenness
 ///
 /// `general_graph._betweenness(options)`
-/// *The _betweenness function returns the*
+/// *Get the normalized*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of graphs vertices.*
 ///
-/// * Object               *options*     : Optional options, see below:
-///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// Similar to [_absoluteBetweeness](#_absoluteBetweeness) but returns normalized values.
 ///
 /// @EXAMPLES
 ///
@@ -3434,9 +3297,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness1}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness();
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all locations.
@@ -3444,9 +3307,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness({weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness({weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// A route planner example, the closeness of all cities regarding only
@@ -3454,9 +3317,9 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}
 /// ~ var db = require("internal").db;
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
-/// var g = examples.loadGraph("routeplanner");
-/// g._betweenness({direction : 'outbound', weight : 'distance'});
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+///   g._betweenness({direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -3473,7 +3336,7 @@ Graph.prototype._betweenness = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3481,26 +3344,23 @@ Graph.prototype._betweenness = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_radius
-///
-/// `general_graph._radius(options)`
-/// *The _radius function returns the*
+/// `graph._radius(options)`
+/// *Get the*
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
 ///
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the radius can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3547,7 +3407,7 @@ Graph.prototype._radius = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
@@ -3555,26 +3415,23 @@ Graph.prototype._radius = function(options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_diameter
-///
-/// `general_graph._diameter(graphName, options)`
-/// *The _diameter function returns the*
+/// `graph._diameter(graphName, options)`
+/// *Get the*
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
 ///
-/// * Object               *options*     : Optional options, see below:
+/// *Parameter*
 ///
-/// Possible options and there defaults:
-/// * String               *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-/// * String               *algorithm*                        : The algorithm to calculate
-/// the shortest paths.
-/// * String               *weight*                           : The name of the attribute of
-/// the edges containing the length.
-/// * Number               *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
+/// * *options* (optional): An object defining further options. Can have the following values: 
+///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
+///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///   * *weight*: The name of the attribute of the edges containing the weight.
+///   * *defaultWeight*: Only used with the option *weight*.
+///       If an edge does not have the attribute named as defined in option *weight* this default
+///       is used as weight.
+///       If no default is supplied the default would be positive infinity so the path and
+///       hence the radius can not be calculated.
 ///
 /// @EXAMPLES
 ///
@@ -3608,7 +3465,6 @@ Graph.prototype._radius = function(options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._diameter = function(options) {
 
@@ -3621,23 +3477,24 @@ Graph.prototype._diameter = function(options) {
     "graphName": this.__name,
     "options": options
   };
-  var result = db._query(query, bindVars).toArray(), returnHash = [];
+  var result = db._query(query, bindVars).toArray();
   return result;
 };
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
+/// `graph._extendEdgeDefinitions(edgeDefinition)`
+/// *Add another edge definition to the graph*
+///
 /// Extends the edge definitions of a graph. If an orphan collection is used in this
-/// edge definitino, it will be removed from the orphenage. If the edge collection of
+/// edge definition, it will be removed from the orphanage. If the edge collection of
 /// the edge definition to add is already used in the graph or used in a different
-/// graph with different from an to collections an error is thrown.
+/// graph with different *from* and/or *to* collections an error is thrown.
 ///
-/// `general-graph._extendEdgeDefinitions(edgeDefinition)`
+/// *Parameter*
 ///
-/// *edgeDefinition* - [string] : the edge definition to extend the graph
+/// * *edgeDefinition*: The relation definition to extend the graph
 ///
 /// *Examples*
 ///
@@ -3656,6 +3513,7 @@ Graph.prototype._diameter = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
   var err;
   //check if edgeCollection not already used
@@ -3679,7 +3537,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
               err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col
-                + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
+                + " " + arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
               throw err;
             }
           }
@@ -3722,7 +3580,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3767,7 +3624,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
         }
         try {
           graphObj._removeVertexCollection(nc, false);
-        } catch (e) {
+        } catch (ignore) {
         }
       }
     }
@@ -3786,16 +3643,19 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__editEdgeDefinition
-/// Edits the edge definitions of a graph. The edge definition used as argument will
+/// `general-graph._editEdgeDefinition(edgeDefinition)`
+/// *Modify an relation definition*
+///
+/// Edits one relation definition of a graph. The edge definition used as argument will
 /// replace the existing edge definition of the graph which has the same collection.
 /// Vertex Collections of the replaced edge definition, that are not used in the new
 /// definition will transform to an orphan. Orphans that are used in this new edge
 /// definition will be deleted from the list of orphans. Other graphs with the same edge
 /// definition will be modified, too.
 ///
-/// `general-graph._editEdgeDefinition(edgeDefinition)`
+/// *Parameter*
 ///
-/// *edgeDefinition* - [string] : the edge definition to replace the existing edge
+/// * *edgeDefinition*: The edge definition to replace the existing edge
 /// definition with the same attribute *collection*.
 ///
 /// *Examples*
@@ -3814,7 +3674,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
-
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
   //check, if in graphs edge definition
@@ -3861,14 +3721,16 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
-/// Deletes an edge definition defined by the edge collection of a graph. If the
+/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
+/// *Delete one relation definition*
+///
+/// Deletes a relation definition defined by the edge collection of a graph. If the
 /// collections defined in the edge definition (collection, from, to) are not used
 /// in another edge definition of the graph, they will be moved to the orphanage.
 ///
-/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
+/// *Parameter*
 ///
-/// * *edgeCollectionName*: string - name of edge collection defined in *collection* of the edge
-/// definition.
+/// * *edgeCollectionName*: Name of edge collection in the relation definition.
 ///
 /// *Examples*
 ///
@@ -3883,7 +3745,6 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-///
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
@@ -3928,13 +3789,16 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__addVertexCollection
+/// `graph._addVertexCollection(vertexCollectionName, createCollection)`
+/// *Add a vertex collection to the graph*
+///
 /// Adds a vertex collection to the set of orphan collections of the graph. If the
 /// collection does not exist, it will be created.
 ///
-/// `general-graph._addVertexCollection(vertexCollectionName, createCollection)`
+/// *Parameter*
 ///
-/// * *vertexCollectionName* - string : name of vertex collection.
-/// * *createCollection* - bool : if true the collection will be created if it does not exist. Default: true.
+/// * *vertexCollectionName*: Name of vertex collection.
+/// * *createCollection* (optional): If true the collection will be created if it does not exist. Default: true.
 ///
 /// *Examples*
 ///
@@ -3986,9 +3850,10 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__orphanCollections
-/// Returns all vertex collections of the graph, that are not used in an edge definition.
+/// `graph._orphanCollections()`
+/// *Get all orphan collections*
 ///
-/// `general-graph._orphanCollections()`
+/// Returns all vertex collections of the graph, that are not used in any edge definition.
 ///
 /// *Examples*
 ///
@@ -4012,14 +3877,18 @@ Graph.prototype._orphanCollections = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__removeVertexCollection
-/// Removes an orphan collection from the graph. Optionally it deletes the collection,
-/// if it is not used in any graph.
+/// `graph._removeVertexCollection(vertexCollectionName, dropCollection)`
+/// *Remove a vertex collection from the graph*
 ///
-/// `general-graph._removeVertexCollection(vertexCollectionName, dropCollection)`
+/// Removes a vertex collection from the graph.
+/// Only collections not used in any relation definition can be removed.
+/// Optionally the collection can be deleted, if it is not used in any other graph.
 ///
-/// *vertexCollectionName*: string - name of vertex collection.
-/// *dropCollection*: bool (optional) - if true the collection will be dropped if it is
-/// not used in any graph. Default: false.
+/// *Parameter*
+///
+/// * *vertexCollectionName*: Name of vertex collection.
+/// * *dropCollection* (optional): If true the collection will be dropped if it is
+///     not used in any other graph. Default: false.
 ///
 /// *Examples*
 ///
@@ -4107,3 +3976,4 @@ exports._list = _list;
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+});

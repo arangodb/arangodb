@@ -1,6 +1,76 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* introduced write-ahead log
+
+  All write operations in an ArangoDB server instance are automatically logged
+  to the server's write-ahead log. The write-ahead log is a set of append-only 
+  logfiles, and it is used in case of a crash recovery and for replication.
+  Data from the write-ahead log will eventually be moved into the datafiles of
+  collections, allowing the server to remove older write-ahead log logfiles.
+
+  Cross-collection transactions in ArangoDB should benefit considerably by this
+  change, as less writes than in previous versions is required to ensure the data 
+  of multiple collections are atomcially and durably committed. All data-modifying 
+  operations inside transactions (insert, update, remove) will write their 
+  operations into the write-ahead log directly, making transactions with multiple 
+  operations also require less physical memory than in previous versions of ArangoDB,
+  where most parts of transactions were handled in RAM first.
+
+  The data in the write-ahead log can also be used in the replication context.
+  The `_replication` collection that was used in previous versions of ArangoDB to 
+  store all changes on the server is not used anymore in ArangoDB 2.2. Instead, 
+  slaves can read from a master's write-ahead log to get informed about most
+  recent changes. This removes the need to store data-modifying operations in 
+  both the actual place and the `_replication` collection. 
+
+  Note: the replication from the write-ahead log is still in development.
+
+* removed startup option `--server.disable-replication-logger`
+
+  This option is superfluous in ArangoDB 2.2. There is no dedicated replication
+  logger in ArangoDB 2.2. There is now always the write-ahead log, and it is also
+  used as the server's replication log. Specifying the startup option
+  `--server.disable-replication-logger` will do nothing in ArangoDB 2.2, but the
+  option should not be used anymore as it might be removed in a future version.
+
+* changed behavior of replication logger
+
+  There is no dedicated replication logger in ArangoDB 2.2 as there is the 
+  write-ahead log now. The existing APIs for starting and stopping the replication
+  logger still exist in ArangoDB 2.2 for downwards-compatibility, but calling
+  the start or stop operations are no-ops in ArangoDB 2.2. When querying the
+  replication logger status via the API, the server will always report that the
+  replication logger is running. Configuring the replication logger is a no-op 
+  in ArangoDB 2.2, too. Changing the replication logger configuration has no
+  effect. Instead, the write-ahead log configuration can be changed.
+
+* removed MRuby integration for arangod
+
+  ArangoDB had an experimental MRuby integration in some of the publish builds.
+  This wasn't continuously developed, and so it has been removed in ArangoDB 2.2.
+
+  This change has led to the following startup options being superfluous:
+
+  - `--ruby.gc-interval`
+  - `--ruby.action-directory`
+  - `--ruby.modules-path`
+  - `--ruby.startup-directory`
+
+  Specifying these startup options will do nothing in ArangoDB 2.2, but the 
+  options should be avoided from now on as they might be removed in future versions.
+
+* reclaim index memory when last document in collection is deleted
+
+  Previously, deleting documents from a collection did not lead to index sizes being
+  reduced. Instead, the already allocated index memory was re-used when a collection
+  was refilled.
+
+  Now, index memory for primary indexes and hash indexes is reclaimed instantly when
+  the last document from a collection is removed.
+  
+* inlined and optimized functions in hash indexes
+
 * added AQL TRANSLATE function
 
   This function can be used to perform lookups from static lists, e.g.

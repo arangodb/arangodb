@@ -119,7 +119,8 @@ sub formatFile ($$$) {
   # -----------------------------------------------------------------------------
 
   my $absPath = File::Spec->rel2abs($file);
-  $absPath =~ s:\.|-|\+:_:g;
+  $absPath =~ s:-|_:__:g;
+  $absPath =~ s:\.|\+:_:g;
   $absPath =~ s/([a-z])([A-Z])/\1_\2/g;
   $absPath = uc($absPath);
 
@@ -141,7 +142,7 @@ sub formatFile ($$$) {
       $c = $absParts[@absParts - 3];
     }
 
-    $guardName = "TRIAGENS_" . $m . "_" . $u;
+    $guardName = "ARANGODB_" . $m . "_" . $u;
 
     print STDERR "INFO guard name is $guardName\n";
   }
@@ -168,6 +169,8 @@ sub formatFile ($$$) {
 
   my $lastLine = undef;
   my $skipGroup = 0;
+  my $foundEOL = 0;
+  my $finalEndif = 0;
 
   while (<IN>) {
     chomp;
@@ -207,6 +210,23 @@ sub formatFile ($$$) {
       }
     }
 
+    if ($line =~ /^\/\/ --SECTION--[\ t]+END-OF-(FILE|LINE)[ \t]*$/) {
+      $foundEOL = 2;
+      $lastLine = undef;
+    }
+
+    if (! $foundEOL && $line =~ /^\/\/ Local Variables/) {
+      $foundEOL = 1;
+    }
+
+    if ($foundEOL != 0) {
+      if ($line =~ /^#endif/) {
+	$finalEndif = 1;
+      }
+
+      next;
+    }
+
     if (defined $lastLine) {
       print $out "$lastLine\n";
       $lastLine = undef;
@@ -219,9 +239,6 @@ sub formatFile ($$$) {
     if ($line =~ /^\/\/ outline-regexp:/) {
       if ($isJavaScript == 1) {
 	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
-      }
-      else {
-	$line = '// outline-regexp: "/// @brief\\\\|/// {@inheritDoc}\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}"';
       }
     }
 
@@ -252,7 +269,12 @@ sub formatFile ($$$) {
 	$copyrightSeen = 1;
 
 	if ($y != $year) {
-	  $line = "/// \@author Copyright $y-$year, triAGENS GmbH, Cologne, Germany";
+	  if ($year != 2014) {
+	    $line = "/// \@author Copyright $y-$year, ArangoDB GmbH, Cologne, Germany\n$line";
+	  }
+	  else {
+	    $line = "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany\n$line";
+	  }
         }
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)-(\d\d\d\d)/) {
@@ -262,7 +284,19 @@ sub formatFile ($$$) {
 	$copyrightSeen = 1;
 
 	if ($y2 != $year) {
-	  $line = "/// \@author Copyright $y1-$year, triAGENS GmbH, Cologne, Germany";
+	  if ($year != 2014) {
+	    $line = "/// \@author Copyright 2014-$year, ArangoDB GmbH, Cologne, Germany";
+	  }
+	  else {
+	    $line = "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany";
+	  }
+
+	  if ($y1 != $y2) {
+	    $line = "/// \@author Copyright $y1-$y2, triAGENS GmbH, Cologne, Germany";
+	  }
+	  else {
+	    $line = "/// \@author Copyright $y1, triAGENS GmbH, Cologne, Germany";
+	  }
         }
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright/) {
@@ -293,7 +327,7 @@ sub formatFile ($$$) {
     }
 
     if ($authorSeen && ! $copyrightSeen && $breakLine) {
-      print $out "/// \@author Copyright $year, triAGENS GmbH, Cologne, Germany\n";
+      print $out "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany\n";
       $copyrightSeen = 1;
     }
 
@@ -309,11 +343,17 @@ sub formatFile ($$$) {
       if (($authorSeen && ! $disclaimerSeen) || $holderSeen) {
 	print $out "/// DISCLAIMER\n";
 	print $out "///\n";
-	print $out "/// Copyright 2004-$year triAGENS GmbH, Cologne, Germany\n";
+	if ($year != 2014) {
+	  print $out "/// Copyright 2014-$year ArangoDB GmbH, Cologne, Germany\n";
+	}
+	else {
+	  print $out "/// Copyright $year ArangoDB GmbH, Cologne, Germany\n";
+	}
+	print $out "/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany\n";
 	print $out "///\n";
 	print $out "$disclaimerText";
 	print $out "///\n";
-	print $out "/// Copyright holder is triAGENS GmbH, Cologne, Germany\n";
+	print $out "/// Copyright holder is ArangoDB GmbH, Cologne, Germany\n";
 	print $out "///\n";
 
 	$disclaimerDone = 1;
@@ -333,15 +373,27 @@ sub formatFile ($$$) {
       }
     }
 
-    if (! $dryRun || ! $preambleDone) {
-      $lastLine = $line;
-    }
+    $lastLine = $line;
   }
 
   if (defined $lastLine) {
     print $out "$lastLine\n";
     $lastLine = undef;
   }
+
+  if ($finalEndif) {
+    print $out "#endif\n";
+    print $out "\n";
+  }
+
+  print $out "// -----------------------------------------------------------------------------\n";
+  print $out "// --SECTION--                                                       END-OF-FILE\n";
+  print $out "// -----------------------------------------------------------------------------\n";
+  print $out "\n";
+  print $out "// Local Variables:\n";
+  print $out "// mode: outline-minor\n";
+  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
+  print $out "// End:\n";
 
   if (! $dryRun) {
     close($out)

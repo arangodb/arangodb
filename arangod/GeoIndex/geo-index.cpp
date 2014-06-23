@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +228,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the index
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 static size_t MemoryGeoIndex (TRI_index_t const* idx) {
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
 
@@ -263,8 +265,8 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
-  
-  // "constraint" and "unique" are identical for geo indexes. 
+
+  // "constraint" and "unique" are identical for geo indexes.
   // we return "constraint" just for downwards-compatibility
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
@@ -287,7 +289,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   TRI_shape_path_t const* path;
   char const* latitude;
   char const* longitude;
-  
+
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
   TRI_document_collection_t* document = idx->_collection;
 
@@ -311,12 +313,12 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 
   // create json
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
-  
+
   if (json == nullptr) {
     return nullptr;
   }
 
-  // "constraint" and "unique" are identical for geo indexes. 
+  // "constraint" and "unique" are identical for geo indexes.
   // we return "constraint" just for downwards-compatibility
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
@@ -334,7 +336,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 /// @brief inserts a new document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertGeoIndex (TRI_index_t* idx, 
+static int InsertGeoIndex (TRI_index_t* idx,
                            TRI_doc_mptr_t const* doc,
                            bool isRollback) {
   GeoCoordinate gc;
@@ -415,7 +417,7 @@ static int InsertGeoIndex (TRI_index_t* idx,
 /// @brief erases a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveGeoIndex (TRI_index_t* idx, 
+static int RemoveGeoIndex (TRI_index_t* idx,
                            TRI_doc_mptr_t const* doc,
                            bool isRollback) {
   GeoCoordinate gc;
@@ -533,7 +535,7 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique);
 
   idx->_ignoreNull = ignoreNull;
-  
+
   idx->memory   = MemoryGeoIndex;
   idx->json     = JsonGeo2Index;
   idx->insert   = InsertGeoIndex;
@@ -633,5 +635,5 @@ GeoCoordinates* TRI_NearestGeoIndex (TRI_index_t* idx,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

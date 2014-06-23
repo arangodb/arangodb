@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +55,7 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 VocbaseContext::VocbaseContext (HttpRequest* request,
-                                TRI_server_t* server, 
+                                TRI_server_t* server,
                                 TRI_vocbase_t* vocbase) :
   RequestContext(request),
   _server(server),
@@ -78,7 +80,7 @@ VocbaseContext::~VocbaseContext () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 bool VocbaseContext::useClusterAuthentication () const {
   if (ServerState::instance()->isDBserver()) {
     return true;
@@ -97,7 +99,7 @@ bool VocbaseContext::useClusterAuthentication () const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   TRI_ASSERT(_vocbase != 0);
 
@@ -111,7 +113,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
-  if (ci.endpointType == Endpoint::DOMAIN_UNIX && 
+  if (ci.endpointType == Endpoint::DOMAIN_UNIX &&
       ! _vocbase->_settings.requireAuthenticationUnixSockets) {
     // no authentication required for unix socket domain connections
     return HttpResponse::OK;
@@ -137,13 +139,13 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
   if (TRI_IsPrefixString(path, "/_open/")) {
     return HttpResponse::OK;
   }
-  
+
   // authentication required
   // -----------------------
-  
+
   bool found;
   char const* auth = _request->header("authorization", found);
-  
+
   if (! found || ! TRI_CaseEqualString2(auth, "basic ", 6)) {
     return HttpResponse::UNAUTHORIZED;
   }
@@ -157,20 +159,20 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
   if (useClusterAuthentication()) {
     string const expected = ServerState::instance()->getAuthentication();
-  
+
     if (expected.substr(6) != string(auth)) {
       return HttpResponse::UNAUTHORIZED;
     }
 
-    string const up = StringUtils::decodeBase64(auth);    
+    string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG_TRACE("invalid authentication data found, cannot extract username/password");
-  
+
       return HttpResponse::BAD;
     }
-   
+
     string const username = up.substr(0, n);
     _request->setUser(username);
 
@@ -190,20 +192,20 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
   // no entry found in cache, decode the basic auth info and look it up
   else {
-    string const up = StringUtils::decodeBase64(auth);    
+    string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG_TRACE("invalid authentication data found, cannot extract username/password");
       return HttpResponse::BAD;
     }
-   
+
     username = up.substr(0, n);
-    
-    LOG_TRACE("checking authentication for user '%s'", username.c_str()); 
+
+    LOG_TRACE("checking authentication for user '%s'", username.c_str());
     bool res = TRI_CheckAuthenticationAuthInfo(
                  _vocbase, auth, username.c_str(), up.substr(n + 1).c_str(), &mustChange);
-    
+
     if (! res) {
       return HttpResponse::UNAUTHORIZED;
     }
@@ -231,5 +233,5 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

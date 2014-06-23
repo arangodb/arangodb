@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,7 +240,7 @@ TRI_json_t* Scheduler::getUserTasks () {
       Task* task = (*i).first;
 
       if (task->isUserDefined()) {
-        TRI_json_t* obj = task->toJson(); 
+        TRI_json_t* obj = task->toJson();
 
         if (obj != nullptr) {
           TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
@@ -264,7 +266,7 @@ TRI_json_t* Scheduler::getUserTask (string const& id) {
     Task* task = (*i).first;
 
     if (task->isUserDefined() && task->id() == id) {
-      return task->toJson(); 
+      return task->toJson();
     }
 
     ++i;
@@ -283,7 +285,7 @@ int Scheduler::unregisterUserTask (string const& id) {
   }
 
   Task* task = nullptr;
- 
+
   {
     MUTEX_LOCKER(schedulerLock);
 
@@ -370,7 +372,7 @@ int Scheduler::registerTask (Task* task) {
       return res;
     }
 
-    if (multiThreading && ! task->needsMainEventLoop()) {      
+    if (multiThreading && ! task->needsMainEventLoop()) {
       n = (++nextLoop) % nrThreads;
     }
 
@@ -530,5 +532,5 @@ void Scheduler::initialiseSignalHandlers () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

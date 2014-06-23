@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,11 +40,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate verbose code
@@ -62,18 +59,9 @@
 
 #define FUNCTION_PREFIX "f"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const,
                                     const TRI_aql_node_t* const);
@@ -81,18 +69,9 @@ static void ProcessAttributeAccess (TRI_aql_codegen_js_t* const,
 static void ProcessNode (TRI_aql_codegen_js_t* const,
                          const TRI_aql_node_t* const);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a scope variable
@@ -162,14 +141,14 @@ static void EnterSymbol (TRI_aql_codegen_js_t* const generator,
                          const char* const name,
                          const TRI_aql_codegen_register_t registerIndex,
                          bool isCachedSubquery) {
-  TRI_aql_codegen_scope_t* scope = CurrentScope(generator); 
+  TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_variable_t* variable;
-  
+
   if (scope == NULL) {
     generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return;
   }
-  
+
   variable = CreateVariable(name, registerIndex, isCachedSubquery);
 
   if (variable == NULL) {
@@ -208,7 +187,7 @@ static TRI_aql_codegen_variable_t* LookupVariable (TRI_aql_codegen_js_t* const g
       return variable;
     }
   }
- 
+
   return NULL;
 }
 
@@ -314,7 +293,7 @@ static inline bool OutputInt (TRI_string_buffer_t* const buffer,
 static inline void ScopeOutput (TRI_aql_codegen_js_t* const generator,
                                 const char* const value) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -427,7 +406,7 @@ static inline void ScopeOutputFunction (TRI_aql_codegen_js_t* const generator,
 static inline void ScopeOutputRegister (TRI_aql_codegen_js_t* const generator,
                                         const TRI_aql_codegen_register_t registerIndex) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -448,7 +427,7 @@ static void ScopeOutputSymbol (TRI_aql_codegen_js_t* const generator,
                                char const* name) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   TRI_aql_codegen_variable_t* variable;
-  
+
   if (scope == NULL) {
     return;
   }
@@ -504,7 +483,7 @@ static TRI_aql_scope_e NextScopeType (TRI_aql_codegen_js_t* const generator,
   scope = CurrentScope(generator);
 
   if (scope == NULL) {
-    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY; 
+    generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
     return requestedType;
   }
 
@@ -619,7 +598,7 @@ static void EndScope (TRI_aql_codegen_js_t* const generator) {
 
 #if AQL_VERBOSE
   scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -664,13 +643,13 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
 
   // start a new scope first
   StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return functionIndex;
   }
 
   scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return functionIndex;
   }
@@ -720,7 +699,7 @@ static TRI_aql_codegen_register_t CreateSortFunction (TRI_aql_codegen_js_t* cons
     }
     ScopeOutput(generator, "}\n");
   }
-  
+
   if (stable) {
     // sort order determined by previous index position (stable sort)
     ScopeOutput(generator, "return l[0] - r[0];\n");
@@ -752,13 +731,13 @@ static TRI_aql_codegen_register_t CreateGroupFunction (TRI_aql_codegen_js_t* con
 
   // start a new scope first
   StartScope(generator, &generator->_functionBuffer, TRI_AQL_SCOPE_FUNCTION, 0, 0, 0, 0, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return functionIndex;
   }
 
   scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return functionIndex;
   }
@@ -829,7 +808,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t ownRegister   = IncRegister(generator);
   TRI_aql_codegen_scope_t* scope           = CurrentScope(generator);
   TRI_aql_codegen_scope_t* forScope;
-  
+
   if (scope == NULL) {
     return;
   }
@@ -870,11 +849,11 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
   }
 
   forScope = CurrentScope(generator);
-  
+
   if (forScope == NULL) {
     return;
   }
-    
+
   // limit: offset and limit registers
   if (forScope->_limitRegister != 0) {
     if (forScope->_offsetRegister != 0) {
@@ -904,7 +883,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
       ! forScope->_hint->_limit._hasFilter) {
     // we have a limit the we need to handle in the for loop
     TRI_aql_codegen_register_t maxRegister = IncRegister(generator);
-  
+
     ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, maxRegister);
     ScopeOutput(generator, " = ");
@@ -961,7 +940,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
     ScopeOutputRegister(generator, forScope->_listRegister);
     ScopeOutput(generator, ");\n");
     ScopeOutput(generator, "}\n");
-    
+
     ScopeOutput(generator, "var ");
     ScopeOutputRegister(generator, forScope->_ownRegister);
     ScopeOutput(generator, " = ");
@@ -991,7 +970,7 @@ static void StartFor (TRI_aql_codegen_js_t* const generator,
 
 static void CloseLoops (TRI_aql_codegen_js_t* const generator) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -1108,7 +1087,7 @@ static void RestoreSymbols (TRI_aql_codegen_js_t* const generator,
                             TRI_vector_string_t* const variableNames) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
   size_t i, n;
-  
+
   if (scope == NULL) {
     return;
   }
@@ -1159,7 +1138,7 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
           (fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_EQ ||
            fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN)));
 
-  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST || 
+  if (fieldAccess->_type == TRI_AQL_ACCESS_LIST ||
       fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
     ScopeOutput(generator, "aql.GET_DOCUMENTS_PRIMARY_LIST('");
   }
@@ -1217,7 +1196,7 @@ static void GenerateHashAccess (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ")");
       return;
     }
-    
+
     if (fieldAccess->_type == TRI_AQL_ACCESS_REFERENCE &&
         fieldAccess->_value._reference._operator == TRI_AQL_NODE_OPERATOR_BINARY_IN) {
       ScopeOutput(generator, "aql.GET_DOCUMENTS_HASH_LIST('");
@@ -1591,7 +1570,7 @@ static void ProcessReference (TRI_aql_codegen_js_t* const generator,
 static void ProcessValue (TRI_aql_codegen_js_t* const generator,
                           const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -1651,7 +1630,7 @@ static void ProcessArray (TRI_aql_codegen_js_t* const generator,
 static void ProcessArrayElement (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -1682,7 +1661,7 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
       ScopeOutput(generator, ", ");
     }
 
-    if (function != NULL && 
+    if (function != NULL &&
         parameter->_type == TRI_AQL_NODE_COLLECTION &&
         TRI_ConvertParameterFunctionAql(function, i)) {
       // collection arguments will be created as string argument => e.g. "users"
@@ -1704,7 +1683,7 @@ static void ProcessArgList (TRI_aql_codegen_js_t* const generator,
 static void ProcessAttribute (TRI_aql_codegen_js_t* const generator,
                               const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -1872,7 +1851,7 @@ static void ProcessExpand (TRI_aql_codegen_js_t* const generator,
 
   // expand scope
   StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_EXPAND, 0, 0, 0, resultRegister, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return;
   }
@@ -1931,7 +1910,7 @@ static void ProcessUnaryPlus (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary and (a && b)
-/// this passes two functions to the operator for lazy evaluation 
+/// this passes two functions to the operator for lazy evaluation
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
@@ -1945,7 +1924,7 @@ static void ProcessBinaryAnd (TRI_aql_codegen_js_t* const generator,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate code for binary or (a || b)
-/// this passes two functions to the operator for lazy evaluation 
+/// this passes two functions to the operator for lazy evaluation
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessBinaryOr (TRI_aql_codegen_js_t* const generator,
@@ -2158,7 +2137,7 @@ static void ProcessSubquery (TRI_aql_codegen_js_t* const generator,
     // subquery has been optimised away
     ScopeOutput(generator, "[ ];\n");
   }
-  
+
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister, false);
 }
 
@@ -2171,7 +2150,7 @@ static void ProcessSubqueryCached (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t resultRegister = IncRegister(generator);
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -2185,7 +2164,7 @@ static void ProcessSubqueryCached (TRI_aql_codegen_js_t* const generator,
 #else
   ScopeOutput(generator, ", execute: function () { this.executed = true; return this.data = this.fn(); } };\n");
 #endif
-  
+
   EnterSymbol(generator, nameNode->_value._value._string, resultRegister, true);
 }
 
@@ -2229,7 +2208,7 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
   if (scope->_type != TRI_AQL_SCOPE_SUBQUERY) {
     return;
   }
-    
+
   s = CurrentScope(generator);
 
   if (s == NULL) {
@@ -2245,7 +2224,7 @@ static void ProcessScopeStart (TRI_aql_codegen_js_t* const generator,
   resultRegister = IncRegister(generator);
   InitList(generator, resultRegister);
   StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return;
   }
@@ -2290,7 +2269,7 @@ static void ProcessFor (TRI_aql_codegen_js_t* const generator,
   TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(node, 0);
   TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
   TRI_aql_codegen_register_t sourceRegister = IncRegister(generator);
-  TRI_aql_for_hint_t* hint 
+  TRI_aql_for_hint_t* hint
       = static_cast<TRI_aql_for_hint_t*>(TRI_AQL_NODE_DATA(node));
   TRI_string_buffer_t* buffer;
   bool isList;
@@ -2352,7 +2331,7 @@ static void ProcessSort (TRI_aql_codegen_js_t* const generator,
   if (scope == NULL) {
     return;
   }
-  
+
   sourceRegister = scope->_resultRegister;
 
   // var row = { };
@@ -2416,12 +2395,12 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   if (scope == NULL) {
     return;
   }
-  
+
   sourceRegister = scope->_resultRegister;
 
 #if AQL_VERBOSE
   ScopeOutput(generator, "\n/* collect start */\n");
-#endif  
+#endif
 
   // var row = { };
   InitArray(generator, rowRegister);
@@ -2431,7 +2410,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
   // a rowRegister, and we need that
   variableNames = StoreSymbols(generator, rowRegister, true);
   TRI_DestroyVectorString(&variableNames);
-  
+
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
@@ -2518,7 +2497,7 @@ static void ProcessCollect (TRI_aql_codegen_js_t* const generator,
 
 #if AQL_VERBOSE
   ScopeOutput(generator, "\n/* collect end */\n");
-#endif  
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2533,10 +2512,10 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   TRI_aql_codegen_register_t resultRegister;
   TRI_aql_codegen_register_t limitRegister;
   TRI_vector_string_t variableNames;
- 
+
   if (scope == NULL) {
     return;
-  } 
+  }
 
   sourceRegister = scope->_resultRegister;
 
@@ -2545,7 +2524,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
 
   // save symbols
   variableNames = StoreSymbols(generator, rowRegister, false);
-  
+
   // result.push(row)
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
@@ -2554,12 +2533,12 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
 
   // }
   CloseLoops(generator);
- 
-  // store full count 
+
+  // store full count
   ScopeOutput(generator, "extra.fullCount = ");
   ScopeOutputRegister(generator, sourceRegister);
   ScopeOutput(generator, ".length;\n");
-  
+
   // now apply actual limit
   limitRegister = IncRegister(generator);
   ScopeOutput(generator, "var ");
@@ -2575,7 +2554,7 @@ static void ProcessLimit (TRI_aql_codegen_js_t* const generator,
   // start new for loop
   resultRegister = IncRegister(generator);
   scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -2607,13 +2586,13 @@ static void ProcessReturn (TRI_aql_codegen_js_t* const generator,
   ScopeOutput(generator, " = ");
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   ScopeOutput(generator, ";\n");
-  
+
   // result.push(row);
   ScopeOutputRegister(generator, scope->_resultRegister);
   ScopeOutput(generator, ".push(");
   ScopeOutputRegister(generator, rowRegister);
   ScopeOutput(generator, ");\n");
-  
+
   // }
   CloseLoops(generator);
 }
@@ -2657,7 +2636,7 @@ static void ProcessRemove (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 
   ScopeOutput(generator, ");\n");
-  
+
   // }
   CloseLoops(generator);
 }
@@ -2680,7 +2659,7 @@ static void ProcessInsert (TRI_aql_codegen_js_t* const generator,
   ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
 
   ScopeOutput(generator, ");\n");
-  
+
   // }
   CloseLoops(generator);
 }
@@ -2702,7 +2681,7 @@ static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
     // document
     ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
     ScopeOutput(generator, ", ");
-    // explicit key specification 
+    // explicit key specification
     ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   }
   else {
@@ -2711,7 +2690,7 @@ static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
   }
 
   ScopeOutput(generator, ");\n");
-  
+
   // }
   CloseLoops(generator);
 }
@@ -2773,7 +2752,7 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
   InitList(generator, resultRegister);
 
   StartScope(generator, scope->_buffer, TRI_AQL_SCOPE_SUBQUERY, 0, 0, 0, resultRegister, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return;
   }
@@ -2799,7 +2778,7 @@ static void ProcessAssign (TRI_aql_codegen_js_t* const generator,
 static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
                            const TRI_aql_node_t* const node) {
   TRI_aql_codegen_scope_t* scope = CurrentScope(generator);
-  
+
   if (scope == NULL) {
     return;
   }
@@ -2824,7 +2803,7 @@ static void ProcessFilter (TRI_aql_codegen_js_t* const generator,
 
   if (scope->_limitRegister != 0) {
     TRI_ASSERT(scope->_hint != NULL);
-    
+
     if (scope->_offsetRegister != 0) {
       ScopeOutput(generator, "if (++");
       ScopeOutputRegister(generator, scope->_offsetRegister);
@@ -3013,7 +2992,7 @@ static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   size_t i, n;
 
   StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL);
-  
+
   if (generator->_errorCode != TRI_ERROR_NO_ERROR) {
     return 0;
   }
@@ -3086,22 +3065,13 @@ static TRI_aql_codegen_js_t* CreateGenerator (TRI_aql_context_t* const context) 
   generator->_errorValue = NULL;
   generator->_registerIndex = 0;
   generator->_functionIndex = 0;
-  
+
   return generator;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate Javascript code for the AST nodes recursively
@@ -3160,9 +3130,9 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
         break;
     }
 
-    OutputString(&generator->_buffer, "(ops, '"); 
-    OutputString(&generator->_buffer, context->_writeCollection); 
-    OutputString(&generator->_buffer, "', "); 
+    OutputString(&generator->_buffer, "(ops, '");
+    OutputString(&generator->_buffer, context->_writeCollection);
+    OutputString(&generator->_buffer, "', ");
 
     if (context->_writeOptions == nullptr) {
       OutputString(&generator->_buffer, "{ }");
@@ -3172,7 +3142,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
         generator->_errorCode = TRI_ERROR_OUT_OF_MEMORY;
       }
     }
-    OutputString(&generator->_buffer, ");\n"); 
+    OutputString(&generator->_buffer, ");\n");
   }
 
   // append result
@@ -3194,10 +3164,10 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
     size_t len1 = TRI_LengthStringBuffer(&generator->_functionBuffer);
     size_t len2 = TRI_LengthStringBuffer(&generator->_buffer);
 
-    code = TRI_ConcatenateSized2StringZ(TRI_UNKNOWN_MEM_ZONE, 
+    code = TRI_ConcatenateSized2StringZ(TRI_UNKNOWN_MEM_ZONE,
                                         generator->_functionBuffer._buffer,
-                                        len1, 
-                                        generator->_buffer._buffer, 
+                                        len1,
+                                        generator->_buffer._buffer,
                                         len2);
     if (code != NULL) {
       LOG_TRACE("generated code: %s", code);
@@ -3220,11 +3190,11 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
   return code;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -161,7 +163,7 @@ bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
   }
 
   MUTEX_LOCKER(_globalMethodsLock);
-  
+
   for (size_t i = 0; i < _globalMethods.size(); ++i) {
     if (_globalMethods[i] == type) {
       // action is already registered. no need to register it again
@@ -314,7 +316,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
-  
+
   // set the current database
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
@@ -373,7 +375,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     context->_context->Enter();
 
     context->handleGlobalContextMethods();
-    
+
     context->_context->Exit();
     context->_isolate->Exit();
   }
@@ -403,7 +405,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   else {
     _freeContexts.push_back(context);
   }
-    
+
   _busyContexts.erase(context);
 
   guard.broadcast();
@@ -752,7 +754,7 @@ void ApplicationV8::runUpgradeCheck () {
       vocbase->_state = 2;
 
       int res = TRI_ERROR_NO_ERROR;
-      
+
       res |= TRI_StopCompactorVocBase(vocbase);
       vocbase->_state = 3;
       res |= TRI_JoinThread(&vocbase->_cleanup);
@@ -944,7 +946,7 @@ void ApplicationV8::close () {
       LOG_DEBUG("no busy V8 contexts");
       break;
     }
- 
+
     LOG_DEBUG("waiting for %d busy V8 contexts to finish", (int) _busyContexts.size());
 
     guard.wait(100000);
@@ -974,7 +976,7 @@ void ApplicationV8::stop () {
     if (_busyContexts.empty()) {
       break;
     }
- 
+
     guard.wait(100000);
   }
 
@@ -1192,5 +1194,5 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

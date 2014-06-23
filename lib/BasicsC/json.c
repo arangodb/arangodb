@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,11 +40,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object
@@ -228,7 +225,7 @@ static inline void InitNull (TRI_json_t* result) {
 /// @brief initialise a boolean object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitBoolean (TRI_json_t* result, 
+static inline void InitBoolean (TRI_json_t* result,
                                 bool value) {
   result->_type = TRI_JSON_BOOLEAN;
   result->_value._boolean = value;
@@ -238,7 +235,7 @@ static inline void InitBoolean (TRI_json_t* result,
 /// @brief initialise a number object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNumber (TRI_json_t* result, 
+static inline void InitNumber (TRI_json_t* result,
                                double value) {
   result->_type = TRI_JSON_NUMBER;
   result->_value._number = value;
@@ -248,9 +245,9 @@ static inline void InitNumber (TRI_json_t* result,
 /// @brief initialise a string object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitString (TRI_json_t* result, 
+static inline void InitString (TRI_json_t* result,
                                char* value,
-                               size_t length) { 
+                               size_t length) {
   result->_type = TRI_JSON_STRING;
   result->_value._string.data = value;
   result->_value._string.length = (uint32_t) length + 1;
@@ -260,7 +257,7 @@ static inline void InitString (TRI_json_t* result,
 /// @brief initialise a string reference object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitStringReference (TRI_json_t* result, 
+static inline void InitStringReference (TRI_json_t* result,
                                         const char* value,
                                         size_t length) {
   result->_type = TRI_JSON_STRING_REFERENCE;
@@ -273,7 +270,7 @@ static inline void InitStringReference (TRI_json_t* result,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitList (TRI_memory_zone_t* zone,
-                             TRI_json_t* result, 
+                             TRI_json_t* result,
                              size_t initialSize) {
   result->_type = TRI_JSON_LIST;
   if (initialSize == 0) {
@@ -289,7 +286,7 @@ static inline void InitList (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void InitArray (TRI_memory_zone_t* zone,
-                              TRI_json_t* result, 
+                              TRI_json_t* result,
                               size_t initialSize) {
   result->_type = TRI_JSON_ARRAY;
 
@@ -308,23 +305,14 @@ static inline void InitArray (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsString (TRI_json_t const* json) {
-  return (json != NULL && 
+  return (json != NULL &&
           (json->_type == TRI_JSON_STRING || json->_type == TRI_JSON_STRING_REFERENCE) &&
           json->_value._string.data != NULL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a null object
@@ -622,7 +610,7 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
     case TRI_JSON_STRING:
       TRI_DestroyBlob(zone, &object->_value._string);
       break;
-    
+
     case TRI_JSON_STRING_REFERENCE:
       // we will not be destroying the string!!
       break;
@@ -652,18 +640,9 @@ void TRI_FreeJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
   TRI_Free(zone, object);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type array
@@ -823,7 +802,7 @@ void TRI_Insert2ArrayJson (TRI_memory_zone_t* zone,
   if (subobject == NULL) {
     return;
   }
-  
+
   if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
     // TODO: signal OOM here
     return;
@@ -1060,8 +1039,8 @@ bool TRI_PrintJson (int fd, TRI_json_t const* object) {
 /// @brief saves a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SaveJson (char const* filename, 
-                   TRI_json_t const* object, 
+bool TRI_SaveJson (char const* filename,
+                   TRI_json_t const* object,
                    bool syncFile) {
   char* tmp;
   int fd;
@@ -1073,6 +1052,9 @@ bool TRI_SaveJson (char const* filename,
   if (tmp == NULL) {
     return false;
   }
+
+  // remove a potentially existing temporary file
+  TRI_UnlinkFile(tmp);
 
   fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
@@ -1168,7 +1150,7 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
 
     case TRI_JSON_STRING:
       return TRI_CopyToBlob(zone, &dst->_value._string, &src->_value._string);
-    
+
     case TRI_JSON_STRING_REFERENCE:
       return TRI_AssignToBlob(zone, &dst->_value._string, &src->_value._string);
 
@@ -1259,9 +1241,9 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
       return (left->_value._number == right->_value._number);
     }
 
-    case TRI_JSON_STRING: 
+    case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      return ((left->_value._string.length == right->_value._string.length) && 
+      return ((left->_value._string.length == right->_value._string.length) &&
               (strcmp(left->_value._string.data, right->_value._string.data) == 0));
     }
 
@@ -1323,11 +1305,11 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

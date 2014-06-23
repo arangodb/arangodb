@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,17 +20,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Dr. Oreste Costa-Panaia
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_ASSOCIATIVE_MULTI_H
-#define TRIAGENS_BASICS_C_ASSOCIATIVE_MULTI_H 1
+#ifndef ARANGODB_BASICS_C_ASSOCIATIVE__MULTI_H
+#define ARANGODB_BASICS_C_ASSOCIATIVE__MULTI_H 1
 
 #include "BasicsC/common.h"
 
@@ -54,7 +56,7 @@ extern "C" {
 /// This is a data structure that can store pointers to objects. Each object
 /// has a unique key (for example a certain attribute) and multiple
 /// objects in the associative array can have the same key. Every object
-/// can be at most once in the array. 
+/// can be at most once in the array.
 /// We want to offer constant time complexity for the following
 /// operations:
 ///  - insert pointer to an object into the array
@@ -66,10 +68,10 @@ extern "C" {
 ///  - find all pointers whose objects have a given key k, where n is
 ///    the number of objects in the array with this key
 /// To this end, we use a hash table and ask the user to provide the following:
-///  - a way to hash objects by keys, and to hash keys themselves, 
+///  - a way to hash objects by keys, and to hash keys themselves,
 ///  - a way to hash objects by their full identity
 ///  - a way to compare a key to the key of a given object
-///  - a way to compare two elements, either by their keys or by their full 
+///  - a way to compare two elements, either by their keys or by their full
 ///    identities.
 /// To avoid unnecessary comparisons the user can guarantee that s/he will
 /// only try to store non-identical elements into the array. This enables
@@ -99,17 +101,17 @@ typedef struct TRI_multi_pointer_entry_s {
                                    // list of all items with the same key
   TRI_multi_pointer_index_t prev;  // index of the data preceding in the linked
                                    // list of all items with the same key
-} 
+}
 TRI_multi_pointer_entry_t;
 
 typedef struct TRI_multi_pointer_s {
   uint64_t (*hashKey) (struct TRI_multi_pointer_s*, void const* key);
-  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const* element, 
+  uint64_t (*hashElement) (struct TRI_multi_pointer_s*, void const* element,
                            bool byKey);
 
-  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const* key, 
+  bool (*isEqualKeyElement) (struct TRI_multi_pointer_s*, void const* key,
                              void const* element);
-  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*, 
+  bool (*isEqualElementElement) (struct TRI_multi_pointer_s*,
                                  void const* el1, void const* el2, bool byKey);
 
   uint64_t _nrAlloc;     // the size of the table
@@ -145,14 +147,14 @@ TRI_multi_pointer_t;
 
 int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
                           TRI_memory_zone_t*,
-                          uint64_t (*hashKey) (TRI_multi_pointer_t*, 
+                          uint64_t (*hashKey) (TRI_multi_pointer_t*,
                                                void const*),
-                          uint64_t (*hashElement) (TRI_multi_pointer_t*, 
+                          uint64_t (*hashElement) (TRI_multi_pointer_t*,
                                                    void const*, bool),
-                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*, 
+                          bool (*isEqualKeyElement) (TRI_multi_pointer_t*,
                                                      void const*, void const*),
-                          bool (*isEqualElementElement) (TRI_multi_pointer_t*, 
-                                                         void const*, 
+                          bool (*isEqualElementElement) (TRI_multi_pointer_t*,
+                                                         void const*,
                                                          void const*, bool));
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +191,7 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t*,
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*, 
+void* TRI_LookupByElementMultiPointer (TRI_multi_pointer_t*,
                                        void const* element);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +247,7 @@ int TRI_ResizeMultiPointer (TRI_multi_pointer_t*, size_t);
 ///  - a way to hash a pair (p,h) but only with respect to its key k
 ///  - a way to hash a given key k
 ///  - a way to compare the key of a pair (p,h) with an external key k
-///  - a way to compare the keys of two pairs (p,h) and (p',h') 
+///  - a way to compare the keys of two pairs (p,h) and (p',h')
 ///  - a way to compare two pairs (p,h) and (p',h')
 /// To avoid unnecessary comparisons the user can guarantee that s/he will
 /// only try to store non-identical pairs into the array. This enables
@@ -277,19 +279,19 @@ typedef struct TRI_multi_pair_entry_s {
 
 typedef struct TRI_multi_pair_s {
   uint64_t (*hashKeyKey) (struct TRI_multi_pair_s*, void const* key);
-  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*, 
+  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*,
                            void const* element, void const* keyhelper);
   uint64_t (*hashPair) (struct TRI_multi_pair_s*,
                         void const* element, void const* keyhelper);
 
-  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*, 
-                             void const* element, void const* keyhelper, 
+  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*,
+                             void const* element, void const* keyhelper,
                              void const* key);
-  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*, 
-                              void const* element1, void const* keyhelper1, 
+  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*,
+                              void const* element1, void const* keyhelper1,
                               void const* element2, void const* keyhelper2);
-  bool (*isEqualPairPair) (struct TRI_multi_pair_s*, 
-                           void const* element1, void const* keyhelper1, 
+  bool (*isEqualPairPair) (struct TRI_multi_pair_s*,
+                           void const* element1, void const* keyhelper1,
                            void const* element2, void const* keyhelper2);
 
   uint64_t _nrAlloc;     // the size of the table
@@ -326,18 +328,18 @@ int TRI_InitMultiPair (
   TRI_multi_pair_t* array,
   TRI_memory_zone_t*,
   uint64_t (*hashKeyKey) (struct TRI_multi_pair_s*, void const* key),
-  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*, 
+  uint64_t (*hashKeyPair) (struct TRI_multi_pair_s*,
                            void const* element, void const* keyhelper),
   uint64_t (*hashPair) (struct TRI_multi_pair_s*,
                         void const* element, void const* keyhelper),
-  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*, 
-                             void const* element, void const* keyhelper, 
+  bool (*isEqualKeyPairKey) (struct TRI_multi_pair_s*,
+                             void const* element, void const* keyhelper,
                              void const* key),
-  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*, 
-                              void const* element1, void const* keyhelper1, 
+  bool (*isEqualKeyPairPair) (struct TRI_multi_pair_s*,
+                              void const* element1, void const* keyhelper1,
                               void const* element2, void const* keyhelper2),
-  bool (*isEqualPairPair) (struct TRI_multi_pair_s*, 
-                           void const* element1, void const* keyhelper1, 
+  bool (*isEqualPairPair) (struct TRI_multi_pair_s*,
+                           void const* element1, void const* keyhelper1,
                            void const* element2, void const* keyhelper2));
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +388,7 @@ void* TRI_LookupPairMultiPair (TRI_multi_pair_t*,
 /// @brief removes pair from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_RemovePairMultiPair (TRI_multi_pair_t*, 
+void* TRI_RemovePairMultiPair (TRI_multi_pair_t*,
                                void const* element,
                                void const* keyhelper);
 
@@ -402,7 +404,11 @@ int TRI_ResizeMultiPair (TRI_multi_pair_t*, size_t);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,7 +105,7 @@ static void CheckSize (uint64_t n, char const* file, int line) {
   if (n >= MALLOC_WARNING_THRESHOLD) {
     fprintf(stderr,
             "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long) n 
+            (unsigned long long) n
             ZONE_DEBUG_PARAMS);
   }
 }
@@ -154,7 +156,7 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
   char* m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line); 
+  CheckSize(n, file, line);
 #endif
 
   m = malloc((size_t) n);
@@ -180,7 +182,7 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   char* m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line); 
+  CheckSize(n, file, line);
 
   m = malloc((size_t) n + sizeof(uintptr_t));
 #else
@@ -334,7 +336,7 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 
   if (p == NULL) {
     fprintf(stderr,
-            "freeing nil ptr " ZONE_DEBUG_LOCATION 
+            "freeing nil ptr " ZONE_DEBUG_LOCATION
             ZONE_DEBUG_PARAMS);
     // crash intentionally
     TRI_ASSERT(false);
@@ -373,8 +375,8 @@ void TRI_SystemFree (void* p) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (p == NULL) {
     fprintf(stderr,
-            "freeing nil ptr in %s:%d\n", 
-            file, 
+            "freeing nil ptr in %s:%d\n",
+            file,
             line);
   }
 #endif
@@ -444,5 +446,5 @@ void TRI_ShutdownMemory () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

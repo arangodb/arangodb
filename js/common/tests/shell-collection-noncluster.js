@@ -449,41 +449,6 @@ function CollectionSuite () {
 
       // unload is allowed
       c.unload();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test special properties of replication collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testSpecialReplication : function () {
-      var repl = db._collection('_replication');
-
-      // drop is not allowed      
-      try {
-        repl.drop();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
-      }
-
-      // rename is not allowed
-      try {
-        var cn = "example";
-        db._drop(cn);
-        repl.rename(cn);
-      }
-      catch (err2) {
-        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
-      }
-      
-      // unload is not allowed
-      try {
-        repl.unload();
-      }
-      catch (err3) {
-        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err3.errorNum);
-      }
     }
 
   };

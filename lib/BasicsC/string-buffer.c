@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -404,7 +406,7 @@ void  TRI_FreeStringBuffer (TRI_memory_zone_t* zone, TRI_string_buffer_t * self)
 /// @brief compress the string buffer using deflate
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeflateStringBuffer (TRI_string_buffer_t* self, 
+int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
                              size_t bufferSize) {
   TRI_string_buffer_t deflated;
   const char* ptr;
@@ -423,7 +425,7 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
   if (res != Z_OK) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-   
+
   buffer = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
 
   if (buffer == NULL) {
@@ -463,9 +465,9 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
         TRI_DestroyStringBuffer(&deflated);
 
-        return TRI_ERROR_INTERNAL; 
+        return TRI_ERROR_INTERNAL;
       }
-              
+
       if (TRI_AppendString2StringBuffer(&deflated, (char*) buffer, bufferSize - strm.avail_out) != TRI_ERROR_NO_ERROR) {
         (void) deflateEnd(&strm);
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
@@ -473,9 +475,9 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
 
         return TRI_ERROR_OUT_OF_MEMORY;
       }
-    } 
+    }
     while (strm.avail_out == 0);
-  } 
+  }
 
   // deflate successful
   (void) deflateEnd(&strm);
@@ -595,7 +597,7 @@ void TRI_ResetStringBuffer (TRI_string_buffer_t* self) {
 
 char* TRI_StealStringBuffer (TRI_string_buffer_t* self) {
   char* result = self->_buffer;
-  
+
   // reset everthing
   self->_buffer  = NULL;
   self->_current = NULL;
@@ -1678,7 +1680,11 @@ int TRI_AppendCsvDoubleStringBuffer (TRI_string_buffer_t * self, double d) {
   return TRI_ERROR_NO_ERROR;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
