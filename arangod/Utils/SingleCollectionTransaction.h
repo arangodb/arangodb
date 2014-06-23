@@ -66,12 +66,12 @@ namespace triagens {
 
         SingleCollectionTransaction (TRI_vocbase_t* vocbase,
                                      TRI_voc_cid_t cid,
-                                     TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), true),
-          _cid(cid),
-          _trxCollection(nullptr),
-          _documentCollection(nullptr),
-          _accessType(accessType) {
+                                     TRI_transaction_type_e accessType) 
+          : Transaction<T>(vocbase),
+            _cid(cid),
+            _trxCollection(nullptr),
+            _documentCollection(nullptr),
+            _accessType(accessType) {
 
           // add the (sole) collection
           this->addCollection(cid, _accessType);
@@ -83,12 +83,12 @@ namespace triagens {
 
         SingleCollectionTransaction (TRI_vocbase_t* vocbase,
                                      std::string const& name,
-                                     TRI_transaction_type_e accessType) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), true),
-          _cid(this->resolver()->getCollectionId(name)),
-          _trxCollection(nullptr),
-          _documentCollection(nullptr),
-          _accessType(accessType) {
+                                     TRI_transaction_type_e accessType) 
+          : Transaction<T>(vocbase),
+            _cid(this->resolver()->getCollectionId(name)),
+            _trxCollection(nullptr),
+            _documentCollection(nullptr),
+            _accessType(accessType) {
 
           // add the (sole) collection
           this->addCollection(_cid, _accessType);

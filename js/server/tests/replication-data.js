@@ -35,7 +35,7 @@ var db = arangodb.db;
 
 var replication = require("org/arangodb/replication");
 var console = require("console");
-var sleep = require("internal").wait;
+var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
 
@@ -66,13 +66,33 @@ function ReplicationSuite () {
 
   var collectionChecksum = function (name) {
     var c = db._collection(name).checksum(true, true);
-    return c.checksum + "-" + c.revision;
+    return c.checksum;
   };
   
   var collectionCount = function (name) {
     return db._collection(name).count();
   };
 
+  var compareTicks = function (l, r) {
+    if (l === null) {
+      l = "0";
+    }
+    if (r === null) {
+      r = "0";
+    }
+    if (l.length != r.length) {
+      return l.length - r.length < 0 ? -1 : 1;
+    }
+
+    // length is equal
+    for (i = 0; i < l.length; ++i) {
+      if (l[i] != r[i]) {
+        return l[i] < r[i] ? -1 : 1;
+      }
+    }
+
+    return 0;
+  };
 
   var compare = function (masterFunc, slaveFunc, applierConfiguration) {
     var state = { };
@@ -80,15 +100,10 @@ function ReplicationSuite () {
     db._flushCache();
     masterFunc(state);  
 
-    var masterState = replication.logger.state();
-    assertTrue(masterState.state.running);
-
-    replication.logger.stop();
-    masterState = replication.logger.state();
-    assertFalse(masterState.running);
-
     connectToSlave();
     replication.applier.stop();
+
+    internal.wait(1, false);
 
     var syncResult = replication.sync({ 
       endpoint: masterEndpoint, 
@@ -115,7 +130,7 @@ function ReplicationSuite () {
     replication.applier.properties(applierConfiguration);
     replication.applier.start(syncResult.lastLogTick);
 
-    // console.log("waiting for slave to catch up");
+    var printed = false;
 
     while (1) {
       var slaveState = replication.applier.state();
@@ -124,13 +139,17 @@ function ReplicationSuite () {
         break;
       }
 
-      if (slaveState.state.lastAppliedContinuousTick === syncResult.lastLogTick || 
-          slaveState.state.lastProcessedContinuousTick === syncResult.lastLogTick ||
-          slaveState.state.lastAvailableContinuousTick === syncResult.lastLogTick) { 
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) > 0 || 
+          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) > 0 ||
+          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) { 
         break;
       }
 
-      sleep(1);
+      if (! printed) {
+        console.log("waiting for slave to catch up");
+        printed = true;
+      }
+      internal.wait(1.0, false);
     }
 
     db._flushCache();
@@ -145,13 +164,9 @@ function ReplicationSuite () {
 
     setUp : function () {
       connectToMaster();
-      replication.logger.stop();
 
       db._drop(cn);
       db._drop(cn2);
-    
-      replication.logger.properties({ maxEvents: 1048576 });
-      replication.logger.start();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +175,6 @@ function ReplicationSuite () {
 
     tearDown : function () {
       connectToMaster();
-      replication.logger.stop();
-      replication.logger.properties({ maxEvents: 1048576 });
       
       db._drop(cn);
       db._drop(cn2);
@@ -231,41 +244,37 @@ function ReplicationSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test exceeding cap
+/// @brief test few documents
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCapped : function () {
+    testFew : function () {
       connectToMaster();
-      // set a low cap which we'll exceed easily
-      replication.logger.properties({ maxEvents: 4096 });
 
       compare(
         function (state) {
           var c = db._create(cn), i;
  
-          for (i = 0; i < 50000; ++i) {
+          for (i = 0; i < 5000; ++i) {
             c.save({ "value" : i });
           }
-      
+     
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(50000, state.count);
+          assertEqual(5000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test not exceeding cap
+/// @brief test many documents
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUncapped : function () {
+    testMany : function () {
       connectToMaster();
-      // set a low cap which we'll exceed easily
-      replication.logger.properties({ maxEvents: 0, maxEventsSize: 0 });
 
       compare(
         function (state) {
@@ -280,8 +289,157 @@ function ReplicationSuite () {
           assertEqual(50000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test many documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testManyMore : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 150000; ++i) {
+            c.save({ "value" : i });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(150000, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test big markers
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigMarkersArray : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          var doc = { };
+          for (i = 0; i < 1000; ++i) {
+            doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
+          }
+ 
+          for (i = 0; i < 100; ++i) {
+            c.save({ "value" : i, "values": doc });
+          }
+
+          var d = c.any();
+          assertEqual(1000, Object.keys(d.values).length);
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(100, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test big markers
+////////////////////////////////////////////////////////////////////////////////
+
+    testBigMarkersList : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          var doc = [ ];
+          for (i = 0; i < 1000; ++i) {
+            doc.push("the quick brown foxx jumped over the LAZY dog");
+          }
+ 
+          for (i = 0; i < 100; ++i) {
+            c.save({ "value" : i, "values": doc });
+          }
+
+          var d = c.any();
+          assertEqual(1000, d.values.length);
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(100, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test heterogenous markers
+////////////////////////////////////////////////////////////////////////////////
+
+    testHeterogenousMarkers : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 1000; ++i) {
+            var doc = { };
+            doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
+            c.save({ "value" : i, "values": doc });
+          }
+          
+          var d = c.any();
+          assertEqual(1, Object.keys(d.values).length);
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1000, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty markers
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyMarkers : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+ 
+          for (i = 0; i < 1000; ++i) {
+            c.save({ });
+          }
+      
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1000, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -304,11 +462,12 @@ function ReplicationSuite () {
           assertEqual(1000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test documents
@@ -334,8 +493,8 @@ function ReplicationSuite () {
           assertEqual(666, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -358,8 +517,8 @@ function ReplicationSuite () {
           assertEqual(50000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -382,11 +541,41 @@ function ReplicationSuite () {
           assertEqual(50000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         },
         {
           chunkSize: 512
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocuments5 : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 100; ++i) {
+            c.save({ "abc" : true, "_key" : "test" + i });
+            if (i % 3 == 0) {
+              c.remove(c.last());
+            }
+            else if (i % 5 == 0) {
+              c.update("test" + i, { "def" : "hifh" });
+            }
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(66, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -418,11 +607,11 @@ function ReplicationSuite () {
           assertEqual(500, state.count2);
         },
         function (state) {
-          assertEqual(state.checksum1, collectionChecksum(cn));
           assertEqual(state.count1, collectionCount(cn));
+          assertEqual(state.checksum1, collectionChecksum(cn));
           
-          assertEqual(state.checksum2, collectionChecksum(cn2));
           assertEqual(state.count2, collectionCount(cn2));
+          assertEqual(state.checksum2, collectionChecksum(cn2));
         }
       );
     },
@@ -459,8 +648,8 @@ function ReplicationSuite () {
           assertEqual(0, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -500,8 +689,8 @@ function ReplicationSuite () {
           assertEqual(1000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -534,8 +723,8 @@ function ReplicationSuite () {
           assertEqual(1000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -580,8 +769,8 @@ function ReplicationSuite () {
           assertEqual(900, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },
@@ -619,11 +808,135 @@ function ReplicationSuite () {
           assertEqual(40000, state.count);
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         },
         {
           chunkSize: 2048
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test transactions
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionMulti : function () {
+      compare(
+        function (state) {
+          db._create(cn);
+          db._create(cn2);
+
+          db._executeTransaction({
+            collections: { 
+              write: [ cn, cn2 ]
+            },
+            action: function (params) {
+              var c1 = require("internal").db._collection(params.cn);
+              var c2 = require("internal").db._collection(params.cn2); 
+              var i;
+
+              for (i = 0; i < 1000; ++i) {
+                c1.save({ "_key" : "test" + i });
+                c2.save({ "_key" : "test" + i, "foo": "bar" });
+              }
+              
+              for (i = 0; i < 1000; ++i) {
+                c1.update("test" + i, { "foo" : "bar" + i });
+              }
+              
+              for (i = 0; i < 1000; ++i) {
+                c1.update("test" + i, { "foo" : "baz" + i });
+                c2.update("test" + i, { "foo" : "baz" + i });
+              }
+
+              for (i = 0; i < 1000; i += 10) {
+                c1.remove("test" + i);
+                c2.remove("test" + i);
+              }
+            },
+            params: { "cn": cn, "cn2": cn2 }, 
+          });
+          
+          state.checksum1 = collectionChecksum(cn);
+          state.checksum2 = collectionChecksum(cn2);
+          state.count1 = collectionCount(cn);
+          state.count2 = collectionCount(cn2);
+          assertEqual(900, state.count1);
+          assertEqual(900, state.count2);
+        },
+        function (state) {
+          assertEqual(state.count1, collectionCount(cn));
+          assertEqual(state.count2, collectionCount(cn2));
+          assertEqual(state.checksum1, collectionChecksum(cn));
+          assertEqual(state.checksum2, collectionChecksum(cn2));
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test transactions
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionAbort : function () {
+      compare(
+        function (state) {
+          db._create(cn);
+          db._create(cn2);
+
+          db._collection(cn).save({ foo: "bar" });
+          db._collection(cn2).save({ bar: "baz" });
+
+          try {
+            db._executeTransaction({
+              collections: { 
+                write: [ cn, cn2 ]
+              },
+              action: function (params) {
+                var c1 = require("internal").db._collection(params.cn);
+                var c2 = require("internal").db._collection(params.cn2); 
+                var i;
+
+                for (i = 0; i < 1000; ++i) {
+                  c1.save({ "_key" : "test" + i });
+                  c2.save({ "_key" : "test" + i, "foo": "bar" });
+                }
+              
+                for (i = 0; i < 1000; ++i) {
+                  c1.update("test" + i, { "foo" : "bar" + i });
+                }
+              
+                for (i = 0; i < 1000; ++i) {
+                  c1.update("test" + i, { "foo" : "baz" + i });
+                  c2.update("test" + i, { "foo" : "baz" + i });
+                }
+
+                for (i = 0; i < 1000; i += 10) {
+                  c1.remove("test" + i);
+                  c2.remove("test" + i);
+                }
+   
+                throw "rollback!";
+              },
+              params: { "cn": cn, "cn2": cn2 }, 
+            });
+            fail();
+          }
+          catch (err) {
+          }
+          
+          state.checksum1 = collectionChecksum(cn);
+          state.checksum2 = collectionChecksum(cn2);
+          state.count1 = collectionCount(cn);
+          state.count2 = collectionCount(cn2);
+          assertEqual(1, state.count1);
+          assertEqual(1, state.count2);
+        },
+        function (state) {
+          assertEqual(state.count1, collectionCount(cn));
+          assertEqual(state.count2, collectionCount(cn2));
+          assertEqual(state.checksum1, collectionChecksum(cn));
+          assertEqual(state.checksum2, collectionChecksum(cn2));
         }
       );
     },
@@ -885,8 +1198,8 @@ function ReplicationSuite () {
           state.idx = c.getIndexes()[1];
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.last, db._collection(cn).last(3));
           
           assertEqual(state.idx.id, db._collection(cn).getIndexes()[1].id);
@@ -915,8 +1228,8 @@ function ReplicationSuite () {
           state.idx = c.getIndexes()[1];
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
@@ -952,8 +1265,8 @@ function ReplicationSuite () {
           state.idx = c.getIndexes()[1];
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
@@ -985,8 +1298,8 @@ function ReplicationSuite () {
           state.idx = c.getIndexes()[1];
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
           
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
@@ -1022,8 +1335,8 @@ function ReplicationSuite () {
           state.idx = c.getIndexes()[1];
         },
         function (state) {
-          assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
           
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);

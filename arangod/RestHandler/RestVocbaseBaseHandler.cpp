@@ -156,8 +156,7 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 
   TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase,
                                                                           name.c_str(),
-                                                                          type,
-                                                                          TRI_GetIdServer());
+                                                                          type);
 
   if (collection == nullptr) {
     generateTransactionError(name, TRI_errno());

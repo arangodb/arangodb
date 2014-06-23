@@ -715,9 +715,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data 
+.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-data 
 	
-unittests-replication: unittests-replication-server unittests-replication-client unittests-replication-http unittests-replication-data
+unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-data
 
 unittests-replication-server:
 	@echo
@@ -730,25 +730,6 @@ unittests-replication-server:
 	@mkdir -p "$(VOCDIR)/databases"
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
-
-unittests-replication-client:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
-
-	@echo
-	@echo "================================================================================"
-	@echo "<< REPLICATION CLIENT TESTS                                                   >>"
-	@echo "================================================================================"
-	@echo
-
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/common/tests/replication.js || test "x$(FORCE)" == "x1"
-	sleep 2
-	kill `cat $(PIDFILE)`
-
-	while test -f $(PIDFILE); do sleep 1; done
-	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
 	@echo

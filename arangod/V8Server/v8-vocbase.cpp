@@ -1483,8 +1483,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     geoJson,
                                                     unique,
                                                     ignoreNull,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupGeoIndex1DocumentCollection(document,
@@ -1512,8 +1511,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     (char const*) TRI_AtVectorPointer(&attributes, 1),
                                                     unique,
                                                     ignoreNull,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupGeoIndex2DocumentCollection(document,
@@ -1533,8 +1531,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     iid,
                                                     &attributes,
                                                     unique,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupHashIndexDocumentCollection(document,
@@ -1553,8 +1550,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         iid,
                                                         &attributes,
                                                         unique,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupSkiplistIndexDocumentCollection(document,
@@ -1579,8 +1575,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         (char const*) TRI_AtVectorPointer(&attributes, 0),
                                                         false,
                                                         minWordLength,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupFulltextIndexDocumentCollection(document,
@@ -1611,8 +1606,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         supportUndefined,
                                                         &created,
                                                         &errorCode,
-                                                        &errorStr,
-                                                        TRI_GetIdServer());
+                                                        &errorStr);
         if (errorCode != 0) {
           TRI_set_errno(errorCode);
         }
@@ -1646,8 +1640,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         iid,
                                                         size,
                                                         byteSize,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupCapConstraintDocumentCollection(document);
@@ -3286,12 +3279,11 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     &parameter,
-                                                                    0,
-                                                                    TRI_GetIdServer());
+                                                                    0);
 
   TRI_FreeCollectionInfoOptions(&parameter);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot create collection");
   }
 
@@ -3630,19 +3622,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
   }
 
-  // "replicate"
-  bool replicate = true;
-
-  if (object->Has(TRI_V8_SYMBOL("replicate"))) {
-    if (! object->Get(TRI_V8_SYMBOL("replicate"))->IsBoolean()) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<replicate> must be a boolean value");
-    }
-
-    replicate = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("replicate")));
-  }
-
   // "collections"
-  static const string collectionError = "missing/invalid collections definition for transaction";
+  static string const collectionError = "missing/invalid collections definition for transaction";
 
   if (! object->Has(TRI_V8_SYMBOL("collections")) || ! object->Get(TRI_V8_SYMBOL("collections"))->IsObject()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, collectionError);
@@ -3765,8 +3746,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                        readCollections,
                                                        writeCollections,
                                                        lockTimeout,
-                                                       waitForSync,
-                                                       replicate);
+                                                       waitForSync);
 
   int res = trx.begin();
 
@@ -5836,7 +5816,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -5847,7 +5827,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(DropVocbaseColCoordinator(collection));
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
+  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -5864,7 +5844,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
                                                    v8::Handle<v8::Value> const val) {
   v8::HandleScope scope;
 
-  string collectionName = "";
+  string collectionName;
   TRI_idx_iid_t iid = 0;
 
   // extract the index identifier from a string
@@ -5978,7 +5958,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction, write-lock is acquired by TRI_DropIndex...
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetIdServer());
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid);
 
   // .............................................................................
   // outside a write transaction
@@ -6835,9 +6815,9 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
   // vice versa. this parameter is not publicly exposed but used internally
-  bool override = false;
+  bool doOverride = false;
   if (argv.Length() > 1) {
-    override = TRI_ObjectToBoolean(argv[1]);
+    doOverride = TRI_ObjectToBoolean(argv[1]);
   }
 
   if (name.empty()) {
@@ -6860,8 +6840,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase,
                                         collection,
                                         name.c_str(),
-                                        override,
-                                        TRI_GetIdServer());
+                                        doOverride);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");

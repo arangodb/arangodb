@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
+#include "Utils/ReplicationTransaction.h"
 #include "Utils/RestTransactionContext.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
