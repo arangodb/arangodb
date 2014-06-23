@@ -1,3 +1,178 @@
 !CHAPTER The Sessions App
 
-WRITEME
+The sessions app provides a session storage JavaScript API that can be used in other Foxx apps.
+
+```js
+var sessionStorage = Foxx.requireApp('/_sessions').sessionStorage;
+```
+
+!SECTION Exceptions
+
+!SUBSECTION Session Not Found
+
+```js
+try {
+    sessionStorage.get(invalidSessionId);
+} catch(err) {
+    assertTrue(err instanceof sessionStorage.errors.SessionNotFound);
+}
+```
+
+!SUBSUBSECTION Description
+
+Thrown by the session storage's `delete` and `get` methods if passed a session ID that does not exist in the database.
+
+!SUBSECTION Session Expired
+
+```js
+try {
+    sessionStorage.get(expiredSessionId);
+} catch(err) {
+    assertTrue(err instanceof sessionStorage.errors.SessionExpired);
+    assertTrue(err instanceof sessionStorage.errors.SessionNotFound);
+}
+```
+
+!SUBSUBSECTION Description
+
+Thrown by the session storage's `get` method if passed a session ID for a session that has expired. See also this app's configuration options.
+
+!SECTION Create a session
+
+```js
+var session = sessionStorage.create(sessionData);
+assertEqual(session.get('sessionData'), sessionData);
+```
+
+!SUBSECTION Description
+
+A session can be created by using the session storage's `create` method. The method optionally takes an object that will be stored as the session's `sessionData` attribute. The created session will be saved automatically with its initial data.
+
+!SECTION Fetch an existing session
+
+There are two ways to fetch a session via the session storage API:
+
+* resolving a session cookie with the `fromCookie` method
+* calling the session storage's `get` method with a session ID directly
+
+!SUBSECTION Resolve a session cookie
+
+```js
+var session = sessionStorage.fromCookie(request, cookieName, secret);
+```
+
+!SUBSUBSECTION Description
+
+The method `fromCookie` will attempt to parse the given request's session cookie and return a session with the matching session ID.
+
+Optionally, a `secret` string can be passed which will be used to verify the cookie's signature (see `addCookie` below).
+
+The method will return `null` instead of a session object in the following cases:
+
+* the request has no session cookie
+* the request's session cookie does not match a known session ID
+* the matching session has expired
+* the cookie's signature is missing (if a `secret` is provided)
+* the cookie's signature does not match (if a `secret` is provided)
+
+!SUBSECTION Resolve a session ID directly
+
+```js
+var session = sessionStorage.get(sessionId);
+```
+
+!SUBSUBSECTION Description
+
+The method `get` will attempt to load the session with the given session ID from the database. If the session does not exist, a `SessionNotFound` exception will be thrown. If the session does exist, but has already expired, a `SessionExpired` exception will be thrown instead.
+
+!SECTION Delete a session
+
+There are two ways to delete a session from the database:
+
+* calling the session storage's `delete` method with a session ID directly
+* telling a session to delete itself
+
+!SUBSECTION Delete a session by its ID
+
+```js
+sessionStorage.delete(sessionId);
+```
+
+!SUBSUBSECTION Description
+
+The method `delete` will attempt to delete the session with the given session ID from the database. If the session does not exist, a `SessionNotFound` exception will be thrown. The method always returns `null`.
+
+!SUBSECTION Tell a session to delete itself
+
+```js
+session.delete();
+```
+
+!SUBSUBSECTION Description
+
+The session's `delete` method will attempt to delete the session from the database.
+
+Returns `true` if the session was deleted successfully.
+
+Returns `false` if the session already didn't exist.
+
+!SECTION The session object
+
+Session objects are instances of a Foxx model with the following attributes:
+
+`sessionData`
+Volatile session data. This can be an arbitrary object that will be stored with the session in the database. If you want to store session-specific (rather than user-specific) data in the database, this is the right place for that.
+
+`uid`
+The session's active user's `_key` or `undefined`.
+
+`userData`
+The session's active user's `userData` attribute or an empty object.
+
+!SECTION Save a session
+
+```js
+session.save();
+```
+
+!SUBSECTION Description
+
+Saves the session to the database. If you made any changes to the session and are not using the sessions app via Foxx Authentication, you must call this method to commit the changes to the database.
+
+!SECTION Set a session's active user
+
+```js
+session.setUser(user);
+assertEqual(session.get('uid'), user.get('_key'));
+assertEqual(session.get('userData'), user.get('userData'));
+```
+
+!SUBSECTION Description
+
+The `setUser` method expects a Foxx model with a `userData` attribute and sets the session's `uid` attribute to the model's `_key` and the session's `userData` attribute to the model's `userData` attribute.
+
+!SECTION Add a session cookie to a response
+
+```js
+session.addCookie(response, cookieName, secret);
+```
+
+!SUBSECTION Description
+
+The `addCookie` method adds a session cookie to the response.
+
+If a `secret` string is provided, the cookie is signed using that secret (a second cookie with the name `cookieName + '_sig'` containing the cryptographic signature of the cookie value is added to the response).
+
+If you want to use signed cookies, you must make sure to pass the same `secret` to the `fromCookie` method when fetching the session from a cookie later.
+
+!SECTION Clear a session cookie
+
+```js
+session.clearCookie(response, cookieName, secret);
+```
+
+!SUBSECTION Description
+
+The `clearCookie` method adds a blank expired cookie to clear the user's previously set session cookie.
+
+If the method is passed a `secret` string, a second blank expired cookie is added that overwrites the signature cookie (see above).
