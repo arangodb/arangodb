@@ -1879,6 +1879,15 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
 /// `graph.vertexCollectionName.save(data)`
 /// *Create a new vertex in vertexCollectionName*
@@ -2077,6 +2086,13 @@ var updateBindCollections = function(graph) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+
   if (!orphanCollections) {
     orphanCollections = [];
   }
@@ -3442,8 +3458,6 @@ Graph.prototype._diameter = function(options) {
 };
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
 /// `graph._extendEdgeDefinitions(edgeDefinition)`
@@ -3475,6 +3489,7 @@ Graph.prototype._diameter = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
   var err;
   //check if edgeCollection not already used
@@ -3541,7 +3556,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3636,7 +3650,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
-
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
   //check, if in graphs edge definition
