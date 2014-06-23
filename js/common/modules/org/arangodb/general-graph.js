@@ -2490,10 +2490,10 @@ Graph.prototype._vertices = function(example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_getFromVertex
+/// @startDocuBlock JSF_general_graph_fromVertex
 /// Get the vertex of an edge defined as *_from*
 ///
-/// `general-graph._getFromVertex(edgeId)`
+/// `general-graph._fromVertex(edgeId)`
 ///
 /// Returns the vertex defined with the attribute *_from* of the edge with *edgeId* as its *_id*.
 ///
@@ -2502,14 +2502,14 @@ Graph.prototype._vertices = function(example) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   g._getFromVertex("relation/aliceAndBob")
+///   g._fromVertex("relation/aliceAndBob")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getFromVertex = function(edgeId) {
+Graph.prototype._fromVertex = function(edgeId) {
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
