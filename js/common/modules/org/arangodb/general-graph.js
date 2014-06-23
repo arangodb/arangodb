@@ -3078,7 +3078,7 @@ Graph.prototype._eccentricity = function(options) {
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// example as parameter for *vertexExample*.
 ///
 /// *Parameter*
 ///

@@ -8,32 +8,32 @@ database only.
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_name
+@startDocuBlock databaseName
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_id
+@startDocuBlock databaseId
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_path
+@startDocuBlock databasePath
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_isSystem
+@startDocuBlock databaseIsSystem
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_useDatabase
+@startDocuBlock databaseUseDatabase
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_listDatabase
+@startDocuBlock databaseListDatabase
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_createDatabase
+@startDocuBlock databaseCreateDatabase
 
 <!-- v8-vocbase.cpp -->
 
-@startDocuBlock database_dropDatabase
+@startDocuBlock databaseDropDatabase
