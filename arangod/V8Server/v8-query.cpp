@@ -2216,7 +2216,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculates a checksum for the data in a collection
-/// @startDocuBlock collection_checksum
+/// @startDocuBlock collectionChecksum
 /// `collection.checksum(withRevisions, withData)`
 ///
 /// The *checksum* operation calculates a CRC32 checksum of the keys
@@ -2229,7 +2229,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 /// actual document data is also checksummed. Including the document data in
 /// checksumming will make the calculation slower, but is more accurate.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2320,21 +2320,22 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all edges for a set of vertices
+/// @startDocuBlock edgeCollectionEdges
+/// `edge-collection.edges(vertex)`
 ///
-/// @FUN{@FA{edge-collection}.edges(@FA{vertex})}
+/// The *edges* operator finds all edges starting from (outbound) or ending
+/// in (inbound) *vertex*.
 ///
-/// The @FN{edges} operator finds all edges starting from (outbound) or ending
-/// in (inbound) @FA{vertex}.
+/// `edge-collection.edges(vertices)`
 ///
-/// @FUN{@FA{edge-collection}.edges(@FA{vertices})}
-///
-/// The @FN{edges} operator finds all edges starting from (outbound) or ending
-/// in (inbound) a document from @FA{vertices}, which must a list of documents
+/// The *edges* operator finds all edges starting from (outbound) or ending
+/// in (inbound) a document from *vertices*, which must a list of documents
 /// or document handles.
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude shell-edge-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
@@ -2343,7 +2344,7 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all inbound edges
-///
+/// @startDocuBlock edgeCollectionInEdges
 /// @FUN{@FA{edge-collection}.inEdges(@FA{vertex})}
 ///
 /// The @FN{edges} operator finds all edges ending in (inbound) @FA{vertex}.
@@ -2356,6 +2357,7 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @verbinclude shell-edge-in-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_InEdgesQuery (v8::Arguments const& argv) {
@@ -2535,24 +2537,25 @@ static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
+/// @startDocuBlock collectionFulltext
+/// `collection.FULLTEXT(index-handle, query)`
 ///
-/// @FUN{@FA{collection}.FULLTEXT(@FA{index-handle}, @FA{query})}
+/// The *FULLTEXT* operator performs a fulltext search using the specified
+/// index and the specified *query*.
 ///
-/// The @FN{FULLTEXT} operator performs a fulltext search using the specified
-/// index and the specified @FA{query}.
-///
-/// @FA{query} must contain a comma-separated list of words to look for.
+/// *query* must contain a comma-separated list of words to look for.
 /// Each word can optionally be prefixed with one of the following command
 /// literals:
-/// - @LIT{prefix}: perform a prefix-search for the word following
-/// - @LIT{substring}: perform substring-matching for the word following. This
+/// - *prefix*: perform a prefix-search for the word following
+/// - *substring*: perform substring-matching for the word following. This
 ///   option is only supported for fulltext indexes that have been created with
-///   the @LIT{indexSubstrings} option
-/// - @LIT{complete}: only match the complete following word (this is the default)
+///   the *indexSubstrings* option
+/// - *complete*: only match the complete following word (this is the default)
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude shell-simple-fulltext
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
@@ -2779,20 +2782,21 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all outbound edges
+/// @startDocuBlock edgeCollectionOutEdges
+/// `edge-collection.outEdges(vertex)`
 ///
-/// @FUN{@FA{edge-collection}.outEdges(@FA{vertex})}
+/// The *edges* operator finds all edges starting from (outbound)
+/// *vertices*.
 ///
-/// The @FN{edges} operator finds all edges starting from (outbound)
-/// @FA{vertices}.
+/// `edge-collection.outEdges(vertices)`
 ///
-/// @FUN{@FA{edge-collection}.outEdges(@FA{vertices})}
-///
-/// The @FN{edges} operator finds all edges starting from (outbound) a document
-/// from @FA{vertices}, which must a list of documents or document handles.
+/// The *edges* operator finds all edges starting from (outbound) a document
+/// from *vertices*, which must a list of documents or document handles.
 ///
 /// @EXAMPLES
 ///
 /// @verbinclude shell-edge-out-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
