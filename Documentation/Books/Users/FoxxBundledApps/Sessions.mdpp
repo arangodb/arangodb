@@ -121,12 +121,15 @@ Returns `false` if the session already didn't exist.
 Session objects are instances of a Foxx model with the following attributes:
 
 `sessionData`
+
 Volatile session data. This can be an arbitrary object that will be stored with the session in the database. If you want to store session-specific (rather than user-specific) data in the database, this is the right place for that.
 
 `uid`
+
 The session's active user's `_key` or `undefined`.
 
 `userData`
+
 The session's active user's `userData` attribute or an empty object.
 
 !SECTION Save a session
