@@ -1016,6 +1016,102 @@ int LogfileManager::getLogfileDescriptor (Logfile::IdType id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current open region of a logfile
+/// this uses the slots lock
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::getActiveLogfileRegion (Logfile* logfile,
+                                             char const*& begin,
+                                             char const*& end) {
+  _slots->getActiveLogfileRegion(logfile, begin, end);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get logfiles for a tick range
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<Logfile*> LogfileManager::getLogfilesForTickRange (TRI_voc_tick_t minTick,
+                                                               TRI_voc_tick_t maxTick) {
+  std::vector<Logfile*> temp;
+  std::vector<Logfile*> matching;
+ 
+  // we need a two step logfile qualification procedure
+  // this is to avoid holding the lock on _logfilesLock and then acquiring the
+  // mutex on the _slots. If we hold both locks, we might deadlock with other
+  // threads
+
+  {   
+    READ_LOCKER(_logfilesLock);
+    temp.reserve(_logfiles.size());
+    matching.reserve(_logfiles.size());
+
+    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      Logfile* logfile = (*it).second;
+
+      if (logfile == nullptr || logfile->status() == Logfile::StatusType::EMPTY) {
+        continue;
+      }
+    
+      // found a datafile
+      temp.push_back(logfile);
+    
+      // mark it as being used so it isn't deleted
+      logfile->use();
+    }
+  }
+
+  // now go on without the lock
+  for (auto it = temp.begin(); it != temp.end(); ++it) {
+    Logfile* logfile = (*it);
+    
+    TRI_voc_tick_t logMin;
+    TRI_voc_tick_t logMax;
+    _slots->getActiveTickRange(logfile, logMin, logMax);
+
+    if (minTick > logMax || maxTick < logMin) {
+      // datafile is older than requested range
+      // or: datafile is newer than requested range
+
+      // release the logfile, so it can be deleted
+      logfile->release();
+      continue;
+    }
+
+    // finally copy all qualifying logfiles into the result
+    matching.push_back(logfile);
+  }
+
+  // all qualifying locks are marked as used now
+  return matching;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return logfiles for a tick range
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::returnLogfiles (std::vector<Logfile*> const& logfiles) {
+  for (auto it = logfiles.begin(); it != logfiles.end(); ++it) {
+    Logfile* logfile = (*it);
+    
+    logfile->release();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile by id
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getLogfile (Logfile::IdType id) {
+  READ_LOCKER(_logfilesLock);
+
+  auto it = _logfiles.find(id);
+  if (it != _logfiles.end()) {
+    return (*it).second;
+  }
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1218,7 +1314,7 @@ LogfileManagerState LogfileManager::state () {
   LogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastTick, state.numEvents);
+  _slots->statistics(state.lastTick, state.lastDataTick, state.numEvents);
   state.timeString = getTimeString();
 
   return state;
@@ -1653,7 +1749,7 @@ int LogfileManager::inspectLogfiles () {
 
       if (logfile != nullptr) {
         if (! scanLogfileTick(logfile, state)) {
-          LOG_TRACE("WAL inspecting failed when scanning logfile '%s'", logfile->filename().c_str());
+          LOG_TRACE("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
           return TRI_ERROR_INTERNAL;
         }
       }
@@ -1669,7 +1765,7 @@ int LogfileManager::inspectLogfiles () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scan the logfiles in the log directory
+/// @brief open the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::openLogfiles () {
@@ -1710,6 +1806,9 @@ int LogfileManager::openLogfiles () {
       _logfiles.erase(it++);
       continue;
     }
+
+    // update the tick statistics  
+    TRI_IterateDatafile(logfile->df(), nullptr, nullptr);
 
     if (logfile->status() == Logfile::StatusType::SEALED &&
         id > _lastSealedId) {
