@@ -6097,9 +6097,11 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ///   for this collection that have not been transferred in datafiles /
 ///   journals of the collection.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @verbinclude shell_collection-figures
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
+///   db.demo.figures()
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -6793,7 +6795,13 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-rename
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
+/// ~ db._create("examples");
+///   c = db.examples;
+///   c.rename("better-example");
+///   c;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -6951,7 +6959,7 @@ static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
-/// @startDocuBlock collectionLoad
+/// @startDocuBlock collectionRevision
 /// `collection.revision()`
 ///
 /// Returns the revision id of the collection
@@ -7512,7 +7520,13 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-unload
+/// @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
+/// ~ db._create("examples");
+///   col = db.examples;
+///   col.unload();
+///   col;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -7611,7 +7625,12 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_read-collection-short-cut
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
+/// ~ db._create("examples");
+///   db.examples;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7854,15 +7873,21 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 ///
 /// Get a collection by name:
 ///
-/// @verbinclude shell_read-collection-name
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseName}
+///   db._collection("demo");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Get a collection by id:
 ///
-/// @verbinclude shell_read-collection-id
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameId}
+///   db._collection(26859402);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Unknown collection:
 ///
-/// @verbinclude shell_read-collection-unknown
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameUnknown}
+///   db._collection("unknown");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7921,7 +7946,14 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_read-collection-all
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
+/// ~ db._create("examples");
+///   db.examples.load();
+///   var d = db.demo;
+///   db._collections();
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8124,19 +8156,39 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///
 /// With defaults:
 ///
-/// @verbinclude shell_create-collection
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreate}
+///   c = db._create("cars");
+///   c.properties;
+/// ~ db._drop("cars");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With properties:
 ///
-/// @verbinclude shell_create-collection-properties
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
+///   c = db._create("cars", { waitForSync : true, journalSize : 1024 * 1204 });
+///   c.properties;
+/// ~ db._drop("cars");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With a key generator:
 ///
-/// @verbinclude shell_create-collection-keygen
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateKey}
+///   db._create("users", { keyOptions: { type: "autoincrement", offset: 10, increment: 5 } });
+///   db.users.save({ name: "user 1" });
+///   db.users.save({ name: "user 2" });
+///   db.users.save({ name: "user 3" });
+/// ~ db._drop("users");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With a special key option:
 ///
-/// @verbinclude shell_create-collection-keyoptions
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSpecialKey}
+///   db._create("users", { keyOptions: { allowUserKeys: false } });
+///   db.users.save({ name: "user 1" });
+///   db.users.save({ name: "user 2", _key: "myuser" });
+///   db.users.save({ name: "user 3" });
+/// ~ db._drop("users");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
