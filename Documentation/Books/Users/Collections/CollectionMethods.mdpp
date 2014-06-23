@@ -1,34 +1,22 @@
 !CHAPTER Collection Methods
 
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_drop
+!SUBSECTION Drop
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionDrop
 
-`collection.truncate()`
+!SUBSECTION Truncate
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
+@startDocuBlock collectionTruncate
 
-Truncates a collection, removing all documents but keeping all its indexes.
+!SUBSECTION Properties
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionProperties
 
-*Examples*
+!SUBSECTION Figures
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionFigures
 
-Truncates a collection:
-
-```
-arango> col = db.examples;
-[ArangoCollection 91022, "examples" (status new born)]
-arango> col.save({ "Hello" : "World" });
-{ "_id" : "91022/1532814", "_rev" : 1532814 }
-arango> col.count();
-1
-arango> col.truncate();
-arango> col.count();
-0
-```
-
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_properties
-
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_figures
-
+!SUBSECTION Reserve
 `collection.reserve( number)`
 
 Sends a resize hint to the indexes in the collection. The resize hint allows indexes to reserve space for additional documents (specified by number) in one go.
@@ -37,63 +25,22 @@ The reserve hint can be sent before a mass insertion into the collection is star
 
 Not all indexes implement the reserve function at the moment. The indexes that don't implement it will simply ignore the request. returns the revision id of a collection
 
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_revision
+!SUBSECTION Revision
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionRevision
 
-`collection.checksum( withRevisions, withData)`
+!SUBSECTION Checksum
+<!-- arangod/V8-Server/v8-query.cpp -->
+@startDocuBlock collectionChecksum
 
-The checksum operation calculates a CRC32 checksum of the keys contained in collection collection.
+!SUBSECTION Unload
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionUnload
 
-If the optional argument withRevisions is set to true, then the revision ids of the documents are also included in the checksumming.
+!SUBSECTION Rename
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionRename
 
-If the optional argument withData is set to true, then the actual document data is also checksummed. Including the document data in checksumming will make the calculation slower, but is more accurate.
-
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_unload
-
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_rename
-
-<!-- v8-vocbase.cpp -->
-@startDocuBlock collection_rotate
-
-<!--
-@anchor HandlingCollectionsDrop
-@copydetails JS_DropVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsTruncate
-@copydetails JSF_ArangoCollection_prototype_truncate
-
-@CLEARPAGE
-@anchor HandlingCollectionsProperties
-@copydetails JS_PropertiesVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsFigures
-@copydetails JS_FiguresVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsLoad
-@copydetails JS_LoadVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsRevision
-@copydetails JS_RevisionVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsChecksum
-@copydetails JS_ChecksumCollection
-
-@CLEARPAGE
-@anchor HandlingCollectionsUnload
-@copydetails JS_UnloadVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsRename
-@copydetails JS_RenameVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingCollectionsRotate
-@copydetails JS_RotateVocbaseCol
--->
+!SUBSECTION Rotate
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionRotate
