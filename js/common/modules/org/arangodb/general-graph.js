@@ -2008,7 +2008,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
 /// the edge will not be stored.
 ///
 ///

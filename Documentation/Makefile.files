@@ -350,6 +350,7 @@ examples:
 		@srcdir@/js/client \
 		@srcdir@/js/common \
 		@srcdir@/js/server \
+		@srcdir@/js/apps/system/gharial \
 		@srcdir@/Documentation/Books/Users \
 		@srcdir@/arangod/RestHandler \
 		@srcdir@/lib/Admin \
