@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H
-#define TRIAGENS_HTTP_SERVER_HTTP_COMM_TASK_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
 #include "Basics/Common.h"
 
@@ -55,11 +57,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief task for http communication
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -67,18 +64,9 @@ namespace triagens {
     class HttpCommTask : public GeneralCommTask<S, HttpHandlerFactory>,
                          public RequestStatisticsAgent {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       public:
 
@@ -112,18 +100,9 @@ namespace triagens {
         virtual ~HttpCommTask () {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -152,18 +131,9 @@ namespace triagens {
           this->_acceptDeflate   = false;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           GeneralCommTask methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
@@ -235,7 +205,7 @@ namespace triagens {
               // check HTTP protocol version
               _httpVersion = this->_request->httpVersion();
 
-              if (_httpVersion != HttpRequest::HTTP_1_0 && 
+              if (_httpVersion != HttpRequest::HTTP_1_0 &&
                   _httpVersion != HttpRequest::HTTP_1_1) {
                 HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED, getCompatibility());
                 this->handleResponse(&response);
@@ -243,7 +213,7 @@ namespace triagens {
 
                 return true;
               }
-              
+
               // check max URL length
               _fullUrl = this->_request->fullUrl();
               if (_fullUrl.size() > 16384) {
@@ -259,8 +229,8 @@ namespace triagens {
               this->_request->setProtocol(S::protocol());
 
 
-              LOG_TRACE("server port %d, client port %d", 
-                        (int) this->_connectionInfo.serverPort, 
+              LOG_TRACE("server port %d, client port %d",
+                        (int) this->_connectionInfo.serverPort,
                         (int) this->_connectionInfo.clientPort);
 
               // set body start to current position
@@ -325,7 +295,7 @@ namespace triagens {
                   return true;
                 }
               }
-          
+
               // .............................................................................
               // check if server is active
               // .............................................................................
@@ -341,7 +311,7 @@ namespace triagens {
 
                 return true;
               }
-                
+
               // check for a 100-continue
               if (this->_readRequestBody) {
                 bool found;
@@ -374,7 +344,7 @@ namespace triagens {
           if (this->_readRequestBody) {
             if (this->_bodyLength > this->_maximalBodySize) {
               // request entity too large
-              LOG_WARNING("maximal body size is %d, request body size is %d", 
+              LOG_WARNING("maximal body size is %d, request body size is %d",
                           (int) this->_maximalBodySize,
                           (int) this->_bodyLength);
 
@@ -536,7 +506,7 @@ namespace triagens {
                   if (acceptEncoding.find("deflate") != string::npos) {
                     _acceptDeflate = true;
                   }
-                } 
+                }
 
                 // check for an async request
                 string const& asyncExecution = this->_request->header("x-arango-async", found);
@@ -548,9 +518,9 @@ namespace triagens {
 
                   RequestStatisticsAgentSetAsync(this);
 #endif
-                  
+
                   this->RequestStatisticsAgent::transfer(handler);
-                
+
                   this->_request = 0;
 
                   uint64_t jobId = 0;
@@ -562,14 +532,14 @@ namespace triagens {
                     // don't persist the responses
                     ok = this->_server->handleRequestAsync(handler, 0);
                   }
-                  
+
                   if (ok) {
                     HttpResponse response(HttpResponse::ACCEPTED, getCompatibility());
 
                     if (jobId > 0) {
                       // return the job id we just created
-                      response.setHeader("x-arango-async-id", 
-                                         strlen("x-arango-async-id"), 
+                      response.setHeader("x-arango-async-id",
+                                         strlen("x-arango-async-id"),
                                          triagens::basics::StringUtils::itoa(jobId));
                     }
 
@@ -584,7 +554,7 @@ namespace triagens {
 
                   ok = this->_server->handleRequest(this, handler);
                 }
-                
+
                 if (! ok) {
                   HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
                   this->handleResponse(&response);
@@ -592,11 +562,11 @@ namespace triagens {
               }
             }
 
-            // not found 
+            // not found
             else if (authResult == HttpResponse::NOT_FOUND) {
               HttpResponse response(authResult, getCompatibility());
               response.setContentType("application/json; charset=utf-8");
-  
+
               response.body().appendText("{\"error\":true,\"errorMessage\":\"")
                              .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
                              .appendText("\",\"code\":")
@@ -604,11 +574,11 @@ namespace triagens {
                              .appendText(",\"errorNum\":")
                              .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
                              .appendText("}");
-               
+
               this->handleResponse(&response);
               this->resetState();
             }
-            
+
             // forbidden
             else if (authResult == HttpResponse::FORBIDDEN) {
               HttpResponse response(authResult, getCompatibility());
@@ -619,7 +589,7 @@ namespace triagens {
                              .appendText(",\"errorNum\":")
                              .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
                              .appendText("}");
-               
+
               this->handleResponse(&response);
               this->resetState();
             }
@@ -653,7 +623,7 @@ namespace triagens {
             // the request contained an Origin header. We have to send back the
             // access-control-allow-origin header now
             LOG_TRACE("handling CORS response");
-            
+
             response->setHeader("access-control-expose-headers", strlen("access-control-expose-headers"), "etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
             // TODO: check whether anyone actually needs these headers in the browser: x-arango-replication-checkmore, x-arango-replication-lastincluded, x-arango-replication-lasttick, x-arango-replication-active");
 
@@ -689,7 +659,7 @@ namespace triagens {
           // else {
           //    // to enable automatic deflating of responses, active this.
           //   // deflate takes a lot of CPU time so it should only be enabled for
-          //   // dedicated purposes and not generally         
+          //   // dedicated purposes and not generally
           //   if (responseBodyLength > 16384  && _acceptDeflate) {
           //     response->deflate();
           //     responseBodyLength = response->bodySize();
@@ -784,7 +754,7 @@ namespace triagens {
           if (found) {
             return false;
           }
-            
+
           return true;
         }
 
@@ -797,21 +767,12 @@ namespace triagens {
             return this->_request->compatibility();
           }
 
-          return HttpRequest::MinCompatibility; 
+          return HttpRequest::MinCompatibility;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup HttpServer
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -857,10 +818,6 @@ namespace triagens {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -869,5 +826,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

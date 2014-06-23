@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ///
 /// Parts of the code are based on:
@@ -610,7 +612,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
   bool RetainedBufferInfo::IsEquivalent (RetainedObjectInfo* other) {
-    return _label == other->GetLabel() 
+    return _label == other->GetLabel()
       &&  _buffer == static_cast<RetainedBufferInfo*>(other)->_buffer;
   }
 
@@ -774,7 +776,7 @@ V8Buffer::V8Buffer (v8::Isolate* isolate,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 
+/// @brief
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8Buffer::hasInstance (v8::Handle<v8::Value> val) {
@@ -1068,7 +1070,7 @@ static v8::Handle<v8::Value> JS_Copy (const v8::Arguments& args) {
   size_t target_length = V8Buffer::length(target);
   size_t target_start = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
   size_t source_start = args[2]->IsUndefined() ? 0 : args[2]->Uint32Value();
-  size_t source_end = args[3]->IsUndefined() 
+  size_t source_end = args[3]->IsUndefined()
                       ? source->_length
                       : args[3]->Uint32Value();
 
@@ -1430,7 +1432,7 @@ static v8::Handle<v8::Value> JS_ReadFloatLE (const v8::Arguments& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief readFloatBE 
+/// @brief readFloatBE
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReadFloatBE (const v8::Arguments& args) {
@@ -1446,7 +1448,7 @@ static v8::Handle<v8::Value> JS_ReadDoubleLE (const v8::Arguments& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief readDoubleBE 
+/// @brief readDoubleBE
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ReadDoubleBE (const v8::Arguments& args) {
@@ -1454,7 +1456,7 @@ static v8::Handle<v8::Value> JS_ReadDoubleBE (const v8::Arguments& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a float (generic version) 
+/// @brief writes a float (generic version)
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, bool ENDIANNESS>
@@ -1678,5 +1680,5 @@ void TRI_InitV8Buffer (v8::Handle<v8::Context> context) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

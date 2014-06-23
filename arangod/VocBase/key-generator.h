@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_VOC_BASE_KEY_GENERATOR_H
-#define TRIAGENS_VOC_BASE_KEY_GENERATOR_H 1
+#ifndef ARANGODB_VOC_BASE_KEY__GENERATOR_H
+#define ARANGODB_VOC_BASE_KEY__GENERATOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -98,7 +100,7 @@ class KeyGenerator {
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static functions
 // -----------------------------------------------------------------------------
-  
+
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +130,7 @@ class KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
-  
+
     virtual int validate (std::string const&,
                           bool) = 0;
 
@@ -141,7 +143,7 @@ class KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
-   
+
     virtual struct TRI_json_s* toJson () const = 0;
 
 // -----------------------------------------------------------------------------
@@ -164,7 +166,7 @@ class KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the users can specify their own keys
 ////////////////////////////////////////////////////////////////////////////////
-  
+
     bool _allowUserKeys;
 };
 
@@ -232,7 +234,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the generator name
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     static std::string name () {
       return "traditional";
     }
@@ -240,7 +242,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
-   
+
     struct TRI_json_s* toJson () const;
 };
 
@@ -310,7 +312,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the generator name
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     static std::string name () {
       return "autoincrement";
     }
@@ -318,7 +320,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
-   
+
     struct TRI_json_s* toJson () const;
 
 // -----------------------------------------------------------------------------
@@ -345,6 +347,11 @@ bool TRI_ValidateDocumentIdKeyGenerator (char const*,
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

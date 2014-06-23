@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_STRUCTURES_H
-#define TRIAGENS_BASICS_C_STRUCTURES_H 1
+#ifndef ARANGODB_BASICS_C_STRUCTURES_H
+#define ARANGODB_BASICS_C_STRUCTURES_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <BasicsC/common.h>
@@ -39,11 +41,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    basic typedefs
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of date-time entries (seconds since 1970-01-01)
@@ -69,10 +66,6 @@ typedef int32_t TRI_seconds_t;
 
 typedef int64_t TRI_msec_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              BLOB
 // -----------------------------------------------------------------------------
@@ -80,11 +73,6 @@ typedef int64_t TRI_msec_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global blob type
@@ -99,18 +87,9 @@ typedef struct TRI_blob_s {
 }
 TRI_blob_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destorys the data of blob, but does not free the pointer
@@ -124,18 +103,9 @@ void TRI_DestroyBlob (TRI_memory_zone_t*, TRI_blob_t*);
 
 void TRI_FreeBlob (TRI_memory_zone_t*, TRI_blob_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup BasicStructures
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob
@@ -150,14 +120,10 @@ TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t*, TRI_blob_t const* src);
 int TRI_CopyToBlob (TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assigns a blob value by reference into given destination 
+/// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __cplusplus
 }
@@ -165,7 +131,11 @@ int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

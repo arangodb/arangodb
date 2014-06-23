@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
@@ -46,7 +47,7 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8TimerTask::V8TimerTask (string const& id, 
+V8TimerTask::V8TimerTask (string const& id,
                           string const& name,
                           TRI_vocbase_t* vocbase,
                           ApplicationV8* v8Dealer,
@@ -114,7 +115,7 @@ bool V8TimerTask::handleTimeout () {
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",
     _parameters);
-    
+
   _dispatcher->addJob(job);
 
   // note: this will destroy the task (i.e. ourselves!!)
@@ -129,5 +130,5 @@ bool V8TimerTask::handleTimeout () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

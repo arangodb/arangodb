@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,7 +54,6 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
 #include "VocBase/replication-applier.h"
-#include "VocBase/replication-logger.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
@@ -202,7 +203,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
- 
+
     return true;
   }
   catch (triagens::arango::Exception const& ex) {
@@ -211,10 +212,10 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
- 
+
   LOG_WARNING("could not save collection drop marker in log: %s", TRI_errno_string(res));
 
-  // TODO: what to do here? 
+  // TODO: what to do here?
   return true;
 }
 
@@ -222,7 +223,7 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 /// @brief unloads a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool UnloadCollectionCallback (TRI_collection_t* col, 
+static bool UnloadCollectionCallback (TRI_collection_t* col,
                                       void* data) {
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
 
@@ -660,7 +661,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
-    
+
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return collection;
   }
@@ -793,7 +794,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
-  
+
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   // now log the operation
@@ -806,7 +807,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
- 
+
     return TRI_ERROR_NO_ERROR;
   }
   catch (triagens::arango::Exception const& ex) {
@@ -816,7 +817,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
     res = TRI_ERROR_INTERNAL;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) { 
+  if (res != TRI_ERROR_NO_ERROR) {
     LOG_WARNING("could not save collection rename marker in log: %s", TRI_errno_string(res));
   }
 
@@ -1277,7 +1278,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
     // collection not found, no problem
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
 
   int res = trx.begin();
@@ -1291,7 +1292,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   trx.finish(res);
 
   // don't need the collection anymore, so unload it
-  TRI_UnloadCollectionVocBase(vocbase, collection, true); 
+  TRI_UnloadCollectionVocBase(vocbase, collection, true);
 
   return res;
 }
@@ -1353,14 +1354,13 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
   vocbase->_authInfoLoaded     = false;
   vocbase->_hasCompactor       = false;
-  vocbase->_replicationLogger  = nullptr;
   vocbase->_replicationApplier = nullptr;
 
   vocbase->_oldTransactions    = nullptr;
-  
+
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, defaults);
-  
+
   // init AQL functions
   vocbase->_functions = TRI_CreateFunctionsAql();
 
@@ -1384,12 +1384,12 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
 
     return NULL;
   }
-  
+
   // init usage info
   TRI_InitSpin(&vocbase->_usage._lock);
   vocbase->_usage._refCount  = 0;
   vocbase->_usage._isDeleted = false;
-  
+
   // init collections
   TRI_InitVectorPointer(&vocbase->_collections, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&vocbase->_deadCollections, TRI_UNKNOWN_MEM_ZONE);
@@ -1430,34 +1430,29 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
     vocbase->_replicationApplier = nullptr;
   }
 
-  if (vocbase->_replicationLogger != nullptr) {
-    TRI_FreeReplicationLogger(vocbase->_replicationLogger);
-    vocbase->_replicationLogger = nullptr;
-  }
-
   if (vocbase->_oldTransactions == nullptr) {
     delete vocbase->_oldTransactions;
   }
 
   TRI_DestroyCondition(&vocbase->_cleanupCondition);
   TRI_DestroyCondition(&vocbase->_compactorCondition);
-    
+
   TRI_DestroyReadWriteLock(&vocbase->_lock);
   TRI_DestroyReadWriteLock(&vocbase->_inventoryLock);
-    
+
   TRI_DestroyAuthInfo(vocbase);
-    
+
   TRI_DestroyAssociativePointer(&vocbase->_collectionsByName);
   TRI_DestroyAssociativePointer(&vocbase->_collectionsById);
 
   TRI_DestroyVectorPointer(&vocbase->_collections);
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
-    
+
   TRI_DestroySpin(&vocbase->_usage._lock);
 
   TRI_FreeStoreGeneralCursor(vocbase->_cursors);
   TRI_FreeFunctionsAql(vocbase->_functions);
-  
+
   // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
@@ -1524,27 +1519,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
-  vocbase->_replicationLogger = TRI_CreateReplicationLogger(vocbase);
-
-  if (vocbase->_replicationLogger == NULL) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initialising replication logger for database '%s' failed", name);
-  }
-
-  if (vocbase->_replicationLogger->_configuration._autoStart) {
-    if (server->_disableReplicationLoggers) {
-      LOG_INFO("replication logger explicitly deactivated for database '%s'", name);
-    }
-    else {
-      res = TRI_StartReplicationLogger(vocbase->_replicationLogger);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        // TODO
-        LOG_FATAL_AND_EXIT("unable to start replication logger for database '%s'", name);
-      }
-    }
-  }
-
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
 
   if (vocbase->_replicationApplier == NULL) {
@@ -1582,7 +1556,6 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // stop replication
   TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
-  TRI_StopReplicationLogger(vocbase->_replicationLogger);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
@@ -1909,7 +1882,7 @@ TRI_vocbase_col_t* TRI_LookupCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 /// @brief looks up a (document) collection by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase, 
+TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase,
                                                     TRI_voc_cid_t id) {
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
@@ -2128,7 +2101,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
       // dropping a collection does not need to be synced
       bool const doSync = false;  // vocbase->_settings.forceSyncProperties;
-      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync); 
+      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -2334,7 +2307,7 @@ TRI_vocbase_col_t* TRI_UseCollectionByIdVocBase (TRI_vocbase_t* vocbase,
   // try to load the collection
   // .............................................................................
 
-  int res = LoadCollectionVocBase(vocbase, const_cast<TRI_vocbase_col_t*>(collection), status); 
+  int res = LoadCollectionVocBase(vocbase, const_cast<TRI_vocbase_col_t*>(collection), status);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return const_cast<TRI_vocbase_col_t*>(collection);
@@ -2519,5 +2492,5 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

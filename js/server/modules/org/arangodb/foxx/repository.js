@@ -30,7 +30,7 @@
 
 var Repository,
   _ = require("underscore"),
-  backbone_helpers = require("backbone");
+  extend = require('org/arangodb/extend').extend;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
@@ -412,7 +412,7 @@ _.extend(Repository.prototype, {
   }
 });
 
-Repository.extend = backbone_helpers.extend;
+Repository.extend = extend;
 
 exports.Repository = Repository;
 

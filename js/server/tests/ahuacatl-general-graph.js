@@ -386,14 +386,14 @@ function ahuacatlQueryGeneralCommonTestSuite() {
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex1'}, " +
         "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
       assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v2");
-      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), ["UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v7"]);
+      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v7", "UnitTestsAhuacatlVertex2/v8"]);
 
       assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v5"].length, 1);
       assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v8"].length, 1);
       assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v7"].length, 2);
 
       assertEqual(Object.keys(actual[1])[0], "UnitTestsAhuacatlVertex1/v1");
-      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]), ["UnitTestsAhuacatlVertex2/v6", "UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v7"]);
+      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v6", "UnitTestsAhuacatlVertex2/v7", "UnitTestsAhuacatlVertex2/v8"]);
 
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v6"].length, 1);
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v5"].length, 1);

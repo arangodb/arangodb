@@ -525,7 +525,7 @@ extern "C" {
 /// - 1934: @LIT{Invalid example type. Has to be Array or Object}
 ///   Invalid example type. Has to be Array or Object.
 /// - 1935: @LIT{Invalid number of arguments. Expected: }
-///   Invalid number of arguments. Expected: 
+///   Invalid number of arguments. Expected:
 /// - 1936: @LIT{Invalid parameter type.}
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
@@ -570,11 +570,6 @@ extern "C" {
 ///   Will be returned if the element was not found in the structure.
 /// - 20000: @LIT{newest version of app already installed}
 ///   newest version of app already installed
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocError
-/// @{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2789,9 +2784,9 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 ///
-/// Invalid number of arguments. Expected: 
+/// Invalid number of arguments. Expected:
 ///
-/// Invalid number of arguments. Expected: 
+/// Invalid number of arguments. Expected:
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       (1935)
@@ -2988,13 +2983,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_APP_ALREADY_EXISTS                                      (20000)
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

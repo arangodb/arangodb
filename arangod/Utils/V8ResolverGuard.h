@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief full text search, wordlists
+/// @brief V8 collection name resolver guard
 ///
 /// @file
 ///
@@ -24,62 +24,96 @@
 ///
 /// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__WORDLIST_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__WORDLIST_H 1
+#ifndef ARANGODB_UTILS_V8RESOLVER_GUARD_H
+#define ARANGODB_UTILS_V8RESOLVER_GUARD_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+#include <v8.h>
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/vocbase.h"
+#include "V8/v8-globals.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for a fulltext word list
-////////////////////////////////////////////////////////////////////////////////
+namespace triagens {
+  namespace arango {
 
-typedef struct TRI_fulltext_wordlist_s {
-  uint32_t  _numWords;
-  char**    _words;
-}
-TRI_fulltext_wordlist_t;
+    class V8ResolverGuard {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
+// --SECTION--                                             class V8ResolverGuard
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a wordlist
-/// the words passed to the wordlist will be owned by the wordlist and will be
-/// freed when the wordlist is freed
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char**,
-                                                          size_t);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a wordlist
+/// @brief create the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+        V8ResolverGuard (TRI_vocbase_t* vocbase)
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
+            _ownResolver(false) {
+
+          if (_v8g->_resolver == nullptr) {
+            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(vocbase));
+            _ownResolver = true;
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief free a wordlist
+/// @brief destroy the guard
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+        ~V8ResolverGuard () {
+          if (_ownResolver && _v8g->_resolver != nullptr) {
+            delete static_cast<CollectionNameResolver*>(_v8g->_resolver);
+            _v8g->_resolver = nullptr;
+          }
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sort a wordlist in place
+/// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+        inline CollectionNameResolver const* getResolver () const { 
+          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
+          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief v8 global context
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_v8_global_t* _v8g;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are responsible for the resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ownResolver;
+
+    };
+
+  }
+}
 
 #endif
 

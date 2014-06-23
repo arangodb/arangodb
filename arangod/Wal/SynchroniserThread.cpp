@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -183,11 +185,11 @@ int SynchroniserThread::doSync () {
   TRI_ASSERT(fd >= 0);
   void** mmHandle = NULL;
   bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
-         
+
   LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
             (unsigned long long) id,
-            region.mem, 
-            region.mem + region.size, 
+            region.mem,
+            region.mem + region.size,
             (unsigned long) region.size,
             region.waitForSync ? "true" : "false");
 
@@ -203,7 +205,7 @@ int SynchroniserThread::doSync () {
     // additionally seal the logfile
     _logfileManager->setLogfileSealed(id);
   }
-      
+
   _logfileManager->slots()->returnSyncRegion(region);
   return TRI_ERROR_NO_ERROR;
 }
@@ -213,7 +215,7 @@ int SynchroniserThread::doSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SynchroniserThread::getLogfileDescriptor (Logfile::IdType id) {
-  if (id != _logfileCache.id || 
+  if (id != _logfileCache.id ||
       _logfileCache.id == 0) {
 
     _logfileCache.id = id;
@@ -223,7 +225,11 @@ int SynchroniserThread::getLogfileDescriptor (Logfile::IdType id) {
   return _logfileCache.fd;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

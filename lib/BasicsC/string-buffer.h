@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_STRING_BUFFER_H
-#define TRIAGENS_BASICS_C_STRING_BUFFER_H 1
+#ifndef ARANGODB_BASICS_C_STRING__BUFFER_H
+#define ARANGODB_BASICS_C_STRING__BUFFER_H 1
 
 #include "BasicsC/common.h"
 
@@ -37,11 +39,6 @@ extern "C" {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief string buffer with formatting routines
@@ -55,18 +52,9 @@ typedef struct TRI_string_buffer_s {
 }
 TRI_string_buffer_t;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new string buffer and initialise it
@@ -121,18 +109,9 @@ void TRI_AnnihilateStringBuffer (TRI_string_buffer_t *);
 
 void TRI_FreeStringBuffer (TRI_memory_zone_t*, TRI_string_buffer_t *);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compress the string buffer using deflate
@@ -145,14 +124,14 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t*,
 /// @brief ensure the string buffer has a specific capacity
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReserveStringBuffer (TRI_string_buffer_t*, 
+int TRI_ReserveStringBuffer (TRI_string_buffer_t*,
                              const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps content with another string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SwapStringBuffer (TRI_string_buffer_t*, 
+void TRI_SwapStringBuffer (TRI_string_buffer_t*,
                            TRI_string_buffer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +156,7 @@ size_t TRI_LengthStringBuffer (TRI_string_buffer_t const*);
 /// @brief increases length of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t*, 
+void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t*,
                                      size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,7 +200,7 @@ int TRI_CopyStringBuffer (TRI_string_buffer_t*,
 /// @brief removes the first characters
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_EraseFrontStringBuffer (TRI_string_buffer_t*, 
+void TRI_EraseFrontStringBuffer (TRI_string_buffer_t*,
                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,20 +215,16 @@ void TRI_MoveFrontStringBuffer (TRI_string_buffer_t*,
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t*, 
-                                   char const*, 
+int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t*,
+                                   char const*,
                                    size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces characters
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t*, 
+int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t*,
                                          TRI_string_buffer_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  STRING APPENDERS
@@ -258,11 +233,6 @@ int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t*,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends character
@@ -307,14 +277,10 @@ int TRI_AppendEolStringBuffer (TRI_string_buffer_t * self);
 int TRI_AppendUrlEncodedStringStringBuffer (TRI_string_buffer_t * self, char const * str);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends characters but json-encode the string 
+/// @brief appends characters but json-encode the string
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t * self, char const * str, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 INTEGER APPENDERS
@@ -323,11 +289,6 @@ int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t * self, char co
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends integer with two digits
@@ -401,10 +362,6 @@ int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr);
 
 int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           INTEGER OCTAL APPENDERS
 // -----------------------------------------------------------------------------
@@ -412,11 +369,6 @@ int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in octal
@@ -436,10 +388,6 @@ int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr
 
 int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             INTEGER HEX APPENDERS
 // -----------------------------------------------------------------------------
@@ -447,11 +395,6 @@ int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in hex
@@ -471,10 +414,6 @@ int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr);
 
 int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   FLOAT APPENDERS
 // -----------------------------------------------------------------------------
@@ -484,19 +423,10 @@ int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief appends floating point number with 8 bits
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           DATE AND TIME APPENDERS
@@ -507,19 +437,10 @@ int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief appends time in standard format
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     CSV APPENDERS
@@ -528,11 +449,6 @@ int TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Strings
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends csv 32-bit integer
@@ -564,17 +480,17 @@ int TRI_AppendCsvUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t i);
 
 int TRI_AppendCsvDoubleStringBuffer (TRI_string_buffer_t * self, double d);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __cplusplus
 }
 #endif
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

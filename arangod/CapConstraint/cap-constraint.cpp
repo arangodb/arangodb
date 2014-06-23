@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -60,13 +62,13 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
   res = TRI_ERROR_NO_ERROR;
 
   // delete while at least one of the constraints is still violated
-  while ((cap->_count > 0 && currentCount > cap->_count) || 
+  while ((cap->_count > 0 && currentCount > cap->_count) ||
          (cap->_size > 0 && currentSize > cap->_size)) {
     TRI_doc_mptr_t* oldest = headers->front();
 
     if (oldest != nullptr) {
       size_t oldSize;
-     
+
       TRI_ASSERT(oldest->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
       oldSize = ((TRI_df_marker_t*) (oldest->getDataPtr()))->_size;  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -74,7 +76,7 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
 
       if (trxCollection != nullptr) {
         res = TRI_DeleteDocumentDocumentCollection(trxCollection, nullptr, oldest);
-        
+
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));
           break;
@@ -83,7 +85,7 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
       else {
         headers->unlink(oldest);
       }
-      
+
       currentCount--;
       currentSize -= (int64_t) oldSize;
     }
@@ -101,18 +103,18 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
 /// @brief initialise the cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InitialiseCap (TRI_cap_constraint_t* cap, 
-                          TRI_document_collection_t* document) { 
+static int InitialiseCap (TRI_cap_constraint_t* cap,
+                          TRI_document_collection_t* document) {
   TRI_headers_t* headers;
   size_t currentCount;
   int64_t currentSize;
-  
+
   TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
-  
+
   headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
   currentCount = headers->count();
   currentSize = headers->size();
-  
+
   if ((cap->_count > 0 && currentCount <= cap->_count) &&
       (cap->_size > 0 && currentSize <= cap->_size)) {
     // nothing to do
@@ -219,7 +221,7 @@ static int InsertCapConstraint (TRI_index_t* idx,
   if (cap->_size > 0) {
     // there is a size restriction
     TRI_df_marker_t* marker;
-    
+
     marker = (TRI_df_marker_t*) doc->getDataPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     // check if the document would be too big
@@ -251,7 +253,7 @@ static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
 /// @brief removes a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveCapConstraint (TRI_index_t* idx, 
+static int RemoveCapConstraint (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 bool isRollback) {
   return TRI_ERROR_NO_ERROR;
@@ -318,5 +320,5 @@ void TRI_FreeCapConstraint (TRI_index_t* idx) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

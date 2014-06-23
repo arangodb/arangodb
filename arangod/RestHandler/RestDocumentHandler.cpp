@@ -5,6 +5,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -274,7 +276,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 bool RestDocumentHandler::createDocument () {
   vector<string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 0) {
+  if (! suffix.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
@@ -519,12 +521,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   vector<string> const& suffix = _request->suffix();
 
   // split the document reference
-  const string& collection = suffix[0];
-  const string& key = suffix[1];
+  string const& collection = suffix[0];
+  string const& key = suffix[1];
 
   // check for an etag
   bool isValidRevision;
-  const TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
+  TRI_voc_rid_t const ifNoneRid = extractRevision("if-none-match", 0, isValidRevision);
   if (! isValidRevision) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -532,7 +534,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  const TRI_voc_rid_t ifRid = extractRevision("if-match", "rev", isValidRevision);
+  TRI_voc_rid_t const ifRid = extractRevision("if-match", "rev", isValidRevision);
   if (! isValidRevision) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -557,7 +559,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
   TRI_doc_mptr_copy_t mptr;
 
   res = trx.read(&mptr, key);
@@ -585,7 +587,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   // generate result
-  const TRI_voc_rid_t rid = mptr._rid;
+  TRI_voc_rid_t const rid = mptr._rid;
 
   if (ifNoneRid == 0) {
     if (ifRid == 0 || ifRid == rid) {
@@ -1268,14 +1270,14 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   // split the document reference
-  const string& collection = suffix[0];
-  const string& key = suffix[1];
+  string const& collection = suffix[0];
+  string const& key = suffix[1];
 
   TRI_json_t* json = parseJsonBody();
 
   if (! TRI_IsArrayJson(json)) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return false;
@@ -1283,20 +1285,20 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   // extract the revision
   bool isValidRevision;
-  const TRI_voc_rid_t revision = extractRevision("if-match", "rev", isValidRevision);
+  TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
   if (! isValidRevision) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return false;
   }
 
   // extract or chose the update policy
-  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
-  const bool waitForSync = extractWaitForSync();
+  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
+  bool const waitForSync = extractWaitForSync();
 
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside
@@ -1321,13 +1323,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
   TRI_voc_rid_t rid = 0;
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
 
-  string const cidString = StringUtils::itoa(document->_info._planId);
+  string const&& cidString = StringUtils::itoa(document->_info._planId);
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
     generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
@@ -1403,7 +1405,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     TRI_FreeJson(shaper->_memoryZone, old);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    if (patchedJson == 0) {
+    if (patchedJson == nullptr) {
       trx.abort();
       generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
 
@@ -1457,7 +1459,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         return false;
       }
 
-      if (old != 0) {
+      if (old != nullptr) {
         TRI_FreeJson(shaper->_memoryZone, old);
       }
     }
@@ -1653,12 +1655,12 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // split the document reference
-  const string& collection = suffix[0];
-  const string& key = suffix[1];
+  string const& collection = suffix[0];
+  string const& key = suffix[1];
 
   // extract the revision
   bool isValidRevision;
-  const TRI_voc_rid_t revision = extractRevision("if-match", "rev", isValidRevision);
+  TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
   if (! isValidRevision) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1667,8 +1669,8 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   // extract or choose the update policy
-  const TRI_doc_update_policy_e policy = extractUpdatePolicy();
-  const bool waitForSync = extractWaitForSync();
+  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
+  bool const waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
     generateError(HttpResponse::BAD,
@@ -1694,7 +1696,7 @@ bool RestDocumentHandler::deleteDocument () {
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
@@ -1752,7 +1754,11 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -6,7 +6,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 #include "Wal/Marker.h"
-    
+
 struct TRI_transaction_collection_s;
 
 namespace triagens {
@@ -20,11 +20,11 @@ namespace triagens {
         HANDLED,
         SWAPPED
       };
- 
+
       DocumentOperation (Marker* marker,
                          struct TRI_transaction_collection_s* trxCollection,
                          TRI_voc_document_operation_e type,
-                         TRI_voc_rid_t rid) 
+                         TRI_voc_rid_t rid)
         : marker(marker),
           trxCollection(trxCollection),
           header(nullptr),
@@ -57,7 +57,7 @@ namespace triagens {
         copy->oldHeader = oldHeader;
         copy->status = status;
 
-        type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN; 
+        type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN;
         marker = nullptr;
         header = nullptr;
         status = StatusType::SWAPPED;
@@ -73,7 +73,7 @@ namespace triagens {
           oldHeader = *header;
         }
       }
-   
+
       void indexed () {
         TRI_ASSERT(status == StatusType::CREATED);
         status = StatusType::INDEXED;
@@ -89,8 +89,8 @@ namespace triagens {
           // move header to the end of the list
           document->_headersPtr->moveBack(header, &oldHeader);  // PROTECTED by trx in trxCollection
         }
- 
-        // free the local marker buffer 
+
+        // free the local marker buffer
         delete[] marker->steal();
         status = StatusType::HANDLED;
       }
@@ -111,7 +111,7 @@ namespace triagens {
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx in trxCollection
-          header->copy(oldHeader); 
+          header->copy(oldHeader);
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx in trxCollection
@@ -133,3 +133,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

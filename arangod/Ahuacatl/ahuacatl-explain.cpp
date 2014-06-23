@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,11 +42,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a node to a string describing its type
@@ -197,7 +194,7 @@ static TRI_aql_explain_t* CreateExplain (TRI_aql_context_t* context) {
   if (explain == NULL) {
     return NULL;
   }
-  
+
   explain->_context = context;
 
   explain->_count = 0;
@@ -294,7 +291,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       break;
     }
 
-    case TRI_AQL_NODE_SUBQUERY: 
+    case TRI_AQL_NODE_SUBQUERY:
     case TRI_AQL_NODE_SUBQUERY_CACHED: {
       TRI_json_t* row;
 
@@ -312,7 +309,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       }
       break;
     }
-    
+
     case TRI_AQL_NODE_REMOVE:
     case TRI_AQL_NODE_INSERT:
     case TRI_AQL_NODE_UPDATE:
@@ -334,7 +331,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
       TRI_json_t* row;
 
       row = GetRowProtoType(explain, node->_type);
-      
+
       if (row != NULL) {
         TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 0);
         TRI_aql_node_t* expressionNode = TRI_AQL_NODE_MEMBER(node, 1);
@@ -457,7 +454,7 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
 
         if (node->_members._length > 1) {
           TRI_aql_node_t* variableNode = TRI_AQL_NODE_MEMBER(node, 1);
-  
+
           TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                                row,
                                "resultVariable",
@@ -477,18 +474,9 @@ static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walke
   return NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explain a query
@@ -530,11 +518,11 @@ TRI_json_t* TRI_ExplainAql (TRI_aql_context_t* const context) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

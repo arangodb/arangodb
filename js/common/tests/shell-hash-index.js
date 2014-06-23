@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
+var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
@@ -249,8 +250,7 @@ function HashIndexSuite() {
       var d2 = collection.save({ a : 2, b : 1 })._id;
       collection.save({ a : 3, b : 1 })._id;
 
-      collection.unload();
-      internal.wait(4);
+      testHelper.waitUnload(collection);
 
       var s = collection.byExampleHash(idx.id, { a : 2 });
       assertEqual(1, s.count());

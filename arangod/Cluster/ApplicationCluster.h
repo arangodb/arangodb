@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann 
+/// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_CLUSTER_APPLICATION_CLUSTER_H
-#define TRIAGENS_CLUSTER_APPLICATION_CLUSTER_H 1
+#ifndef ARANGODB_CLUSTER_APPLICATION_CLUSTER_H
+#define ARANGODB_CLUSTER_APPLICATION_CLUSTER_H 1
 
 #include "Basics/Common.h"
 
@@ -48,12 +50,12 @@ namespace triagens {
 /// @brief sharding feature configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationCluster: public rest::ApplicationFeature { 
+    class ApplicationCluster: public rest::ApplicationFeature {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-      
+
       private:
         ApplicationCluster (ApplicationCluster const&);
         ApplicationCluster& operator= (ApplicationCluster const&);
@@ -197,7 +199,7 @@ namespace triagens {
 /// --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-         
+
          std::vector<std::string> _agencyEndpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,9 +208,9 @@ namespace triagens {
 /// @CMDOPT{\--cluster.agency-prefix @CA{prefix}}
 ///
 /// The global key prefix used in all requests to the agency. The specified
-/// prefix will become part of each agency key. Specifying the key prefix 
+/// prefix will become part of each agency key. Specifying the key prefix
 /// allows managing multiple ArangoDB clusters with the same agency
-/// server(s). 
+/// server(s).
 ///
 /// @CA{prefix} must consist of the letters `a-z`, `A-Z` and the digits `0-9`
 /// only. Specifying a prefix is mandatory.
@@ -219,7 +221,7 @@ namespace triagens {
 /// --cluster.prefix mycluster
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
-         
+
          std::string _agencyPrefix;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,8 +234,8 @@ namespace triagens {
 ///
 /// Specifying the id is very important because the server id is used for
 /// determining the server's role and tasks in the cluster.
-/// 
-/// @CA{id} must be a string consisting of the letters `a-z`, `A-Z` or the 
+///
+/// @CA{id} must be a string consisting of the letters `a-z`, `A-Z` or the
 /// digits `0-9` only.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -251,7 +253,7 @@ namespace triagens {
 /// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
 /// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 ///
-/// If no @CA{endpoint} is specified, the server will look up its internal 
+/// If no @CA{endpoint} is specified, the server will look up its internal
 /// endpoint address in the agency. If no endpoint can be found in the agency
 /// for the server's id, ArangoDB will refuse to start.
 ///
@@ -271,10 +273,10 @@ namespace triagens {
 ///
 /// The username used for authorization of cluster-internal requests.
 /// This username will be used to authenticate all requests and responses in
-/// cluster-internal communication, i.e. requests exchanged between coordinators 
+/// cluster-internal communication, i.e. requests exchanged between coordinators
 /// and individual database servers.
 ///
-/// This option is used for cluster-internal requests only. Regular requests to 
+/// This option is used for cluster-internal requests only. Regular requests to
 /// coordinators are authenticated normally using the data in the `_users`
 /// collection.
 ///
@@ -292,10 +294,10 @@ namespace triagens {
 ///
 /// The password used for authorization of cluster-internal requests.
 /// This password will be used to authenticate all requests and responses in
-/// cluster-internal communication, i.e. requests exchanged between coordinators 
+/// cluster-internal communication, i.e. requests exchanged between coordinators
 /// and individual database servers.
 ///
-/// This option is used for cluster-internal requests only. Regular requests to 
+/// This option is used for cluster-internal requests only. Regular requests to
 /// coordinators are authenticated normally using the data in the `_users`
 /// collection.
 ///
@@ -312,7 +314,7 @@ namespace triagens {
 /// @CMDOPT{\--cluster.data-path @CA{path}}
 ///
 /// The default directory where the databases for the cluster processes are
-/// stored. 
+/// stored.
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _dataPath;
@@ -323,7 +325,7 @@ namespace triagens {
 /// @CMDOPT{\--cluster.log-path @CA{path}}
 ///
 /// The default directory where the log files for the cluster processes are
-/// stored. 
+/// stored.
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _logPath;
@@ -420,5 +422,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_WAL_LOGFILE_MANAGER_H
-#define TRIAGENS_WAL_LOGFILE_MANAGER_H 1
+#ifndef ARANGODB_WAL_LOGFILE_MANAGER_H
+#define ARANGODB_WAL_LOGFILE_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -43,7 +45,7 @@ struct TRI_server_s;
 
 namespace triagens {
   namespace wal {
-    
+
     class AllocatorThread;
     class CollectorThread;
     class Slot;
@@ -57,13 +59,23 @@ namespace triagens {
 /// @brief state that is built up when scanning a WAL logfile during recovery
 ////////////////////////////////////////////////////////////////////////////////
 
-struct RecoverState {
-  std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
-  std::unordered_set<TRI_voc_tid_t>                 failedTransactions;
-  std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
-  std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
-  TRI_voc_tick_t                                    lastTick;
-};
+    struct RecoverState {
+      std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
+      std::unordered_set<TRI_voc_tid_t>                 failedTransactions;
+      std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
+      std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
+      TRI_voc_tick_t                                    lastTick;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               LogfileManagerState
+// -----------------------------------------------------------------------------
+
+    struct LogfileManagerState {
+      TRI_voc_tick_t  lastTick;
+      uint64_t        numEvents;
+      std::string     timeString;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class LogfileManager
@@ -216,6 +228,22 @@ struct RecoverState {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief allow or disallow writes to the WAL
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void allowWrites (bool value) {
+          _allowWrites = value;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are in the recovery mode
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isInRecovery () const {
+          return _inRecovery;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -224,7 +252,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregisters a transaction
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void unregisterTransaction (TRI_voc_tid_t,
                                     bool);
 
@@ -255,7 +283,7 @@ struct RecoverState {
         void unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not it is currently allowed to create an additional 
+/// @brief whether or not it is currently allowed to create an additional
 /// logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -270,7 +298,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal that a sync operation is required
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void signalSync ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +412,7 @@ struct RecoverState {
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-        Logfile* getWriteableLogfile (uint32_t,  
+        Logfile* getWriteableLogfile (uint32_t,
                                       Logfile::StatusType&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,24 +448,14 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark a file as being done with collection
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         void setCollectionDone (Logfile*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allow or disallow writes to the WAL
+/// @brief return the current state
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void allowWrites (bool value) {
-          _allowWrites = value;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are in the recovery mode
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isInRecovery () const {
-          return _inRecovery;
-        }
+        LogfileManagerState state ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -474,7 +492,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes all logfiles
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         void closeLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,13 +553,13 @@ struct RecoverState {
 /// @brief inspect all found WAL logfiles
 /// this searches for the max tick in the logfiles
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         int inspectLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         int openLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,7 +571,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an id for the next logfile
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         Logfile::IdType nextId ();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +667,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore logfile errors when opening logfiles
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         bool _ignoreLogfileErrors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -659,7 +677,7 @@ struct RecoverState {
         bool _allowWrites;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is true if there was a SHUTDOWN file with a last tick at 
+/// @brief this is true if there was a SHUTDOWN file with a last tick at
 /// server start
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -735,14 +753,14 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set of failed transactions
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         std::unordered_set<TRI_voc_tid_t> _failedTransactions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set of dropped collections
 /// this is populated during recovery and not used afterwards
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         std::unordered_set<TRI_voc_cid_t> _droppedCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -755,7 +773,7 @@ struct RecoverState {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief regex to match logfiles
 ////////////////////////////////////////////////////////////////////////////////
-  
+
         regex_t _filenameRegex;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,7 +789,11 @@ struct RecoverState {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

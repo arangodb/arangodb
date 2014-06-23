@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H
-#define TRIAGENS_UTILS_COLLECTION_NAME_RESOLVER_H 1
+#ifndef ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H
+#define ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "Basics/Common.h"
 
@@ -56,8 +58,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectionNameResolver (TRI_vocbase_t* vocbase) :
-          _vocbase(vocbase), 
-          _resolvedNames(), 
+          _vocbase(vocbase),
+          _resolvedNames(),
           _resolvedIds() {
         }
 
@@ -131,7 +133,7 @@ namespace triagens {
 
           // We have to look up the collection info:
           ClusterInfo* ci = ClusterInfo::instance();
-          shared_ptr<CollectionInfo> cinfo 
+          shared_ptr<CollectionInfo> cinfo
             = ci->getCollection(DatabaseID(_vocbase->_name),
                                 name);
           if (cinfo->empty()) {
@@ -161,7 +163,7 @@ namespace triagens {
           if (ServerState::instance()->isDBserver()) {
             TRI_READ_LOCK_COLLECTIONS_VOCBASE(_vocbase);
 
-            TRI_vocbase_col_t* found 
+            TRI_vocbase_col_t* found
                 = static_cast<TRI_vocbase_col_t*>(
                      TRI_LookupByKeyAssociativePointer
                                    (&_vocbase->_collectionsById, &cid));
@@ -196,7 +198,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a cluster-wide collection name for a cluster-wide 
+/// @brief look up a cluster-wide collection name for a cluster-wide
 /// collection id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -209,7 +211,7 @@ namespace triagens {
 
           while (tries++ < 2) {
             shared_ptr<CollectionInfo> ci
-              = ClusterInfo::instance()->getCollection(_vocbase->_name, 
+              = ClusterInfo::instance()->getCollection(_vocbase->_name,
                              triagens::basics::StringUtils::itoa(cid));
             std::string name = ci->name();
 
@@ -253,7 +255,11 @@ namespace triagens {
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -2,13 +2,8 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <BasicsC/common.h>
+#include "BasicsC/common.h"
 #include "./lib/BasicsC/voc-errors.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocError
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NO_ERROR, "no error");
@@ -244,7 +239,11 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

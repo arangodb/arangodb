@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +55,7 @@ void _newLine() {
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
     if (bufferInfo.dwCursorPosition.Y + 1 >= bufferInfo.dwSize.Y) {
       // when we are at the last visible line of the console
-      // the first line of console is deleted (the content of the console 
+      // the first line of console is deleted (the content of the console
       // is scrolled one line above
       SMALL_RECT srctScrollRect;
       srctScrollRect.Top = 0;
@@ -370,7 +372,7 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // configuration is parsed and valid if we got to this point
-  
+
   // check for --help
   set<string> help = options.needHelp("help");
 
@@ -396,9 +398,9 @@ void ArangoClient::parse (ProgramOptions& options,
   }
 
   // check if have a password
-  _hasPassword = options.has("server.password") 
+  _hasPassword = options.has("server.password")
               || _disableAuthentication
-              || options.has("jslint") 
+              || options.has("jslint")
               || options.has("javascript.unit-tests");
 
   // set colors
@@ -646,7 +648,7 @@ static std::string StripBinary (const char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::internalPrint (const string & str) {
-  
+
   if (_pager == stdout) {
 #ifdef _WIN32
 // at moment the formating is ignored in windows
@@ -732,11 +734,11 @@ void ArangoClient::printByeBye () {
 /// @brief logs output, without prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log (const char* format, 
+void ArangoClient::log (const char* format,
                         const char* str) {
   if (_log) {
     string sanitised = StripBinary(str);
-    
+
     if (! sanitised.empty()) {
       // do not print terminal escape sequences into log
       fprintf(_log, format, sanitised.c_str());
@@ -748,12 +750,12 @@ void ArangoClient::log (const char* format,
 /// @brief logs output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log (const char* format, 
-                        const char* prompt, 
+void ArangoClient::log (const char* format,
+                        const char* prompt,
                         const char* str) {
   if (_log) {
     string sanitised = StripBinary(str);
-    
+
     if (! sanitised.empty()) {
       // do not print terminal escape sequences into log
       fprintf(_log, format, prompt, sanitised.c_str());
@@ -958,5 +960,5 @@ uint32_t ArangoClient::sslProtocol () const {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

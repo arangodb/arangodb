@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,28 +42,14 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initial number of elements in the array
 ////////////////////////////////////////////////////////////////////////////////
 
 #define INITIAL_SIZE (11)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
@@ -129,18 +117,9 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array,
   TRI_Free(array->_memoryZone, oldTable);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -207,18 +186,9 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
   TRI_Free(zone, array);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -227,11 +197,11 @@ void TRI_FreeAssociativeArray (TRI_memory_zone_t* zone, TRI_associative_array_t*
 void* TRI_LookupByKeyAssociativeArray (TRI_associative_array_t* array, void* key) {
   uint64_t hash;
   uint64_t i;
-  
+
   if (array->_nrUsed == 0) {
     return NULL;
   }
-  
+
   // compute the hash
   hash = array->hashKey(array, key);
   i = hash % array->_nrAlloc;
@@ -558,10 +528,6 @@ size_t TRI_GetLengthAssociativeArray (const TRI_associative_array_t* const array
   return array->_nrUsed;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              ASSOCIATIVE POINTERS
 // -----------------------------------------------------------------------------
@@ -569,11 +535,6 @@ size_t TRI_GetLengthAssociativeArray (const TRI_associative_array_t* const array
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
@@ -614,7 +575,7 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
   oldTable = array->_table;
   oldAlloc = array->_nrAlloc;
 
-  array->_nrAlloc = targetSize; 
+  array->_nrAlloc = targetSize;
 #ifdef TRI_INTERNAL_STATS
   array->_nrResizes++;
 #endif
@@ -642,18 +603,9 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -714,18 +666,9 @@ void TRI_FreeAssociativePointer (TRI_memory_zone_t* zone, TRI_associative_pointe
   TRI_Free(zone, array);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a pointer
@@ -963,7 +906,7 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
   uint64_t hash;
   uint64_t i;
   void* old;
-  
+
   if (found != NULL) {
     *found = NULL;
   }
@@ -1017,12 +960,12 @@ int TRI_InsertKeyAssociativePointer2 (TRI_associative_pointer_t* array,
 #endif
     }
   }
-  
+
   // add a new element to the associative array
   array->_table[i] = element;
   array->_nrUsed++;
 
-  return TRI_ERROR_NO_ERROR; 
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1145,10 +1088,6 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const a
   return array->_nrUsed;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ASSOCIATIVE SYNCED
 // -----------------------------------------------------------------------------
@@ -1156,11 +1095,6 @@ size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const a
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new element
@@ -1196,7 +1130,7 @@ static void AddNewElementSynced (TRI_associative_synced_t* array, void* element)
 /// Note: this function must be called while the write-lock is held
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ResizeAssociativeSynced (TRI_associative_synced_t* array, 
+static void ResizeAssociativeSynced (TRI_associative_synced_t* array,
                                      uint32_t targetSize) {
   void** oldTable;
   uint32_t oldAlloc;
@@ -1231,18 +1165,9 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array,
   TRI_Free(array->_memoryZone, oldTable);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an array
@@ -1296,18 +1221,9 @@ void TRI_FreeAssociativeSynced (TRI_memory_zone_t* zone, TRI_associative_synced_
   TRI_Free(zone, array);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Collections
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -1372,7 +1288,7 @@ void const* TRI_LookupByElementAssociativeSynced (TRI_associative_synced_t* arra
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_InsertElementAssociativeSynced (TRI_associative_synced_t* array,
-                                          void* element, 
+                                          void* element,
                                           bool overwrite) {
   uint64_t hash;
   uint64_t i;
@@ -1438,14 +1354,14 @@ void* TRI_InsertKeyAssociativeSynced (TRI_associative_synced_t* array,
 
   // search the table
   TRI_WriteLockReadWriteLock(&array->_lock);
-  
+
   // check for out-of-memory
   if (array->_nrAlloc == array->_nrUsed && ! overwrite) {
     TRI_WriteUnlockReadWriteLock(&array->_lock);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     return NULL;
   }
-  
+
   i = hash % array->_nrAlloc;
 
   while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
@@ -1594,11 +1510,11 @@ size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const array) {
   return (size_t) result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

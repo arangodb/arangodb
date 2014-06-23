@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,14 +20,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRIAGENS_BASICS_C_SKIP_LIST_H
-#define TRIAGENS_BASICS_C_SKIP_LIST_H 1
+#ifndef ARANGODB_BASICS_C_SKIP__LIST_H
+#define ARANGODB_BASICS_C_SKIP__LIST_H 1
 
 #include "BasicsC/common.h"
 
@@ -76,7 +78,7 @@ TRI_cmp_type_e;
 /// implies a <= b in the preorder.
 /// The first argument is a data pointer which may contain arbitrary
 /// infrastructure needed for the comparison. See cmpdata field in the
-/// skiplist type. 
+/// skiplist type.
 /// The cmp_key_elm variant compares a key with an element using the preorder.
 /// The first argument is a data pointer as above, the second is a pointer
 /// to the key and the third is a pointer to an element.
@@ -180,12 +182,12 @@ uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_SkipListMemoryUsage (TRI_skiplist_t const*);
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up doc in the skiplist using the proper order
-/// comparison. 
+/// comparison.
 ///
-/// Only comparisons using the proper order are done using cmp_elm_elm. 
+/// Only comparisons using the proper order are done using cmp_elm_elm.
 /// Returns NULL if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -233,3 +235,11 @@ TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, void *key);
 
 #endif
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,10 +20,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Dr. Oreste Costa-Panaia
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +95,7 @@ static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
   if (element->_subObjects == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -243,7 +245,7 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
                              size_t elementSize) {
   TRI_index_search_value_t key;
   int res = FillIndexSearchValueByHashIndexElement(hashIndex, &key, element);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     // out of memory
     return res;
@@ -258,7 +260,7 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
   if (res == TRI_RESULT_KEY_EXISTS) {
     return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
-  
+
   hashIndex->_memoryUsed += KeyEntrySize(hashIndex) + elementSize;
 
   return res;
@@ -280,7 +282,7 @@ static int HashIndex_remove (TRI_hash_index_t* hashIndex,
 
   if (res == TRI_ERROR_NO_ERROR) {
     hashIndex->_memoryUsed -= KeyEntrySize(hashIndex) + elementSize;
-  } 
+  }
 
   return res;
 }
@@ -365,7 +367,7 @@ int MultiHashIndex_remove (TRI_hash_index_t* hashIndex,
 
   if (res == TRI_ERROR_NO_ERROR) {
     hashIndex->_memoryUsed -= elementSize;
-  } 
+  }
 
   return res;
 }
@@ -427,7 +429,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
 
 size_t MemoryHashIndex (TRI_index_t const* idx) {
   TRI_hash_index_t const* hashIndex = (TRI_hash_index_t const*) idx;
-  
+
   return hashIndex->_memoryUsed + TRI_MemoryUsageHashArray(&hashIndex->_hashArray);
 }
 
@@ -479,7 +481,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
 /// @brief inserts a a document to a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertHashIndex (TRI_index_t* idx, 
+static int InsertHashIndex (TRI_index_t* idx,
                             TRI_doc_mptr_t const* document,
                             bool isRollback) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
@@ -510,7 +512,7 @@ static int InsertHashIndex (TRI_index_t* idx,
 /// @brief removes a document from a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RemoveHashIndex (TRI_index_t* idx, 
+static int RemoveHashIndex (TRI_index_t* idx,
                             TRI_doc_mptr_t const* document,
                             bool isRollback) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
@@ -571,8 +573,8 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
   TRI_index_t* idx = &hashIndex->base;
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique);
- 
-  idx->memory   = MemoryHashIndex; 
+
+  idx->memory   = MemoryHashIndex;
   idx->json     = JsonHashIndex;
   idx->insert   = InsertHashIndex;
   idx->remove   = RemoveHashIndex;
@@ -664,5 +666,5 @@ TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
