@@ -471,7 +471,7 @@ static bool StringifyWalMarkerDocument (TRI_replication_dump_t* dump,
   shaped._data.data   = (char*) m + m->_offsetJson;
 
   triagens::basics::LegendReader lr((char const*) m + m->_offsetLegend);
-  if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, false)) {
+  if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
     return false;
   }
   
@@ -525,7 +525,7 @@ static bool StringifyWalMarkerEdge (TRI_replication_dump_t* dump,
   shaped._data.data   = (char*) m + m->_offsetJson;
 
   triagens::basics::LegendReader lr((char const*) m + m->_offsetLegend);
-  if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, false)) {
+  if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
     return false;
   }
   
@@ -937,13 +937,10 @@ static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
   // finally check if the marker is for a collection that we want to ignore
   TRI_voc_cid_t cid = GetCollectionFromWalMarker(marker);
   if (cid != 0) {
-    auto it = dump->_collectionNames.find(cid);
-      
-    if (it != dump->_collectionNames.end()) {
-      char const* name = NameFromCid(dump, cid);
-      if (TRI_ExcludeCollectionReplication(name)) {
-        return false;
-      }
+    char const* name = NameFromCid(dump, cid);
+
+    if (name != nullptr && TRI_ExcludeCollectionReplication(name)) {
+      return false;
     }
   }
 
