@@ -1664,7 +1664,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-
+  require("internal").print("precreate");
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
@@ -1790,6 +1790,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
 
 var bindVertexCollections = function(self, vertexCollections) {
   _.each(vertexCollections, function(key) {
+    require("internal").print("each resolved");
     var obj = db._collection(key);
     var result;
     var wrap = wrapCollection(obj);
@@ -1883,7 +1884,17 @@ var updateBindCollections = function(graph) {
       bindVertexCollections(graph, edgeDef.to);
     }
   );
+  require("internal").print("preVertex");
   bindVertexCollections(graph, graph.__orphanCollections);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2085,6 +2096,13 @@ var updateBindCollections = function(graph) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+
   if (!orphanCollections) {
     orphanCollections = [];
   }
@@ -2097,6 +2115,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
+  require("internal").print("preBind");
   updateBindCollections(self);
 
 };
@@ -3466,8 +3485,6 @@ Graph.prototype._diameter = function(options) {
 };
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__extendEdgeDefinitions
 /// `graph._extendEdgeDefinitions(edgeDefinition)`
@@ -3499,6 +3516,7 @@ Graph.prototype._diameter = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
   var err;
   //check if edgeCollection not already used
@@ -3565,7 +3583,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3660,7 +3677,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
-
+  edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
   //check, if in graphs edge definition
