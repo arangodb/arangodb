@@ -2230,6 +2230,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 /// checksumming will make the calculation slower, but is more accurate.
 ///
 /// **Note**: this method is not available in a cluster.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

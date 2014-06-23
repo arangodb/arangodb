@@ -5779,6 +5779,7 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-drop
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6071,6 +6072,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// *Examples*
 ///
 /// @verbinclude shell_collection-figures
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6438,6 +6440,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// Change a property
 ///
 /// @verbinclude shell_collection-properties-change
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6755,6 +6758,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-rename
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6965,7 +6969,8 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// datafile in a following compaction run and perform earlier garbage
 /// collection.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7473,6 +7478,7 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @verbinclude shell_collection-unload
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -9017,7 +9023,7 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
 /// Drops the database specified by *name*. The database specified by
 /// *name* must exist.
 ///
-/// Note that dropping databases is only possible from within the *_system*
+/// **Note**: Dropping databases is only possible from within the *_system*
 /// database. The *_system* database itself cannot be dropped.
 ///
 /// Databases are dropped asynchronously, and will be physically removed if
