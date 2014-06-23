@@ -108,9 +108,10 @@ Model = function (attributes) {
 Model.fromClient = function (attributes) {
   'use strict';
 
-  var instance = new this();
+  var instance = new this(attributes);
   instance.attributes = whitelistProperties(attributes, this.attributes, false);
   instance.attributes = fillInDefaults(instance.attributes, this.attributes);
+  instance.whitelistedAttributes = whitelistProperties(instance.attributes, this.attributes);
   return instance;
 };
 
