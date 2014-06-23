@@ -5778,7 +5778,13 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-drop
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
+/// ~ db._create("examples");
+///   col = db.examples;
+///   col.drop();
+///   col;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -6753,7 +6759,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// If renaming fails for any reason, an error is thrown.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
 ///
 /// @EXAMPLES
 ///
