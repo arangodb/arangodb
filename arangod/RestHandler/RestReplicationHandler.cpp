@@ -57,7 +57,7 @@ using namespace triagens::arango;
 // --SECTION--                                       initialise static variables
 // -----------------------------------------------------------------------------
 
-const uint64_t RestReplicationHandler::defaultChunkSize = 16 * 1024;
+const uint64_t RestReplicationHandler::defaultChunkSize = 128 * 1024;
 
 const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
@@ -1305,31 +1305,33 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFollow () {
-  // determine start tick
+  // determine start and end tick
+  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd   = (TRI_voc_tick_t) UINT64_MAX;
+  TRI_voc_tick_t tickEnd   = state.lastDataTick;
+
   bool found;
   char const* value;
 
   value = _request->value("from", found);
   if (found) {
-    tickStart = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
   // determine end tick for dump
   value = _request->value("to", found);
   if (found) {
-    tickEnd = (TRI_voc_tick_t) StringUtils::uint64(value);
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  if (tickStart > tickEnd || tickEnd == 0) {
+  if (found && (tickStart > tickEnd || tickEnd == 0)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
   }
 
-  const uint64_t chunkSize = determineChunkSize();
+  uint64_t const chunkSize = determineChunkSize();
 
   // initialise the dump container
   TRI_replication_dump_t dump;
@@ -1340,13 +1342,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 
   int res = TRI_DumpLogReplication(_vocbase, &dump, tickStart, tickEnd, chunkSize);
 
-  triagens::wal::LogfileManagerState state = triagens::wal::LogfileManager::instance()->state();
-
   if (res == TRI_ERROR_NO_ERROR) {
-    const bool checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastTick);
+    bool const checkMore = (dump._lastFoundTick > 0 && dump._lastFoundTick != state.lastDataTick);
 
     // generate the result
-    const size_t length = TRI_LengthStringBuffer(dump._buffer);
+    size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
       _response = createResponse(HttpResponse::NO_CONTENT);

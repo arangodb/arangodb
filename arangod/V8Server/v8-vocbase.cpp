@@ -267,16 +267,11 @@ static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 
   if (TRI_IsSystemNameCollection(c->_name)) {
     // a few system collections have special behavior
-    if (TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION) ||
-        TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
+    if (TRI_EqualString(c->_name, TRI_COL_NAME_USERS) ||
         TRI_IsPrefixString(c->_name, TRI_COL_NAME_STATISTICS)) {
       // these collections cannot be dropped or renamed
       c->_canDrop   = false;
       c->_canRename = false;
-
-      // the replication collection cannot be unloaded manually)
-      // (this would make the server hang)
-      c->_canUnload = ! TRI_EqualString(c->_name, TRI_COL_NAME_REPLICATION);
     }
   }
 

@@ -197,6 +197,18 @@ void TRI_FreeTransaction (TRI_transaction_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction id for usage in a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_tid_t TRI_MarkerIdTransaction (TRI_transaction_t const* trx) {
+  if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0) {
+    return 0;
+  }
+
+  return trx->_id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the number of writes done for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
