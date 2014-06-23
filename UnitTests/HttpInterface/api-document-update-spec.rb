@@ -223,7 +223,7 @@ describe ArangoDB do
         doc = ArangoDB.put(cmd, :body => body)
 
         # wait for dbservers to pick up the change
-        sleep(2)
+        sleep 2
 
         # update document 
         cmd = "/_api/document/#{did}"

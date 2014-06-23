@@ -668,6 +668,12 @@ void RestReplicationHandler::handleCommandLoggerState () {
   char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
+ 
+  // clients
+  TRI_json_t* clients = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  if (clients != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
+  }
 
   generateResult(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
