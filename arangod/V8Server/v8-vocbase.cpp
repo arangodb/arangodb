@@ -6441,11 +6441,19 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Read all properties
 ///
-/// @verbinclude shell_collection-properties
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperties}
+/// ~ db._create("examples");
+///   db.examples.properties();
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Change a property
 ///
-/// @verbinclude shell_collection-properties-change
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
+/// ~ db._create("examples");
+///   db.examples.properties({ waitForSync : false });
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
