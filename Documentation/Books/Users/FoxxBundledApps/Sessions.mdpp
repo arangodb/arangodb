@@ -254,7 +254,7 @@ If the method is passed a *secret* string, a second blank expired cookie is adde
 * *cookieName*: name of the cookie to parse.
 * *secret* (optional): indicates the signature should be cleared also.
 
-@EXAMPLE
+@EXAMPLES
 
 ```js
 controller.get('/goodbye', function(request, response) {
