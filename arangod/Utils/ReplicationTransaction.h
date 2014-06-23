@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for self-contained, single collection read transactions
+/// @brief replication transaction
 ///
 /// @file
 ///
@@ -27,14 +27,14 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
-#define ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
+#ifndef ARANGODB_UTILS_REPLICATION_TRANSACTION_H
+#define ARANGODB_UTILS_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
-
+#include "Utils/RestTransactionContext.h"
+#include "Utils/Transaction.h"
+#include "VocBase/server.h"
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_s;
@@ -42,11 +42,10 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction<T> {
+    class ReplicationTransaction : public Transaction<RestTransactionContext> {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                         class SingleCollectionReadOnlyTransaction
+// --SECTION--                                      class ReplicationTransaction
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -56,31 +55,45 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
-///
-/// A self-contained read transaction is a transaction on a single collection
-/// that only allows read operations. Write operations are not supported.
+/// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
-                                             TRI_voc_cid_t cid) 
-          : SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_READ) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief same as above, but create using collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
-                                             std::string const& name) 
-          : SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_READ) {
+        ReplicationTransaction (struct TRI_vocbase_s* vocbase)
+          : Transaction<RestTransactionContext>(vocbase) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SingleCollectionReadOnlyTransaction () {
+        ~ReplicationTransaction () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a collection by id
+/// this will automatically add the collection to the transaction 
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_transaction_collection_t* trxCollection (TRI_voc_cid_t cid) {
+          TRI_ASSERT(cid > 0);
+
+          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+
+          if (trxCollection == nullptr) {
+            int res = TRI_AddCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true);
+
+            if (res == TRI_ERROR_NO_ERROR) {
+              res = TRI_LockCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0);
+            }
+              
+            if (res != TRI_ERROR_NO_ERROR) {
+              return nullptr;
+            }
+          
+            trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+          }
+ 
+          return nullptr;
         }
 
     };

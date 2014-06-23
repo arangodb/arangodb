@@ -369,8 +369,7 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (TRI_document_collection_t* document,
-                   TRI_index_t* idx,
-                   TRI_server_id_t generatingServer) {
+                   TRI_index_t* idx) {
   // convert into JSON
   TRI_json_t* json = idx->json(idx);
 

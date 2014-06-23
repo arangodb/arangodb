@@ -1214,13 +1214,13 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
   TRI_voc_tick_t lastFoundTick = 0;
   bool hasMore    = true;
   bool bufferFull = false;
-  bool first      = true;
 
   if (outputAsArray) {
     TRI_AppendStringStringBuffer(dump->_buffer, "[\n");
   }
 
   try {
+     bool first = true;
 
     // iterate over the datafiles found
     for (size_t i = 0; i < n; ++i) {

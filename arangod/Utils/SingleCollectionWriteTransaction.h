@@ -69,9 +69,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
-                                          TRI_voc_cid_t cid) :
-          SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
-          _numWrites(0) {
+                                          TRI_voc_cid_t cid) 
+          : SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
+            _numWrites(0) {
 
           if (N == 1) {
             this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
@@ -83,9 +83,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
-                                          std::string const& name) :
-          SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
-          _numWrites(0) {
+                                          std::string const& name) 
+          : SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
+            _numWrites(0) {
 
           if (N == 1) {
             this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);

@@ -37,6 +37,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/CollectionGuard.h"
+#include "Utils/Exception.h"
+#include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -47,6 +50,25 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::httpclient;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+static inline void LocalGetline (char const*& p, 
+                                 string& line, 
+                                 char delim) {
+  char const* q = p;
+  while (*p != 0 && *p != delim) {
+    p++;
+  }
+
+  line.assign(q, p - q);
+
+  if (*p == delim) {
+    p++;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -79,16 +101,12 @@ using namespace triagens::httpclient;
 ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
                                     TRI_replication_applier_configuration_t const* configuration,
                                     TRI_voc_tick_t initialTick,
-                                    bool useTick) :
-  Syncer(vocbase, configuration),
-  _applier(vocbase->_replicationApplier),
-  _transactionState(),
-  _chunkSize(),
-  _initialTick(initialTick),
-  _useTick(useTick) {
-
-  _transactionState._trx         = 0;
-  _transactionState._externalTid = 0;
+                                    bool useTick) 
+  : Syncer(vocbase, configuration),
+    _applier(vocbase->_replicationApplier),
+    _chunkSize(),
+    _initialTick(initialTick),
+    _useTick(useTick) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -105,7 +123,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer () {
-  abortOngoingTransaction();
+  abortOngoingTransactions();
 }
 
 // -----------------------------------------------------------------------------
@@ -117,7 +135,9 @@ ContinuousSyncer::~ContinuousSyncer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::run () {
-  if (_client == 0 || _connection == 0 || _endpoint == 0) {
+  if (_client == nullptr || 
+      _connection == nullptr || 
+      _endpoint == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -268,59 +288,17 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort any ongoing transaction
+/// @brief abort any ongoing transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-void ContinuousSyncer::abortOngoingTransaction () {
-  if (_transactionState._trx != 0) {
-    LOG_TRACE("aborting replication transaction %llu",
-              (unsigned long long) _transactionState._externalTid);
+void ContinuousSyncer::abortOngoingTransactions () {
+  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
+    auto trx = (*it).second;
 
-    TRI_FreeTransaction(_transactionState._trx);
-    _transactionState._trx = 0;
-    _transactionState._externalTid = 0;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a transaction for a single operation
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_transaction_t* ContinuousSyncer::createSingleOperationTransaction (TRI_voc_cid_t cid,
-                                                                       int* result) {
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
-                                                 _masterInfo._serverId,
-                                                 false,
-                                                 0.0,
-                                                 false);
-
-  if (trx == 0) {
-    *result = TRI_ERROR_OUT_OF_MEMORY;
-
-    return 0;
+    delete trx;
   }
 
-  int res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeTransaction(trx);
-    *result = res;
-
-    return 0;
-  }
-
-  res = TRI_BeginTransaction(trx, getHint(1), TRI_TRANSACTION_TOP_LEVEL);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeTransaction(trx);
-    *result = res;
-
-    return 0;
-  }
-
-  *result = TRI_ERROR_NO_ERROR;
-
-  return trx;
+  _transactions.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,25 +307,9 @@ TRI_transaction_t* ContinuousSyncer::createSingleOperationTransaction (TRI_voc_c
 
 int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
                                        TRI_json_t const* json,
-                                       bool& updateTick,
                                        string& errorMsg) {
-  updateTick = false;
-
-  // extract "cname"
-  const string cname = JsonHelper::getStringValue(json, "cname", "");
-  TRI_voc_cid_t cid = 0;
-
-  if (! cname.empty()) {
-    TRI_vocbase_col_t const* col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-
-    if (col != 0) {
-      cid = col->_cid;
-    }
-  }
-
-  if (cid == 0) {
-    cid = getCid(json);
-  }
+  // extract "cid"
+  TRI_voc_cid_t cid = getCid(json);
 
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -364,7 +326,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   // extract "rev"
   TRI_voc_rid_t rid;
 
-  const string ridString = JsonHelper::getStringValue(json, "rev", "");
+  string const ridString = JsonHelper::getStringValue(json, "rev", "");
   if (ridString.empty()) {
     rid = 0;
   }
@@ -376,7 +338,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   TRI_json_t const* doc = JsonHelper::getArrayElement(json, "data");
 
   // extract "tid"
-  const string id = JsonHelper::getStringValue(json, "tid", "");
+  string const id = JsonHelper::getStringValue(json, "tid", "");
   TRI_voc_tid_t tid;
 
   if (id.empty()) {
@@ -385,29 +347,22 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
   else {
     // operation is part of a transaction
-    tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+    tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
   }
 
-  if (tid != _transactionState._externalTid) {
-    // unexpected transaction id
-    abortOngoingTransaction();
+  if (tid > 0) {
+    auto it = _transactions.find(tid);
 
-    if (tid > 0) {
-      // transactional operation but no transaction for it
+    if (it == _transactions.end()) {
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    // continue and apply standalone operations
-  }
+    auto trx = (*it).second;
+    TRI_ASSERT(trx != nullptr);
 
+    TRI_transaction_collection_t* trxCollection = trx->trxCollection(cid);
 
-  if (_transactionState._trx != 0) {
-    // transactional operation
-    TRI_ASSERT(tid > 0);
-
-    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_transactionState._trx, cid, TRI_TRANSACTION_WRITE);
-
-    if (trxCollection == 0) {
+    if (trxCollection == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
@@ -423,23 +378,20 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
 
   else {
     // standalone operation
-    TRI_ASSERT(tid == 0);
-
     // update the apply tick for all standalone operations
-    updateTick = true;
+    SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, cid);
 
-    int res;
-    TRI_transaction_t* trx = createSingleOperationTransaction(cid, &res);
+    int res = trx.begin();
 
-    if (trx == 0) {
+    if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "unable to create replication transaction: " + string(TRI_errno_string(res));
 
       return res;
     }
 
-    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
+    TRI_transaction_collection_t* trxCollection = trx.trxCollection();
 
-    if (trxCollection == 0) {
+    if (trxCollection == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
@@ -450,14 +402,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
                                     doc,
                                     errorMsg);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
-    }
-    else {
-      TRI_AbortTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
-    }
-
-    TRI_FreeTransaction(trx);
+    res = trx.finish(res);
 
     return res;
   }
@@ -470,97 +415,67 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
 int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   // {"type":2200,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
 
-  abortOngoingTransaction();
-
-  const string id = JsonHelper::getStringValue(json, "tid", "");
+  string const id = JsonHelper::getStringValue(json, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // transaction id
-  TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+  TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
+  auto it = _transactions.find(tid);
+  if (it != _transactions.end()) {
+    auto trx = (*it).second;
+    // abort ongoing trx
+    delete trx; 
 
-  if (! JsonHelper::isList(collections)) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    _transactions.erase(tid);
   }
 
   LOG_TRACE("starting replication transaction %llu", (unsigned long long) tid);
-  TRI_transaction_t* trx = TRI_CreateTransaction(_vocbase,
-                                                 _masterInfo._serverId,
-                                                 false,
-                                                 0.0,
-                                                 false);
+ 
+  auto trx = new ReplicationTransaction(_vocbase);
 
-  if (trx == 0) {
+  if (trx == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res;
-  uint64_t totalOperations = 0;
-
-  const size_t n = collections->_value._objects._length;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
-
-    if (! JsonHelper::isArray(collection)) {
-      TRI_FreeTransaction(trx);
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-
-    uint64_t numOperations = JsonHelper::getNumericValue<uint64_t>(collection, "operations", 0);
-
-    if (numOperations > 0) {
-      // extract collection name
-      const string cname = JsonHelper::getStringValue(collection, "name", "");
-      TRI_voc_cid_t cid = 0;
-
-      if (! cname.empty()) {
-        TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-
-        if (col != 0) {
-          cid = col->_cid;
-        }
-      }
-
-      if (cid == 0) {
-        cid = getCid(collection);
-      }
-
-      if (cid == 0) {
-        TRI_FreeTransaction(trx);
-
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-      }
-
-      res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_FreeTransaction(trx);
-
-        return res;
-      }
-
-      totalOperations += numOperations;
-    }
-  }
-
-  res = TRI_BeginTransaction(trx, getHint((const size_t) totalOperations), TRI_TRANSACTION_TOP_LEVEL);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeTransaction(trx);
-
-    return res;
-  }
-
-  _transactionState._trx = trx;
-  _transactionState._externalTid = tid;
-
+  _transactions.insert(it, std::make_pair(tid, trx));
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts a transaction, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
+  // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
+  string const id = JsonHelper::getStringValue(json, "tid", "");
+
+  if (id.empty()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  // transaction id
+  TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
+
+  auto it = _transactions.find(tid);
+  if (it == _transactions.end()) {
+    // invalid state, no transaction was started.
+    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+  }
+
+  LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
+
+  auto trx = (*it).second;
+
+  int res = trx->abort();
+  delete trx;
+
+  _transactions.erase(tid);
+
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -569,34 +484,29 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
 
 int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-  const string id = JsonHelper::getStringValue(json, "tid", "");
+  string const id = JsonHelper::getStringValue(json, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // transaction id
-  const TRI_voc_tid_t tid = (TRI_voc_tid_t) StringUtils::uint64(id.c_str(), id.size());
+  TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  if (_transactionState._trx == 0) {
+  auto it = _transactions.find(tid);
+  if (it == _transactions.end()) {
     // invalid state, no transaction was started.
-    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
-  }
-
-  if (_transactionState._externalTid != tid) {
-    // unexpected transaction id.
-    abortOngoingTransaction();
-
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
 
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
 
-  int res = TRI_CommitTransaction(_transactionState._trx, TRI_TRANSACTION_TOP_LEVEL);
+  auto trx = (*it).second;
 
-  TRI_FreeTransaction(_transactionState._trx);
-  _transactionState._trx = 0;
-  _transactionState._externalTid = 0;
+  int res = trx->commit();
+  delete trx;
+
+  _transactions.erase(tid);
 
   return res;
 }
@@ -607,33 +517,23 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 
 int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
-  const string name = JsonHelper::getStringValue(collectionJson, "name", "");
+  string const name = JsonHelper::getStringValue(collectionJson, "name", "");
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  const string cname = JsonHelper::getStringValue(json, "cname", "");
-  TRI_vocbase_col_t* col = 0;
+  TRI_voc_cid_t cid = getCid(json);
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (! cname.empty()) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-  }
-
-  if (col == 0) {
-    TRI_voc_cid_t cid = getCid(json);
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-  }
-
-  if (col == 0) {
+  if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
   return TRI_RenameCollectionVocBase(_vocbase,
                                      col,
                                      name.c_str(),
-                                     true,
-                                     _masterInfo._serverId);
+                                     true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,52 +542,36 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 
 int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
-  const string name = JsonHelper::getStringValue(collectionJson, "name", "");
-
-  if (name.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
-  const string cname = JsonHelper::getStringValue(json, "cname", "");
 
   bool waitForSync = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
   bool doCompact = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
   int maximalSize = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
 
-  TRI_vocbase_col_t* col = 0;
+  TRI_voc_cid_t cid = getCid(json);
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-  if (! cname.empty()) {
-    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname.c_str());
-  }
-
-  if (col == 0) {
-    TRI_voc_cid_t cid = getCid(json);
-    col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-  }
-
-  if (col == 0) {
+  if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  TRI_vocbase_col_status_e status;
-  int res = TRI_UseCollectionVocBase(_vocbase, col, status);
+  try {
+    triagens::arango::CollectionGuard guard(_vocbase, cid);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    TRI_col_info_t parameters;
+
+    // only need to set these three properties as the others cannot be updated on the fly
+    parameters._doCompact   = doCompact;
+    parameters._maximalSize = maximalSize;
+    parameters._waitForSync = waitForSync;
+
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters);
   }
-
-  TRI_col_info_t parameters;
-
-  // only need to set these three properties as the others cannot be updated on the fly
-  parameters._doCompact   = doCompact;
-  parameters._maximalSize = maximalSize;
-  parameters._waitForSync = waitForSync;
-
-  res = TRI_UpdateCollectionInfo(_vocbase, col->_collection, &parameters);
-
-  TRI_ReleaseCollectionVocBase(_vocbase, col);
-
-  return res;
+  catch (triagens::arango::Exception const& ex) {
+    return ex.code();
+  }
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -700,7 +584,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 
   static const string invalidMsg = "received invalid JSON data";
 
-  updateTick = false;
+  updateTick = true;
 
   // check data
   if (! JsonHelper::isArray(json)) {
@@ -713,10 +597,10 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
 
   // fetch "tick"
-  const string tick = JsonHelper::getStringValue(json, "tick", "");
+  string const tick = JsonHelper::getStringValue(json, "tick", "");
 
   if (! tick.empty()) {
-    TRI_voc_tick_t newTick = (TRI_voc_tick_t) StringUtils::uint64(tick.c_str(), tick.size());
+    TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(tick.c_str(), tick.size()));
 
     WRITE_LOCK_STATUS(_applier);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -734,70 +618,45 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   TRI_replication_operation_e type = (TRI_replication_operation_e) typeValue;
 
   if (type == MARKER_DOCUMENT || type == MARKER_EDGE || type == MARKER_REMOVE) {
-    return processDocument(type, json, updateTick, errorMsg);
+    return processDocument(type, json, errorMsg);
   }
 
   else if (type == TRI_TRANSACTION_START) {
-    updateTick = false;
-
     return startTransaction(json);
   }
 
-  else if (type == TRI_TRANSACTION_COMMIT) {
-    updateTick = true;
+  else if (type == TRI_TRANSACTION_ABORT) {
+    return abortTransaction(json);
+  }
 
+  else if (type == TRI_TRANSACTION_COMMIT) {
     return commitTransaction(json);
   }
 
   else if (type == COLLECTION_CREATE) {
     TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
-    updateTick = true;
 
-    return createCollection(collectionJson, 0);
+    return createCollection(collectionJson, nullptr);
   }
 
   else if (type == COLLECTION_DROP) {
-    updateTick = true;
-
     return dropCollection(json, false);
   }
 
   else if (type == COLLECTION_RENAME) {
-    updateTick = true;
-
     return renameCollection(json);
   }
 
   else if (type == COLLECTION_CHANGE) {
-    updateTick = true;
-
     return changeCollection(json);
   }
 
   else if (type == INDEX_CREATE) {
-    updateTick = true;
-
     return createIndex(json);
   }
 
   else if (type == INDEX_DROP) {
-    updateTick = true;
-
     return dropIndex(json);
-  }
-
-  else if (type == REPLICATION_STOP) {
-    abortOngoingTransaction();
-    updateTick = true;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  else if (type == REPLICATION_START) {
-    abortOngoingTransaction();
-    updateTick = true;
-
-    return TRI_ERROR_NO_ERROR;
   }
 
   else {
@@ -812,29 +671,19 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
 /// @brief apply the data from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void mylocalgetline(char const*& p, string& line, char delim) {
-  char const* q = p;
-  while (*p != 0 && *p != delim) {
-    p++;
-  }
-  line.assign(q, p-q);
-  if (*p == delim) {
-    p++;
-  }
-}
-
 int ContinuousSyncer::applyLog (SimpleHttpResult* response,
                                 string& errorMsg,
                                 uint64_t& processedMarkers,
                                 uint64_t& ignoreCount) {
 
   StringBuffer& data = response->getBody();
+
   char const* p = data.c_str();
 
   while (true) {
     string line;
 
-    mylocalgetline(p, line, '\n');
+    LocalGetline(p, line, '\n');
 
     if (line.size() < 2) {
       // we are done
@@ -848,14 +697,11 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
     bool updateTick;
     int res = applyLogMarker(json, updateTick, errorMsg);
 
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // apply ok
-    }
-    else {
+    if (res != TRI_ERROR_NO_ERROR) {
       // apply error
 
       if (errorMsg.empty()) {
@@ -1023,36 +869,33 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                                        uint64_t& ignoreCount,
                                        bool& worked,
                                        bool& masterActive) {
-  const string baseUrl = BaseUrl +
-                         "/logger-follow?chunkSize=" + _chunkSize;
+  string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
 
   map<string, string> headers;
   worked = false;
 
-  const string tickString = StringUtils::itoa(fromTick);
-  const string url = baseUrl +
-                     "&from=" + tickString +
-                     "&serverId=" + _localServerIdString;
+  string const tickString = StringUtils::itoa(fromTick);
+  string const url = baseUrl + "&from=" + tickString + "&serverId=" + _localServerIdString;
 
   LOG_TRACE("running continuous replication request with tick %llu, url %s",
             (unsigned long long) fromTick,
             url.c_str());
 
   // send request
-  const string progress = "fetching master log from offset " + tickString;
+  string const progress = "fetching master log from offset " + tickString;
   setProgress(progress.c_str());
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
-                                                0,
+                                                nullptr,
                                                 0,
                                                 headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
