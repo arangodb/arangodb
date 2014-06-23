@@ -6,7 +6,7 @@ This chapter describes various functions on a graph.
 
 !SUBSECTION Get vertex *from* of an edge
 
-@startDocuBlock JSF_general_graph_getFromVertex
+@startDocuBlock JSF_general_graph_fromVertex
 
 !SUBSECTION Get vertex *to* of an edge
 
