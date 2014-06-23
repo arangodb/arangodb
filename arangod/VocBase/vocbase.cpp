@@ -1839,8 +1839,8 @@ char* TRI_GetCollectionNameByIdVocBase (TRI_vocbase_t* vocbase,
 
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
 
-  if (found == NULL) {
-    name = NULL;
+  if (found == nullptr) {
+    name = nullptr;
   }
   else {
     name = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, found->_name);
