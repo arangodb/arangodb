@@ -1547,15 +1547,15 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// The creation of a graph requires the name of the graph and a definition of its edges.
 ///
 /// For every type of edge definition a convenience method exists that can be used to create a graph.
-/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
-/// These collections are refered to as orphan collections within this chapter.
+/// Optionally a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are referred to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
 /// *Parameter*
 ///
 /// * *graphName*: Unique identifier of the graph
 /// * *edgeDefinitions* (optional): List of relation definition objects
-/// * *orphanCollections* (optional): List of additonal vertex collection names
+/// * *orphanCollections* (optional): List of additional vertex collection names
 ///
 /// *Examples*
 ///
@@ -1664,7 +1664,6 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-  require("internal").print("precreate");
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
@@ -1883,7 +1882,6 @@ var updateBindCollections = function(graph) {
       bindVertexCollections(graph, edgeDef.to);
     }
   );
-  require("internal").print("preVertex");
   bindVertexCollections(graph, graph.__orphanCollections);
 };
 
@@ -2010,7 +2008,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
 /// the edge will not be stored.
 ///
 ///
@@ -2114,7 +2112,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
-  require("internal").print("preBind");
   updateBindCollections(self);
 
 };
@@ -2228,7 +2225,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
-/// This will automatically drop al collections contained in the graph as
+/// This will automatically drop all collections contained in the graph as
 /// long as they are not used within other graphs.
 /// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
@@ -3125,7 +3122,7 @@ Graph.prototype._eccentricity = function(options) {
 /// g._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all germanCities regarding only
+/// A route planner example, the absolute closeness of all german Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
