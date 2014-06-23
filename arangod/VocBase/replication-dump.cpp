@@ -1046,10 +1046,12 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
                             TRI_voc_tick_t dataMin,
                             TRI_voc_tick_t dataMax,
                             uint64_t chunkSize) {
-  TRI_vocbase_col_t* col;
-  TRI_barrier_t* b;
-  int res;
+  //TRI_vocbase_col_t* col;
+  //TRI_barrier_t* b;
+  //int res;
 
+  return TRI_ERROR_NOT_IMPLEMENTED;
+  /*
   TRI_vocbase_col_status_e status;
   col = TRI_UseCollectionByNameVocBase(vocbase, TRI_COL_NAME_REPLICATION, status);
 
@@ -1080,6 +1082,7 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   TRI_ReleaseCollectionVocBase(vocbase, col);
 
   return res;
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
