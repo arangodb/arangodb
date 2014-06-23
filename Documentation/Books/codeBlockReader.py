@@ -132,8 +132,7 @@ def fetch_comments(dirpath):
                 fh.write("\n<!-- filename: %s -->\n" % filename)
                 for _com in comment:
                     _text = re.sub(r"//(/)+\s*\n", "<br />", _com)
-                    _text = re.sub(r"///+(\s+) + -", "  -", _text)
-                    _text = re.sub(r"///+(\s+) + \*", "  *", _text)
+                    _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
                     _text = re.sub(r"///\s*", "", _text)
                     _text = _text.strip("\n")
                     if _text:
