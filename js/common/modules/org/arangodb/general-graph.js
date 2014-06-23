@@ -2995,7 +2995,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
-/// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'city',
+/// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3026,7 +3026,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// *of the vertices defined by the examples.*
 ///
-/// Similar to [_absoluteEccentricity](#_absoluteEccentricity) but returns a normalized result.
+/// Similar to [_absoluteEccentricity](#_absoluteeccentricity) but returns a normalized result.
 ///
 /// @EXAMPLES
 ///
@@ -3073,7 +3073,7 @@ Graph.prototype._eccentricity = function(options) {
 /// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// example as parameter for *vertexExample*.
 ///
 /// *Parameter*
 ///
@@ -3152,7 +3152,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// *of graphs vertices.*
 ///
-/// Similar to [_absoluteCloseness](#_absoluteCloseness) but returns a normalized value.
+/// Similar to [_absoluteCloseness](#_absolutecloseness) but returns a normalized value.
 ///
 /// @EXAMPLES
 ///
@@ -3239,7 +3239,7 @@ Graph.prototype._closeness = function(options) {
 ///   graph._absoluteBetweenness({weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all cities regarding only
+/// A route planner example, the absolute betweenness of all cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness3}
@@ -3274,7 +3274,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of graphs vertices.*
 ///
-/// Similar to [_absoluteBetweeness](#_absoluteBetweeness) but returns normalized values.
+/// Similar to [_absoluteBetweeness](#_absolutebetweeness) but returns normalized values.
 ///
 /// @EXAMPLES
 ///
@@ -3286,7 +3286,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///   graph._betweenness();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the closeness of all locations.
+/// A route planner example, the betweenness of all locations.
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
@@ -3295,7 +3295,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ///   graph._betweenness({weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the closeness of all cities regarding only
+/// A route planner example, the betweenness of all cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}

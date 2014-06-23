@@ -1,6 +1,11 @@
 !CHAPTER Graph Functions
 
 This chapter describes various functions on a graph.
+A lot of these accept a vertex (or edge) example as parameter as defined in the next section.
+
+!SECTION Definition of examples
+
+@startDocuBlock JSF_general_graph_example_description
 
 !SECTION Get vertices from edges.
 

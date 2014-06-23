@@ -275,11 +275,7 @@ namespace triagens {
         inline char* end () const {
           return _buffer + _size;
         }
-     /*
-        inline char* payload () const {
-          return begin() + sizeof(TRI_df_marker_t);
-        }
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the size of the marker
 ////////////////////////////////////////////////////////////////////////////////
