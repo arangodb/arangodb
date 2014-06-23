@@ -1547,8 +1547,8 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 /// The creation of a graph requires the name of the graph and a definition of its edges.
 ///
 /// For every type of edge definition a convenience method exists that can be used to create a graph.
-/// Optionaly a list of vertex collections can be added, which are not used in any edge definition.
-/// These collections are refered to as orphan collections within this chapter.
+/// Optionally a list of vertex collections can be added, which are not used in any edge definition.
+/// These collections are referred to as orphan collections within this chapter.
 /// All collections used within the creation process are created if they do not exist.
 ///
 /// *Parameter*
@@ -2008,7 +2008,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///   g.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// If the collections of *from* and *to* are not defined in an edgeDefinition of the graph,
+/// If the collections of *from* and *to* are not defined in an edge definition of the graph,
 /// the edge will not be stored.
 ///
 ///
@@ -2225,7 +2225,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// *Remove a graph*
 ///
 /// A graph can be dropped by its name.
-/// This will automatically drop al collections contained in the graph as
+/// This will automatically drop all collections contained in the graph as
 /// long as they are not used within other graphs.
 /// To drop the collections, the optional parameter *drop-collections* can be set to *true*.
 ///
