@@ -102,6 +102,7 @@ Model = function (attributes) {
 
   this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
   this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
+  this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
 };
 
 Model.fromClient = function (attributes) {
@@ -269,8 +270,7 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    var result = whitelistProperties(this.attributes, this.constructor.attributes);
-    return result;
+    return this.whitelistedAttributes;
   }
 });
 
