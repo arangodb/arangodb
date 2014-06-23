@@ -981,6 +981,44 @@ static void displayItems(const struct linenoiseCompletions * lc, struct current 
   newLine(current);
 }
 
+char * append (char * l, size_t ls,  char *m, size_t ms, char *r, size_t rs) {
+  size_t size = 0;
+  if(l) {
+    size += ls;
+  }
+  if(m) {
+    size += ms;
+  }
+  if(r) {
+    size += rs;
+  }
+
+  if(!size) {
+    return NULL;
+  }
+  char * new_buf = malloc(size + 1);
+  if(!new_buf) {
+    printf("Error out of memory\n");
+    return NULL;
+  }
+  memcpy(new_buf, l, ls);
+  memcpy(new_buf + ls, m, ms);
+  memcpy(new_buf + ls + ms, r, rs);
+  new_buf[size] = '\0';
+  return new_buf;
+}
+
+char * BC(struct current const * current, char const * completion_buf, size_t completion_buf_size) {
+  char * buf = current->buf + current->len-1;
+  size_t bytes_length = 0;
+  while((buf > current->buf) && ((*buf != ';') && (*buf != ' '))) {
+    buf--;
+    bytes_length++;
+  }
+  memset(current->buf + (current->len - bytes_length ), '\0', bytes_length-1);
+  return append(current->buf, (current->len - bytes_length), completion_buf, completion_buf_size, NULL, 0);
+
+}
 static void refreshPage(const struct linenoiseCompletions * lc, struct current *current)
 {
     size_t j;
@@ -1015,9 +1053,11 @@ static void refreshPage(const struct linenoiseCompletions * lc, struct current *
     newLine(current);
     if(min_chars!=NULL) {
       // char * new_buf = strndup(min_chars, common_min_len);
-      char * new_buf = malloc(common_min_len + 1);
-      memcpy(new_buf, min_chars, common_min_len);
-      new_buf[common_min_len] = '\0';
+      char * new_buf = BC(current, min_chars, common_min_len);
+      if(!new_buf) {
+        printf(" Out of memory ");
+        return;
+      }
       set_current(current, new_buf); 
       // this is posible because set_current copies the given pointer
       free(new_buf);
@@ -1411,11 +1451,21 @@ static void freeCompletions(linenoiseCompletions *lc) {
     free(lc->cvec);
 }
 
+
 static int completeLine(struct current *current) {
     linenoiseCompletions lc = { 0, NULL, 0 };
     int c = 0;
+    char * buf = current->buf + current->pos;
 
-    completionCallback(current->buf,&lc);
+    while((buf > current->buf)) {
+      if((*buf == ';') || (*buf == ' ')) {
+        buf++;
+        break;
+      }
+      buf--;
+    }
+
+    completionCallback(buf,&lc);
     if (lc.len == 0) {
         beep();
     } else {
@@ -1423,7 +1473,7 @@ static int completeLine(struct current *current) {
         if(lc.len>1 && lc.multiLine) {
            refreshPage(&lc, current);
            freeCompletions(&lc);
-            return c;
+           return c;
         }
         stop = 0, i = 0;
 
@@ -1830,8 +1880,8 @@ history_navigation:
             refreshLine(current->prompt, current);
             break;
         default:
-            /* Only tab is allowed without ^V */
-            if (c == '\t' || c >= ' ') {
+            /* Only characters greater than white space are allowed */
+            if (c >= ' ') {
               eraseEol(current);
 //                if (insert_char(current, current->pos, c) == 1) {
                 insert_char(current, current->pos, c); 
