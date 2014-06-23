@@ -1790,7 +1790,6 @@ var bindEdgeCollections = function(self, edgeCollections) {
 
 var bindVertexCollections = function(self, vertexCollections) {
   _.each(vertexCollections, function(key) {
-    require("internal").print("each resolved");
     var obj = db._collection(key);
     var result;
     var wrap = wrapCollection(obj);
