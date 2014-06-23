@@ -6202,7 +6202,13 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
         }
         if (tmp[f._id + "|keys"].indexOf(t._id) === -1) {
           tmp[f._id + "|keys"].push(t._id);
-          tmp[f._id].push(t);
+          var obj = {_id : t._id};
+          Object.keys(f).forEach(function (fromDoc) {
+            if (t[fromDoc] && t[fromDoc] === f[fromDoc]) {
+              obj[fromDoc] = t[fromDoc];
+            }
+          });
+          tmp[f._id].push(obj);
         }
       });
     });
