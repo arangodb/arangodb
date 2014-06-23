@@ -6204,7 +6204,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
           tmp[f._id + "|keys"].push(t._id);
           var obj = {_id : t._id};
           Object.keys(f).forEach(function (fromDoc) {
-            if (t[fromDoc] && t[fromDoc] === f[fromDoc]) {
+            if (t[fromDoc] !== undefined && t[fromDoc] === f[fromDoc]) {
               obj[fromDoc] = t[fromDoc];
             }
           });

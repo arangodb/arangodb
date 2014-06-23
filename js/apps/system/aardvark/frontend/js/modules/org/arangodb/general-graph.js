@@ -1657,7 +1657,6 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-
   return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
 
 };
