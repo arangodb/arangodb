@@ -241,13 +241,13 @@ arangosysconf_DATA = $(shell find @builddir@/etc/arangodb -name "*$(PROGRAM_SUFF
 ### @brief /share data
 ################################################################################
 
-pkgdataACTIONSdir = $(datadir)
-pkgdataCOMMONdir = $(datadir)
-pkgdataSERVERdir = $(datadir)
-pkgdataCLIENTdir = $(datadir)
-pkgdataNODEdir = $(datadir)
-pkgdataAPPSdir = $(datadir)
-pkgdataMRUBYdir = $(datadir)
+pkgdataACTIONSdir = $(datadir)/arangodb
+pkgdataCOMMONdir = $(datadir)/arangodb
+pkgdataSERVERdir = $(datadir)/arangodb
+pkgdataCLIENTdir = $(datadir)/arangodb
+pkgdataNODEdir = $(datadir)/arangodb
+pkgdataAPPSdir = $(datadir)/arangodb
+pkgdataMRUBYdir = $(datadir)/arangodb
 
 nobase_pkgdata_DATA =
 
