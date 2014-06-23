@@ -50,7 +50,6 @@ After having introduced edge definitions and orphan collections a graph can be c
 
 @startDocuBlock JSF_general_graph_create
 
-
 !SUBSUBSECTION Complete Example to create a graph
 
 Example Call:
