@@ -12,7 +12,7 @@ The app requires no configuration, but you need to update its *providers* collec
 
 !SUBSECTION Registering your app with GitHub
 
-If you want to use the *github* provider, you need to obtain a client ID and client secret from GitHub.
+If you want to use the *github* provider, you need to obtain a client ID and client secret from GitHub:
 
 1. Create a regular account at [GitHub](https://github.com) or use an existing account you own.
 2. Go to [Account Settings > Applications > Register new application](https://github.com/settings/applications/new).
@@ -23,7 +23,7 @@ If you want to use the *github* provider, you need to obtain a client ID and cli
 
 !SUBSECTION Registering your app with Facebook
 
-If you want to use the *facebook* provider, you need to obtain a client ID and client secret from Facebook.
+If you want to use the *facebook* provider, you need to obtain a client ID and client secret from Facebook:
 
 1. Create a regular account at [Facebook](https://www.facebook.com) or use an existing account you own.
 2. Visit the [Facebook Developers](https://developers.facebook.com) page.
@@ -35,7 +35,7 @@ If you want to use the *facebook* provider, you need to obtain a client ID and c
 
 !SUBSECTION Registering your app with Google
 
-If you want to use the *google* provider, you need to obtain a client ID and client secret from Google.
+If you want to use the *google* provider, you need to obtain a client ID and client secret from Google:
 
 1. Create a regular account at [Google](https://www.google.com) or use an existing account you own.
 2. Visit the [Google Developers Console](https://console.developers.google.com).
