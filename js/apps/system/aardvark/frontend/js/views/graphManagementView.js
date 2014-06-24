@@ -19,7 +19,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -54,7 +54,7 @@
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
-      this.createEditGraphModal(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
+      this.createEditGraphModal2(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
     },
 
     info : function(e) {
