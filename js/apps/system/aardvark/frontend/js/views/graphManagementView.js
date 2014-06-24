@@ -152,6 +152,37 @@
       });
     },
 
+    createNewGraph2: function() {
+      var _key = $("#createNewGraphName").val(),
+        vertexCollections = [],
+        edgeDefinitions = [],
+        self = this;
+      if (!_key) {
+        arangoHelper.arangoNotification(
+          "A name for the graph has to be provided."
+        );
+        return;
+      }
+      this.collection.create({
+        _key: _key,
+        edgeDefinitions: edgeDefinitions,
+        vertexCollections: vertexCollections
+      }, {
+        success: function() {
+          self.updateGraphManagementView();
+          window.modalView.hide();
+        },
+        error: function(obj, err) {
+          var response = JSON.parse(err.responseText),
+            msg = response.errorMessage;
+          // Gritter does not display <>
+          msg = msg.replace("<", "");
+          msg = msg.replace(">", "");
+          arangoHelper.arangoError(msg);
+        }
+      });
+    },
+
     createNewGraphModal: function() {
       var buttons = [],
         tableContent = [];
