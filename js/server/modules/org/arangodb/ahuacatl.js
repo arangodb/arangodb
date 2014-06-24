@@ -4350,8 +4350,8 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 ///
 /// *Parameters*
 ///
-/// * *graphName*     : The name of the graph as string.
-/// * *direction* (optional)     : The direction of the edges as string.
+/// * *graphName*     : The name of the graph as a string.
+/// * *direction* (optional)     : The direction of the edges as a string.
 /// Possible values are *any*, *inbound* and *outbound* (default).
 /// * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
 /// default is false.
@@ -5238,7 +5238,7 @@ function IS_EXAMPLE_SET (example) {
 /// This function determines all shortest paths in a graph identified by *graphName*.
 /// The function accepts an id, an example, a list of examples
 /// or even an empty example as parameter for
-/// start and end vertex. If one wants to calls this function to receive nearly all
+/// start and end vertex. If one wants to call this function to receive nearly all
 /// shortest paths for a graph the
 /// option *algorithm* should be set to *Floyd-Warshall* to increase performance.
 /// If no algorithm is provided in the options the function chooses the appropriate
@@ -5249,13 +5249,13 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
 /// (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
 /// end Vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional) : An object containing options, see below:
-///   * *direction*                        : The direction of the edges as string.
+///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collections that should be considered.
@@ -5264,13 +5264,13 @@ function IS_EXAMPLE_SET (example) {
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
 ///   collections that should be considered.
 ///   * *edgeExamples*                     : A filter example for the
-///   edges in the shortest paths (
-///   see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   edges in the shortest paths
+///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///   the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
 ///   used, otherwise the default is *Dijkstra*
 ///   * *weight*                           : The name of the attribute of
-///   the edges containing the length as string.
+///   the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
 ///   If an edge does not have the attribute named as defined in option *weight* this default
 ///   is used as length.
@@ -5279,7 +5279,7 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// *Examples*
 ///
-/// A route planner example, shortest distance from all german to all french cities:
+/// A route planner example, shortest distance from all German to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths1}
 /// ~ var db = require("internal").db;
@@ -5375,9 +5375,9 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// [Traversals](../Traversals/README.md).
 ///
 /// *Parameters*
-/// * *graphName*          : The name of the graph as string.
-/// * *startVertex*        : The ID of the start vertex of the traversal as string.
-/// * *direction*          : The direction of the edges as string. Possible values
+/// * *graphName*          : The name of the graph as a string.
+/// * *startVertex*        : The ID of the start vertex of the traversal as a string.
+/// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
 ///   [Traversals](../Traversals/README.md):
@@ -5489,7 +5489,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ///
 /// *Examples*
 ///
-/// A route planner example, distance from all french to all german cities:
+/// A route planner example, distance from all french to all German cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo1}
 /// ~ var db = require("internal").db;
@@ -5555,10 +5555,10 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *startVertex*         : The ID of the start vertex
-/// of the traversal as string.
-/// * *direction*          : The direction of the edges as string.
+/// of the traversal as a string.
+/// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
@@ -5714,7 +5714,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options*            : An object containing options, see below:
@@ -5833,7 +5833,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional) : An object containing options, see below:
 ///   * *direction*                        : The direction
-/// of the edges as string. Possible values are *outbound*, *inbound* and *any* (default).
+/// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple
 /// edge collections that should be considered.
 ///   * *startVertexCollectionRestriction* : One or multiple
@@ -5908,11 +5908,11 @@ function GENERAL_GRAPH_EDGES (
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional)           : An object containing options, see below:
-///   * *direction*        : The direction of the edges as string. Possible values are
+///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
 ///   * *vertexCollectionRestriction*      : One or multiple
 /// vertex collections that should be considered.
@@ -6101,7 +6101,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertex1Example*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
@@ -6233,18 +6233,18 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
+/// of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional)    : An object containing options, see below:
-///   * *direction*                        : The direction of the edges as string.
+///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 /// collections that should be considered.
@@ -6255,10 +6255,10 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///   * *edgeExamples*                     : A filter example for the edges in the
 ///  shortest paths (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-///  the shortest paths as string. If vertex example is empty *Floyd-Warshall* is
+///  the shortest paths as a string. If vertex example is empty *Floyd-Warshall* is
 ///   used as default, otherwise the default is *Dijkstra*
 ///   * *weight*                           : The name of the attribute of
-/// the edges containing the length as string.
+/// the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
@@ -6287,7 +6287,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute eccentricity of all german cities regarding only
+/// A route planner example, the absolute eccentricity of all German cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
@@ -6333,17 +6333,17 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 /// *The GRAPH\_ECCENTRICITY function returns the normalized
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the graphs vertices
+/// of the graphs vertices*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options* (optional) : An object containing options, see below:
-///   * *direction*       : The direction of the edges as string.
+///   * *direction*       : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*       : The algorithm to calculate the shortest paths as string. Possible
+///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
 /// values are  *Floyd-Warshall* (default) and *Dijkstra*.
-///   * *weight*          : The name of the attribute of the edges containing the length as string.
+///   * *weight*          : The name of the attribute of the edges containing the length as a string.
 ///   * *defaultWeight*   : Only used with the option *weight*.
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
@@ -6407,14 +6407,14 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of the vertices defined by the examples.
+/// of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options*     : An object containing options, see below:
@@ -6461,7 +6461,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all german cities regarding only
+/// A route planner example, the absolute closeness of all German cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
@@ -6507,11 +6507,11 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// `GRAPH_CLOSENESS (graphName, options)`
 /// *The GRAPH\_CLOSENESS function returns the normalized
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of graphs vertices.
+/// of graphs vertices.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6599,10 +6599,10 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.
+/// of all vertices in the graph.*
 ///
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*            : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6703,11 +6703,11 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// `GRAPH_BETWEENNESS (graphName, options)`
 /// *The GRAPH\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.
+/// of graphs vertices.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6783,13 +6783,13 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// `GRAPH_RADIUS (graphName, options)`
 /// *The GRAPH\_RADIUS function returns the
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// of a graph.*
 ///
-/// * *graphName*       : The name of the graph as string.
+/// * *graphName*       : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*     : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*     : The algorithm to calculate the shortest paths as string. Possible
+///   * *algorithm*     : The algorithm to calculate the shortest paths as a string. Possible
 /// values are  *Floyd-Warshall* (default) and *Dijkstra*.
 ///   * *weight*           : The name of the attribute of
 /// the edges containing the length.
@@ -6869,15 +6869,15 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// `GRAPH_DIAMETER (graphName, options)`
 /// *The GRAPH\_DIAMETER function returns the
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// of a graph.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*        : The algorithm to calculate the shortest paths as string. Possible
+///   * *algorithm*        : The algorithm to calculate the shortest paths as a string. Possible
 /// values are  *Floyd-Warshall* (default) and *Dijkstra*.
 ///   * *weight*           : The name of the attribute of
 /// the edges containing the length.
