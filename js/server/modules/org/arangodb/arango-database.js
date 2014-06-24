@@ -212,21 +212,20 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 /// Drops a collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDrop}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   db._drop(col)
 ///   col;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Drops a collection identified by name:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDropName}
-/// ~ db._create("examples");
-///   col = db.examples;
-///   db._drop("examples")
+/// ~ db._create("example");
+///   col = db.example;
+///   db._drop("example")
 ///   col;
-/// ~ db._drop("examples");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -269,25 +268,25 @@ ArangoDatabase.prototype._drop = function(name) {
 /// Truncates a collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncate}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.save({ "Hello" : "World" });
 ///   col.count();
 ///   db._truncate(col);
 ///   col.count();
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Truncates a collection identified by name:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncateName}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.save({ "Hello" : "World" });
 ///   col.count();
-///   db._truncate("examples");
+///   db._truncate("example");
 ///   col.count();
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
