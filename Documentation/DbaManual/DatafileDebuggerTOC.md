@@ -1,4 +1,0 @@
-TOC {#DbaManualDatafileDebuggerTOC}
-===================================
-
-- @ref DbaManualDatafileDebugger
