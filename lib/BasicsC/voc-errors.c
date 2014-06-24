@@ -2,8 +2,13 @@
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include <BasicsC/common.h>
 #include "./lib/BasicsC/voc-errors.h"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @addtogroup VocError
+/// @{
+////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NO_ERROR, "no error");
@@ -94,6 +99,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing");
   REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
+  REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
@@ -239,11 +245,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @}
+////////////////////////////////////////////////////////////////////////////////
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
