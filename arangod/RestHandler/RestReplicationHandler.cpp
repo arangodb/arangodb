@@ -651,7 +651,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, StringUtils::itoa(s.lastTick).c_str()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, s.numEvents));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) s.numEvents));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str()));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
 
@@ -1579,7 +1579,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
   char* logTickString = TRI_StringUInt64(s.lastTick);
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, s.numEvents));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) s.numEvents));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str()));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", state);
 

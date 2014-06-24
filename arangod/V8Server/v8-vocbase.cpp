@@ -4571,8 +4571,8 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   v8::Handle<v8::Object> state = v8::Object::New();
   state->Set(TRI_V8_STRING("running"), v8::True());
   state->Set(TRI_V8_STRING("lastLogTick"), V8TickId(s.lastTick));
-  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New(s.numEvents));
-  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), s.timeString.size()));
+  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New((double) s.numEvents));
+  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), (int) s.timeString.size()));
   result->Set(TRI_V8_STRING("state"), state);
 
   v8::Handle<v8::Object> server = v8::Object::New();
