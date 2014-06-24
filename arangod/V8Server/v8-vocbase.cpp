@@ -95,6 +95,8 @@ using namespace triagens::rest;
 
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
+extern bool TRI_ENABLE_STATISTICS;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
@@ -10160,6 +10162,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New((double) threadNumber), v8::ReadOnly);
+  
+  // whether or not statistics are enabled
+  context->Global()->Set(TRI_V8_SYMBOL("ENABLE_STATISTICS"), v8::Boolean::New(TRI_ENABLE_STATISTICS), v8::ReadOnly);
 }
 
 // -----------------------------------------------------------------------------
