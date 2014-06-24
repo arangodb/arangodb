@@ -155,6 +155,7 @@ Returns *false* if the user already didn't exist.
 @EXAMPLES
 
 ```js
+var user = userStorage.get(userId);
 user.delete();
 ```
 
