@@ -1,2 +1,0 @@
-arango> db.examples.properties()
-{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }
