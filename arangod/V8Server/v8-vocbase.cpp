@@ -7776,7 +7776,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 /// @startDocuBlock TODO
 /// `db._changeMode(<mode>)`
 ///
-/// Sets the sever to the given mode.
+/// Sets the server to the given mode.
 /// Possible parameters for mode are:
 /// - Normal
 /// - ReadOnly
