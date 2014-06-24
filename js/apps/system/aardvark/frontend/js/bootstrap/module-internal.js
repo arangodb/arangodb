@@ -1152,6 +1152,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
+  var func2RE = /function ([^\(]*)?\((.*)\) \{/;
 
   exports.printRecursive = printRecursive = function (value, context) {
     'use strict';
@@ -1160,6 +1161,7 @@
     var customInspect = context.customInspect;
     var useToString = context.useToString;
     var limitString = context.limitString;
+    var showFunction = context.showFunction;
 
     if (typeof context.seen === "undefined") {
       context.seen = [];
@@ -1203,7 +1205,7 @@
           try {
             var s = value.toString();
 
-            if (0 < context.level) {
+            if (0 < context.level && ! showFunction) {
               var a = s.split("\n");
               var f = a[0];
 
@@ -1211,15 +1213,27 @@
 
               if (m !== null) {
                 if (m[1] === undefined) {
-                  context.output += '[Function {native code}]';
+                  context.output += 'function {native code}';
                 }
                 else {
-                  context.output += '[Function "' + m[1] + '" {native code}]';
+                  context.output += 'function ' + m[1] + ' {native code}';
                 }
               }
               else {
-                f = f.substr(8, f.length - 10).trim();
-                context.output += '[Function "' + f + '"]';
+                m = func2RE.exec(f);
+
+                if (m !== null) {
+                  if (m[1] === undefined) {
+                    context.output += 'function ' + '(' + m[2] +') { ... }';
+                  }
+                  else {
+                    context.output += 'function ' + m[1] + ' (' + m[2] +') { ... }';
+                  }
+                }
+                else {
+                  f = f.substr(8, f.length - 10).trim();
+                  context.output += '[Function "' + f + '" ...]';
+                }
               }
             }
             else {
@@ -1377,17 +1391,18 @@
       }
       else {
         var context = {
-          names: [],
-          seen: [],
-          path: "~",
-          level: 0,
-          output: "",
-          prettyPrint: usePrettyPrint,
-          useColor: useColor,
           customInspect: true,
+          emit: 16384,
+          level: 0,
           limitString: 80,
-          useToString: true,
-          emit: 16384
+          names: [],
+          output: "",
+          path: "~",
+          prettyPrint: usePrettyPrint,
+          seen: [],
+          showFunction: false,
+          useColor: useColor,
+          useToString: true
         };
 
         printRecursive(arguments[i], context);
@@ -1411,14 +1426,17 @@
     'use strict';
 
     var context = {
-      names: [],
-      seen: [],
-      path: "~",
-      level: 0,
-      output: "",
-      prettyPrint: true,
-      useColor: false,
       customInspect: options && options.customInspect,
+      emit: false,
+      level: 0,
+      limitString: false,
+      names: [],
+      output: "",
+      path: "~",
+      prettyPrint: true,
+      seen: [],
+      showFunction: true,
+      useColor: false,
       useToString: false
     };
 
