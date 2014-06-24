@@ -2,7 +2,7 @@
 
 The graph module provides functions dealing with graph structures.
 
-!SECTION First Steps with Graphs
+!SUBSECTION First Steps with Graphs
 
 A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
 collections*. A vertex can be a document of a *document collection* or of an edge
@@ -10,180 +10,291 @@ collection (so edges can be used as vertices). Which collections are used within
 a graph is defined via *edge definitions*. A graph can contain more than one edge
 definition, at least one is needed.
 
-!SECTION List all graphs
+@brief Lists all graphs known to the graph module.
 
-`GET /system/gharial/`*(lists all graphs)*
+@RESTHEADER{GET /_api/gharial, List all graphs}
 
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Lists all graph names stored in this database.
-<br />
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if  the module is available and the graphs could be listed.
+
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_list_http_examples
 
-!SECTION Create a graph
+@brief Create a new graph in the graph module.
 
-`POST /system/gharial/`*(create a graph)*
+@RESTHEADER{POST /_api/gharial, Create a graph}
 
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 The creation of a graph requires the name of the graph and a definition of its edges.
-<br />
+
+@RESTBODYPARAMS
+
+@RESTPARAM{name, string, required}
+Name of the graph.
+
+@RESTPARAM{edgeDefinitions, string, optional}
+A list of definitions for the edges, see [edge definitions](../General-Graphs/Management.md#edge_definitions).
+
+@RESTPARAM{orphanCollections, string, optional}
+A list of additional vertex collections.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{201}
+Returned if the graph could be listed created.
+The body contains the graph configuration that has been stored.
+
+@RESTRETURNCODE{400}
+Returned if there is a conflict storing the graph.
+This can occur either if a graph with this name is already stored, or if there is one edge definition with a the same edge collection but a different signature used in any other graph.
+
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_create_http_examples
 
-!SECTION Drop a graph
+@brief Remove a graph from the graph module. Optionally drop all collections.
 
-`DELETE /system/gharial/graph-name`*(drop a graph)*
+@RESTHEADER{DELETE /_api/gharial/graph-name, Drop a graph}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`
-
-The name of the graph.
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Removes a graph from the collection *\_graphs*.
-<br />
-@EXAMPLES
 
-@startDocuBlock JSF_general_graph_create_http_examples
+@RESTURLPARAMS
 
-!SECTION List all vertex collections in the graph
-
-`GET /system/gharial/graph-name/vertex`*(lists all vertex collections)*
-
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`
-
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-!SUBSECTION Description
+@RESTRETURNCODES
 
+@RESTRETURNCODE{200}
+Returned if the graph could be dropped.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
+
+@EXAMPLES
+
+@startDocuBlock JSF_general_graph_drop_http_examples
+
+@brief Lists all vertex collections used in this graph.
+
+@RESTHEADER{GET /_api/gharial/graph-name/vertex, List vertex collections}
+
+@RESTDESCRIPTION
 Lists all vertex collections within this graph.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the collections could be listed.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_list_vertex_http_examples
 
-!SECTION Add a new vertex collection to the graph
+@brief Add an additional vertex collection to the graph.
 
-`POST /system/gharial/graph-name/vertex`*(add a new vertex collection)*
+@RESTHEADER{POST /_api/gharial/graph-name/vertex, Add vertex collection}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`
-
-The name of the graph.
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Adds a vertex collection to the set of collections of the graph. If the
 collection does not exist, it will be created.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{201}
+Returned if the edge collection could be added successfully.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples
 
-!SECTION Remove a vertex collection form the graph
+@brief Remove a vertex collection form the graph.
 
-`DELETE /system/gharial/graph-name/vertex/collection-name`*(remove a vertex collection)*
+@RESTHEADER{DELETE /_api/gharial/graph-name/vertex/collection-name, Remove vertex collection}
 
-!SUBSECTION URL parameters
+@RESTDESCRIPTION
+Removes a vertex collection from the graph and optionally deletes the collection, if it is not used in any other graph.
 
-`graph-name (string, required)`  
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required}
 The name of the vertex collection.
 
+@RESTRETURNCODES
 
-!SUBSECTION Description
+@RESTRETURNCODE{200}
+Returned if the vertex collection was removed from the graph successfully.
 
-Removes a vertex collection from the graph and deletes the collection, if it is not used in any other graph.
+@RESTRETURNCODE{400}
+Returned if the vertex collection is still used in an edge definition.
+In this case it cannot be removed from the graph yet, it has to be removed from the edge definition first.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples
 
-!SECTION List all edge definitions in the graph
+@brief Lists all edge definitions
 
-`GET /system/gharial/graph-name/edge`*(lists all edge definitions)*
+@RESTHEADER{GET /_api/gharial/graph-name/edge, List edge definitions}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Lists all edge collections within this graph.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the collections could be listed.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_list_edge_http_examples
 
-!SECTION Add a new edge definition to the graph
+@brief Add a new edge definition to the graph
 
-`POST /system/gharial/graph-name/edge`*(add a new edge definition)*
+@RESTHEADER{POST /_api/gharial/graph-name/edge, Add edge definition}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Adds an additional edge definition to the graph.
 This edge definition has to contain a *collection* a list of each *from* and *to* vertex collections.
 A edge definition can only be added if this definition is either not used in any other graph, or it is used with exactly the same definition.
 It is not possible to store a definition "e" from "v1" to "v2" in the one graph, and "e" from "v2" to "v1" in the other graph.
 
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTBODYPARAMS
+
+@RESTPARAM{collection, string, required}
+The name of the edge collection to be used.
+
+@RESTPARAM{from, string|array, required}
+One or many vertex collections that can contain source vertices.
+
+@RESTPARAM{to, string|array, required}
+One or many edge collections that can contain target vertices.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the definition could be added successfully.
+
+@RESTRETURNCODE{400}
+Returned if the defininition could not be added, the edge collection is used in an other graph with a different signature.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
+
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_definition_add_http_examples
 
-!SECTION Modify an edge definition
+@brief Replace an existing edge definition
 
-`DELETE /system/gharial/graph-name/edge/definition-name`*(remove a vertex collection)*
+@RESTHEADER{POST /_api/gharial/graph-name/edge/definition-name, Replace an edge definition}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`  
-The name of the graph.
-
-`definition-name (string, required)`  
-The name of the edge collection used in the definition.
-
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Change one specific edge definition.
 This will modify all occurrences of this definition in all graphs known to your database.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTPARAM{definition-name, string, required}
+The name of the edge collection used in the definition.
+
+@RESTBODYPARAMS
+
+@RESTPARAM{collection, string, required}
+The name of the edge collection to be used.
+
+@RESTPARAM{from, string|array, required}
+One or many vertex collections that can contain source vertices.
+
+@RESTPARAM{to, string|array, required}
+One or many edge collections that can contain target vertices.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the edge definition could be replaced.
+
+@RESTRETURNCODE{400}
+Returned if no edge definition with this name is found in the graph.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples
 
-!SECTION Remove an edge definition form the graph
+@brief Remove an edge definition form the graph
 
-`DELETE /system/gharial/graph-name/edge/definition-name`*(remove a vertex collection)*
+@RESTHEADER{DELETE /_api/gharial/graph-name/edge/definition-name, Remove an edge definition from the graph}
 
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`  
-The name of the graph.
-
-`definition-name (string, required)`  
-The name of the edge collection used in the definition.
-
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Remove one edge definition from the graph.
 This will only remove the edge collection, the vertex collections remain untouched and can still be used in your queries.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTPARAM{definition-name, string, required}
+The name of the edge collection used in the definition.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the edge definition could be removed from the graph.
+
+@RESTRETURNCODE{400}
+Returned if no edge definition with this name is found in the graph.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
 
 @EXAMPLES
 
