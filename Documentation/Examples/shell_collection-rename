@@ -1,5 +1,0 @@
-arango> c = db.example;
-[ArangoCollection 68519, "example" (status new born)]
-arango> c.rename("better-example");
-arango> c;
-[ArangoCollection 68519, "better-example" (status new born)]
