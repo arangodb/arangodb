@@ -2623,7 +2623,7 @@ function MeasurementsSuite() {
     var ids = {};
     var vertex = g[vc1].save({first_name: "Tam"});
     ids.vId11 = vertex._id;
-    vertex = g[vc1].save({first_name: "Tem"});
+    vertex = g[vc1].save({first_name: "Tem", age : 20});
     ids.vId12 = vertex._id;
     vertex = g[vc1].save({first_name: "Tim"});
     ids.vId13 = vertex._id;
@@ -2635,7 +2635,7 @@ function MeasurementsSuite() {
     ids.vId31 = vertex._id;
     vertex = g[vc3].save({first_name: "Tem"});
     ids.vId32 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tim"});
+    vertex = g[vc3].save({first_name: "Tim", age : 24});
     ids.vId33 = vertex._id;
     vertex = g[vc3].save({first_name: "Tom"});
     ids.vId34 = vertex._id;
@@ -2726,6 +2726,18 @@ function MeasurementsSuite() {
     test_diameter : function () {
       var a = g._diameter({});
       assertEqual(a[0] , 2);
+    },
+    test_paths : function () {
+      var a = g._paths({maxLength : 2});
+      assertEqual(a[0].length , 50);
+    },
+    test_shortestPaths : function () {
+      var a = g._shortestPath([{first_name: 'Tim',age : 24}, {first_name: 'Tom'}], [{first_name: 'Tam'}, {first_name: 'Tem',age : 20}]);
+      assertEqual(a[0].length , 9);
+    },
+    test_distanceTo : function () {
+      var a = g._distanceTo([{first_name: 'Tim',age : 24}, {first_name: 'Tom'}], [{first_name: 'Tam'}, {first_name: 'Tem' ,age : 20}]);
+      assertEqual(a[0].length , 9);
     }
 
 
@@ -2743,12 +2755,12 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(GeneralGraphCommonNeighborsSuite);
-jsunity.run(GeneralGraphAQLQueriesSuite);
-jsunity.run(EdgesAndVerticesSuite);
-jsunity.run(GeneralGraphCreationSuite);
-jsunity.run(ChainedFluentAQLResultsSuite);
-jsunity.run(OrphanCollectionSuite);
+//jsunity.run(GeneralGraphCommonNeighborsSuite);
+//jsunity.run(GeneralGraphAQLQueriesSuite);
+//jsunity.run(EdgesAndVerticesSuite);
+//jsunity.run(GeneralGraphCreationSuite);
+//jsunity.run(ChainedFluentAQLResultsSuite);
+//jsunity.run(OrphanCollectionSuite);
 jsunity.run(MeasurementsSuite);
 
 return jsunity.done();
