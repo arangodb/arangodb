@@ -6343,7 +6343,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
 /// values are  *Floyd-Warshall* (default) and *Dijkstra*.
-///   * *weight*          : The name of the attribute of the edges containing the length as a string.
+///   * *weight*         : The name of the attribute of the edges containing the length as a string.
 ///   * *defaultWeight*   : Only used with the option *weight*.
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
