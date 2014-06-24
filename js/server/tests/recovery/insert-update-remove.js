@@ -32,7 +32,7 @@ function runSetup () {
     }
   });
 
-  internal.flushWal(true, true);
+  internal.wal.flush(true, true);
 
   internal.debugSegfault("crashing server");
 }

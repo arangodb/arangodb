@@ -42,16 +42,19 @@ var internal = require("internal");
 function walFailureSuite () {
   var cn = "UnitTestsWal";
   var c;
+  var props;
 
   return {
 
     setUp: function () {
+      props = internal.wal.properties();
       internal.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
+      internal.wal.properties(props);
       internal.debugClearFailAt();
       db._drop(cn);
       c = null;
@@ -62,7 +65,7 @@ function walFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollectorBadAlloc : function () {
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       internal.debugSetFailAt("CollectorThreadQueueOperations");
 
       var i = 0;
@@ -71,7 +74,7 @@ function walFailureSuite () {
       }
 
       assertEqual(1000, c.count());
-      internal.flushWal(true, false);
+      internal.wal.flush(true, false);
       
       assertEqual(1000, c.count());
       internal.wait(6);
@@ -99,7 +102,7 @@ function walFailureSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
         
       internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
       try {
@@ -128,17 +131,17 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
       
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
-      internal.adjustWal({ throttleWait: 1000, throttleWhenPending: 1000 });
+      internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
 
       var i;
       for (i = 0; i < 10; ++i) {
         c.save({ _key: "test" + i, a: i });
       } 
       
-      internal.flushWal(true, false);
+      internal.wal.flush(true, false);
 
       c.save({ _key: "foo" });
       assertEqual("foo", c.document("foo")._key);
@@ -157,18 +160,20 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
-      internal.adjustWal({ throttleWait: 1000, throttleWhenPending: 1000 });
+      internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
 
       var i;
       for (i = 0; i < 1005; ++i) {
         c.save({ _key: "test" + i, a: i });
       } 
 
-      internal.flushWal(true, false);
-      internal.wait(3);
+      internal.wal.flush(true, false);
+
+      // let the collector build up its queue
+      internal.wait(7);
 
       try {
         c.save({ _key: "foo" });
@@ -196,17 +201,74 @@ function walFailureSuite () {
 function walSuite () {
   var cn = "UnitTestsWal";
   var c;
+  var props;
 
   return {
 
     setUp: function () {
+      props = internal.wal.properties();
+
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
+      internal.wal.properties(props);
       db._drop(cn);
       c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadProperties : function () {
+      var p = internal.wal.properties();
+      
+      assertTrue(p.hasOwnProperty("allowOversizeEntries"));
+      assertTrue(p.hasOwnProperty("logfileSize"));
+      assertTrue(p.hasOwnProperty("historicLogfiles"));
+      assertTrue(p.hasOwnProperty("reserveLogfiles"));
+      assertTrue(p.hasOwnProperty("syncInterval"));
+      assertTrue(p.hasOwnProperty("throttleWait"));
+      assertTrue(p.hasOwnProperty("throttleWhenPending"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testSetProperties : function () {
+      var initial = internal.wal.properties();
+
+      var p = {
+        allowOversizeEntries: false,
+        logfileSize: 1024 * 1024 * 8,
+        historicLogfiles: 4, 
+        reserveLogfiles: 4,
+        syncInterval: 200,
+        throttleWait: 10000,
+        throttleWhenPending: 10000
+      };
+
+      var result = internal.wal.properties(p);
+
+      assertEqual(p.allowOversizeEntries, result.allowOversizeEntries);
+      assertEqual(p.logfileSize, result.logfileSize);
+      assertEqual(p.historicLogfiles, result.historicLogfiles);
+      assertEqual(p.reserveLogfiles, result.reserveLogfiles);
+      assertEqual(initial.syncInterval, result.syncInterval);
+      assertEqual(p.throttleWait, result.throttleWait);
+      assertEqual(p.throttleWhenPending, result.throttleWhenPending);
+      
+      var result2 = internal.wal.properties();
+      assertEqual(p.allowOversizeEntries, result2.allowOversizeEntries);
+      assertEqual(p.logfileSize, result2.logfileSize);
+      assertEqual(p.historicLogfiles, result2.historicLogfiles);
+      assertEqual(p.reserveLogfiles, result2.reserveLogfiles);
+      assertEqual(initial.syncInterval, result2.syncInterval);
+      assertEqual(p.throttleWait, result2.throttleWait);
+      assertEqual(p.throttleWhenPending, result2.throttleWhenPending);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +287,7 @@ function walSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMaxTickNonEmptyCollection : function () {
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       var i;
 
       for (i = 0; i < 100; ++i) {
@@ -237,7 +299,7 @@ function walSuite () {
       assertEqual("0", fig.lastTick);
       assertTrue(fig.uncollectedLogfileEntries > 0);
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       // now we should have a tick
       fig = c.figures();
@@ -256,7 +318,7 @@ function walSuite () {
         c.save({ test:  i });
       }
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       testHelper.waitUnload(c);
 

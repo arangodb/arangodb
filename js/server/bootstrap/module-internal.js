@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_ADJUST */
+         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -127,22 +127,18 @@
   delete RELOAD_AUTH;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the write-ahead log
+/// @brief write-ahead log object
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof WAL_FLUSH !== "undefined") {
-    internal.flushWal = WAL_FLUSH;
-    delete WAL_FLUSH;
-  }
+  internal.wal = {
+    flush: function () {
+      return WAL_FLUSH.apply(null, arguments);
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts the write-ahead log configuration
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof WAL_ADJUST !== "undefined") {
-    internal.adjustWal = WAL_ADJUST;
-    delete WAL_ADJUST;
-  }
+    properties: function () {
+      return WAL_PROPERTIES.apply(null, arguments);
+    }
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
