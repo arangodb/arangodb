@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require */
+/*global require, ENABLE_STATISTICS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -50,6 +50,11 @@ var Buffer = require("buffer").Buffer;
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  if (! ENABLE_STATISTICS) {
+    // statistics are turned off
+    return;
+  }
+
   var internal = require("internal");
   var interval = require('org/arangodb/statistics').STATISTICS_INTERVAL;
   var interval15 = require('org/arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
