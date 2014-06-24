@@ -336,7 +336,7 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
-    ("wal.throttle-when-pending", &_throttleWhenPending, "throttle writes when at least such many operations are waiting for collection (set to 0 to deactivate write-throttling)")
+    ("wal.throttle-when-pending", &_throttleWhenPending, "throttle writes when at least this many operations are waiting for collection (set to 0 to deactivate write-throttling)")
     ("wal.throttle-wait", &_maxThrottleWait, "maximum wait time per operation when write-throttled (in milliseconds)")
   ;
 }
