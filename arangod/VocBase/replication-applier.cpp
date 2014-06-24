@@ -69,10 +69,8 @@ static void SetTerminateFlag (TRI_replication_applier_t* applier,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckTerminateFlag (TRI_replication_applier_t* applier) {
-  bool result;
-
   TRI_LockSpin(&applier->_threadLock);
-  result = applier->_terminateThread;
+  bool result = applier->_terminateThread;
   TRI_UnlockSpin(&applier->_threadLock);
 
   return result;
@@ -499,9 +497,7 @@ static int StartApplier (TRI_replication_applier_t* applier,
 
 static int StopApplier (TRI_replication_applier_t* applier,
                         bool resetError) {
-  TRI_replication_applier_state_t* state;
-
-  state = &applier->_state;
+  TRI_replication_applier_state_t* state = &applier->_state;
 
   if (! state->_active) {
     return TRI_ERROR_INTERNAL;
@@ -746,8 +742,6 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_con
 int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
                                  TRI_voc_tick_t initialTick,
                                  bool useTick) {
-  int res;
-
   LOG_TRACE("requesting replication applier start. initialTick: %llu, useTick: %d",
             (unsigned long long) initialTick,
             (int) useTick);
@@ -756,7 +750,7 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
   // wait until previous applier thread is shut down
   while (! TRI_WaitReplicationApplier(applier, 10 * 1000));
 
@@ -777,7 +771,9 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t* applier,
 
 int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
                                 bool resetError) {
-  int res;
+  if (applier == nullptr) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   LOG_TRACE("requesting replication applier stop");
 
@@ -793,7 +789,7 @@ int TRI_StopReplicationApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_NO_ERROR;
   }
 
-  res = StopApplier(applier, resetError);
+  int res = StopApplier(applier, resetError);
   TRI_WriteUnlockReadWriteLock(&applier->_statusLock);
 
   // join the thread without the status lock (otherwise it would probably not join)

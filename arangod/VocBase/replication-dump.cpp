@@ -507,7 +507,7 @@ static bool StringifyWalMarkerEdge (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, (uint64_t) m->_revisionId);
 
   // from
-  APPEND_STRING(dump->_buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
+  APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
   APPEND_UINT64(dump->_buffer, (uint64_t) m->_fromCid);
   APPEND_STRING(dump->_buffer, "\\/");
   APPEND_STRING(dump->_buffer, (char const*) m + m->_offsetFromKey);
@@ -516,7 +516,7 @@ static bool StringifyWalMarkerEdge (TRI_replication_dump_t* dump,
   APPEND_STRING(dump->_buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
   APPEND_UINT64(dump->_buffer, (uint64_t) m->_toCid);
   APPEND_STRING(dump->_buffer, "\\/");
-  APPEND_STRING(dump->_buffer, (char const*) m + m->_offsetFromKey);
+  APPEND_STRING(dump->_buffer, (char const*) m + m->_offsetToKey);
   APPEND_STRING(dump->_buffer, "\"");
 
   TRI_shaped_json_t shaped;
@@ -622,7 +622,7 @@ static bool StringifyWalMarkerRenameCollection (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
-  APPEND_STRING(dump->_buffer, "\",\"collection:{\"name\":\"");
+  APPEND_STRING(dump->_buffer, "\",\"collection\":{\"name\":\"");
   APPEND_STRING(dump->_buffer, (char const*) m + sizeof(triagens::wal::collection_rename_marker_t));
   APPEND_STRING(dump->_buffer, "\"}");
 
@@ -1197,10 +1197,10 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 /// @brief dump data from the replication log
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
-                            TRI_replication_dump_t* dump,
+int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
                             TRI_voc_tick_t tickMin,
-                            TRI_voc_tick_t tickMax) {
+                            TRI_voc_tick_t tickMax,
+                            bool outputAsArray) {
   LOG_TRACE("dumping log, tick range %llu - %llu",
             (unsigned long long) tickMin,
             (unsigned long long) tickMax);
@@ -1215,7 +1215,12 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
   bool hasMore    = true;
   bool bufferFull = false;
 
+  if (outputAsArray) {
+    TRI_AppendStringStringBuffer(dump->_buffer, "[\n");
+  }
+
   try {
+     bool first = true;
 
     // iterate over the datafiles found
     for (size_t i = 0; i < n; ++i) {
@@ -1259,7 +1264,16 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
 
         // note the last tick we processed
         lastFoundTick = foundTick;
-
+    
+        if (outputAsArray) {
+          if (! first) {
+            TRI_AppendStringStringBuffer(dump->_buffer, ", ");
+          }
+          else {
+            first = false;
+          }
+        }
+  
         if (! StringifyWalMarker(dump, marker)) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
@@ -1287,6 +1301,10 @@ int TRI_DumpLogReplication (TRI_vocbase_t* vocbase,
 
   // always return the logfiles we have used
   triagens::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+ 
+  if (outputAsArray) {
+    TRI_AppendStringStringBuffer(dump->_buffer, "\n]");
+  }
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {

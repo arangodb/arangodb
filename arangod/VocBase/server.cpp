@@ -1446,6 +1446,29 @@ static int InitAll (TRI_server_t* server) {
 
       // start the compactor for the database
       TRI_StartCompactorVocBase(vocbase);
+  
+      // start the replication applier
+      vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+      if (vocbase->_replicationApplier == nullptr) {
+        // TODO
+        LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", vocbase->_name);
+      }
+
+      if (vocbase->_replicationApplier->_configuration._autoStart) {
+        if (server->_disableReplicationAppliers) {
+          LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
+        }
+        else {
+          int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("unable to start replication applier for database '%s': %s",
+                        vocbase->_name,
+                        TRI_errno_string(res));
+          }
+        }
+      }
     }
   }
 
@@ -2240,6 +2263,30 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   TRI_ReloadAuthInfo(vocbase);
   TRI_StartCompactorVocBase(vocbase);
+
+  // start the replication applier
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+
+  if (vocbase->_replicationApplier == nullptr) {
+    // TODO
+    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
+  }
+
+  if (vocbase->_replicationApplier->_configuration._autoStart) {
+    if (server->_disableReplicationAppliers) {
+      LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
+    }
+    else {
+      res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_WARNING("unable to start replication applier for database '%s': %s",
+                    name,
+                    TRI_errno_string(res));
+      }
+    }
+  }
+
 
   // increase reference counter
   TRI_UseVocBase(vocbase);

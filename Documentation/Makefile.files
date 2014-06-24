@@ -353,6 +353,7 @@ examples:
 		@srcdir@/js/apps/system/gharial \
 		@srcdir@/Documentation/Books/Users \
 		@srcdir@/arangod/RestHandler \
+		@srcdir@/arangod/V8Server \
 		@srcdir@/lib/Admin \
 		> /tmp/arangosh.examples
 

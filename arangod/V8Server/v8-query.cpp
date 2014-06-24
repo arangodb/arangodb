@@ -2230,6 +2230,7 @@ template<bool WR, bool WD> static bool ChecksumCalculator (TRI_doc_mptr_t const*
 /// checksumming will make the calculation slower, but is more accurate.
 ///
 /// **Note**: this method is not available in a cluster.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2244,7 +2245,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -2282,7 +2283,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 
   trx.lockRead();
   // get last tick
-  const string rid = StringUtils::itoa(document->_info._revision);
+  string const rid = StringUtils::itoa(document->_info._revision);
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);

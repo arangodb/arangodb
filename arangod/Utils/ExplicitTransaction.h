@@ -62,9 +62,8 @@ namespace triagens {
                              std::vector<std::string> const& readCollections,
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
-                             bool waitForSync,
-                             bool doReplicate) :
-          Transaction<T>(vocbase, TRI_GetIdServer(), doReplicate) {
+                             bool waitForSync)
+          : Transaction<T>(vocbase) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 

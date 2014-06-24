@@ -203,8 +203,7 @@ namespace triagens {
 
         int createCollection (struct TRI_json_s const*,
                               struct TRI_vocbase_col_s**,
-                              bool,
-                              TRI_server_id_t);
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a restore command for a specific collection
@@ -226,7 +225,6 @@ namespace triagens {
                                       bool,
                                       bool,
                                       bool,
-                                      TRI_server_id_t,
                                       std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +235,6 @@ namespace triagens {
                                                  bool,
                                                  bool,
                                                  bool,
-                                                 TRI_server_id_t,
                                                  std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +243,6 @@ namespace triagens {
 
         int processRestoreIndexes (struct TRI_json_s const*,
                                    bool,
-                                   TRI_server_id_t,
                                    std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +251,6 @@ namespace triagens {
 
         int processRestoreIndexesCoordinator (struct TRI_json_s const*,
                                               bool,
-                                              TRI_server_id_t,
                                               std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +271,6 @@ namespace triagens {
 
         int processRestoreDataBatch (CollectionNameResolver const&,
                                      struct TRI_transaction_collection_s*,
-                                     TRI_server_id_t,
                                      bool,
                                      bool,
                                      std::string&);
@@ -287,7 +281,6 @@ namespace triagens {
 
         int processRestoreData (CollectionNameResolver const&,
                                 TRI_voc_cid_t,
-                                TRI_server_id_t,
                                 bool,
                                 bool,
                                 std::string&);
