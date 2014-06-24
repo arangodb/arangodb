@@ -51,4 +51,4 @@ When using cookie authentication, this function will clear the session cookie (i
 * *options* (optional): an object with any of the following properties:
   * *method* (optional): HTTP method to handle. Default: *"post"*.
   * *before* (optional): function to execute before the session is destroyed. Receives the same arguments as a regular route handler.
-  * *after* (optional): function to execute after the session is destroyed. Receives the same arguments as a regular route handler.
+  * *after* (optional): function to execute after the session is destroyed. Receives the same arguments as a regular route handler. Default: a function that sends a *{"message": "logged out"}* JSON response.
