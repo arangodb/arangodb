@@ -6,7 +6,7 @@ documents of a collection as:
 
     db.collection.document("document-handle")
 
-For example: Assume that the document handle, which is stored in the `_id` field
+For example: Assume that the document handle, which is stored in the *_id* field
 of the document, is *demo/362549* and the document lives in a collection
 named *demo*, then that document can be accessed as:
 
