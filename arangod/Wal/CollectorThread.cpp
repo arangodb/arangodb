@@ -1064,6 +1064,10 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
 int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
                                       CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
+  
+  TRI_IF_FAILURE("CollectorThreadQueueOperations") {
+    throw std::bad_alloc();
+  }
 
   MUTEX_LOCKER(_operationsQueueLock);
 
