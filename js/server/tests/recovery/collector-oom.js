@@ -14,7 +14,7 @@ function runSetup () {
   }
 
   internal.debugSetFailAt("CollectorThreadQueueOperations");
-  internal.flushWal(true, false);
+  internal.wal.flush(true, false);
   internal.wait(5);
 
   internal.debugSegfault("crashing server");

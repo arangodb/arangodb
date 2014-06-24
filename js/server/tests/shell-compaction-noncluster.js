@@ -315,7 +315,7 @@ function CompactionSuite () {
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       // empty collection
       var fig = c1.figures();
@@ -329,7 +329,7 @@ function CompactionSuite () {
       assertEqual(0, fig["compactors"]["count"]);
 
       c1.save({ "foo": "bar" });
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       fig = c1.figures();
       assertEqual(1, c1.count());
@@ -357,7 +357,7 @@ function CompactionSuite () {
       
       c1.save({ "bar": "baz" });
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       fig = c1.figures();
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
@@ -444,7 +444,7 @@ function CompactionSuite () {
       assertEqual(1, fig["journals"]["count"]);
       assertTrue(0 <= fig["datafiles"]["count"]);
       
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       c1.rotate();
       
       c1.properties({ doCompact: true });
@@ -516,7 +516,7 @@ function CompactionSuite () {
       assertTrue(0 < fig["datafiles"]["count"]);
 
       c1.truncate();
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       c1.rotate();
 
       fig = c1.figures();
@@ -557,7 +557,7 @@ function CompactionSuite () {
       fig = c1.figures();
       assertEqual(0, fig["journals"]["count"]);
       
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       fig = c1.figures();
       assertEqual(1, fig["journals"]["count"]);
@@ -591,7 +591,7 @@ function CompactionSuite () {
         c1.remove("test" + i);
       }
      
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       // this will create a barrier that will block compaction
       var doc = c1.document("test1"); 
 
@@ -657,7 +657,7 @@ function CompactionSuite () {
       internal.wait(0);
 
       c1.truncate();
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       c1.rotate();
 
       waited = 0;
@@ -709,7 +709,7 @@ function CompactionSuite () {
         c1.save({ value : i, payload : payload });
       }
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       var fig = c1.figures();
 
       assertEqual(n, c1.count());
@@ -720,12 +720,12 @@ function CompactionSuite () {
       assertTrue(0 < fig["datafiles"]["count"]);
       
       // truncation will go fully into the journal...
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       c1.rotate();
 
       c1.truncate();
         
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);

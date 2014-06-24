@@ -1245,7 +1245,7 @@ function CollectionDocumentSuite () {
       collection.save({ _key : "a2" });
       collection.save({ _key : "a3" });
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       figures = collection.figures();
 
       assertEqual(3, figures.alive.count);
@@ -1267,7 +1267,7 @@ function CollectionDocumentSuite () {
       }
 
       // we should see the same figures 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       figures = collection.figures();
 
       assertEqual(3, figures.alive.count);
@@ -1278,7 +1278,7 @@ function CollectionDocumentSuite () {
       collection.remove("a3");
 
       // we should see two live docs less
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       figures = collection.figures();
 
       assertEqual(1, figures.alive.count);
@@ -1287,7 +1287,7 @@ function CollectionDocumentSuite () {
       // replacing one document does not change alive, but increases dead!
       collection.replace("a1", { });
       
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       figures = collection.figures();
 
       assertEqual(1, figures.alive.count);
@@ -1301,7 +1301,7 @@ function CollectionDocumentSuite () {
       catch (e3) {
       }
       
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       figures = collection.figures();
 
       assertEqual(1, figures.alive.count);

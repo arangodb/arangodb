@@ -2492,9 +2492,8 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
     TRI_json_t* valueList = (TRI_json_t*)(TRI_AtVectorPointer(values,k));
 
     if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {
-      LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
       *errorNum = TRI_ERROR_BAD_PARAMETER;
-      *errorStr = TRI_DuplicateString("bitarray index creation failed -- list of values for index undefined");
+      *errorStr = TRI_DuplicateString("bitarray index creation failed - list of values for index undefined");
       return NULL;
     }
 
@@ -2503,9 +2502,8 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
       for (i = j + 1; i < valueList->_value._objects._length; ++i) {
         TRI_json_t* rightValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));
         if (TRI_EqualJsonJson(leftValue, rightValue)) {
-          LOG_WARNING("bitarray index creation failed -- duplicate values in value list for an attribute");
           *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES;
-          *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate values in value list for an attribute");
+          *errorStr = TRI_DuplicateString("bitarray index creation failed - duplicate values in value list for an attribute");
           return NULL;
         }
       }
