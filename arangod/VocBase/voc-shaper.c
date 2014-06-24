@@ -1526,7 +1526,7 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
     LOG_TRACE("expecting any object for path %lu, got nothing",
               (unsigned long) pid);
 
-    *shape = nullptr;
+    *shape = NULL;
 
     return sid == TRI_SHAPE_ILLEGAL;
   }
@@ -1538,7 +1538,7 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* shaper,
               (unsigned long) pid,
               (unsigned long) accessor->_resultSid);
 
-    *shape = nullptr;
+    *shape = NULL;
 
     return sid == TRI_SHAPE_ILLEGAL;
   }
