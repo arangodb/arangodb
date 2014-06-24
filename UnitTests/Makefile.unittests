@@ -210,6 +210,7 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="write-throttling"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collector-oom"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-no-abort"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-no-commit"

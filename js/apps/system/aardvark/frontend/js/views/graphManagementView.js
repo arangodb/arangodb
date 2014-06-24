@@ -19,7 +19,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -54,7 +54,7 @@
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
-      this.createEditGraphModal(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
+      this.createEditGraphModal2(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
     },
 
     info : function(e) {
@@ -262,6 +262,83 @@
       );
 
       window.modalView.show("modalTable.ejs", "Graph Properties", buttons, tableContent);
+
+    },
+    createNewGraphModal2: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "createNewGraphName",
+          "Name",
+          "",
+          "The name to identify the graph. Has to be unique.",
+          "graphName",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newEdgeDefinitions",
+          "Edge definitions",
+          "",
+          "Some info for edge definitions",
+          "Edge definitions",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createSelect2Entry(
+          "newVertexCollections",
+          "Vertex collections",
+          "",
+          "Some info for vertex collections",
+          "Vertex Collections",
+          false
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Add new Graph", buttons, tableContent);
+    },
+
+    createEditGraphModal2: function(name, vertices, edges) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editGraphName",
+          "Name",
+          name,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editVertices",
+          "Vertices",
+          vertices,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editEdges",
+          "Edges",
+          edges,
+          false
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Edit Graph", buttons, tableContent);
 
     }
 

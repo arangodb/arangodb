@@ -37,6 +37,17 @@ A lot of these accept a vertex (or edge) example as parameter as defined in the 
 
 @startDocuBlock JSF_general_graph_count_common_properties
 
+!SECTION _paths
+
+@startDocuBlock JSF_general_graph_paths
+
+!SECTION _shortestPath
+
+@startDocuBlock JSF_general_graph_shortest_path
+
+!SECTION _distanceTo
+
+@startDocuBlock JSF_general_graph_distance_to
 
 !SECTION _absoluteEccentricity
 
