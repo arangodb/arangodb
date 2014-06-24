@@ -58,18 +58,32 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the write-ahead log
+/// @brief write-ahead log functionality
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.flushWal = function (waitForSync, waitForCollector) {
-    if (typeof internal.arango !== 'undefined') {
-      var wfs = waitForSync ? "true" : "false";
-      var wfc = waitForCollector ? "true" : "false";
-      internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
-      return;
-    }
+  internal.wal = {
+    flush: function (waitForSync, waitForCollector) {
+      if (typeof internal.arango !== 'undefined') {
+        var wfs = waitForSync ? "true" : "false";
+        var wfc = waitForCollector ? "true" : "false";
+        internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
+        return;
+      }
 
-    throw "not connected";
+      throw "not connected";
+    },
+
+    properties: function (value) {
+      if (typeof internal.arango !== 'undefined') {
+        if (value !== undefined) {
+          return internal.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
+        }
+          
+        return internal.arango.GET("/_admin/wal/properties", "");
+      }
+      
+      throw "not connected";
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////

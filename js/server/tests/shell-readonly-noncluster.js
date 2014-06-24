@@ -36,223 +36,257 @@ var arangodb = require("org/arangodb");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single tests when server is running in ReadOnly mode
 ////////////////////////////////////////////////////////////////////////////////
-function dropDatabaseTestSuite () {
-  var db;
+
+function databaseTestSuite () {
+  var db = require("internal").db;
+
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db = require("internal").db;
       db._changeMode("Normal");
+      try {
+        db._dropDatabase("testDB");
+      }
+      catch (e) {
+        // ignore any errors
+      }
+
       db._createDatabase("testDB");
       db._changeMode("ReadOnly");
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
     tearDown : function () {
+      db._changeMode("Normal");
       try {
-        db._changeMode("Normal");
         db._dropDatabase("testDB");
-        } catch (e) {
-        }
+      } 
+      catch (e) {
+      }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test: creation of a data base in read only modes should faill
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: creation of a database in read only mode should fail
+////////////////////////////////////////////////////////////////////////////////
 
     testCreateDatabase: function () {
-      var not_modified = false;
       try {
         db._createDatabase("xxxDB");
-        } catch (e) {
-          not_modified = true;
-          assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-        }
-      assertTrue(not_modified);
-      },
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test: droping of a data base in read only mode should be posible
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: dropping of a database in read only mode should be possible
+////////////////////////////////////////////////////////////////////////////////
 
-      testDropDatabase: function () {
-        var modified = false;
-        try {
-          db._dropDatabase("testDB");
-          modified = true;
-        } catch (e) {
-          not_modified = false;
-        }
-        assertTrue(modified);
-     },
+    testDropDatabase: function () {
+      try {
+        db._dropDatabase("testDB");
+        assertEqual(-1, db._listDatabases().indexOf("testDb"));
+      }
+      catch (e) {
+        fail();
+      }
+    }
+
   };
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single tests when server is running in ReadOnly mode
 ////////////////////////////////////////////////////////////////////////////////
-function readOnlyDatabaseSuite () {
-  var db;
+
+function operationsTestSuite () {
+  var db = require("internal").db;
   var collection;
+
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db = require("internal").db;
       db._drop("testCol");
-      collection = db._createDocumentCollection("testCol");
+      collection = db._create("testCol");
       collection.save({_key: "testDocKey", a: 2 });
       db._changeMode("ReadOnly");
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
     tearDown : function () {
+      db._changeMode("Normal");
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: creating a collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateCollection: function () {
+      db._drop("abcDC");
+
       try {
-        db._changeMode("Normal");
-        collection.drop();
-      } catch (e) {
+        db._create("abcDC");
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test: simple routing (prefix)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testCreateDocumentCollection: function () {
-      var not_modified = false;
-      try {
-        db._createDocumentCollection("abcDC");
-        } catch (e) {
-          not_modified = true;
-          assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-        }
-      assertTrue(not_modified);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test: simple routing (parameter)
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: dropping a collection
+////////////////////////////////////////////////////////////////////////////////
 
     testDropCollection: function () {
-      var not_modified = false;
-      try {
-        db._createDocumentCollection("xxxDC");
-        not_modified = true;
-        } catch (e) {
-      }
-      assertFalse(not_modified);
+      // should not throw any errors
+      db._drop("testCol");
+      assertTrue(true);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test: simple routing (optional)
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: insert
+////////////////////////////////////////////////////////////////////////////////
 
     testInsertDocument: function () {
-      var modified = false;
       try {
         collection.save({a:1, b:2});  
-        modified = true;
-        } catch (e) {
-          assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-        }
-        assertFalse(modified);
-      },
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test: simple routing (optional)
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: update
+////////////////////////////////////////////////////////////////////////////////
 
-      testUpdateDocument: function () {
-        var modified = false;
-        try {
-          collection.update("testDocKey", {name: "testing", a: 3});
-          modified = true;
-          } catch (e) {
-            assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-          }
-        assertFalse(modified);
-      },
+    testUpdateDocument: function () {
+      try {
+        collection.update("testDocKey", {name: "testing", a: 3});
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test: simple routing (prefix vs non-prefix)
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: replace
+////////////////////////////////////////////////////////////////////////////////
 
-      testRemoveDocument: function () {
-        var modified = false;
-        try {
-          var removed = collection.remove("testDocKey");
-          assertFalse(removed);
-          modified = true;
-        } catch (e) {
-          assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-        }
-        assertFalse(modified);
-      },
+    testReplaceDocument: function () {
+      try {
+        collection.replace("testDocKey", {name: "testing", a: 3});
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test: content string
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: remove
+////////////////////////////////////////////////////////////////////////////////
 
-      testCreateBitArrayIndex: function () {
-        var modified = false;
-        try {
-          collection.ensureBitarray("a", [1,2,3,4]);
-          modified = true;
-          } catch (e) {
-            assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-          }
-        assertFalse(modified);
-      },
+    testRemoveDocument: function () {
+      try {
+        collection.remove("testDocKey");
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-      testCreateHashIndex: function () {
-        var modified = false;
-        try {
-          collection.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-          modified = true;
-          } catch (e) {
-            assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-          }
-        assertFalse(modified);
-      },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: create index
+////////////////////////////////////////////////////////////////////////////////
 
-      testCreateGeoIndex: function () {
-        var modified = false;
-        try {
-          collection.ensureIndex({ type: "geo1", fields: [ "x" ], unique: true });
-          modified = true;
-          } catch (e) {
-            assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-          }
-        assertFalse(modified);
-       },
+    testCreateBitArrayIndex: function () {
+      try {
+        collection.ensureBitarray("a", [1,2,3,4]);
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
 
-       testCreateGeo2Index: function () {
-         var modified = false;
-         try {
-           collection.ensureIndex({ type: "geo2", fields: [ "x", "y" ], unique: true });
-           modified = true;
-         } catch (e) {
-           assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-         }
-         assertFalse(modified);
-       },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: create index
+////////////////////////////////////////////////////////////////////////////////
 
-       testCreateSkipListIndex: function () {
-         var modified = false;
-         try {
-           collection.ensureIndex({ type: "skiplist", fields: [ "x" ]});
-           modified = true;
-         } catch (e) {
-           assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-         }
-         assertFalse(modified);
-       },
+    testCreateHashIndex: function () {
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: create index
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateGeoIndex: function () {
+      try {
+        collection.ensureIndex({ type: "geo1", fields: [ "x" ], unique: true });
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: create index
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateGeo2Index: function () {
+      try {
+        collection.ensureIndex({ type: "geo2", fields: [ "x", "y" ], unique: true });
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: create index
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateSkipListIndex: function () {
+      try {
+        collection.ensureIndex({ type: "skiplist", fields: [ "x" ]});
+        fail();
+      } 
+      catch (e) {
+        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
+      }
+    }
 
   };
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
@@ -262,8 +296,8 @@ function readOnlyDatabaseSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(dropDatabaseTestSuite);
-jsunity.run(readOnlyDatabaseSuite);
+jsunity.run(databaseTestSuite);
+jsunity.run(operationsTestSuite);
 
 return jsunity.done();
 
