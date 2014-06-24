@@ -284,9 +284,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
-    _unusedForceSyncShapes(false),
     _disableReplicationApplier(false),
-    _removeOnDrop(true),
     _server(nullptr) {
 
   char* p = TRI_GetTempPath();
@@ -417,6 +415,8 @@ void ArangoServer::buildApplicationServer () {
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
     ("ruby.startup-directory", &ignoreOpt, "path to the directory containing alternate Ruby startup scripts")
     ("server.disable-replication-logger", &ignoreOpt, "start with replication logger turned off")
+    ("database.force-sync-shapes", &ignoreOpt, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
+    ("database.remove-on-drop", &ignoreOpt, "wipe a collection from disk after dropping")
   ;
 
   // .............................................................................
@@ -501,17 +501,10 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   additional["DATABASE Options:help-admin"]
-    ("database.remove-on-drop", &_removeOnDrop, "wipe a collection from disk after dropping")
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
   ;
-
-  // deprecated options
-  additional[ApplicationServer::OPTIONS_HIDDEN]
-    ("database.force-sync-shapes", &_unusedForceSyncShapes, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
-  ;
-
 
   // .............................................................................
   // cluster options
@@ -1098,7 +1091,6 @@ void ArangoServer::openDatabases (bool checkVersion,
 
   // override with command-line options
   defaults.defaultMaximalSize               = _defaultMaximalSize;
-  defaults.removeOnDrop                     = _removeOnDrop;
   defaults.defaultWaitForSync               = _defaultWaitForSync;
   defaults.forceSyncProperties              = _forceSyncProperties;
   defaults.requireAuthentication            = ! _disableAuthentication;
