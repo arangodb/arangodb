@@ -1,112 +1,146 @@
 !CHAPTER Handling Vertices
 
-!SECTION Create a vertex
+@RESTHEADER{POST /system/gharial/graph-name/vertex/collection-name, Create a vertex}
 
-`POST /system/gharial/graph-name/vertex/collection-name`*(create a vertex)*
+@RESTDESCRIPTION
+Adds a vertex to the given collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
-The name of the vertex collection the edge belongs to.
+@RESTPARAM{collection-name, string, required} 
+The name of the vertex collection the vertex belongs to.
 
-!SUBSECTION Description
+@RESTBODYPARAMS
+The body has to be the JSON object to be stored.
 
-Adds a vertex to the given collection.
+@RESTRETURNCODES
+
+@RESTRETURNCODE{201}
+Returned if the vertex could be added.
+
+@RESTRETURNCODE{404}
+Returned if no graph or no vertex collection with this name could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_create_http_examples
 
-!SECTION Get a vertex
+@RESTHEADER{GET /system/gharial/graph-name/vertex/collection-name/vertex-key, Get a vertex}
 
-`GET /system/gharial/graph-name/vertex/collection-name/vertex-key`*(get a vertex)*
+@RESTDESCRIPTION
+Gets a vertex from the given collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
-`vertex-key (string, required)`  
-The `_key` attribute of the vertex.
+@RESTPARAM{vertex-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTRETURNCODES
 
-Gets a vertex from the given collection.
+@RESTRETURNCODE{200}
+Returned if the vertex could be found.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_get_http_examples
 
-!SECTION Modify an vertex
+@RESTHEADER{PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key, Modify a vertex}
 
-`PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key`*(modify a vertex)*
+@RESTDESCRIPTION
+Updates the data of the specific vertex in the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
-`vertex-key (string, required)`  
-The `_key` attribute of the vertex.
+@RESTPARAM{vertex-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTBODYPARAMS
+The body has to contain a JSON object containing exactly the attributes that should be replaced.
 
-Updates the data of the specific vertex in the collection.
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the vertex could be updated.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_modify_http_examples
 
-!SECTION Replace an vertex
+@RESTHEADER{PUT /system/gharial/graph-name/vertex/collection-name/vertex-key, Replace a vertex}
 
-`PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key`*(replace a vertex)*
+@RESTDESCRIPTION
+Replaces the data of a vertex in the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
-`vertex-key (string, required)`  
-The `_key` attribute of the vertex.
+@RESTPARAM{vertex-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTBODYPARAMS
+The body has to be the JSON object to be stored.
 
-Replaces the data of a vertex in the collection.
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the vertex could be replaced.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_vertex_replace_http_examples
 
-!SECTION Remove a vertex
+@RESTHEADER{DELETE /system/gharial/graph-name/vertex/collection-name/vertex-key, Remove a vertex}
 
-`DELETE /system/gharial/graph-name/vertex/collection-name/vertex-key`*(remove a vertex)*
+@RESTDESCRIPTION
+Removes a vertex from the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
-`vertex-key (string, required)`  
-The `_key` attribute of the vertex.
+@RESTPARAM{vertex-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTRETURNCODES
 
-Removes a vertex from the collection.
+@RESTRETURNCODE{200}
+Returned if the vertex could be removed.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
 
 @EXAMPLES
 
