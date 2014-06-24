@@ -48,13 +48,8 @@ try {
 
 User objects are instances of a Foxx model with the following attributes:
 
-!SUBSECTION userData
-
-Application-specific user data. This is an arbitrary object that must at least have a *username* property set to the user's username.
-
-!SUBSECTION authData
-
-An arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly.
+* *userData*: application-specific user data. This is an arbitrary object that must at least have a *username* property set to the user's username.
+* *authData*: an arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly.
 
 !SECTION Create a user
 
