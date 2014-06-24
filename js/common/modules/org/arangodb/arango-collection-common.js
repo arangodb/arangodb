@@ -189,7 +189,7 @@ ArangoCollection.prototype.toString = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an all query for a collection
 /// @startDocuBlock collectionAll
-/// `all()`
+/// `collection.all()`
 ///
 /// Selects all documents of a collection and returns a cursor. You can use
 /// *toArray*, *next*, or *hasNext* to access the result. The result
@@ -199,11 +199,17 @@ ArangoCollection.prototype.toString = function () {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @verbinclude simple3
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAll}
+///   db.five.all();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use *next* to loop over all documents:
 ///
-/// @verbinclude simple4
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAllNext}
+///   var a = db.five.all().toArray();
+///   while (a.hasNext()) print(a.next());
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,11 +266,20 @@ ArangoCollection.prototype.all = function () {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @TINYEXAMPLE{simple18,convert into a list}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
+///   db.users.all().toArray();
+///   db.users.byExample({ "id" : 323 }).toArray();
+///   db.users.byExample({ "name" : "Peter" }).toArray();
+///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use *next* to loop over all documents:
 ///
-/// @TINYEXAMPLE{simple19,iterate over the result-set}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
+///   var a = db.users.byExample( {"name" : "Peter" } );
+///   while (a.hasNext()) print(a.next());
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -496,7 +511,10 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @TINYEXAMPLE{simple-query-range-to-array,convert into a list}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
+/// l = db.skip.range("age", 10, 13).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

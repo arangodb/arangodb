@@ -1,2 +1,0 @@
-arango> db._collection("demo");
-[ArangoCollection 145387, "demo" (status loaded)]
