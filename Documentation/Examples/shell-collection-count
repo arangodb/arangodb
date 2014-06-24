@@ -1,2 +1,0 @@
-arango> db.users.count();
-10001

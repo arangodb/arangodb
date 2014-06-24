@@ -386,6 +386,10 @@ ArangoDatabase.prototype._createEdgeCollection = function (name, properties) {
 ArangoDatabase.prototype._truncate = function (id) {
   var name;
 
+  if (typeof id !== "string") {
+    id = id._id;
+  }
+  
   for (name in this) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];

@@ -5582,7 +5582,10 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-collection-count
+/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+///   db.users.count();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5801,11 +5804,11 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.drop();
 ///   col;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6466,17 +6469,17 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// Read all properties
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperties}
-/// ~ db._create("examples");
-///   db.examples.properties();
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example.properties();
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Change a property
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
-/// ~ db._create("examples");
-///   db.examples.properties({ waitForSync : false });
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example.properties({ waitForSync : false });
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6741,38 +6744,28 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// Remove a document:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537" }
-/// arango> db.example.document(a1);
-/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537", "a" : 1 }
-/// arango> db.example.remove(a1);
-/// true
-/// arango> db.example.document(a1);
-/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
-/// !db.example.document(a1);
-/// !           ^
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   db.example.document(a1);
+///   db.example.remove(a1);
+///   db.example.document(a1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Remove a document with a conflict:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3857139" }
-/// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
-/// arango> db.example.remove(a1);
-/// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
-/// !db.example.remove(a1);
-/// !                 ^
-/// arango> db.example.remove(a1, true);
-/// true
-/// arango> db.example.document(a1);
-/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
-/// !db.example.document(a1);
-/// !           ^
-/// @endcode
-/// @endCodeBlock
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db.example.replace(a1, { a : 2 });
+///   db.example.remove(a1);
+///   db.example.remove(a1, true);
+///   db.example.document(a1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -6796,11 +6789,11 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
-/// ~ db._create("examples");
-///   c = db.examples;
+/// ~ db._create("example");
+///   c = db.example;
 ///   c.rename("better-example");
 ///   c;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7521,11 +7514,11 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.unload();
 ///   col;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7626,9 +7619,9 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
-/// ~ db._create("examples");
-///   db.examples;
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example;
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// 
 /// @endDocuBlock
@@ -7947,11 +7940,11 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
-/// ~ db._create("examples");
-///   db.examples.load();
+/// ~ db._create("example");
+///   db.example.load();
 ///   var d = db.demo;
 ///   db._collections();
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -8235,7 +8228,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 ///
 /// @EXAMPLES
 ///
-/// See @ref JS_CreateVocbase for examples.
+/// See @ref JS_CreateVocbase for example.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8340,7 +8333,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 /// identifier exists, or if the specified *_rev* value does not match the
 /// current revision of the document.
 ///
-/// Please note that if the method is executed on the arangod server (e.g. from
+/// **Note**: If the method is executed on the arangod server (e.g. from
 /// inside a Foxx application), an immutable document object will be returned
 /// for performance reasons. It is not possible to change attributes of this
 /// immutable object. To update or patch the returned document, it needs to be
@@ -8357,7 +8350,13 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// Returns the document:
 ///
-/// @verbinclude shell_read-document-db
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "12345"})
+///   db._document("example/12345");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8431,7 +8430,14 @@ static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
 ///
 /// Create and replace a document:
 ///
-/// @TINYEXAMPLE{shell_replace-document-db,replacing a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentReplace}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db._replace(a1, { a : 2 });
+///   a3 = db._replace(a1, { a : 3 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8488,7 +8494,14 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_update-document-db,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentUpdate}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db._update(a1, { b : 2 });
+///   a3 = db._update(a1, { c : 3 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
