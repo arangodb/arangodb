@@ -160,9 +160,7 @@
       var i;
 
       if (typeof body !== 'string') {
-        internal.startCaptureMode();
-        print(body);
-        body = internal.stopCaptureMode();
+        body = internal.inspect(body);
       }
 
       curl = "shell> curl ";
@@ -228,7 +226,6 @@
     return function (response) {
       var key;
       var headers = response.headers;
-      var output;
 
       // generate header
       appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
@@ -246,10 +243,7 @@
 
       // append body
       if (response.body !== undefined) {
-        internal.startCaptureMode();
-        print(response.body);
-        output = internal.stopCaptureMode();
-        appender(output);
+        appender(internal.inspect(response.body));
         appender("\n");
       }
     };

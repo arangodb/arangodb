@@ -85,11 +85,12 @@ static char* MakeValue (char const* value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
+/// this is used for crash and recovery tests
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging (char const* message) {
-  LOG_WARNING("causing intentional segfault: %s", message);
-  // make sure the log message is flushed
+  LOG_WARNING("SUMMON BAAL: %s", message);
+  // make sure the latest log messages are flushed
   TRI_ShutdownLogging(true);
 
   // and now crash
@@ -102,6 +103,11 @@ void TRI_SegfaultDebugging (char const* message) {
 
 bool TRI_ShouldFailDebugging (char const* value) {
   char* found = NULL;
+
+  // try without the lock first (to speed things up)
+  if (FailurePoints == NULL) {
+    return false;
+  }
 
   TRI_ReadLockReadWriteLock(&FailurePointsLock);
 

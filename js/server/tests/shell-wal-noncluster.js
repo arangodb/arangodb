@@ -52,6 +52,7 @@ function walFailureSuite () {
     },
 
     tearDown: function () {
+      internal.debugClearFailAt();
       db._drop(cn);
       c = null;
     },
@@ -80,6 +81,105 @@ function walFailureSuite () {
       testHelper.waitUnload(c);
       
       assertEqual(1000, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test no more available logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoMoreLogfiles : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.flushWal(true, true);
+        
+      internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
+      try {
+        for (i = 0; i < 200000; ++i) {
+          c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
+        }
+
+        // we don't know the exact point where the above operation failed, however,
+        // it must fail somewhere
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write throttling
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteNoThrottling : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      internal.flushWal(true, true);
+      
+      internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
+      internal.adjustWal({ throttleWait: 1000, throttleWhenPending: 1000 });
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      
+      internal.flushWal(true, false);
+
+      c.save({ _key: "foo" });
+      assertEqual("foo", c.document("foo")._key);
+      assertEqual(11, c.count());
+
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write throttling
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteThrottling : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+
+      internal.flushWal(true, true);
+      
+      internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
+      internal.adjustWal({ throttleWait: 1000, throttleWhenPending: 1000 });
+
+      var i;
+      for (i = 0; i < 1005; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+
+      internal.flushWal(true, false);
+      internal.wait(3);
+
+      try {
+        c.save({ _key: "foo" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+      assertEqual(1005, c.count());
     }
 
   };
