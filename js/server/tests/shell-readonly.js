@@ -103,6 +103,7 @@ function readOnlyDatabaseSuite () {
 
     setUp : function () {
       db = require("internal").db;
+      db._drop("testCol");
       collection = db._createDocumentCollection("testCol");
       collection.save({_key: "testDocKey", a: 2 });
       db._changeMode("ReadOnly");
@@ -110,9 +111,8 @@ function readOnlyDatabaseSuite () {
     tearDown : function () {
       try {
         db._changeMode("Normal");
-        collection.drop("testCol");
+        collection.drop();
       } catch (e) {
-        print(e); 
       }
     },
 

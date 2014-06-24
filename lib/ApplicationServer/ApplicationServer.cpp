@@ -820,7 +820,6 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // .............................................................................
 
   options[OPTIONS_SERVER + ":help-extended"]
-    ("random.no-seed", "do not seed the random generator")
     ("random.generator", &_randomGenerator, "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
 #ifdef TRI_HAVE_SETUID
     ("server.uid", &_uid, "switch to user-id after reading config files")

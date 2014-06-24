@@ -74,4 +74,3 @@ TOC {#CommandLineTOC}
     - @ref CommandLineSchedulerShowIoBackends "show-io-backends"
   - @ref CommandLineRandom
     - @ref CommandLineRandomGenerator "random.generator"
-    - @ref CommandLineRandomGenerator "random.no-seed"

@@ -63,7 +63,7 @@ runCommandLineTests = function (opts) {
     options = opts || {},
     jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
-    isSpecRegEx = /.+spec.js/,
+    isSpecRegEx = /.+spec\.js/,
     isSpec = function (unitTest) {
       return isSpecRegEx.test(unitTest);
     },

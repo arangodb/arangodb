@@ -394,17 +394,6 @@ namespace triagens {
         bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force syncing of shapes
-///
-/// @CMDOPT{\--database.force-sync-shapes @CA{boolean}}
-///
-/// This option is not used in this version of ArangoDB. It only remains here
-/// for compatibility reasons.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _unusedForceSyncShapes;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
 ///
 /// @CMDOPT{\--server.disable-replication-applier @CA{flag}}
@@ -423,23 +412,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableReplicationApplier;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove on drop
-///
-/// @CMDOPT{\--database.remove-on-drop @CA{flag}}
-///
-/// If @LIT{true} and you drop a collection, then they directory and all
-/// associated datafiles will be removed from disk. If @LIT{false}, then they
-/// collection directory will be renamed to @LIT{deleted-...}, but remains on
-/// hard disk. To restore such a dropped collection, you can rename the
-/// directory back to @LIT{collection-...}, but you must also edit the file
-/// @LIT{parameter.json} inside the directory.
-///
-/// The default is @LIT{true}.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _removeOnDrop;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
