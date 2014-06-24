@@ -1553,7 +1553,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
 /// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ graph = graph_module._create("mygraph",
+/// ~ graph = graph_module._create("mygraph");
 ///   graph._addVertexCollection("shop");
 ///   graph._addVertexCollection("customer");
 ///   graph._addVertexCollection("pet");
@@ -1564,7 +1564,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
 /// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ graph = graph_module._create("mygraph",
+/// ~ graph = graph_module._create("mygraph");
 ///   var rel = graph_module._undirectedRelation("isCustomer", ["shop"], ["customer]);
 ///   graph._extendEdgeDefinitions(rel);
 /// ~ graph_module._drop("mygraph");
