@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 180, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,11 +34,6 @@ var actions = require("org/arangodb/actions");
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a server-side transaction
@@ -77,9 +72,6 @@ var actions = require("org/arangodb/actions");
 ///   timeout for waiting on collection locks. If not specified, a default 
 ///   value will be used. Setting `lockTimeout` to `0` will make ArangoDB 
 ///   not time out waiting for a lock.
-///
-/// - `replicate`: whether or not to replicate the operations from this
-///   transaction. If not specified, the default value is `true`.
 ///
 /// - `params`: optional arguments passed to `action`.
 ///
@@ -148,10 +140,7 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : "products" 
 ///       }, 
-///       action: "function () { " +
-///               "var db = require('internal').db; " + 
-///               "db.products.save({}); " + 
-///               "return db.products.count(); }"
+///       action: "function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -177,11 +166,7 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : [ "products", "materials" ] 
 ///       },
-///       action: "function () { " + 
-///               "var db = require('internal').db; " + 
-///               "db.products.save({}); " +
-///               "db.materials.save({}); " + 
-///               "return 'worked!'; }"
+///       action: "function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -203,10 +188,7 @@ var actions = require("org/arangodb/actions");
 ///       collections: { 
 ///         write : "products" 
 ///       },
-///       action : "function () { " + 
-///                "var db = require('internal').db; " +
-///                "db.products.save({ _key: 'abc'}); " +
-///                "db.products.save({ _key: 'abc'}); }"
+///       action : "function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -271,10 +253,6 @@ function post_api_transaction(req, res) {
   actions.resultOk(req, res, actions.HTTP_OK, { result : result });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       initialiser
 // -----------------------------------------------------------------------------
@@ -303,10 +281,6 @@ actions.defineHttp({
     }
   }
 });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

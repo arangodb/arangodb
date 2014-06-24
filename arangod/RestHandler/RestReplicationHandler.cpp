@@ -1247,13 +1247,11 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
 ///     var re = require("org/arangodb/replication");
-///     re.logger.start();
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
 ///     var url = "/_api/replication/logger-follow?from=" + lastTick;
 ///     var response = logCurlRequest('GET', url);
 ///
-///     re.logger.stop();
 ///     assert(response.code === 204);
 ///
 ///     logRawResponse(response);
@@ -1265,7 +1263,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var re = require("org/arangodb/replication");
 ///     db._drop("products");
 ///
-///     re.logger.start();
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
 ///     db._create("products");
@@ -1275,10 +1272,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
 ///
+///     require("internal").wait(1);
 ///     var url = "/_api/replication/logger-follow?from=" + lastTick;
 ///     var response = logCurlRequest('GET', url);
 ///
-///     re.logger.stop();
 ///     assert(response.code === 200);
 ///
 ///     logRawResponse(response);
@@ -1290,7 +1287,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     var re = require("org/arangodb/replication");
 ///     db._drop("products");
 ///
-///     re.logger.start();
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
 ///     db._create("products");
@@ -1300,10 +1296,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
 ///
+///     require("internal").wait(1);
 ///     var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
 ///     var response = logCurlRequest('GET', url);
 ///
-///     re.logger.stop();
 ///     assert(response.code === 200);
 ///
 ///     logRawResponse(response);
