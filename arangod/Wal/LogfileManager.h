@@ -60,11 +60,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct RecoverState {
+      RecoverState ()
+        : collections(),
+          failedTransactions(),
+          droppedCollections(),
+          droppedDatabases(),
+          lastTick(0),
+          logfilesToCollect(0) {
+      }
+
       std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
-      std::unordered_set<TRI_voc_tid_t>                 failedTransactions;
+      std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>> failedTransactions;
       std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
       std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
       TRI_voc_tick_t                                    lastTick;
+      int                                               logfilesToCollect;
     };
 
 // -----------------------------------------------------------------------------
@@ -547,18 +557,16 @@ namespace triagens {
         void waitForCollector (Logfile::IdType);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scan a single logfile for the max tick
-////////////////////////////////////////////////////////////////////////////////
-
-        bool scanLogfileTick (Logfile const*,
-                              RecoverState&);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief scan a single logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool scanLogfile (Logfile const*,
-                          RecoverState&);
+        bool scanLogfile (Logfile const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write abort markers for all open transactions
+////////////////////////////////////////////////////////////////////////////////
+
+        void closeOpenTransactions ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the recovery procedure
@@ -698,6 +706,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _directory;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state during recovery
+////////////////////////////////////////////////////////////////////////////////
+    
+        RecoverState* _recoverState;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the size of each logfile
