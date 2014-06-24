@@ -2755,12 +2755,12 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(GeneralGraphCommonNeighborsSuite);
-//jsunity.run(GeneralGraphAQLQueriesSuite);
-//jsunity.run(EdgesAndVerticesSuite);
-//jsunity.run(GeneralGraphCreationSuite);
-//jsunity.run(ChainedFluentAQLResultsSuite);
-//jsunity.run(OrphanCollectionSuite);
+jsunity.run(GeneralGraphCommonNeighborsSuite);
+jsunity.run(GeneralGraphAQLQueriesSuite);
+jsunity.run(EdgesAndVerticesSuite);
+jsunity.run(GeneralGraphCreationSuite);
+jsunity.run(ChainedFluentAQLResultsSuite);
+jsunity.run(OrphanCollectionSuite);
 jsunity.run(MeasurementsSuite);
 
 return jsunity.done();
