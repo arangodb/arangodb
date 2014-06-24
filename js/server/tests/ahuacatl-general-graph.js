@@ -560,7 +560,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testPathsWithDirectionAnyAndMaxLength1: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'any', false , 1 , 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', {direction :'any', minLength :  1 , maxLength:  1}) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
       actual.forEach(function (p) {
         i++;
         ed = "";
@@ -589,7 +589,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testInBoundPaths: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3', 'inbound', false, 1) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3',  {direction : 'inbound', minLength : 1}) SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
 
       actual.forEach(function (p) {
         i++;
