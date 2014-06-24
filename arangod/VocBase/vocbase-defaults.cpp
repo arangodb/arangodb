@@ -42,7 +42,6 @@
 void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
                                TRI_vocbase_defaults_t const* defaults) {
   vocbase->_settings.defaultMaximalSize               = defaults->defaultMaximalSize;
-  vocbase->_settings.removeOnDrop                     = defaults->removeOnDrop;
   vocbase->_settings.defaultWaitForSync               = defaults->defaultWaitForSync;
   vocbase->_settings.forceSyncProperties              = defaults->forceSyncProperties;
   vocbase->_settings.requireAuthentication            = defaults->requireAuthentication;
@@ -64,7 +63,6 @@ TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
     return NULL;
   }
 
-  TRI_Insert3ArrayJson(zone, json, "removeOnDrop", TRI_CreateBooleanJson(zone, defaults->removeOnDrop));
   TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, defaults->defaultWaitForSync));
   TRI_Insert3ArrayJson(zone, json, "forceSyncProperties", TRI_CreateBooleanJson(zone, defaults->forceSyncProperties));
   TRI_Insert3ArrayJson(zone, json, "requireAuthentication", TRI_CreateBooleanJson(zone, defaults->requireAuthentication));
@@ -81,18 +79,11 @@ TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
 
 void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
                                   TRI_json_t const* json) {
-  TRI_json_t* optionJson;
-
   if (! TRI_IsArrayJson(json)) {
     return;
   }
 
-  optionJson = TRI_LookupArrayJson(json, "removeOnDrop");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->removeOnDrop = optionJson->_value._boolean;
-  }
-
+  TRI_json_t* optionJson;
   optionJson = TRI_LookupArrayJson(json, "waitForSync");
 
   if (TRI_IsBooleanJson(optionJson)) {
