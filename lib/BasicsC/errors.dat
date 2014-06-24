@@ -121,6 +121,7 @@ ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised 
 ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
 ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING,1234,"index insertion warning - attribute missing in document","Will be raised when an attempt to insert a document into an index is caused by in the document not having one or more attributes which the index is built on."
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
+ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 
 ################################################################################
 ## ArangoDB storage errors
