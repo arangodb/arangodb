@@ -1335,7 +1335,7 @@ function put_api_collection_rename (req, res, collection) {
 ///     db._drop(cn);
 ///     var coll = db._create(cn);
 ///     coll.save({ "test" : true });
-///     require("internal").flushWal(true, true);
+///     require("internal").wal.flush(true, true);
 ///
 ///     var url = "/_api/collection/"+ coll._id + "/rotate";
 ///     var response = logCurlRequest('PUT', url, { });

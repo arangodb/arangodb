@@ -4277,7 +4277,7 @@ function transactionServerFailuresSuite () {
       internal.debugSetFailAt("CreateJournalDocumentCollection");
       
       // adjust the configuration and make sure we flush all reserve logfiles
-      internal.adjustWal({ reserveLogfiles: 1 });
+      internal.wal.properties({ reserveLogfiles: 1 });
       
       var i;
       for (i = 0; i < 100; ++i) {
@@ -4289,7 +4289,7 @@ function transactionServerFailuresSuite () {
         // write something into the logs so we can flush 'em
         c.save({ _key: "foo" });
         c.remove("foo");
-        internal.flushWal(true, false);
+        internal.wal.flush(true, false);
       }
        
       // one more to populate a new logfile 
@@ -4319,7 +4319,7 @@ function transactionServerFailuresSuite () {
       assertEqual(100160, fig.uncollectedLogfileEntries);
 
       internal.debugClearFailAt();
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       assertEqual(100150, c.count());
 
@@ -4345,7 +4345,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
         
       try {
         TRANSACTION({ 
@@ -4395,7 +4395,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       internal.debugSetFailAt("TransactionWriteBeginMarker");
         
       try {
@@ -4434,7 +4434,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       internal.debugSetFailAt("TransactionWriteCommitMarker");
         
       try {
@@ -4477,7 +4477,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       internal.debugSetFailAt("TransactionWriteAbortMarker");
         
       try {
@@ -4524,7 +4524,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
         
       try {
         TRANSACTION({ 
@@ -4567,7 +4567,7 @@ function transactionServerFailuresSuite () {
       } 
       assertEqual(100, c.count());
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
         
       try {
         TRANSACTION({ 

@@ -3783,35 +3783,59 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 /// @brief adjusts the WAL configuration at runtime
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AdjustWal (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_PropertiesWal (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "adjustWal(<object>)");
-  }
-
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
-  if (object->Has(TRI_V8_STRING("reserveLogfiles"))) {
-    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("reserveLogfiles")), true));
-    triagens::wal::LogfileManager::instance()->reserveLogfiles(logfiles);
-  }
-
-  if (object->Has(TRI_V8_STRING("historicLogfiles"))) {
-    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("historicLogfiles")), true));
-    triagens::wal::LogfileManager::instance()->historicLogfiles(logfiles);
+  if (argv.Length() > 1 || (argv.Length() == 1 && ! argv[0]->IsObject())) {
+    TRI_V8_EXCEPTION_USAGE(scope, "properties(<object>)");
   }
   
-  if (object->Has(TRI_V8_STRING("throttleWait"))) {
-    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWait")), true);
-    triagens::wal::LogfileManager::instance()->maxThrottleWait(value);
-  }
+  auto l = triagens::wal::LogfileManager::instance();
+
+  if (argv.Length() == 1) {
+    // set the properties
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+    if (object->Has(TRI_V8_STRING("allowOversizeEntries"))) {
+      bool value = TRI_ObjectToBoolean(object->Get(TRI_V8_STRING("allowOversizeEntries")));
+      l->allowOversizeEntries(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("logfileSize"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("logfileSize")), true));
+      l->filesize(value);
+    }
+
+    if (object->Has(TRI_V8_STRING("historicLogfiles"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("historicLogfiles")), true));
+      l->historicLogfiles(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("reserveLogfiles"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("reserveLogfiles")), true));
+      l->reserveLogfiles(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("throttleWait"))) {
+      uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWait")), true);
+      l->maxThrottleWait(value);
+    }
   
-  if (object->Has(TRI_V8_STRING("throttleWhenPending"))) {
-    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWhenPending")), true);
-    triagens::wal::LogfileManager::instance()->throttleWhenPending(value);
+    if (object->Has(TRI_V8_STRING("throttleWhenPending"))) {
+      uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWhenPending")), true);
+      l->throttleWhenPending(value);
+    }
   }
 
-  return scope.Close(v8::True());
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_STRING("allowOversizeEntries"), v8::Boolean::New(l->allowOversizeEntries()));
+  result->Set(TRI_V8_STRING("logfileSize"), v8::Number::New(l->filesize()));
+  result->Set(TRI_V8_STRING("historicLogfiles"), v8::Number::New(l->historicLogfiles()));
+  result->Set(TRI_V8_STRING("reserveLogfiles"), v8::Number::New(l->reserveLogfiles()));
+  result->Set(TRI_V8_STRING("syncInterval"), v8::Number::New(l->syncInterval()));
+  result->Set(TRI_V8_STRING("throttleWait"), v8::Number::New(l->maxThrottleWait()));
+  result->Set(TRI_V8_STRING("throttleWhenPending"), v8::Number::New(l->throttleWhenPending()));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10160,7 +10184,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(context, "WAL_ADJUST", JS_AdjustWal, true);
+  TRI_AddGlobalFunctionVocbase(context, "WAL_PROPERTIES", JS_PropertiesWal, true);
 
   // .............................................................................
   // create global variables
