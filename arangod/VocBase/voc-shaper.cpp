@@ -209,7 +209,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      void* f = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
       TRI_ASSERT(f == nullptr);
 
       // enter into the dictionaries
