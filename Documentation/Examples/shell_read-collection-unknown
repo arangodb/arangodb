@@ -1,2 +1,0 @@
-arango> db._collection("unknown")
-null

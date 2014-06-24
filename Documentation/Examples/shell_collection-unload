@@ -1,5 +1,0 @@
-arango> col = db.example;
-[ArangoCollection 164208316, "example" (status loaded)]
-arango> col.unload();
-arango> col;
-[ArangoCollection 164208316, "example" (status unloaded)]

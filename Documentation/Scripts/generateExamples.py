@@ -291,7 +291,7 @@ for filename in filenames:
 ### @brief generate arangosh example
 ################################################################################
 
-gr1 = re.compile(r'^[ \n]*(while|if|var) ')
+gr1 = re.compile(r'^[ \n]*(while|if|var|throw|for) ')
 
 def generateArangoshOutput():
     print "var internal = require('internal');"
@@ -314,10 +314,12 @@ def generateArangoshOutput():
 
         print "(function() {"
         print "internal.startCaptureMode();";
-        print "try {"
-        print "  var XXX;"
+
 
         for l in value:
+            print "try {"
+            print "  var XXX;"
+
             m = gr1.match(l[0])
 
             if l[1]:
@@ -327,10 +329,12 @@ def generateArangoshOutput():
                 print "%s" % l[0]
             else:
                 print "XXX = %s" % l[0]
-                print "if (XXX !== undefined) {print(XXX);}"
+                if l[1]:
+                    print "if (XXX !== undefined) {print(XXX);}"
 
-        print "} catch (err) { print(err); }"
-        print "var output = internal.stopCaptureMode();";
+            print "} catch (err) { print(err); }"
+
+        print "var output = internal.stopCaptureMode();"
         print "ArangoshOutput['%s'] = output;" % key
         if JS_DEBUG:
             print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)
