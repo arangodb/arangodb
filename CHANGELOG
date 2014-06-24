@@ -1,6 +1,10 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* removed startup option `--random.no-seed`
+
+  This option had no effect in previous versions of ArangoDB and was thus removed.
+
 * introduced write-ahead log
 
   All write operations in an ArangoDB server instance are automatically logged
