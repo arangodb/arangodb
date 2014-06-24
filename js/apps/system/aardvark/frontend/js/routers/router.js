@@ -20,7 +20,7 @@
             "databases": "databases",
             "applications": "applications",
             "application/documentation/:key": "appDocumentation",
-            "graph": "graph",
+            "graph": "graphManagement",
             "graphManagement": "graphManagement",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
