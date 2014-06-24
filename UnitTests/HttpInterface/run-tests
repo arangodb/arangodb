@@ -43,4 +43,5 @@ rspec -I . --color --format d \
 	api-transactions-noncluster-spec.rb \
 	api-traversal-noncluster-spec.rb \
 	api-traversal-edgecollection-noncluster-spec.rb \
-        api-users-spec.rb 
+        api-users-spec.rb \
+	api-wal-noncluster-spec.rb 
