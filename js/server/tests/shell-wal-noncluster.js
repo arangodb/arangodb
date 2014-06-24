@@ -30,6 +30,60 @@ var arangodb = require("org/arangodb");
 var testHelper = require("org/arangodb/test-helper").Helper;
 var db = arangodb.db;
 var internal = require("internal");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      wal failures
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function walFailureSuite () {
+  var cn = "UnitTestsWal";
+  var c;
+
+  return {
+
+    setUp: function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+      c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bad alloc in collector
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectorBadAlloc : function () {
+      internal.flushWal(true, true);
+      internal.debugSetFailAt("CollectorThreadQueueOperations");
+
+      var i = 0;
+      for (i = 0; i < 1000; ++i) {
+        c.save({ _key: "test" + i });
+      }
+
+      assertEqual(1000, c.count());
+      internal.flushWal(true, false);
+      
+      assertEqual(1000, c.count());
+      internal.wait(6);
+      internal.debugClearFailAt();
+      
+      internal.wait(6);
+      testHelper.waitUnload(c);
+      
+      assertEqual(1000, c.count());
+    }
+
+  };
+}
  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     wal functions
@@ -39,7 +93,7 @@ var internal = require("internal");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function WalSuite () {
+function walSuite () {
   var cn = "UnitTestsWal";
   var c;
 
@@ -123,7 +177,10 @@ function WalSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(WalSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(walFailureSuite);
+}
+jsunity.run(walSuite);
 
 return jsunity.done();
 

@@ -2476,10 +2476,9 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
     for (i = j + 1; i < paths->_length;  ++i) {
       TRI_shape_pid_t* rightShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,i));
       if (*leftShape == *rightShape) {
-        LOG_WARNING("bitarray index creation failed -- duplicate keys in index");
         *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
-        *errorStr = TRI_DuplicateString("bitarray index creation failed -- duplicate keys in index");
-        return NULL;
+        *errorStr = TRI_DuplicateString("bitarray index creation failed - duplicate keys in index");
+        return nullptr;
       }
     }
   }
