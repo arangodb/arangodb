@@ -7,7 +7,7 @@
 
     idAttribute: "_key",
 
-    urlRoot: "/_api/graph",
+    urlRoot: "/_api/gharial",
 
     isNew: function() {
       return !this.get("_id");
@@ -19,10 +19,8 @@
 
     defaults: {
       "_key": "",
-      "_id": "",
-      "_rev": "",
-      "vertices": "",
-      "edges": ""
+      edgeDefinitions: [],
+      orphanCollections: []
     }
   });
 }());

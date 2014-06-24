@@ -167,7 +167,7 @@
       this.collection.create({
         _key: _key,
         edgeDefinitions: edgeDefinitions,
-        vertexCollections: vertexCollections
+        orphanCollections: vertexCollections
       }, {
         success: function() {
           self.updateGraphManagementView();
@@ -365,7 +365,7 @@
         )
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
       );
 
 
