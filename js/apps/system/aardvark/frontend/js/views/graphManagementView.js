@@ -19,7 +19,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal2();
+      this.createNewGraphModal();
     },
 
     deleteGraph: function(e) {
@@ -55,7 +55,7 @@
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
-      this.createEditGraphModal2(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
+      this.createEditGraphModal(this.graphToEdit, graph.get("vertices"), graph.get("edges"));
     },
 
     info : function(e) {
@@ -268,7 +268,7 @@
 
     showHideDefinition : function(e) {
       var id = $(e.currentTarget).attr("id");
-      if (id == "row_newEdgeDefinitions1") {
+      if (id === "row_newEdgeDefinitions1") {
         $('#row_fromCollections1').toggle();
         $('#row_toCollections1').toggle();
       }
@@ -338,7 +338,9 @@
       );
 
 
-      window.modalView.show("modalTable.ejs", "Add new Graph", buttons, tableContent, null, this.events);
+      window.modalView.show(
+        "modalTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
+      );
       $('#row_fromCollections1').hide();
       $('#row_toCollections1').hide();
     },

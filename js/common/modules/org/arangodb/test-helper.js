@@ -54,7 +54,7 @@ exports.Helper = {
     var internal = require("internal");
 
     collection.unload();
-    internal.flushWal();
+    internal.wal.flush();
 
     var iterations = 0;
    
@@ -76,7 +76,7 @@ exports.Helper = {
   rotate: function (collection) {
     var internal = require("internal");
 
-    internal.flushWal(true, true);
+    internal.wal.flush(true, true);
 
     var fig = collection.figures();
     var files = fig.datafiles.count + fig.journals.count;
