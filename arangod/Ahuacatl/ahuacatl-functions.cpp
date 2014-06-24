@@ -659,7 +659,7 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
 
   // graph functions
   REGISTER_FUNCTION("PATHS", "GRAPH_PATHS", false, false, "c,h|s,b", &OptimisePaths);
-  REGISTER_FUNCTION("GRAPH_PATHS", "GENERAL_GRAPH_PATHS", false, false, "s|a", &OptimisePaths);
+  REGISTER_FUNCTION("GRAPH_PATHS", "GENERAL_GRAPH_PATHS", false, false, "s|a", NULL);
   REGISTER_FUNCTION("SHORTEST_PATH", "GRAPH_SHORTEST_PATH", false, false, "h,h,s,s,s|a", NULL);
   REGISTER_FUNCTION("GRAPH_SHORTEST_PATH", "GENERAL_GRAPH_SHORTEST_PATH", false, false, "s,als,als|a", NULL);
   REGISTER_FUNCTION("GRAPH_DISTANCE_TO", "GENERAL_GRAPH_DISTANCE_TO", false, false, "s,als,als|a", NULL);
