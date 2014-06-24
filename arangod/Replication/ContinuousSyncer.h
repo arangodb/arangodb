@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 
 #include "Replication/Syncer.h"
+#include "Utils/ReplicationTransaction.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -115,23 +116,22 @@ namespace triagens {
         int getLocalState (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort any ongoing transaction
+/// @brief abort any ongoing transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-        void abortOngoingTransaction ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a transaction for a single operation
-////////////////////////////////////////////////////////////////////////////////
-
-        struct TRI_transaction_s* createSingleOperationTransaction (TRI_voc_cid_t,
-                                                                    int*);
+        void abortOngoingTransactions ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a transaction, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
         int startTransaction (struct TRI_json_s const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aborts a transaction, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+        int abortTransaction (struct TRI_json_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commits a transaction, based on the JSON provided
@@ -145,7 +145,6 @@ namespace triagens {
 
         int processDocument (TRI_replication_operation_e,
                              struct TRI_json_s const*,
-                             bool&,
                              std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,14 +205,10 @@ namespace triagens {
         struct TRI_replication_applier_s* _applier;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief information about the local applier state
+/// @brief currently running transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct {
-          struct TRI_transaction_s*              _trx;
-          TRI_voc_tid_t                          _externalTid;
-        }
-        _transactionState;
+        std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _transactions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringified chunk size

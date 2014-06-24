@@ -65,6 +65,7 @@
 #include "VocBase/general-cursor.h"
 #include "VocBase/key-generator.h"
 #include "VocBase/replication-applier.h"
+#include "VocBase/replication-dump.h"
 #include "VocBase/server.h"
 #include "VocBase/voc-shaper.h"
 #include "VocBase/index.h"
@@ -1482,8 +1483,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     geoJson,
                                                     unique,
                                                     ignoreNull,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupGeoIndex1DocumentCollection(document,
@@ -1511,8 +1511,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     (char const*) TRI_AtVectorPointer(&attributes, 1),
                                                     unique,
                                                     ignoreNull,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupGeoIndex2DocumentCollection(document,
@@ -1532,8 +1531,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                     iid,
                                                     &attributes,
                                                     unique,
-                                                    &created,
-                                                    TRI_GetIdServer());
+                                                    &created);
       }
       else {
         idx = TRI_LookupHashIndexDocumentCollection(document,
@@ -1552,8 +1550,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         iid,
                                                         &attributes,
                                                         unique,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupSkiplistIndexDocumentCollection(document,
@@ -1578,8 +1575,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         (char const*) TRI_AtVectorPointer(&attributes, 0),
                                                         false,
                                                         minWordLength,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupFulltextIndexDocumentCollection(document,
@@ -1610,8 +1606,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         supportUndefined,
                                                         &created,
                                                         &errorCode,
-                                                        &errorStr,
-                                                        TRI_GetIdServer());
+                                                        &errorStr);
         if (errorCode != 0) {
           TRI_set_errno(errorCode);
         }
@@ -1645,8 +1640,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         iid,
                                                         size,
                                                         byteSize,
-                                                        &created,
-                                                        TRI_GetIdServer());
+                                                        &created);
       }
       else {
         idx = TRI_LookupCapConstraintDocumentCollection(document);
@@ -3285,12 +3279,11 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     &parameter,
-                                                                    0,
-                                                                    TRI_GetIdServer());
+                                                                    0);
 
   TRI_FreeCollectionInfoOptions(&parameter);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot create collection");
   }
 
@@ -3629,19 +3622,8 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     waitForSync = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("waitForSync")));
   }
 
-  // "replicate"
-  bool replicate = true;
-
-  if (object->Has(TRI_V8_SYMBOL("replicate"))) {
-    if (! object->Get(TRI_V8_SYMBOL("replicate"))->IsBoolean()) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "<replicate> must be a boolean value");
-    }
-
-    replicate = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("replicate")));
-  }
-
   // "collections"
-  static const string collectionError = "missing/invalid collections definition for transaction";
+  static string const collectionError = "missing/invalid collections definition for transaction";
 
   if (! object->Has(TRI_V8_SYMBOL("collections")) || ! object->Get(TRI_V8_SYMBOL("collections"))->IsObject()) {
     TRI_V8_EXCEPTION_PARAMETER(scope, collectionError);
@@ -3764,8 +3746,7 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
                                                        readCollections,
                                                        writeCollections,
                                                        lockTimeout,
-                                                       waitForSync,
-                                                       replicate);
+                                                       waitForSync);
 
   int res = trx.begin();
 
@@ -4553,7 +4534,7 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -4590,8 +4571,8 @@ static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& arg
   v8::Handle<v8::Object> state = v8::Object::New();
   state->Set(TRI_V8_STRING("running"), v8::True());
   state->Set(TRI_V8_STRING("lastLogTick"), V8TickId(s.lastTick));
-  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New(s.numEvents));
-  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), s.timeString.size()));
+  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New((double) s.numEvents));
+  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), (int) s.timeString.size()));
   result->Set(TRI_V8_STRING("state"), state);
 
   v8::Handle<v8::Object> server = v8::Object::New();
@@ -4615,13 +4596,54 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
   // the replication logger is actually non-existing in ArangoDB 2.2 and higher
   // as there is the WAL. To be downwards-compatible, we'll return dummy values
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(TRI_V8_STRING("autostart"), v8::True());
+  result->Set(TRI_V8_STRING("autoStart"), v8::True());
   result->Set(TRI_V8_STRING("logRemoteChanges"), v8::True());
   result->Set(TRI_V8_STRING("maxEvents"), v8::Number::New(0));
   result->Set(TRI_V8_STRING("maxEventsSize"), v8::Number::New(0));
 
   return scope.Close(result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the last WAL entries
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+static v8::Handle<v8::Value> JS_LastLoggerReplication (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (argv.Length() != 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+  }
+
+  TRI_replication_dump_t dump(vocbase, 0); 
+  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(argv[0], true);
+  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(argv[1], true);
+
+  int res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, dump._buffer->_buffer);
+
+  if (json == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+  return scope.Close(result);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync data from a remote master
@@ -4953,11 +4975,11 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -4997,11 +5019,11 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -5027,11 +5049,11 @@ static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& ar
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (vocbase->_replicationApplier == 0) {
+  if (vocbase->_replicationApplier == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -5778,7 +5800,14 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-drop
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
+/// ~ db._create("examples");
+///   col = db.examples;
+///   col.drop();
+///   col;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5787,7 +5816,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -5798,7 +5827,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(DropVocbaseColCoordinator(collection));
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, TRI_GetIdServer());
+  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -5815,7 +5844,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
                                                    v8::Handle<v8::Value> const val) {
   v8::HandleScope scope;
 
-  string collectionName = "";
+  string collectionName;
   TRI_idx_iid_t iid = 0;
 
   // extract the index identifier from a string
@@ -5929,7 +5958,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction, write-lock is acquired by TRI_DropIndex...
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, TRI_GetIdServer());
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid);
 
   // .............................................................................
   // outside a write transaction
@@ -6068,9 +6097,12 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ///   for this collection that have not been transferred in datafiles /
 ///   journals of the collection.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @verbinclude shell_collection-figures
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
+///   db.demo.figures()
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6433,11 +6465,20 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Read all properties
 ///
-/// @verbinclude shell_collection-properties
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperties}
+/// ~ db._create("examples");
+///   db.examples.properties();
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Change a property
 ///
-/// @verbinclude shell_collection-properties-change
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
+/// ~ db._create("examples");
+///   db.examples.properties({ waitForSync : false });
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6750,11 +6791,18 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 ///
 /// If renaming fails for any reason, an error is thrown.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-rename
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
+/// ~ db._create("examples");
+///   c = db.examples;
+///   c.rename("better-example");
+///   c;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6775,9 +6823,9 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
   // vice versa. this parameter is not publicly exposed but used internally
-  bool override = false;
+  bool doOverride = false;
   if (argv.Length() > 1) {
-    override = TRI_ObjectToBoolean(argv[1]);
+    doOverride = TRI_ObjectToBoolean(argv[1]);
   }
 
   if (name.empty()) {
@@ -6800,8 +6848,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase,
                                         collection,
                                         name.c_str(),
-                                        override,
-                                        TRI_GetIdServer());
+                                        doOverride);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");
@@ -6912,7 +6959,7 @@ static int GetRevisionCoordinator (TRI_vocbase_col_t* collection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the revision id of a collection
-/// @startDocuBlock collectionLoad
+/// @startDocuBlock collectionRevision
 /// `collection.revision()`
 ///
 /// Returns the revision id of the collection
@@ -6965,7 +7012,8 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// datafile in a following compaction run and perform earlier garbage
 /// collection.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7472,7 +7520,14 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-unload
+/// @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
+/// ~ db._create("examples");
+///   col = db.examples;
+///   col.unload();
+///   col;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7570,7 +7625,12 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_read-collection-short-cut
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
+/// ~ db._create("examples");
+///   db.examples;
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7813,15 +7873,21 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 ///
 /// Get a collection by name:
 ///
-/// @verbinclude shell_read-collection-name
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseName}
+///   db._collection("demo");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Get a collection by id:
 ///
-/// @verbinclude shell_read-collection-id
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameId}
+///   db._collection(26859402);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Unknown collection:
 ///
-/// @verbinclude shell_read-collection-unknown
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameUnknown}
+///   db._collection("unknown");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7880,7 +7946,14 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_read-collection-all
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
+/// ~ db._create("examples");
+///   db.examples.load();
+///   var d = db.demo;
+///   db._collections();
+/// ~ db._drop("examples");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8083,19 +8156,39 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///
 /// With defaults:
 ///
-/// @verbinclude shell_create-collection
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreate}
+///   c = db._create("cars");
+///   c.properties;
+/// ~ db._drop("cars");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With properties:
 ///
-/// @verbinclude shell_create-collection-properties
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
+///   c = db._create("cars", { waitForSync : true, journalSize : 1024 * 1204 });
+///   c.properties;
+/// ~ db._drop("cars");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With a key generator:
 ///
-/// @verbinclude shell_create-collection-keygen
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateKey}
+///   db._create("users", { keyOptions: { type: "autoincrement", offset: 10, increment: 5 } });
+///   db.users.save({ name: "user 1" });
+///   db.users.save({ name: "user 2" });
+///   db.users.save({ name: "user 3" });
+/// ~ db._drop("users");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With a special key option:
 ///
-/// @verbinclude shell_create-collection-keyoptions
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSpecialKey}
+///   db._create("users", { keyOptions: { allowUserKeys: false } });
+///   db.users.save({ name: "user 1" });
+///   db.users.save({ name: "user 2", _key: "myuser" });
+///   db.users.save({ name: "user 3" });
+/// ~ db._drop("users");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -9017,7 +9110,7 @@ static v8::Handle<v8::Value> DropDatabaseCoordinator (v8::Arguments const& argv)
 /// Drops the database specified by *name*. The database specified by
 /// *name* must exist.
 ///
-/// Note that dropping databases is only possible from within the *_system*
+/// **Note**: Dropping databases is only possible from within the *_system*
 /// database. The *_system* database itself cannot be dropped.
 ///
 /// Databases are dropped asynchronously, and will be physically removed if
@@ -10031,6 +10124,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_LAST", JS_LastLoggerReplication, true);
+#endif  
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);

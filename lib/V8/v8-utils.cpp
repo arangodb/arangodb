@@ -170,26 +170,31 @@ static bool LoadJavaScriptFile (char const* filename,
                                 bool useGlobalContext) {
   v8::HandleScope handleScope;
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, NULL);
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
 
-  if (content == 0) {
+  if (content == nullptr) {
     LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_last_error());
     return false;
   }
 
   if (useGlobalContext) {
+    char const* prologue = "(function() { ";
+    char const* epilogue = "/* end-of-file */ })()";
+
     char* contentWrapper = TRI_Concatenate3StringZ(TRI_UNKNOWN_MEM_ZONE,
-                                                   "(function() { ",
+                                                   prologue,
                                                    content,
-                                                   "/* end-of-file */ })()");
+                                                   epilogue);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
+    length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
   }
 
   v8::Handle<v8::String> name = v8::String::New(filename);
-  v8::Handle<v8::String> source = v8::String::New(content);
+  v8::Handle<v8::String> source = v8::String::New(content, (int) length);
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -354,8 +359,8 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
   }
 
   try {
-    string const value = TRI_ObjectToString(argv[0]);
-    string const base64 = StringUtils::encodeBase64(value);
+    string const&& value = TRI_ObjectToString(argv[0]);
+    string const&& base64 = StringUtils::encodeBase64(value);
 
     return scope.Close(v8::String::New(base64.c_str(), (int) base64.size()));
   }
@@ -1399,16 +1404,17 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
 
   if (*name == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
 
-  if (content == 0) {
+  if (content == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot read file");
   }
 
-  TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), argv[0], false);
+  TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) length), argv[0], false);
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
   return scope.Close(v8::Undefined());
@@ -1861,13 +1867,14 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
   }
 
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, NULL);
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
 
-  if (content == 0) {
+  if (content == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
   }
 
-  v8::Handle<v8::String> result = v8::String::New(content);
+  v8::Handle<v8::String> result = v8::String::New(content, (int) length);
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -1899,7 +1906,7 @@ static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
   string base64;
 
   try {
-    string content = FileUtils::slurp(*name);
+    string&& content = FileUtils::slurp(*name);
     base64 = StringUtils::encodeBase64(content);
   }
   catch (...) {
@@ -2370,6 +2377,8 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
 /// intentionally cause a segmentation violation
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_FAILURE_TESTS
+
 static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2378,7 +2387,7 @@ static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "debugSegfault(<message>)");
   }
 
-  const string message = TRI_ObjectToString(argv[0]);
+  string const message = TRI_ObjectToString(argv[0]);
 
   TRI_SegfaultDebugging(message.c_str());
 
@@ -2386,6 +2395,8 @@ static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
 
   return scope.Close(v8::Undefined());
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a failure point
@@ -2395,6 +2406,8 @@ static v8::Handle<v8::Value> JS_DebugSegfault (v8::Arguments const& argv) {
 /// Set a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_FAILURE_TESTS
+
 static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2403,12 +2416,14 @@ static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "debugSetFailAt(<point>)");
   }
 
-  string point = TRI_ObjectToString(argv[0]);
+  string const point = TRI_ObjectToString(argv[0]);
 
   TRI_AddFailurePointDebugging(point.c_str());
 
   return scope.Close(v8::Undefined());
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a failure point
@@ -2418,6 +2433,8 @@ static v8::Handle<v8::Value> JS_DebugSetFailAt (v8::Arguments const& argv) {
 /// Remove a point for an intentional system failure
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_FAILURE_TESTS
+
 static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2426,12 +2443,14 @@ static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "debugRemoveFailAt(<point>)");
   }
 
-  string point = TRI_ObjectToString(argv[0]);
+  string const point = TRI_ObjectToString(argv[0]);
 
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   return scope.Close(v8::Undefined());
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears all failure points
@@ -2440,6 +2459,8 @@ static v8::Handle<v8::Value> JS_DebugRemoveFailAt (v8::Arguments const& argv) {
 ///
 /// Remove all points for intentional system failures
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_FAILURE_TESTS
 
 static v8::Handle<v8::Value> JS_DebugClearFailAt (v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -2453,6 +2474,8 @@ static v8::Handle<v8::Value> JS_DebugClearFailAt (v8::Arguments const& argv) {
 
   return scope.Close(v8::Undefined());
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether failure points can be used
@@ -3379,10 +3402,12 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REGISTER_EXECUTE_FILE", JS_RegisterExecuteFile);
 
   // debugging functions
+#ifdef TRI_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SEGFAULT", JS_DebugSegfault);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_SET_FAILAT", JS_DebugSetFailAt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_REMOVE_FAILAT", JS_DebugRemoveFailAt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CLEAR_FAILAT", JS_DebugClearFailAt);
+#endif
   TRI_AddGlobalFunctionVocbase(context, "SYS_DEBUG_CAN_USE_FAILAT", JS_DebugCanUseFailAt);
 
   // .............................................................................

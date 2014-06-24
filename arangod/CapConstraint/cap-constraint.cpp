@@ -31,6 +31,8 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
+#include "Utils/Exception.h"
+#include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/headers.h"
 #include "VocBase/server.h"
@@ -50,16 +52,12 @@
 static int ApplyCap (TRI_cap_constraint_t* cap,
                      TRI_document_collection_t* document,
                      TRI_transaction_collection_t* trxCollection) {
-  TRI_headers_t* headers;
-  int64_t currentSize;
-  size_t currentCount;
-  int res;
 
-  headers      = document->_headersPtr;  // PROTECTED by trx in trxCollection
-  currentCount = headers->count();
-  currentSize  = headers->size();
+  TRI_headers_t* headers = document->_headersPtr;  // PROTECTED by trx in trxCollection
+  size_t currentCount    = headers->count();
+  int64_t currentSize    = headers->size();
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   // delete while at least one of the constraints is still violated
   while ((cap->_count > 0 && currentCount > cap->_count) ||
@@ -67,10 +65,8 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
     TRI_doc_mptr_t* oldest = headers->front();
 
     if (oldest != nullptr) {
-      size_t oldSize;
-
       TRI_ASSERT(oldest->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
-      oldSize = ((TRI_df_marker_t*) (oldest->getDataPtr()))->_size;  // ONLY IN INDEX, PROTECTED by RUNTIME
+      size_t oldSize = ((TRI_df_marker_t*) (oldest->getDataPtr()))->_size;  // ONLY IN INDEX, PROTECTED by RUNTIME
 
       TRI_ASSERT(oldSize > 0);
 
@@ -105,15 +101,11 @@ static int ApplyCap (TRI_cap_constraint_t* cap,
 
 static int InitialiseCap (TRI_cap_constraint_t* cap,
                           TRI_document_collection_t* document) {
-  TRI_headers_t* headers;
-  size_t currentCount;
-  int64_t currentSize;
-
   TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
 
-  headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
-  currentCount = headers->count();
-  currentSize = headers->size();
+  TRI_headers_t* headers = document->_headersPtr;  // ONLY IN INDEX (CAP)
+  size_t currentCount    = headers->count();
+  int64_t currentSize    = headers->size();
 
   if ((cap->_count > 0 && currentCount <= cap->_count) &&
       (cap->_size > 0 && currentSize <= cap->_size)) {
@@ -121,49 +113,22 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     return TRI_ERROR_NO_ERROR;
   }
   else {
-    TRI_vocbase_t* vocbase;
-    TRI_transaction_t* trx;
-    TRI_voc_cid_t cid;
-    int res;
+    TRI_vocbase_t* vocbase = document->_vocbase;
+    TRI_voc_cid_t cid = document->_info._cid;
 
-    vocbase = document->_vocbase;
-    cid = document->_info._cid;
+    triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX> trx(vocbase, cid);
+    trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER);
 
-    // create a fake transaction to avoid assertion failures TODO: FIXME
-    triagens::arango::TransactionBase fake(true);
-    trx = TRI_CreateTransaction(vocbase, TRI_GetIdServer(), true, 0.0, false);
+    int res = trx.begin();
 
-    if (trx == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
 
-    res = TRI_AddCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE, TRI_TRANSACTION_TOP_LEVEL);
+    TRI_transaction_collection_t* trxCollection = trx.trxCollection();
+    res = ApplyCap(cap, document, trxCollection);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      TRI_transaction_collection_t* trxCollection;
-
-      trxCollection = TRI_GetCollectionTransaction(trx, cid, TRI_TRANSACTION_WRITE);
-
-      if (trxCollection != nullptr) {
-        res = TRI_BeginTransaction(trx, (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER, TRI_TRANSACTION_TOP_LEVEL);
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          res = ApplyCap(cap, document, trxCollection);
-
-          if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_CommitTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
-          }
-          else {
-            TRI_AbortTransaction(trx, TRI_TRANSACTION_TOP_LEVEL);
-          }
-        }
-      }
-      else {
-        res = TRI_ERROR_INTERNAL;
-      }
-    }
-
-    TRI_FreeTransaction(trx);
+    res = trx.finish(res);
 
     return res;
   }
@@ -240,9 +205,7 @@ static int InsertCapConstraint (TRI_index_t* idx,
 static int PostInsertCapConstraint (TRI_transaction_collection_t* trxCollection,
                                     TRI_index_t* idx,
                                     TRI_doc_mptr_t const* doc) {
-  TRI_cap_constraint_t* cap;
-
-  cap = (TRI_cap_constraint_t*) idx;
+  TRI_cap_constraint_t* cap = (TRI_cap_constraint_t*) idx;
 
   TRI_ASSERT(cap->_count > 0 || cap->_size > 0);
 

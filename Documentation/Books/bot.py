@@ -27,8 +27,8 @@ def getTextFromSourceFile(searchText, full_path):
   if match:
     textExtracted = match.group(1)
     textExtracted = textExtracted.replace("<br />","\n")
-    textExtracted = re.sub(r"@RESTHEADER{(.*)}", r"`\g<1>`", textExtracted)
-    textExtracted = re.sub(r"@RESTRETURNCODE{(.*)}", r"`HTTP \g<1>`", textExtracted)
+    textExtracted = re.sub(r"@RESTHEADER{(.*)}", r"*\g<1>*", textExtracted)
+    textExtracted = re.sub(r"@RESTRETURNCODE{(.*)}", r"*HTTP \g<1>*", textExtracted)
     textExtracted = re.sub(r"@RESTBODYPARAM{(.*)}", r"*(\g<1>)*", textExtracted)
     textExtracted = textExtracted.replace("@RESTDESCRIPTION","")
     textExtracted = textExtracted.replace("@EXAMPLES","*Examples*")

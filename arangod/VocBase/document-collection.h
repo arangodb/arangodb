@@ -770,8 +770,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*,
-                                      TRI_idx_iid_t,
-                                      TRI_server_id_t);
+                                      TRI_idx_iid_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT
@@ -795,8 +794,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         TRI_idx_iid_t,
                                                         size_t,
                                                         int64_t,
-                                                        bool*,
-                                                        TRI_server_id_t);
+                                                        bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    BITARRAY INDEX
@@ -831,8 +829,7 @@ struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_coll
                                                                bool,
                                                                bool*,
                                                                int*,
-                                                               char**,
-                                                               TRI_server_id_t);
+                                                               char**);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
@@ -876,8 +873,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collecti
                                                            bool,
                                                            bool,
                                                            bool,
-                                                           bool*,
-                                                           TRI_server_id_t);
+                                                           bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
@@ -889,8 +885,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
                                                            char const*,
                                                            bool,
                                                            bool,
-                                                           bool*,
-                                                           TRI_server_id_t);
+                                                           bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
@@ -920,8 +915,7 @@ struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collecti
                                                            TRI_idx_iid_t,
                                                            TRI_vector_pointer_t const*,
                                                            bool,
-                                                           bool*,
-                                                           TRI_server_id_t);
+                                                           bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
@@ -949,8 +943,7 @@ struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_coll
                                                                TRI_idx_iid_t,
                                                                TRI_vector_pointer_t const*,
                                                                bool,
-                                                               bool*,
-                                                               TRI_server_id_t);
+                                                               bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    FULLTEXT INDEX
@@ -980,8 +973,7 @@ struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_coll
                                                                const char*,
                                                                const bool,
                                                                int,
-                                                               bool*,
-                                                               TRI_server_id_t);
+                                                               bool*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

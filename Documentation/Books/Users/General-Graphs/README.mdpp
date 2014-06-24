@@ -11,3 +11,7 @@ A Graph consists of *vertices* and *edges*. Edges are stored as documents in *ed
 collections*. In general a vertex is stored in a document collection. Which collections are used within
 a graph is defined via *edge definitions*. A graph can have an arbitrary number of edge
 definitions.
+
+!Subsection Three Steps to create a graph
+
+@startDocuBlock JSF_general_graph_how_to_create

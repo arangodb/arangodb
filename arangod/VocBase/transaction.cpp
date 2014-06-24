@@ -651,8 +651,6 @@ template<typename T> static T* CreateMarker () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
-                                          TRI_server_id_t generatingServer,
-                                          bool replicate,
                                           double timeout,
                                           bool waitForSync) {
   TRI_transaction_t* trx;
@@ -665,7 +663,6 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   }
 
   trx->_vocbase           = vocbase;
-  trx->_generatingServer  = generatingServer;
 
   // note: the real transaction id will be acquired on transaction start
   trx->_id                = 0;
@@ -676,7 +673,6 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   trx->_nestingLevel      = 0;
   trx->_timeout           = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
   trx->_hasOperations     = false;
-  trx->_replicate         = replicate;
   trx->_waitForSync       = waitForSync;
 
   if (timeout > 0.0) {
@@ -782,9 +778,10 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
-                                  const TRI_voc_cid_t cid,
-                                  const TRI_transaction_type_e accessType,
-                                  const int nestingLevel) {
+                                  TRI_voc_cid_t cid,
+                                  TRI_transaction_type_e accessType,
+                                  int nestingLevel,
+                                  bool force) {
 
   TRI_transaction_collection_t* trxCollection;
   size_t position;
@@ -793,7 +790,9 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 
   // upgrade transaction type if required
   if (nestingLevel == 0) {
-    TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+    if (! force) {
+      TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+    }
 
     if (accessType == TRI_TRANSACTION_WRITE &&
         trx->_type == TRI_TRANSACTION_READ) {
@@ -859,10 +858,11 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
-                                   const TRI_transaction_type_e accessType,
-                                   const int nestingLevel) {
+                                   TRI_transaction_type_e accessType,
+                                   int nestingLevel) {
 
-  if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
+  if (accessType == TRI_TRANSACTION_WRITE && 
+      trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
     return TRI_ERROR_INTERNAL;
   }
@@ -880,8 +880,8 @@ int TRI_LockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
-                                     const TRI_transaction_type_e accessType,
-                                     const int nestingLevel) {
+                                     TRI_transaction_type_e accessType,
+                                     int nestingLevel) {
 
   if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
