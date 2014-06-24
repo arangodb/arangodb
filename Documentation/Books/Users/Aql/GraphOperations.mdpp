@@ -10,7 +10,6 @@ A lot of the following functions accept a vertex (or edge) example as parameter.
 * *idString*        : Returns the vertex/edge with the id *idString*.
 * {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that both have *key1* and *key2* with the corresponding attributes.
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value.
-the examples.
 
 !SUBSECTION Edges and Vertices related functions
 
@@ -24,6 +23,10 @@ This section describes various AQL functions which can be used to receive inform
 
 @startDocuBlock JSF_ahuacatl_general_graph_vertices
 
+!SUBSUBSECTION GRAPH_NEIGHBORS
+
+@startDocuBlock JSF_ahuacatl_general_graph_neighbors
+
 !SUBSUBSECTION GRAPH_COMMON_NEIGHBORS
 
 @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
@@ -31,10 +34,6 @@ This section describes various AQL functions which can be used to receive inform
 !SUBSUBSECTION GRAPH_COMMON_PROPERTIES
 
 @startDocuBlock JSF_ahuacatl_general_graph_common_properties
-
-!SUBSUBSECTION GRAPH_NEIGHBORS
-
-@startDocuBlock JSF_ahuacatl_general_graph_neighbors
 
 !SUBSECTION Shortest Paths, distances and traversals.
 
