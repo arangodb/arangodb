@@ -63,7 +63,7 @@ The session's active user's *userData* attribute or an empty object.
 
 !SECTION Create a session
 
-Creates and saves new instance of the session model.
+Creates and saves a new instance of the session model.
 
 `sessionStorage.create(sessionData)`
 
