@@ -389,33 +389,24 @@ static bool CheckPathRestriction (TRI_aql_field_access_t* fieldAccess,
 static void OptimisePaths (const TRI_aql_node_t* const fcallNode,
                            TRI_aql_context_t* const context,
                            TRI_aql_field_access_t* fieldAccess) {
-  TRI_aql_node_t* args;
-  TRI_aql_node_t* vertexCollection;
-  TRI_aql_node_t* edgeCollection;
-  TRI_aql_node_t* direction;
-  char* directionValue;
-  char* name;
-  size_t n;
+  TRI_aql_node_t* args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
 
-  args = TRI_AQL_NODE_MEMBER(fcallNode, 0);
-
-  if (args == NULL) {
+  if (args == nullptr) {
     return;
   }
 
-  vertexCollection = TRI_AQL_NODE_MEMBER(args, 0);
-  edgeCollection = TRI_AQL_NODE_MEMBER(args, 1);
-  direction = TRI_AQL_NODE_MEMBER(args, 2);
+  TRI_aql_node_t* vertexCollection = TRI_AQL_NODE_MEMBER(args, 0);
+  TRI_aql_node_t* direction = TRI_AQL_NODE_MEMBER(args, 2);
 
-  TRI_ASSERT(vertexCollection);
-  TRI_ASSERT(edgeCollection);
-  TRI_ASSERT(direction);
-  TRI_ASSERT(fieldAccess);
+  TRI_ASSERT(vertexCollection != nullptr);
+  TRI_ASSERT(TRI_AQL_NODE_MEMBER(args, 1) != nullptr); // edgeCollection
+  TRI_ASSERT(direction != nullptr);
+  TRI_ASSERT(fieldAccess != nullptr);
 
-  n = strlen(fieldAccess->_fullName);
-  name = fieldAccess->_fullName + fieldAccess->_variableNameLength;
+  size_t n = strlen(fieldAccess->_fullName);
+  char* name = fieldAccess->_fullName + fieldAccess->_variableNameLength;
 
-  directionValue = TRI_AQL_NODE_STRING(direction);
+  char* directionValue = TRI_AQL_NODE_STRING(direction);
   // try to optimise the vertex collection access
   if (TRI_EqualString(directionValue, "outbound")) {
     CheckPathRestriction(fieldAccess, context, vertexCollection, ".source.", name, n);
