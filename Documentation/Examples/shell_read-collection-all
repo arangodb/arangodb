@@ -1,4 +1,0 @@
-arango> db.examples.load();
-arango> var d = db.demo;
-arango> db._collections();
-[[ArangoCollection 96393, "examples" (status loaded)], [ArangoCollection 1407113, "demo" (status new born)]]
