@@ -1,15 +1,15 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
-  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, 
+  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START,
   REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
   REPLICATION_SYNCHRONISE, REPLICATION_SERVER_ID, CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
-  SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT, 
-  SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE, 
+  SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
+  SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
   SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
-  SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER, 
-  SYS_HMAC, SYS_SHA256, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
+  SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER,
+  SYS_HMAC, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT, SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
   SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
@@ -81,10 +81,10 @@
 
       this.message = this.toString();
     };
-  
-    exports.ArangoError.prototype = new Error(); 
-  } 
-  
+
+    exports.ArangoError.prototype = new Error();
+  }
+
   exports.ArangoError.prototype._PRINT = function (context) {
     context.output += this.toString();
   };
@@ -611,6 +611,24 @@
   if (typeof SYS_SHA256 !== "undefined") {
     exports.sha256 = SYS_SHA256;
     delete SYS_SHA256;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha224
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA224 !== "undefined") {
+    exports.sha224 = SYS_SHA224;
+    delete SYS_SHA224;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha1
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA1 !== "undefined") {
+    exports.sha1 = SYS_SHA1;
+    delete SYS_SHA1;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
