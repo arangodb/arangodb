@@ -2,6 +2,13 @@
 
 The sessions app provides a session storage JavaScript API that can be used in other Foxx apps.
 
+*Configuration*
+
+* *timeToLive* (optional): number of milliseconds until the session expires. Default: *604800000* (one week).
+* *ttlType* (optional): attribute against which the *timeToLive* is enforced. Valid options: *lastAccess*, *lastUpdate*, *created*. Default: *"created"*.
+* *sidTimestamp* (optional): whether to append a timestamp to the random part of generated session IDs. Default: *false*.
+* *sidLength* (optional): number of random characters to use for new session IDs. Default *20*.
+
 ```js
 var sessionStorage = Foxx.requireApp('/_sessions').sessionStorage;
 ```
