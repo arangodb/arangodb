@@ -5,7 +5,7 @@
 
   window.Graph = Backbone.Model.extend({
 
-    idAttribute: "_key",
+    idAttribute: "name",
 
     urlRoot: "/_api/gharial",
 
@@ -18,7 +18,7 @@
     },
 
     defaults: {
-      "_key": "",
+      name: "",
       edgeDefinitions: [],
       orphanCollections: []
     }

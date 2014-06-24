@@ -19,7 +19,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -154,18 +154,29 @@
     },
 
     createNewGraph2: function() {
-      var _key = $("#createNewGraphName").val(),
-        vertexCollections = [],
+      var name = $("#createNewGraphName").val(),
+        vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
-        self = this;
-      if (!_key) {
+        self = this,
+        hasNext = false,
+        newEdgeDefinitions1;
+
+
+      console.log("vertexCollections");
+      vertexCollections.forEach(
+        function(vc, index) {
+          console.log("vertexCollections " + index);
+          console.log(vertexCollections[index]);
+        }
+      );
+      if (!name) {
         arangoHelper.arangoNotification(
           "A name for the graph has to be provided."
         );
         return;
       }
       this.collection.create({
-        _key: _key,
+        name: name,
         edgeDefinitions: edgeDefinitions,
         orphanCollections: vertexCollections
       }, {
