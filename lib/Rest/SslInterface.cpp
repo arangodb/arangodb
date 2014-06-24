@@ -190,6 +190,9 @@ namespace triagens {
         if (algorithm == Algorithm::ALGORITHM_SHA1) {
           evp_md = const_cast<EVP_MD*>(EVP_sha1());
         }
+        else if (algorithm == Algorithm::ALGORITHM_SHA224) {
+          evp_md = const_cast<EVP_MD*>(EVP_sha224());
+        }
         else if (algorithm == Algorithm::ALGORITHM_MD5) {
           evp_md = const_cast<EVP_MD*>(EVP_md5());
         }

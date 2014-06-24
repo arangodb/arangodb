@@ -755,13 +755,6 @@ namespace triagens {
 /// number generator using an implication of the Mersenne Twister MT19937
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
-///
-/// @CMDOPT{\--random.no-seed}
-///
-/// By default, the random generator is seeded. Setting this option causes the
-/// random number generator not to be seeded. (Seeding the random number
-/// generator only occurs if the generator is set to Mersenne, refer to
-/// random.generator for details.)
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _randomGenerator;

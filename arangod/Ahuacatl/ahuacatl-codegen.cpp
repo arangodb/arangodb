@@ -1125,10 +1125,8 @@ static void GeneratePrimaryAccess (TRI_aql_codegen_js_t* const generator,
                                    const TRI_aql_collection_t* const collection,
                                    const char* const collectionName) {
   TRI_aql_field_access_t* fieldAccess;
-  size_t n;
 
-  n = idx->_fieldAccesses->_length;
-  TRI_ASSERT(n == 1);
+  TRI_ASSERT(idx->_fieldAccesses->_length == 1);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 
@@ -1269,10 +1267,8 @@ static void GenerateEdgeAccess (TRI_aql_codegen_js_t* const generator,
                                 const TRI_aql_collection_t* const collection,
                                 const char* const collectionName) {
   TRI_aql_field_access_t* fieldAccess;
-  size_t n;
 
-  n = idx->_fieldAccesses->_length;
-  TRI_ASSERT(n > 0);
+  TRI_ASSERT(idx->_fieldAccesses->_length > 0);
 
   fieldAccess = (TRI_aql_field_access_t*) TRI_AtVectorPointer(idx->_fieldAccesses, 0);
 

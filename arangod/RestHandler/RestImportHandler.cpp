@@ -326,9 +326,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Importing documents with heterogenous attributes from a JSON list:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonList}
+///     db._flushCache();
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn)
+///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = [
 ///       { _key: "abc", value1: 25, value2: "test", allowed: true },
@@ -351,9 +353,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Importing documents from individual JSON lines:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonLines}
+///     db._flushCache();
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test", "allowed": true }\n{ "_key": "foo", "name": "baz" }\n\n{ "name": { "detailed": "detailed name", "short": "short name" } }\n';
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
@@ -371,9 +375,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Using the auto type detection:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonType}
+///     db._flushCache();
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = [
 ///       { _key: "abc", value1: 25, value2: "test", allowed: true },
@@ -396,9 +402,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Importing documents into a new collection from a JSON list:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonCreate}
+///     db._flushCache();
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = [
 ///       { id: "12553", active: true },
@@ -421,11 +429,13 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Importing into an edge collection, with attributes `_from`, `_to` and `name`:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdge}
+///     db._flushCache();
 ///     var cn = "links";
 ///     db._drop(cn);
 ///     db._createEdgeCollection(cn);
 ///     db._drop("products");
 ///     db._create("products");
+///     db._flushCache();
 ///
 ///     var body = '{ "_from": "products/123", "_to": "products/234" }\n{ "_from": "products/332", "_to": "products/abc", "name": "other name" }';
 ///
@@ -445,9 +455,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Importing into an edge collection, omitting `_from` or `_to`:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdgeInvalid}
+///     db._flushCache();
 ///     var cn = "links";
 ///     db._drop(cn);
 ///     db._createEdgeCollection(cn);
+///     db._flushCache();
 ///
 ///     var body = [ { name: "some name" } ];
 ///
@@ -469,6 +481,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
@@ -490,6 +503,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
@@ -522,6 +536,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
+///     db._flushCache();
 ///
 ///     var body = '{ }';
 ///
