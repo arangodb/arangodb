@@ -409,23 +409,15 @@ static bool DropCollectionCallback (TRI_collection_t* col,
                   newFilename);
       }
       else {
-        if (collection->_vocbase->_settings.removeOnDrop) {
-          LOG_DEBUG("wiping dropped collection '%s' from disk",
-                    collection->_name);
+        LOG_DEBUG("wiping dropped collection '%s' from disk",
+                  collection->_name);
 
-          res = TRI_RemoveDirectory(newFilename);
+        res = TRI_RemoveDirectory(newFilename);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("cannot wipe dropped collecton '%s' from disk: %s",
-                      collection->_name,
-                      TRI_last_error());
-          }
-        }
-        else {
-          LOG_DEBUG("renamed dropped collection '%s' from '%s' to '%s'",
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("cannot wipe dropped collection '%s' from disk: %s",
                     collection->_name,
-                    collection->_path,
-                    newFilename);
+                    TRI_last_error());
         }
       }
 
@@ -906,45 +898,13 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
-        // it depends on the configuration what will happen with these collections
+        // deleted collections should be removed on startup. this is the default
+        LOG_DEBUG("collection '%s' was deleted, wiping it", name);
 
-        if (vocbase->_settings.removeOnDrop) {
-          // deleted collections should be removed on startup. this is the default
-          LOG_DEBUG("collection '%s' was deleted, wiping it", name);
+        res = TRI_RemoveDirectory(file);
 
-          res = TRI_RemoveDirectory(file);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
-          }
-        }
-        else {
-          // deleted collections shout not be removed on startup
-          char* newFile;
-          char* tmp1;
-          char* tmp2;
-
-          char const* first = name + matches[1].rm_so;
-          size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
-
-          tmp1 = TRI_DuplicateString2(first, firstLen);
-          tmp2 = TRI_Concatenate2String("deleted-", tmp1);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-
-          newFile = TRI_Concatenate2File(path, tmp2);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-
-          LOG_WARNING("collection '%s' was deleted, renaming it to '%s'", name, newFile);
-
-          res = TRI_RenameFile(file, newFile);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("cannot rename deleted collection: %s", TRI_last_error());
-          }
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, newFile);
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
         }
       }
       else {

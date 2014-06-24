@@ -5,6 +5,8 @@ v2.2.0 (XXXX-XX-XX)
 
   This option had no effect in previous versions of ArangoDB and was thus removed.
 
+* removed startup option `--database.remove-on-drop`
+
 * introduced write-ahead log
 
   All write operations in an ArangoDB server instance are automatically logged
