@@ -1,115 +1,151 @@
 !CHAPTER Handling Edges
 
-!SECTION Create an edge
+@RESTHEADER{POST /system/gharial/graph-name/edge/collection-name, Create an edge}
 
-`POST /system/gharial/graph-name/edge/collection-name`*(create an edge)*
-
-!SUBSECTION URL parameters
-
-`graph-name (string, required)`  
-The name of the graph.
-
-`collection-name (string, required)`  
-The name of the edge collection the edge belongs to.
-
-!SUBSECTION Description
-
+@RESTDESCRIPTION
 Creates a new edge in the collection.
 Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
 Furthermore the edge has to be valid in the definition of this edge collection.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTPARAM{collection-name, string, required} 
+The name of the edge collection the edge belongs to.
+
+@RESTBODYPARAMS
+@RESTPARAM{_from, string, required}
+@RESTPARAM{_to, string, required}
+
+The body has to be the JSON object to be stored.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{201}
+Returned if the edge could be created.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no edge collection or no edge with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_create_http_examples
 
-!SECTION Get an edge
+@RESTHEADER{GET /system/gharial/graph-name/edge/collection-name/edge-key, Get an edge}
 
-`GET /system/gharial/graph-name/edge/collection-name/edge-key`*(get an edge)*
+@RESTDESCRIPTION
+Gets an edge from the given collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the edge collection the edge belongs to.
 
-`edge-key (string, required)`  
-The `_key` attribute of the edge.
+@RESTPARAM{edge-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTRETURNCODES
 
+@RESTRETURNCODE{200}
+Returned if the edge could be found.
 
-Gets an edge from the given collection.
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no edge collection or no edge with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_get_http_examples
 
-!SECTION Modify an edge
+@RESTHEADER{PATCH /system/gharial/graph-name/edge/collection-name/edge-key, Modify an edge}
 
-`PATCH /system/gharial/graph-name/edge/collection-name/edge-key`*(modify an edge)*
+@RESTDESCRIPTION
+Updates the data of the specific edge in the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the edge collection the edge belongs to.
 
-`edge-key (string, required)`  
-The `_key` attribute of the edge.
+@RESTPARAM{edge-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTBODYPARAMS
+The body has to be a JSON object containing the attributes to be updated.
 
-Updates the data of the specific edge in the collection.
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the edge could be updated.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no edge collection or no edge with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_modify_http_examples
 
-!SECTION Replace an edge
+@RESTHEADER{PUT /system/gharial/graph-name/edge/collection-name/edge-key, Replace an edge}
 
-`PATCH /system/gharial/graph-name/edge/collection-name/edge-key`*(replace an edge)*
+@RESTDESCRIPTION
+Replaces the data of an edge in the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the edge collection the edge belongs to.
 
-`edge-key (string, required)`  
-The `_key` attribute of the edge.
+@RESTPARAM{edge-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTBODYPARAMS
+The body has to be the JSON object to be stored.
 
-Replaces the data of an edge in the collection.
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the edge could be replaced.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no edge collection or no edge with this id could be found.
 
 @EXAMPLES
 
 @startDocuBlock JSF_general_graph_edge_replace_http_examples
 
-!SECTION Remove an edge
+@RESTHEADER{DELETE /system/gharial/graph-name/edge/collection-name/edge-key, Remove an edge}
 
-`DELETE /system/gharial/graph-name/edge/collection-name/edge-key`*(remove an edge)*
+@RESTDESCRIPTION
+Removes an edge from the collection.
 
-!SUBSECTION URL parameters
+@RESTURLPARAMS
 
-`graph-name (string, required)`  
+@RESTPARAM{graph-name, string, required}
 The name of the graph.
 
-`collection-name (string, required)`  
+@RESTPARAM{collection-name, string, required} 
 The name of the edge collection the edge belongs to.
 
-`edge-key (string, required)`  
-The `_key` attribute of the edge.
+@RESTPARAM{edge-key, string, required} 
+The *_key* attribute of the vertex.
 
-!SUBSECTION Description
+@RESTRETURNCODES
 
-Removes an edge from the collection.
+@RESTRETURNCODE{200}
+Returned if the edge could be removed.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name, no edge collection or no edge with this id could be found.
 
 @EXAMPLES
 

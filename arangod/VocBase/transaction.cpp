@@ -653,9 +653,7 @@ template<typename T> static T* CreateMarker () {
 TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
                                           double timeout,
                                           bool waitForSync) {
-  TRI_transaction_t* trx;
-
-  trx = (TRI_transaction_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false);
+  TRI_transaction_t* trx = static_cast<TRI_transaction_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false));
 
   if (trx == nullptr) {
     // out of memory
@@ -1017,6 +1015,22 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
 
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
+ 
+    if (trx->_type == TRI_TRANSACTION_WRITE &&
+        triagens::wal::LogfileManager::instance()->canBeThrottled()) {
+      // write-throttling?
+      static uint64_t const WaitTime = 50000;
+      uint64_t const maxIterations = triagens::wal::LogfileManager::instance()->maxThrottleWait() / (WaitTime / 1000);
+      uint64_t iterations = 0;
+     
+      while (triagens::wal::LogfileManager::instance()->isThrottled()) {
+        if (++iterations == maxIterations) {
+          return TRI_ERROR_LOCK_TIMEOUT;
+        }
+
+        usleep(WaitTime);
+      }
+    }
 
     // get a new id
     trx->_id = TRI_NewTickServer();
