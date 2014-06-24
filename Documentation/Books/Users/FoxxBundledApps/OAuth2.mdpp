@@ -2,10 +2,6 @@
 
 The OAuth2 authentication app provides authentication abstractions over OAuth2 providers like Facebook, GitHub and Google. If you want to support additional providers, you can easily define your own.
 
-```js
-var providers = Foxx.requireApp('/_oauth2').providers;
-```
-
 !SECTION Configuration
 
 The app requires no configuration, but you need to update its *providers* collection with your client ID and client secret for each provider you wish to support.
@@ -46,9 +42,17 @@ If you want to use the *google* provider, you need to obtain a client ID and cli
 7. When the Client ID is ready, note down the *Client ID* and *Client secret*.
 8. Update the *google* provider by settiing its *clientId* attribute to the *Client ID* and its *clientSecret* attribute to the *Client secret*. Don't forget to save your changes.
 
-!SECTION Exceptions
+!SECTION JavaScript API: *providers*
 
-!SUBSECTION Provider Not Found
+This app exposes its functionality via a JavaScript API named *providers*.
+
+```js
+var providers = Foxx.requireApp('/_oauth2').providers;
+```
+
+!SUBSECTION Exceptions
+
+!SUBSUBSECTION Provider Not Found
 
 Indicates a provider could not be found in the database.
 
@@ -66,7 +70,7 @@ try {
 }
 ```
 
-!SECTION The provider object
+!SUBSECTION The provider object
 
 Provider objects are instances of a Foxx model with the following attributes:
 
@@ -79,7 +83,7 @@ Provider objects are instances of a Foxx model with the following attributes:
 * *clientId*: the client ID of the app registered with the provider.
 * *clientSecret*: the client secret of the app registered with the provider.
 
-!SECTION List available OAuth2 providers
+!SUBSECTION List available OAuth2 providers
 
 Returns a list of OAuth2 providers that can be presented to the front-end.
 
@@ -101,7 +105,7 @@ var supportedProviders = providers.list().filter(function(obj) {
 });
 ```
 
-!SECTION Define a new OAuth2 provider
+!SUBSECTION Define a new OAuth2 provider
 
 Creates a new OAuth2 provider with the given data.
 
@@ -129,7 +133,7 @@ var provider = providers.create({
 });
 ```
 
-!SECTION Fetch an existing OAuth2 provider
+!SUBSECTION Fetch an existing OAuth2 provider
 
 Fetches an existing OAuth2 provider from the database.
 
@@ -148,14 +152,14 @@ var provider = providers.get('github');
 assertTrue(provider.get('_key'), 'github');
 ```
 
-!SECTION Delete a provider
+!SUBSECTION Delete a provider
 
 There are two ways to delete a provider from the database:
 
 * calling the provider storage's *delete* method with a provider's *_key* directly
 * telling a provider to delete itself
 
-!SUBSECTION Delete a provider by its ID
+!SUBSUBSECTION Delete a provider by its ID
 
 Delete a provider with a given ID.
 
@@ -173,7 +177,7 @@ Attempts to delete the provider with the given *providerId* from the database. I
 providers.delete('github');
 ```
 
-!SUBSECTION Tell a provider to delete itself
+!SUBSUBSECTION Tell a provider to delete itself
 
 Delete a provider from the database.
 
@@ -192,7 +196,7 @@ var provider = providers.get('github');
 provider.delete();
 ```
 
-!SECTION Save a provider
+!SUBSECTION Save a provider
 
 Save a provider to the database.
 
@@ -209,7 +213,7 @@ provider.save();
 ```
 
 
-!SECTION Get the authorization URL of a provider
+!SUBSECTION Get the authorization URL of a provider
 
 Generates the authorization URL for the authorization endpoint of the provider.
 
@@ -223,7 +227,7 @@ Returns a fully-qualified URL for the authorization endpoint of the provider by 
 * *args* (optional): an object with any of the following properties:
   * *response_type* (optional): See [RFC 6749](http://tools.ietf.org/html/rfc6749). Default: *"code"*.
 
-!SECTION _getTokenRequest
+!SUBSECTION _getTokenRequest
 
 (Internal.) Generates the token URL and request body for token endpoint of the provider.
 
@@ -241,7 +245,7 @@ Returns an object with two properties:
 * *args* (optional): an object with any of the following properties:
   * *grant_type* (optional): see [RFC 6749](http://tools.ietf.org/html/rfc6749). Default: *"authorization_code"*.
 
-!SECTION Exchange a grant code for an access token
+!SUBSECTION Exchange a grant code for an access token
 
 Exchanges a grant code for an access token.
 
@@ -258,7 +262,7 @@ Throws an exception if the remote server responds with an empty response body.
 * *args* (optional): an object with any of the following properties:
   * *grant_type* (optional): see [RFC 6749](http://tools.ietf.org/html/rfc6749). Default: *"authorization_code"*.
 
-!SECTION Fetch the active user
+!SUBSECTION Fetch the active user
 
 Fetches details of the active user.
 
@@ -281,7 +285,7 @@ var authData = provider.exchangeGrantToken(code, redirect_uri);
 var userData = provider.fetchActiveUser(authData.access_token);
 ```
 
-!SECTION Get a user's identifier
+!SUBSECTION Get a user's identifier
 
 Fetches the user's identifier from a user object returned by the provider.
 
