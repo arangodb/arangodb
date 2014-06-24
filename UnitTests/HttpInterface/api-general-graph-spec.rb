@@ -20,6 +20,13 @@ def create_graph (name, edge_definitions)
   return doc
 end
 
+def create_graph_orphans (name, edge_definitions, orphans) 
+  cmd = URLPREFIX
+  body = JSON.dump({:name => name, :edgeDefinitions => edge_definitions, :orphanCollections => orphans})
+  doc = ArangoDB.post(cmd, :body => body)
+  return doc
+end
+
 def vertex_endpoint(graph_name, collection)
   return URLPREFIX + "/" + graph_name + "/vertex/" + collection
 end
@@ -192,6 +199,18 @@ describe ArangoDB do
         doc.parsed_response['graph']['name'].should eq(graph_name)
         doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['graph']['edgeDefinitions'].should eq(edge_definition)
+      end
+
+      it "can create a graph with orphan collections" do
+        orphans = [product_collection];
+        doc = create_graph_orphans( graph_name, [], orphans)
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['graph']['name'].should eq(graph_name)
+        doc.parsed_response['graph']['_rev'].should eq(doc.headers['etag'])
+        doc.parsed_response['graph']['edgeDefinitions'].should eq([])
+        doc.parsed_response['graph']['orphanCollections'].should eq(orphans)
       end
 
       it "can add additional edge definitions" do
