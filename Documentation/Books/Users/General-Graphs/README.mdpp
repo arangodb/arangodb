@@ -12,6 +12,6 @@ collections*. In general a vertex is stored in a document collection. Which coll
 a graph is defined via *edge definitions*. A graph can have an arbitrary number of edge
 definitions.
 
-!Subsection Three Steps to create a graph
+!SUBSUBSECTION Three Steps to create a graph
 
 @startDocuBlock JSF_general_graph_how_to_create

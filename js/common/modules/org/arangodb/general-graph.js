@@ -1541,34 +1541,38 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_how_to_create
 ///
-/// 1. Create a graph
+/// * Create a graph
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
 ///   var graph_module = require("org/arangodb/general-graph");
-///   graph = graph_module._create("myGraph");
-/// ~ graph_module._drop("mygraph");
+///   var graph = graph_module._create("myGraph");
+///   graph;
+/// ~ graph_module._drop("myGraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// 2. Add some vertex collections
+/// * Add some vertex collections
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
 /// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ graph = graph_module._create("mygraph");
+/// ~ var graph = graph_module._create("myGraph");
 ///   graph._addVertexCollection("shop");
 ///   graph._addVertexCollection("customer");
 ///   graph._addVertexCollection("pet");
-/// ~ graph_module._drop("mygraph");
+///   graph;
+/// ~ graph_module._drop("myGraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// 3. Define relations on the
+/// * Define relations on the
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
 /// ~ var graph_module = require("org/arangodb/general-graph");
-/// ~ graph = graph_module._create("mygraph");
-///   var rel = graph_module._undirectedRelation("isCustomer", ["shop"], ["customer]);
+/// ~ var graph = graph_module._create("myGraph");
+///   var rel = graph_module._directedRelation("isCustomer", ["shop"], ["customer"]);
 ///   graph._extendEdgeDefinitions(rel);
-/// ~ graph_module._drop("mygraph");
+///   graph;
+/// ~ graph_module._drop("myGraph");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
@@ -3963,6 +3967,8 @@ Graph.prototype._PRINT = function(context) {
   context.output += name;
   context.output += " EdgeDefinitions: ";
   internal.printRecursive(edgeDefs, context);
+  context.output += " VertexCollections: ";
+  internal.printRecursive(this.__orphanCollections, context);
   context.output += " ]";
 };
 
