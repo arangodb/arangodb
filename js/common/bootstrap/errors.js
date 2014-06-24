@@ -103,6 +103,7 @@
     "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing" }, 
     "ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 1234, "message" : "index insertion warning - attribute missing in document" }, 
     "ERROR_ARANGO_INDEX_CREATION_FAILED" : { "code" : 1235, "message" : "index creation failed" }, 
+    "ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT" : { "code" : 1236, "message" : "write-throttling timeout" }, 
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" }, 
     "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" }, 
     "ERROR_REPLICATION_NO_RESPONSE" : { "code" : 1400, "message" : "no response" }, 

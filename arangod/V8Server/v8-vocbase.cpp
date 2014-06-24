@@ -3796,6 +3796,21 @@ static v8::Handle<v8::Value> JS_AdjustWal (v8::Arguments const& argv) {
     triagens::wal::LogfileManager::instance()->reserveLogfiles(logfiles);
   }
 
+  if (object->Has(TRI_V8_STRING("historicLogfiles"))) {
+    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("historicLogfiles")), true));
+    triagens::wal::LogfileManager::instance()->historicLogfiles(logfiles);
+  }
+  
+  if (object->Has(TRI_V8_STRING("throttleWait"))) {
+    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWait")), true);
+    triagens::wal::LogfileManager::instance()->maxThrottleWait(value);
+  }
+  
+  if (object->Has(TRI_V8_STRING("throttleWhenPending"))) {
+    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWhenPending")), true);
+    triagens::wal::LogfileManager::instance()->throttleWhenPending(value);
+  }
+
   return scope.Close(v8::True());
 }
 
