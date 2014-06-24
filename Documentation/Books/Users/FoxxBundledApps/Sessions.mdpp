@@ -2,20 +2,28 @@
 
 The sessions app provides a session storage JavaScript API that can be used in other Foxx apps.
 
-*Configuration*
+!SECTION Configuration
+
+This app has the following configuration options:
 
 * *timeToLive* (optional): number of milliseconds until the session expires. Default: *604800000* (one week).
 * *ttlType* (optional): attribute against which the *timeToLive* is enforced. Valid options: *lastAccess*, *lastUpdate*, *created*. Default: *"created"*.
 * *sidTimestamp* (optional): whether to append a timestamp to the random part of generated session IDs. Default: *false*.
 * *sidLength* (optional): number of random characters to use for new session IDs. Default *20*.
 
+!SECTION JavaScript API: *sessionStorage*
+
+This app exposes a session storage via a JavaScript API named *sessionStorage*.
+
+@EXAMPLES
+
 ```js
 var sessionStorage = Foxx.requireApp('/_sessions').sessionStorage;
 ```
 
-!SECTION Exceptions
+!SUBSECTION Exceptions
 
-!SUBSECTION Session Not Found
+!SUBSUBSECTION Session Not Found
 
 Indicates a session could not be found in the database.
 
@@ -33,7 +41,7 @@ try {
 }
 ```
 
-!SUBSECTION Session Expired
+!SUBSUBSECTION Session Expired
 
 Indicates the session exists in the database but has expired.
 
@@ -52,7 +60,7 @@ try {
 }
 ```
 
-!SECTION The session object
+!SUBSECTION The session object
 
 Session objects are instances of a Foxx model with the following attributes:
 
@@ -63,7 +71,7 @@ Session objects are instances of a Foxx model with the following attributes:
 * *lastAccess*: timestamp of the last time the session was fetched from the database.
 * *lastUpdate*: timestamp of the last time the session was written to the database.
 
-!SECTION Create a session
+!SUBSECTION Create a session
 
 Creates and saves a new instance of the session model.
 
@@ -80,14 +88,14 @@ var session = sessionStorage.create(sessionData);
 assertEqual(session.get('sessionData'), sessionData);
 ```
 
-!SECTION Fetch an existing session
+!SUBSECTION Fetch an existing session
 
 There are two ways to fetch a session via the session storage API:
 
 * resolving a session cookie with the *fromCookie* method
 * calling the session storage's *get* method with a session ID directly
 
-!SUBSECTION Resolve a session cookie
+!SUBSUBSECTION Resolve a session cookie
 
 Fetch a session matching a cookie in a Foxx request.
 
@@ -118,7 +126,7 @@ controller.get('/hello', function(request, response) {
 });
 ```
 
-!SUBSECTION Resolve a session ID directly
+!SUBSUBSECTION Resolve a session ID directly
 
 Fetch a session from the database for a given ID.
 
@@ -136,14 +144,14 @@ Attempts to load the session with the given session ID from the database. If the
 var session = sessionStorage.get(sessionId);
 ```
 
-!SECTION Delete a session
+!SUBSECTION Delete a session
 
 There are two ways to delete a session from the database:
 
 * calling the session storage's *delete* method with a session ID directly
 * telling a session to delete itself
 
-!SUBSECTION Delete a session by its ID
+!SUBSUBSECTION Delete a session by its ID
 
 Delete a session with a given ID.
 
@@ -161,7 +169,7 @@ Attempts to delete the session with the given session ID from the database. If t
 sessionStorage.delete(sessionId);
 ```
 
-!SUBSECTION Tell a session to delete itself
+!SUBSUBSECTION Tell a session to delete itself
 
 Delete a session from the database.
 
@@ -179,7 +187,7 @@ Returns *false* if the session already didn't exist.
 session.delete();
 ```
 
-!SECTION Save a session
+!SUBSECTION Save a session
 
 Save a session to the database.
 
@@ -194,7 +202,7 @@ session.setUser(user);
 session.save();
 ```
 
-!SECTION Set a session's active user
+!SUBSECTION Set a session's active user
 
 Set the active user of a session.
 
@@ -214,7 +222,7 @@ assertEqual(session.get('uid'), user.get('_key'));
 assertEqual(session.get('userData'), user.get('userData'));
 ```
 
-!SECTION Add a session cookie to a response
+!SUBSECTION Add a session cookie to a response
 
 Add a session cookie to a Foxx response.
 
@@ -240,7 +248,7 @@ controller.get('/hello', function(request, response) {
 });
 ```
 
-!SECTION Clear a session cookie
+!SUBSECTION Clear a session cookie
 
 Clear the session cookie of a Foxx response.
 

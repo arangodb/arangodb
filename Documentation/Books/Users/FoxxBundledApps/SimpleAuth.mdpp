@@ -2,16 +2,24 @@
 
 The simple auth app provides hashed password-based authentication with automatically generated salts and constant-time password verification.
 
-*Configuration*
+!SECTION Configuration
+
+This app has the following configuration options:
 
 * *saltLength* (optional): length of newly generated salts. Default: *16*.
 * *hashMethod* (optional): hash algorithm to use. Supported values: *sha1*, *sha224*, *sha256*, *md5*. Default: *"sha256"*.
+
+!SECTION JavaScript API: *auth*
+
+This app exposes its functionality via a JavaScript API named *auth*.
+
+@EXAMPLES
 
 ```js
 var auth = Foxx.requireApp('/_auth').auth;
 ```
 
-!SECTION Generate an authentication object
+!SUBSECTION Generate an authentication object
 
 Generates an authentication object for a given password.
 
@@ -27,7 +35,7 @@ Returns an authentication object with the following properties:
 
 * *password*: the password to hash.
 
-!SECTION Verify a password
+!SUBSECTION Verify a password
 
 Verifies a password against a given authentication object.
 
