@@ -95,6 +95,8 @@ using namespace triagens::rest;
 
 static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
+extern bool TRI_ENABLE_STATISTICS;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
@@ -7776,7 +7778,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 /// @startDocuBlock TODO
 /// `db._changeMode(<mode>)`
 ///
-/// Sets the sever to the given mode.
+/// Sets the server to the given mode.
 /// Possible parameters for mode are:
 /// - Normal
 /// - ReadOnly
@@ -8976,7 +8978,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   TRI_vocbase_defaults_t defaults;
   TRI_GetDatabaseDefaultsServer((TRI_server_t*) v8g->_server, &defaults);
 
-  v8::Local<v8::String> keyRemoveOnDrop = v8::String::New("removeOnDrop");
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
   v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
@@ -8987,10 +8988,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   // overwrite database defaults from argv[2]
   if (argv.Length() > 1 && argv[1]->IsObject()) {
     v8::Handle<v8::Object> options = argv[1]->ToObject();
-
-    if (options->Has(keyRemoveOnDrop)) {
-      defaults.removeOnDrop = options->Get(keyRemoveOnDrop)->BooleanValue();
-    }
 
     if (options->Has(keyDefaultMaximalSize)) {
       defaults.defaultMaximalSize = (TRI_voc_size_t) options->Get(keyDefaultMaximalSize)->IntegerValue();
@@ -10165,6 +10162,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // current thread number
   context->Global()->Set(TRI_V8_SYMBOL("THREAD_NUMBER"), v8::Number::New((double) threadNumber), v8::ReadOnly);
+  
+  // whether or not statistics are enabled
+  context->Global()->Set(TRI_V8_SYMBOL("ENABLE_STATISTICS"), v8::Boolean::New(TRI_ENABLE_STATISTICS), v8::ReadOnly);
 }
 
 // -----------------------------------------------------------------------------

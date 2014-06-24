@@ -2274,6 +2274,86 @@ static v8::Handle<v8::Value> JS_Sha256 (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the sha224 sum
+///
+/// @FUN{internal.sha224(@FA{text})}
+///
+/// Computes an sha224 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sha224 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sha224(<text>)");
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create sha224
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, (int) hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the sha1 sum
+///
+/// @FUN{internal.sha1(@FA{text})}
+///
+/// Computes an sha1 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sha1 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sha1(<text>)");
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create sha1
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, (int) hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps
 ///
 /// @FUN{internal.sleep(@FA{seconds})}
@@ -2564,6 +2644,9 @@ static v8::Handle<v8::Value> JS_HMAC (v8::Arguments const& argv) {
     }
     else if (algorithm == "sha256") {
       al = SslInterface::Algorithm::ALGORITHM_SHA256;
+    }
+    else if (algorithm == "sha224") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA224;
     }
     else if (algorithm == "md5") {
       al = SslInterface::Algorithm::ALGORITHM_MD5;
@@ -3391,6 +3474,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA224", JS_Sha224);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA1", JS_Sha1);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SLEEP", JS_Sleep);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);

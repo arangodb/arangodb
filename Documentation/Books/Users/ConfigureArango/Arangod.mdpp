@@ -346,13 +346,6 @@ If turned off, syncing will still happen for collection that have a waitForSync 
 The default is true.
 
 
-`--database.remove-on-drop flag`
-
-If true and you drop a collection, then they directory and all associated datafiles will be removed from disk. If false, then they collection directory will be renamed to deleted-..., but remains on hard disk. To restore such a dropped collection, you can rename the directory back to collection-..., but you must also edit the file parameter.json inside the directory.
-
-The default is true.
-
-
 `--javascript.gc-frequency frequency`
 
 Specifies the frequency (in seconds) for the automatic garbage collection of JavaScript objects. This setting is useful to have the garbage collection still work in periods with no or little numbers of requests.
