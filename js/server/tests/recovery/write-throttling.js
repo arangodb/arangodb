@@ -9,18 +9,18 @@ function runSetup () {
   
   db._drop("UnitTestsRecovery");
   var c = db._create("UnitTestsRecovery"), i;
-  internal.flushWal(true, true);
-  internal.adjustWal({ throttleWait: 1000, throttleWhenPending: 1000 });
+  internal.wal.flush(true, true);
+  internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
 
   for (i = 0; i < 10000; ++i) {
     c.save({ _key: "test" + i, value1: "test" + i, value2: i }); 
   }
   
   internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
-  internal.flushWal(true, false);
+  internal.wal.flush(true, false);
 
   // now let the write throttling become active
-  internal.wait(5);
+  internal.wait(7);
   try {
     c.save({ _key: "foo" });
   }
