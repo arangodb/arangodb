@@ -1025,7 +1025,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
      
       while (triagens::wal::LogfileManager::instance()->isThrottled()) {
         if (++iterations == maxIterations) {
-          return TRI_ERROR_LOCK_TIMEOUT;
+          return TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT;
         }
 
         usleep(WaitTime);
