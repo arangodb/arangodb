@@ -57,6 +57,22 @@ static LogfileManager* Instance = nullptr;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum value for --wal.throttle-when-pending
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint64_t MinThrottleWhenPending () {
+  return 1024 * 1024;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimum value for --wal.sync-interval
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint64_t MinSyncInterval () {
+  return 5;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum value for --wal.open-logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -227,6 +243,8 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _maxOpenLogfiles(10),
     _numberOfSlots(1048576),
     _syncInterval(100),
+    _maxThrottleWait(15000),
+    _throttleWhenPending(0),
     _allowOversizeEntries(true),
     _ignoreLogfileErrors(false),
     _allowWrites(false), // start in read-only mode
@@ -245,6 +263,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _failedTransactions(),
     _droppedCollections(),
     _droppedDatabases(),
+    _writeThrottled(0),
     _filenameRegex(),
     _shutdown(0) {
 
@@ -317,6 +336,8 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
+    ("wal.throttle-when-pending", &_throttleWhenPending, "throttle writes when at least such many operations are waiting for collection (set to 0 to deactivate write-throttling)")
+    ("wal.throttle-wait", &_maxThrottleWait, "maximum wait time per operation when write-throttled (in milliseconds)")
   ;
 }
 
@@ -373,9 +394,13 @@ bool LogfileManager::prepare () {
   if (_maxOpenLogfiles < MinOpenLogfiles()) {
     LOG_FATAL_AND_EXIT("invalid value for --wal.open-logfiles. Please use a value of at least %lu", (unsigned long) MinOpenLogfiles());
   }
+  
+  if (_throttleWhenPending > 0 && _throttleWhenPending < MinThrottleWhenPending()) {
+    LOG_FATAL_AND_EXIT("invalid value for --wal.throttle-when-pending. Please use a value of at least %llu", (unsigned long long) MinThrottleWhenPending());
+  }
 
-  if (_syncInterval < 5) {
-    LOG_FATAL_AND_EXIT("invalid sync interval.");
+  if (_syncInterval < MinSyncInterval()) {
+    LOG_FATAL_AND_EXIT("invalid value for --wal.sync-interval. Please use a value of at least %llu", (unsigned long long) MinSyncInterval());
   }
 
   // sync interval is specified in milliseconds by the user, but internally
