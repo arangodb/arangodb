@@ -416,6 +416,10 @@ bool CollectorThread::collectLogfiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::processQueuedOperations () {
+  TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
+    return false;
+  }
+
   MUTEX_LOCKER(_operationsQueueLock);
 
   if (_operationsQueue.empty()) {
