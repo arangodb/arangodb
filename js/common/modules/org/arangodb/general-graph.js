@@ -1535,6 +1535,14 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
     }
   );
 };
+////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
@@ -1622,7 +1630,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
-  if (!orphanCollections) {
+  if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
   var gdb = getGraphCollection(),
@@ -1700,8 +1708,17 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
     }
   );
+
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+  orphanCollections = orphanCollections.sort();
+
   gdb.save({
-    'orphanCollections' : orphanCollections.sort(),
+    'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
@@ -1924,15 +1941,6 @@ var updateBindCollections = function(graph) {
     }
   );
   bindVertexCollections(graph, graph.__orphanCollections);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// internal helper to sort a graph's edge definitions
-////////////////////////////////////////////////////////////////////////////////
-var sortEdgeDefinition = function(edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
-  return edgeDefinition;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2248,6 +2256,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
           }
         );
       }
+
       var orphanCollections = graph.orphanCollections;
       if (orphanCollections) {
         if (orphanCollections.indexOf(colName) !== -1) {

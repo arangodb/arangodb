@@ -160,15 +160,22 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        hasNext = false,
-        newEdgeDefinitions1,
+        hasNext = true,
+        collection,
         from,
         to;
 
-      newEdgeDefinitions1 = $("#newEdgeDefinitions1").val();
-      if (newEdgeDefinitions1 !== "") {
+      collection = $('#newEdgeDefinitions1').val();
+      if (collection !== "") {
         from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
         to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
+        edgeDefinitions.push(
+          {
+            collection: collection,
+            from: from,
+            to: to
+          }
+        );
       }
 
       if (!name) {
